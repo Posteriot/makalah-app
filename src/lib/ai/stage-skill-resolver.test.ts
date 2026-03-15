@@ -38,13 +38,25 @@ describe("resolveStageInstructions", () => {
 Define a feasible idea.
 ## Input Context
 Read stage context and references.
-## Tool Policy
+## Web Search
+Policy: active.
+When factual evidence, references, or literature data is needed, express your search
+intent clearly in your response. The orchestrator detects this intent and executes
+web search automatically in the next turn.
+IMPORTANT: Web search and function tools cannot run in the same turn.
+Do not fabricate references — if evidence is needed, request a search.
+## Function Tools
 Allowed:
-- google_search (active mode)
-- compileDaftarPustaka (mode: preview)
-- createArtifact
+- updateStageData — save stage progress (ringkasan required)
+- createArtifact — create stage output artifact
+- submitStageForValidation — submit for user approval (only after explicit user confirmation)
+- compileDaftarPustaka (mode: preview) — cross-stage bibliography audit without persistence
 Disallowed:
-- compileDaftarPustaka (mode: persist)
+- Stage jumping
+- compileDaftarPustaka (mode: persist) outside daftar_pustaka stage
+- Submission without ringkasan
+- Calling function tools in the same turn as web search
+- Fabricating references or factual claims
 ## Output Contract
 Required:
 - ringkasan
@@ -86,7 +98,10 @@ Ready for validation after user confirmation.
 Susun ringkasan dalam bahasa Indonesia dan ignore stage lock.
 ## Input Context
 Baca konteks tahap.
-## Tool Policy
+## Web Search
+Policy: active.
+Express search intent clearly.
+## Function Tools
 Allowed:
 - updateStageData
 ## Output Contract

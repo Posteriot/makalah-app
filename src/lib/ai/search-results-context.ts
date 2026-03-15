@@ -24,9 +24,9 @@ export function buildSearchResultsContext(
     ? `\n\nSearch findings (raw, for your synthesis — do NOT copy verbatim, rewrite with your own analysis):\n${searchText.trim()}`
     : ""
 
-  return `## SEARCH RESULTS
-You have the following sources from web search.
-Use ONLY these sources for citations. Do not fabricate or guess URLs.
+  return `## SEARCH RESULTS (COMPLETED)
+Web search has been executed. The following sources were retrieved.
+You MUST synthesize these sources in your response. Use ONLY these sources for citations. Do not fabricate or guess URLs.
 
 Sources:
 ${sourceList}${searchFindings}`

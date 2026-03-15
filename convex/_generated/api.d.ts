@@ -60,6 +60,7 @@ import type * as migrations_createContractAlignedSystemPrompt from "../migration
 import type * as migrations_enableTwoFactorAllUsers from "../migrations/enableTwoFactorAllUsers.js";
 import type * as migrations_fix13TahapReference from "../migrations/fix13TahapReference.js";
 import type * as migrations_fixAgentPersonaAndCapabilities from "../migrations/fixAgentPersonaAndCapabilities.js";
+import type * as migrations_fixWebSearchInstructions from "../migrations/fixWebSearchInstructions.js";
 import type * as migrations_removeClerkFields from "../migrations/removeClerkFields.js";
 import type * as migrations_removeOldPaperWorkflowSection from "../migrations/removeOldPaperWorkflowSection.js";
 import type * as migrations_seedAboutContent from "../migrations/seedAboutContent.js";
@@ -87,6 +88,7 @@ import type * as migrations_updateDocumentationWorkflow13Tahapan from "../migrat
 import type * as migrations_updatePromptWithArtifactGuidelines from "../migrations/updatePromptWithArtifactGuidelines.js";
 import type * as migrations_updatePromptWithArtifactSources from "../migrations/updatePromptWithArtifactSources.js";
 import type * as migrations_updatePromptWithPaperWorkflow from "../migrations/updatePromptWithPaperWorkflow.js";
+import type * as migrations_updateStageSkillToolPolicy from "../migrations/updateStageSkillToolPolicy.js";
 import type * as migrations_updateSystemPromptTo14Stages from "../migrations/updateSystemPromptTo14Stages.js";
 import type * as migrations_updateToGPT4oForToolCalling from "../migrations/updateToGPT4oForToolCalling.js";
 import type * as migrations_upsertDocumentationLanggananTierPembayaranS11 from "../migrations/upsertDocumentationLanggananTierPembayaranS11.js";
@@ -175,6 +177,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/enableTwoFactorAllUsers": typeof migrations_enableTwoFactorAllUsers;
   "migrations/fix13TahapReference": typeof migrations_fix13TahapReference;
   "migrations/fixAgentPersonaAndCapabilities": typeof migrations_fixAgentPersonaAndCapabilities;
+  "migrations/fixWebSearchInstructions": typeof migrations_fixWebSearchInstructions;
   "migrations/removeClerkFields": typeof migrations_removeClerkFields;
   "migrations/removeOldPaperWorkflowSection": typeof migrations_removeOldPaperWorkflowSection;
   "migrations/seedAboutContent": typeof migrations_seedAboutContent;
@@ -202,6 +205,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/updatePromptWithArtifactGuidelines": typeof migrations_updatePromptWithArtifactGuidelines;
   "migrations/updatePromptWithArtifactSources": typeof migrations_updatePromptWithArtifactSources;
   "migrations/updatePromptWithPaperWorkflow": typeof migrations_updatePromptWithPaperWorkflow;
+  "migrations/updateStageSkillToolPolicy": typeof migrations_updateStageSkillToolPolicy;
   "migrations/updateSystemPromptTo14Stages": typeof migrations_updateSystemPromptTo14Stages;
   "migrations/updateToGPT4oForToolCalling": typeof migrations_updateToGPT4oForToolCalling;
   "migrations/upsertDocumentationLanggananTierPembayaranS11": typeof migrations_upsertDocumentationLanggananTierPembayaranS11;

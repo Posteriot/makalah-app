@@ -11,16 +11,15 @@ type TitleGenerationInput = {
     assistantMessage?: string
 }
 
-// Template prompt (Indonesia) untuk membuat judul singkat
-const TITLE_PROMPT_TEMPLATE = `Buat judul singkat dan jelas untuk percakapan ini (maksimal ${TITLE_MAX_LENGTH} karakter).
+const TITLE_PROMPT_TEMPLATE = `Generate a short, clear title for this conversation (max ${TITLE_MAX_LENGTH} characters).
 
-Aturan:
-- Bahasa Indonesia
-- Tanpa tanda kutip
-- Jangan gunakan prefiks seperti "Judul:" atau "Title:"
-- Output hanya judulnya saja
+Rules:
+- Output in Indonesian (Bahasa Indonesia)
+- No quotation marks
+- Do not use prefixes like "Judul:" or "Title:"
+- Output only the title itself
 
-Konteks:`
+Context:`
 
 function createTitlePrompt(input: TitleGenerationInput): string {
     const userPreview = input.userMessage.substring(0, MESSAGE_PREVIEW_LENGTH)
@@ -29,11 +28,11 @@ function createTitlePrompt(input: TitleGenerationInput): string {
     return [
         TITLE_PROMPT_TEMPLATE,
         "",
-        "Pesan user:",
+        "User message:",
         userPreview,
         "",
-        "Respons assistant:",
-        assistantPreview || "(belum ada)",
+        "Assistant response:",
+        assistantPreview || "(none yet)",
     ].join("\n")
 }
 

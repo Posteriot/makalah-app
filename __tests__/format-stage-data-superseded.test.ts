@@ -60,7 +60,7 @@ describe("formatStageData - superseded digest filtering", () => {
     expect(result).toContain(`"Ref-1"`);
     expect(result).toContain(`"Ref-5"`);
     expect(result).not.toContain(`"Ref-6"`);
-    expect(result).toContain("... dan 2 referensi lainnya");
+    expect(result).toContain("and 2 more references");
   });
 
   it("should cap sitasiAPA to 5 and preserve URL visibility", () => {
@@ -81,11 +81,11 @@ describe("formatStageData - superseded digest filtering", () => {
       "pendahuluan"
     );
 
-    expect(result).toContain("Daftar Sitasi (ditampilkan 5/7)");
+    expect(result).toContain("Citations (showing 5/7)");
     expect(result).toContain("https://example.com/cite-1");
     expect(result).toContain("https://example.com/cite-5");
     expect(result).not.toContain("https://example.com/cite-6");
-    expect(result).toContain("... dan 2 sitasi lainnya");
+    expect(result).toContain("and 2 more citations");
   });
 
   it("should inject ringkasanDetail only for the last 3 completed stages", () => {

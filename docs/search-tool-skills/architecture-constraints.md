@@ -25,7 +25,7 @@ Three independent concerns that must never be mixed:
 | Concern | Responsibility | Current Location |
 |---------|---------------|------------------|
 | **Quality/Knowledge** | HOW the LLM processes and presents results | `skills/web-search-quality/SKILL.md` |
-| **Workflow Control** | WHEN tools are available and what mode is active | `route.ts`, `paper-search-helpers.ts`, `search-execution-mode.ts` |
+| **Workflow Control** | WHEN tools are available and what mode is active | `route.ts` (LLM router with intentType enum for all decisions), `paper-search-helpers.ts` (system notes + data checks) |
 | **Tool Execution** | Simple data retrieval, no judgment | `web-search/retrievers/*.ts`, `paper-tools.ts` |
 
 These are independent:
@@ -47,8 +47,11 @@ Core architectural principle validated through experimentation. See README.md fo
 
 ### Skills Provide Intelligence
 
-- SKILL.md = knowledge layer that tells Gemini HOW to evaluate, filter, and present
+- Skills operate at TWO phases:
+  - **Retriever phase:** `getSearchSystemPrompt()` teaches the retriever model what to search for (priority sources, query construction strategy)
+  - **Compose phase:** `SKILL.md` teaches the compose model how to evaluate, filter, and present (blocklist, priority preference, credibility criteria, narration rules)
 - Blocklist enforcement via natural language in SKILL.md (not code)
+- Priority source guidance via natural language in both retriever prompt and SKILL.md (not API filters)
 - Source credibility evaluation via skill instructions (not domain tier scoring)
 - Stage behavior guidance via skill instructions (not hardcoded strings)
 - Quality judgment delegated to LLM, not hardcoded in pipeline
@@ -79,10 +82,10 @@ Core architectural principle validated through experimentation. See README.md fo
 
 ## Search System Prompt Strategy
 
-- Retrievers receive a minimal system prompt: "You are a research assistant..."
-- NO blocklist in search system prompt — let search models retrieve freely
-- User message augmented with diversity hints (breadth, minimum sources, multi-domain)
-- Perplexity uses user message content as search query basis — system prompt affects text, not retrieval
+- Retrievers receive an enriched system prompt with search strategy guidance: priority source categories (academic databases, Indonesian university repositories, Indonesian media), specific domain names, and query construction techniques
+- NO blocklist in search system prompt — blocklist enforcement is delegated to compose model via SKILL.md
+- User message augmented with diversity hints + priority source names (dual-channel delivery alongside system prompt)
+- All retrievers receive both system prompt and user message via `streamText()` — how each provider processes them internally is provider-specific behavior outside our control
 
 ## Retriever Architecture
 
@@ -100,19 +103,21 @@ Registry at `src/lib/ai/web-search/retriever-registry.ts`. New retrievers = impl
 
 ## Paper Stage Architecture (Current — Migration Candidate)
 
+ALL regex have been removed from the search decision path. Search mode decisions — including intent classification (search, discussion, sync, compile, save) — are now unified under a single LLM router (`decideWebSearchMode` in `route.ts`) using a typed `intentType` enum. No regex patterns remain in `route.ts` or `paper-search-helpers.ts` for intent detection, search request matching, or sync request matching.
+
 Currently hardcoded TypeScript instruction strings, not SKILL.md:
 
 | Component | Location | Pattern |
 |-----------|----------|---------|
 | Stage instructions | `paper-stages/foundation.ts`, `core.ts`, `results.ts`, `finalization.ts` | Hardcoded template literal strings |
-| System notes | `paper-search-helpers.ts` | `PAPER_TOOLS_ONLY_NOTE`, `getResearchIncompleteNote()`, `getFunctionToolsModeNote()` |
+| System notes + data checks | `paper-search-helpers.ts` | Data-based research completeness checks, system notes (`PAPER_TOOLS_ONLY_NOTE`, `getResearchIncompleteNote()`, `getFunctionToolsModeNote()`), utility functions |
 | Context injection | `paper-stages/formatStageData.ts` | Deterministic formatting of stageData for prompt |
 | Stage routing | `paper-stages/index.ts` | `getStageInstructions(stage)` switch |
 
 This pattern works but has maintenance costs:
 - Instruction changes require code deployment
 - Logic scattered across multiple TypeScript files
-- Deterministic checks (`isStageResearchIncomplete`) bypass LLM reasoning
+- `isStageResearchIncomplete` now provides context to the LLM router, not a hard gate
 - No separation between knowledge (what to do) and workflow (when to do it)
 
 See `future-paper-workflow-skill-notes.md` for migration analysis.

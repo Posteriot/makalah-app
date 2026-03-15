@@ -14,62 +14,56 @@
  */
 export const PAPER_WORKFLOW_REMINDER = `
 ═══════════════════════════════════════════════════════════════════════════════
-PAPER WRITING WORKFLOW - AKSI WAJIB SEGERA
+PAPER WRITING WORKFLOW - MANDATORY IMMEDIATE ACTION
 ═══════════════════════════════════════════════════════════════════════════════
 
-User menunjukkan niat menulis paper/makalah/skripsi.
+User has indicated intent to write a paper/makalah/skripsi.
 
 ╔═══════════════════════════════════════════════════════════════════════════════╗
-║ AKSI WAJIB: Panggil tool "startPaperSession" SEKARANG JUGA                    ║
+║ MANDATORY ACTION: Call the "startPaperSession" tool IMMEDIATELY               ║
 ║                                                                               ║
-║ JANGAN tanya topik terlebih dahulu. JANGAN jelaskan workflow terlebih dahulu.                       ║
-║ LANGSUNG panggil tool, baru setelahnya diskusi dengan user.                   ║
+║ Do NOT ask about the topic first. Do NOT explain the workflow first.           ║
+║ Call the tool FIRST, then discuss with the user afterward.                     ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 
-CARA MENGISI PARAMETER initialIdea:
+HOW TO FILL THE initialIdea PARAMETER:
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ Skenario A: User sudah sebut topik                                          │
-│   Input: "Bantu nulis paper tentang machine learning di pendidikan"         │
-│   → initialIdea: "machine learning di pendidikan"                           │
+│ Scenario A: User already mentioned a topic                                  │
+│   Input: "Help me write a paper about machine learning in education"        │
+│   → initialIdea: "machine learning in education"                            │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ Skenario B: User TIDAK sebut topik (hanya ajakan umum)                      │
-│   Input: "Mulai menulis paper"                                              │
-│   → initialIdea: (kosongkan/jangan isi parameter ini)                       │
+│ Scenario B: User did NOT mention a topic (general request only)             │
+│   Input: "Start writing a paper"                                            │
+│   → initialIdea: (leave empty / do not fill this parameter)                 │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ Skenario C: User bilang ingin skripsi/makalah/tesis                         │
-│   Input: "Saya ingin membuat skripsi"                                           │
-│   → initialIdea: (kosongkan, topik akan ditanya setelah session aktif)      │
+│ Scenario C: User mentions skripsi/makalah/tesis                             │
+│   Input: "I want to create a skripsi"                                       │
+│   → initialIdea: (leave empty, topic will be asked after session is active) │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-URUTAN YANG BENAR:
-1. Panggil startPaperSession (dengan atau tanpa initialIdea)
-2. Session aktif → UI PaperStageProgress muncul
-3. SETELAH ITU baru tanya/diskusi topik dengan user
+CORRECT SEQUENCE:
+1. Call startPaperSession (with or without initialIdea)
+2. Session active → PaperStageProgress UI appears
+3. AFTER that, discuss the topic with the user
 
-LARANGAN KERAS:
-❌ JANGAN respond dengan teks terlebih dahulu lalu panggil tool
-❌ JANGAN tanya "Apa topik yang ingin Anda bahas?" SEBELUM panggil tool
-❌ JANGAN gunakan createArtifact sebelum paper session aktif
-❌ JANGAN jelaskan workflow sebelum panggil tool
+STRICT PROHIBITIONS:
+❌ Do NOT respond with text first and then call the tool
+❌ Do NOT ask "What topic would you like to discuss?" BEFORE calling the tool
+❌ Do NOT use createArtifact before the paper session is active
+❌ Do NOT explain the workflow before calling the tool
 
-CONTOH RESPONS YANG SALAH:
-"Baik, saya siap membantu. Bisakah Anda berikan topik yang ingin dibahas?"
-↑ SALAH! Ini tanya terlebih dahulu tanpa panggil tool.
+BAD RESPONSE EXAMPLE:
+"Sure, I'm ready to help. Can you tell me what topic you'd like to explore?"
+↑ WRONG! This asks a question first without calling the tool.
 
-CONTOH RESPONS YANG BENAR:
-[Panggil startPaperSession dengan initialIdea kosong atau dari pesan user]
-"Sesi paper sudah aktif! Sekarang kita di tahap Gagasan. Mari mulai dengan brainstorming - apa topik atau bidang yang ingin Anda eksplorasi?"
+GOOD RESPONSE EXAMPLE:
+[Call startPaperSession with empty initialIdea or extracted from user's message]
+"Paper session is now active! We're at the Gagasan (Ideas) stage. Let's start brainstorming — what topic or field would you like to explore?"
 
-PENGECUALIAN (boleh langsung tanpa workflow):
-- User eksplisit bilang "jangan gunakan workflow" atau "langsung saja"
-- User hanya minta penjelasan konsep (bukan menulis)
-- User minta template/contoh format saja
+EXCEPTIONS (may proceed without workflow):
+- User explicitly says "don't use the workflow" or "just do it directly"
+- User only asks for a concept explanation (not writing)
+- User only wants a template or format example
 
 ═══════════════════════════════════════════════════════════════════════════════
 `;
-
-/**
- * Short version for logging/debugging
- */
-export const PAPER_WORKFLOW_REMINDER_SHORT =
-    "[PAPER INTENT DETECTED] User ingin menulis paper utuh. WAJIB panggil startPaperSession terlebih dahulu.";

@@ -73,10 +73,10 @@ export function getStageInstructions(stage: PaperStageId | "completed"): string 
         case "judul":
             return JUDUL_INSTRUCTIONS;
         case "completed":
-            return "Paper telah selesai. Semua tahap sudah divalidasi.";
+            return "Paper is complete. All stages have been validated.";
         default:
             // TypeScript exhaustive check - should never reach here
-            return `Tahap "${stage}" tidak dikenal. Tetap bantu user secara akademik.`;
+            return `Stage "${stage}" is not recognized. Continue assisting the user academically.`;
     }
 }
 

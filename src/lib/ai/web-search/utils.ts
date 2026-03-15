@@ -29,7 +29,7 @@ export function sanitizeMessagesForSearch<
     .filter((m): m is T => m !== null)
 }
 
-export function canonicalizeCitationUrl(raw: string): string {
+function canonicalizeCitationUrl(raw: string): string {
   try {
     const u = new URL(raw)
     for (const key of Array.from(u.searchParams.keys())) {

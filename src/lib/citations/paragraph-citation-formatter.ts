@@ -77,38 +77,47 @@ const removeKnownSourceMentions = (input: string, sources: ParagraphCitationSour
       .filter((host) => host.length > 0 && host.includes("."))
   ))
 
-  let text = input
+  // Process per-line to preserve markdown table rows
+  const lines = input.split("\n")
+  const processed = lines.map((line) => {
+    if (isTableLine(line)) return line
 
-  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/gi, (_full, label: string) => {
-    const cleanedLabel = label.trim()
-    if (!cleanedLabel) return ""
-    if (DOMAIN_LIKE_REGEX.test(cleanedLabel)) return ""
-    return cleanedLabel
+    let text = line
+
+    text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/gi, (_full, label: string) => {
+      const cleanedLabel = label.trim()
+      if (!cleanedLabel) return ""
+      if (DOMAIN_LIKE_REGEX.test(cleanedLabel)) return ""
+      return cleanedLabel
+    })
+
+    text = text.replace(BARE_URL_REGEX, "")
+
+    for (const host of sourceHosts) {
+      const hostRegex = new RegExp(
+        `(^|[\\s([{\"'` + "`" + `])((?:www\\.)?${escapeRegExp(host)})(?=$|[\\s)\\]}\"'` + "`" + `.,;:!?])`,
+        "gi",
+      )
+      text = text.replace(hostRegex, (_full, prefix: string) => prefix)
+    }
+
+    return text
   })
 
-  text = text.replace(BARE_URL_REGEX, "")
-
-  for (const host of sourceHosts) {
-    const hostRegex = new RegExp(
-      `(^|[\\s([{\"'` + "`" + `])((?:www\\.)?${escapeRegExp(host)})(?=$|[\\s)\\]}\"'` + "`" + `.,;:!?])`,
-      "gi",
-    )
-    text = text.replace(hostRegex, (_full, prefix: string) => prefix)
-  }
-
-  return text
+  return processed.join("\n")
 }
 
 const normalizeSpacing = (input: string) => {
   const lines = input.split("\n")
-  const normalizedLines = lines.map((line) =>
-    line
+  const normalizedLines = lines.map((line) => {
+    if (isTableLine(line)) return line
+    return line
       .replace(/\s+([.,;:!?])/g, "$1")
       .replace(/\s{2,}/g, " ")
       .replace(/\(\s+/g, "(")
       .replace(/\s+\)/g, ")")
       .trimEnd()
-  )
+  })
   return normalizedLines.join("\n")
 }
 
@@ -128,6 +137,11 @@ const appendCitationTail = (paragraph: string, sourceNumbers: number[]) => {
     : paragraph
 
   return `${core}${marker}${trailingWhitespace}`
+}
+
+const isTableLine = (line: string) => {
+  const trimmed = line.trim()
+  return trimmed.startsWith("|") && (trimmed.endsWith("|") || /\|\s*\[\d+(?:\s*,\s*\d+)*\]\s*$/.test(trimmed))
 }
 
 const isBulletLikeLine = (line: string) =>
@@ -170,6 +184,7 @@ const isCitableLine = (line: string) => {
   const trimmed = line.trim()
   if (!trimmed) return false
   if (!/[a-zA-Z0-9]/.test(trimmed)) return false
+  if (isTableLine(trimmed)) return false
   if (isPotentialHeadingLine(trimmed)) return false
   return true
 }
@@ -246,8 +261,13 @@ const collectLineCitationMarkers = (segments: ParagraphSegment[]) => {
 }
 
 const stripInlineCitationMarkers = (input: string) => {
-  INLINE_CITATION_REGEX.lastIndex = 0
-  return input.replace(INLINE_CITATION_REGEX, "")
+  const lines = input.split("\n")
+  const processed = lines.map((line) => {
+    if (isTableLine(line)) return line
+    INLINE_CITATION_REGEX.lastIndex = 0
+    return line.replace(INLINE_CITATION_REGEX, "")
+  })
+  return processed.join("\n")
 }
 
 const distributeNumbersAcrossSlots = (

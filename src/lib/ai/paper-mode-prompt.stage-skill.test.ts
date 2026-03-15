@@ -91,6 +91,6 @@ describe("getPaperModeSystemPrompt - stage skill integration", () => {
     expect(result.skillResolverFallback).toBe(true)
     expect(result.fallbackReason).toBe("runtime_validation_failed")
     expect(result.prompt).toContain("Fallback gagasan instruction")
-    expect(result.prompt).toContain("MODE REVISI")
+    expect(result.prompt).toContain("REVISION MODE")
   })
 })

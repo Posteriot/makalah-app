@@ -7,7 +7,7 @@ import { Id } from "../../../convex/_generated/dataModel"
 import { retryMutation, retryQuery } from "../convex/retry"
 
 /**
- * Factory untuk membuat tools AI khusus alur penulisan paper.
+ * Factory for creating AI tools specific to the paper writing workflow.
  */
 export const createPaperTools = (context: {
     userId: Id<"users">,
@@ -19,17 +19,17 @@ export const createPaperTools = (context: {
     const convexOptions = context.convexToken ? { token: context.convexToken } : undefined
     return {
         startPaperSession: tool({
-            description: `Inisialisasi sesi penulisan paper baru untuk percakapan ini.
+            description: `Initialize a new paper writing session for this conversation.
 
-WAJIB panggil tool ini SEGERA saat user menunjukkan niat menulis paper/makalah/skripsi.
+You MUST call this tool IMMEDIATELY when the user indicates intent to write a paper/makalah/skripsi.
 
-Aturan pengisian initialIdea:
-- Jika user menyebutkan topik spesifik → gunakan topik tersebut
-- Jika user hanya bilang "mulai menulis paper" tanpa topik → kosongkan parameter ini
-- JANGAN tunggu user memberikan topik dulu, LANGSUNG panggil tool ini`,
+Rules for filling initialIdea:
+- If user mentions a specific topic → use that topic
+- If user only says "start writing a paper" without a topic → leave this parameter empty
+- Do NOT wait for the user to provide a topic first, call this tool IMMEDIATELY`,
             inputSchema: z.object({
                 initialIdea: z.string().optional().describe(
-                    "Ide kasar, judul awal, atau topik. Opsional - jika user belum menyebutkan topik, boleh dikosongkan."
+                    "Raw idea, initial title, or topic. Optional — if user has not mentioned a topic, leave empty."
                 ),
             }),
             execute: async ({ initialIdea }) => {
@@ -45,17 +45,17 @@ Aturan pengisian initialIdea:
                     return {
                         success: true,
                         sessionId,
-                        message: "Sesi penulisan paper berhasil dimulai. AI sekarang dalam 'Paper Writing Mode'. Ikuti instruksi tahap 'gagasan'.",
+                        message: "Paper writing session started successfully. AI is now in 'Paper Writing Mode'. Follow the instructions for stage 'gagasan'.",
                     };
                 } catch (error) {
                     console.error("Error in startPaperSession tool:", error);
-                    return { success: false, error: "Gagal memulai sesi paper di database." };
+                    return { success: false, error: "Failed to start paper session in database." };
                 }
             },
         }),
 
         getCurrentPaperState: tool({
-            description: "Ambil status terbaru dari sesi penulisan paper (tahap aktif, data draf, status validasi). Berguna untuk sinkronisasi setelah jeda.",
+            description: "Retrieve the latest status of the paper writing session (active stage, draft data, validation status). Useful for synchronization after a pause.",
             inputSchema: z.object({}),
             execute: async () => {
                 try {
@@ -67,47 +67,47 @@ Aturan pengisian initialIdea:
                     );
                     return session
                         ? { success: true, session }
-                        : { success: false, error: "Tidak ada sesi paper aktif untuk percakapan ini." };
+                        : { success: false, error: "No active paper session found for this conversation." };
                 } catch (error) {
                     console.error("Error in getCurrentPaperState tool:", error);
-                    return { success: false, error: "Gagal mengambil status sesi paper." };
+                    return { success: false, error: "Failed to retrieve paper session status." };
                 }
             }
         }),
 
         updateStageData: tool({
-            description: `Simpan progres draf data untuk tahap penulisan SAAT INI ke database.
+            description: `Save draft data progress for the CURRENT writing stage to the database.
 
 ═══════════════════════════════════════════════════════════════════════════════
-AUTO-STAGE (PENTING!):
+AUTO-STAGE (IMPORTANT!):
 ═══════════════════════════════════════════════════════════════════════════════
-Tool ini OTOMATIS menyimpan ke tahap yang sedang aktif (currentStage).
-Kamu TIDAK PERLU dan TIDAK BISA specify stage - tool akan auto-fetch dari session.
-Ini mencegah error "Cannot update X while in Y".
+This tool AUTOMATICALLY saves to the currently active stage (currentStage).
+You do NOT need to and CANNOT specify the stage — the tool auto-fetches it from the session.
+This prevents "Cannot update X while in Y" errors.
 
 ═══════════════════════════════════════════════════════════════════════════════
-FORMAT DATA:
+DATA FORMAT:
 ═══════════════════════════════════════════════════════════════════════════════
-- Field 'referensiAwal' atau 'referensiPendukung' harus berupa ARRAY OF OBJECTS, BUKAN string!
-  Format: [{title: "Judul Paper", authors: "Nama Penulis", url: "https://...", year: 2024}, ...]
-  - title (wajib): Judul referensi/paper
-  - authors (opsional): Nama penulis
-  - url (opsional): URL sumber
-  - year (opsional): Tahun publikasi (angka)
+- Fields 'referensiAwal' or 'referensiPendukung' MUST be ARRAY OF OBJECTS, NOT strings!
+  Format: [{title: "Paper Title", authors: "Author Name", url: "https://...", year: 2024}, ...]
+  - title (required): Reference/paper title
+  - authors (optional): Author name(s)
+  - url (optional): Source URL
+  - year (optional): Publication year (number)
 
-Contoh data untuk tahap 'gagasan':
+Example data for 'gagasan' stage:
 {
-  ideKasar: "Ide dari user...",
-  analisis: "Analisis kelayakan...",
-  angle: "Sudut pandang unik...",
-  novelty: "Kebaruan...",
+  ideKasar: "User's idea...",
+  analisis: "Feasibility analysis...",
+  angle: "Unique perspective...",
+  novelty: "What's new...",
   referensiAwal: [
     {title: "Self-determination theory and...", authors: "Ryan, R.M. & Deci, E.L.", year: 2000},
     {title: "Project-based learning effects...", url: "https://example.com", year: 2019}
   ]
 }
 
-Contoh data untuk tahap 'outline':
+Example data for 'outline' stage:
 {
   sections: [
     {id: "abstrak", judul: "Abstrak", level: 1, parentId: null, estimatedWordCount: 200, status: "empty"},
@@ -117,22 +117,22 @@ Contoh data untuk tahap 'outline':
   totalWordCount: 5000,
   completenessScore: 0
 }
-PENTING untuk outline: Gunakan 'judul' (BUKAN 'title'), 'estimatedWordCount' sebagai angka (BUKAN 'wordCount' string). JANGAN tambah field 'checked' atau 'subSections'.`,
+IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a number (NOT 'wordCount' string). Do NOT add 'checked' or 'subSections' fields.`,
             inputSchema: z.object({
                 // NOTE: 'stage' parameter REMOVED - auto-fetched from session.currentStage
                 // This prevents AI from specifying wrong stage (Option B fix for stage confusion bug)
                 ringkasan: z.string().max(280).describe(
-                    "WAJIB! Keputusan utama yang DISEPAKATI dengan user untuk tahap ini. Max 280 karakter. " +
-                    "Contoh: 'Disepakati angle: dampak AI terhadap pendidikan tinggi Indonesia, gap: belum ada studi di kampus swasta'"
+                    "REQUIRED! The main decision AGREED upon with the user for this stage. Max 280 characters. " +
+                    "Example: 'Agreed angle: AI impact on Indonesian higher education, gap: no studies on private universities'"
                 ),
                 ringkasanDetail: z.string().max(1000).optional().describe(
-                    "Elaborasi ringkasan: MENGAPA keputusan ini diambil, nuansa penting, konteks diskusi dengan user, " +
-                    "dan hal-hal yang tidak muat di ringkasan 280 char. Max 1000 karakter. " +
-                    "Contoh: 'Angle dipilih karena gap literatur besar di konteks Indonesia, user punya akses data dari 3 kampus swasta di Jakarta, " +
-                    "fokus pada mata kuliah pemrograman dasar semester 1-2.'"
+                    "Elaboration on ringkasan: WHY this decision was made, important nuances, discussion context with user, " +
+                    "and details that don't fit in the 280-char ringkasan. Max 1000 characters. " +
+                    "Example: 'Angle chosen due to large literature gap in Indonesian context, user has data access from 3 private universities in Jakarta, " +
+                    "focus on introductory programming courses semesters 1-2.'"
                 ),
                 data: z.record(z.string(), z.any()).optional().describe(
-                    "Objek data draf lainnya (selain ringkasan/ringkasanDetail). PENTING: referensiAwal/referensiPendukung harus ARRAY OF OBJECTS!"
+                    "Additional draft data object (besides ringkasan/ringkasanDetail). IMPORTANT: referensiAwal/referensiPendukung must be ARRAY OF OBJECTS!"
                 ),
             }),
             execute: async ({ ringkasan, ringkasanDetail, data }) => {
@@ -143,7 +143,7 @@ PENTING untuk outline: Gunakan 'judul' (BUKAN 'title'), 'estimatedWordCount' seb
                         }, convexOptions),
                         "paperSessions.getByConversation"
                     );
-                    if (!session) return { success: false, error: "Sesi paper tidak ditemukan." };
+                    if (!session) return { success: false, error: "Paper session not found." };
 
                     // Option B Fix: Auto-fetch stage from session.currentStage
                     // This eliminates the possibility of AI specifying wrong stage
@@ -198,7 +198,7 @@ PENTING untuk outline: Gunakan 'judul' (BUKAN 'title'), 'estimatedWordCount' seb
                         return {
                             success: true,
                             stage, // Include stage in response so AI knows which stage was updated
-                            message: `Berhasil menyimpan progres untuk tahap ${stage}.`,
+                            message: `Successfully saved progress for stage ${stage}.`,
                             warning: result.warning,
                         };
                     }
@@ -206,39 +206,39 @@ PENTING untuk outline: Gunakan 'judul' (BUKAN 'title'), 'estimatedWordCount' seb
                     return {
                         success: true,
                         stage, // Include stage in response so AI knows which stage was updated
-                        message: `Berhasil menyimpan progres untuk tahap ${stage}. Ringkasan tersimpan.`
+                        message: `Successfully saved progress for stage ${stage}. Summary saved.`
                     };
                 } catch (error) {
                     console.error("Error in updateStageData tool:", error);
                     // Forward specific error message from backend to AI
                     const errorMessage = error instanceof Error
                         ? error.message
-                        : "Gagal menyimpan progres data stage.";
+                        : "Failed to save stage data progress.";
                     return { success: false, error: errorMessage };
                 }
             },
         }),
 
         compileDaftarPustaka: tool({
-            description: `Kompilasi referensi lintas stage (1-10) secara server-side untuk tahap daftar_pustaka.
+            description: `Compile cross-stage references (stages 1-10) server-side for the daftar_pustaka stage.
 
-Tool ini punya 2 mode:
-1) preview  -> boleh dipakai di stage mana pun, TANPA persist ke stageData
-2) persist  -> hanya untuk finalisasi stage daftar_pustaka, hasil compile disimpan ke stageData
+This tool has 2 modes:
+1) preview  -> can be used at any stage, WITHOUT persisting to stageData
+2) persist  -> only for finalizing the daftar_pustaka stage, compiled result is saved to stageData
 
-Tool akan:
-- compile referensi dari stage yang sudah approved
-- skip stage invalidated/superseded karena rewind
-- persist hanya jika mode = persist`,
+The tool will:
+- compile references from approved stages
+- skip invalidated/superseded stages due to rewind
+- persist only if mode = persist`,
             inputSchema: z.object({
                 mode: z.enum(["preview", "persist"]).optional().describe(
-                    "Mode kompilasi. Default: persist. Gunakan preview untuk audit cepat lintas stage."
+                    "Compilation mode. Default: persist. Use preview for a quick cross-stage audit."
                 ),
                 ringkasan: z.string().max(280).optional().describe(
-                    "Wajib jika mode=persist. Ringkasan hasil kompilasi daftar pustaka (max 280 karakter)."
+                    "Required if mode=persist. Summary of the bibliography compilation result (max 280 characters)."
                 ),
                 ringkasanDetail: z.string().max(1000).optional().describe(
-                    "Opsional. Detail proses kompilasi, duplikat yang digabung, dan referensi incomplete."
+                    "Optional. Details on the compilation process, merged duplicates, and incomplete references."
                 ),
             }),
             execute: async ({ mode, ringkasan, ringkasanDetail }) => {
@@ -249,7 +249,7 @@ Tool akan:
                         }, convexOptions),
                         "paperSessions.getByConversation"
                     );
-                    if (!session) return { success: false, error: "Sesi paper tidak ditemukan." };
+                    if (!session) return { success: false, error: "Paper session not found." };
 
                     const stage = session.currentStage;
                     const compileMode = mode ?? "persist";
@@ -257,7 +257,7 @@ Tool akan:
                     if (compileMode === "persist" && (!ringkasan || ringkasan.trim() === "")) {
                         return {
                             success: false,
-                            error: "compileDaftarPustaka mode persist butuh field ringkasan (max 280 karakter).",
+                            error: "compileDaftarPustaka persist mode requires the ringkasan field (max 280 characters).",
                         };
                     }
 
@@ -302,7 +302,7 @@ Tool akan:
                             success: true,
                             mode: "preview" as const,
                             stage: compileResult.stage,
-                            message: "Preview kompilasi daftar pustaka berhasil.",
+                            message: "Bibliography compilation preview successful.",
                             totalCount: compileResult.compiled.totalCount,
                             incompleteCount: compileResult.compiled.incompleteCount,
                             duplicatesMerged: compileResult.compiled.duplicatesMerged,
@@ -340,7 +340,7 @@ Tool akan:
                         success: true,
                         mode: "persist" as const,
                         stage,
-                        message: "Kompilasi daftar pustaka berhasil dan tersimpan ke stageData.",
+                        message: "Bibliography compilation successful and saved to stageData.",
                         totalCount: compileResult.compiled.totalCount,
                         incompleteCount: compileResult.compiled.incompleteCount,
                         duplicatesMerged: compileResult.compiled.duplicatesMerged,
@@ -350,14 +350,14 @@ Tool akan:
                     console.error("Error in compileDaftarPustaka tool:", error);
                     const errorMessage = error instanceof Error
                         ? error.message
-                        : "Gagal compile daftar pustaka.";
+                        : "Failed to compile bibliography.";
                     return { success: false, error: errorMessage };
                 }
             },
         }),
 
         submitStageForValidation: tool({
-            description: "Kirim draf tahap saat ini ke user untuk divalidasi. Ini akan memunculkan panel persetujuan di UI user. AI akan berhenti ngetik setelah ini.",
+            description: "Submit the current stage draft to the user for validation. This triggers an approval panel in the user's UI. AI stops generating after this.",
             inputSchema: z.object({}),
             execute: async () => {
                 try {
@@ -367,7 +367,7 @@ Tool akan:
                         }, convexOptions),
                         "paperSessions.getByConversation"
                     );
-                    if (!session) return { success: false, error: "Sesi paper tidak ditemukan." };
+                    if (!session) return { success: false, error: "Paper session not found." };
 
                     await retryMutation(
                         () => fetchMutation(api.paperSessions.submitForValidation, {
@@ -377,14 +377,14 @@ Tool akan:
                     );
                     return {
                         success: true,
-                        message: "Draf telah dikirim ke user. Menunggu validasi (Approve/Revise) dari user sebelum bisa lanjut ke tahap berikutnya."
+                        message: "Draft submitted to user. Awaiting validation (Approve/Revise) from user before proceeding to the next stage."
                     };
                 } catch (error) {
                     console.error("Error in submitStageForValidation tool:", error);
                     // Forward specific error message from backend to AI
                     const errorMessage = error instanceof Error
                         ? error.message
-                        : "Gagal mengirim sinyal validasi.";
+                        : "Failed to submit validation signal.";
                     return { success: false, error: errorMessage };
                 }
             },

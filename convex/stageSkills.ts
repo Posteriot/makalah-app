@@ -23,8 +23,7 @@ const stageScopeValidator = v.union(
     v.literal("judul")
 );
 
-const DEFAULT_ALLOWED_TOOLS = [
-    "google_search",
+export const DEFAULT_ALLOWED_TOOLS = [
     "updateStageData",
     "createArtifact",
     "compileDaftarPustaka",

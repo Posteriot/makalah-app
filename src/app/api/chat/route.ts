@@ -22,13 +22,6 @@ import { ACTIVE_SEARCH_STAGES, PASSIVE_SEARCH_STAGES } from "@/lib/ai/stage-skil
 import { getStageLabel, type PaperStageId } from "../../../../convex/paperSessions/constants"
 import {
     isStageResearchIncomplete,
-    aiIndicatedSearchIntent,
-    aiIndicatedSaveIntent,
-    isExplicitSaveSubmitRequest,
-    isExplicitMoreSearchRequest,
-    isUserConfirmation,
-    isCompileDaftarPustakaIntent,
-    getLastAssistantMessage,
     PAPER_TOOLS_ONLY_NOTE,
     getResearchIncompleteNote,
     getFunctionToolsModeNote,
@@ -57,12 +50,10 @@ import {
     resolveAttachmentRuntimeEnv,
 } from "@/lib/chat/attachment-health"
 import {
-    resolveSearchExecutionMode,
-    type SearchExecutionMode,
-} from "@/lib/ai/search-execution-mode"
-import {
     executeWebSearch,
     buildRetrieverChain,
+    resolveSearchExecutionMode,
+    type SearchExecutionMode,
 } from "@/lib/ai/web-search"
 
 export async function POST(req: Request) {
@@ -422,43 +413,6 @@ export async function POST(req: Request) {
                 userMessageCount,
                 normalizedLastUserContent,
             })
-        }
-
-        const isExplicitSearchRequest = (text: string) => {
-            const normalized = text.toLowerCase()
-            const patterns = [
-                /\bcari(kan)?\b/,
-                /\bmencari\b/,
-                /\bsearch\b/,
-                /\bpencarian\b/,
-                /\bgoogle\b/,
-                /\binternet\b/,
-                /\btautan\b/,
-                /\blink\b/,
-                /\burl\b/,
-                /\breferensi\b/,
-                /\bliteratur\b/,
-                /\bsumber\b/,
-                /\bdata terbaru\b/,
-                /\bberita terbaru\b/,
-            ]
-            return patterns.some((pattern) => pattern.test(normalized))
-        }
-
-        const isExplicitSyncRequest = (text: string) => {
-            if (!text.trim()) return false
-            if (isExplicitSearchRequest(text)) return false
-
-            const normalized = text.toLowerCase()
-            const patterns = [
-                /\bsinkron\b/,
-                /\bsinkronkan\b/,
-                /\bcek state\b/,
-                /\bstatus sesi\b/,
-                /\blanjut dari state\b/,
-                /\bstatus terbaru\b/,
-            ]
-            return patterns.some((pattern) => pattern.test(normalized))
         }
 
         const getStageSearchPolicy = (stage: PaperStageId | "completed" | undefined | null) => {
@@ -919,28 +873,28 @@ ${sourcesJson}`
             const stageLabel = stageCode && stageCode !== "completed"
                 ? `${getStageLabel(stageCode as PaperStageId)} (${stageCode})`
                 : stageCode === "completed"
-                    ? "Semua tahap selesai (completed)"
-                    : "Tidak diketahui"
+                    ? "All stages completed"
+                    : "Unknown"
             const stageStatus = session?.stageStatus ?? "unknown"
             const dirty = session?.isDirty === true
 
             const lines = [
-                "Status sesi berhasil disinkronkan.",
+                "Session status synced successfully.",
                 "",
-                `- Tahap aktif: ${stageLabel}`,
-                `- Status tahap: ${stageStatus}`,
+                `- Active stage: ${stageLabel}`,
+                `- Stage status: ${stageStatus}`,
                 `- Dirty context: ${dirty ? "true" : "false"}`,
             ]
 
             if (stageStatus === "pending_validation" && dirty) {
                 lines.push(
                     "",
-                    "Data belum sinkron. Minta Agen Makalah melakukan revisi dulu agar sinkronisasi/update draf bisa dilanjutkan."
+                    "Data not yet synced. Request revision first so sync/draft update can proceed."
                 )
             } else {
                 lines.push(
                     "",
-                    "Sinkronisasi selesai. Lanjutkan instruksi berikutnya sesuai tahap aktif saat ini."
+                    "Sync complete. Continue with instructions for the current active stage."
                 )
             }
 
@@ -975,17 +929,11 @@ ${sourcesJson}`
                     .slice(-3)
 
                 for (const msg of recentAssistantMsgs) {
-                    const content = typeof msg.content === "string" ? msg.content : ""
-                    // Strong signal: message has actual sources data from web search
+                    // Data-based signal: message has actual sources data from web search
                     const hasSources = "sources" in msg
                         && Array.isArray((msg as { sources?: unknown }).sources)
                         && ((msg as { sources: unknown[] }).sources).length > 0
                     if (hasSources) return true
-                    // Weak signal: only trust explicit AI search-done phrases
-                    // (removed: [N] pattern and APA citation pattern — high false positive rate)
-                    if (/saya telah melakukan pencarian/i.test(content)) return true
-                    if (/berdasarkan hasil pencarian/i.test(content)) return true
-                    if (/rangkuman temuan/i.test(content)) return true
                 }
                 return false
             }
@@ -998,42 +946,11 @@ ${sourcesJson}`
                 .slice(-3)
 
             for (const msg of recentAssistantMsgs) {
-                const content = typeof msg.content === "string" ? msg.content : ""
-                // Strong signal: message has actual sources data from web search
+                // Data-based signal: message has actual sources data from web search
                 const hasSources = "sources" in msg
                     && Array.isArray((msg as { sources?: unknown }).sources)
                     && ((msg as { sources: unknown[] }).sources).length > 0
                 if (hasSources) return true
-                // Weak signal: explicit AI search-done phrases only
-                if (/berdasarkan hasil pencarian/i.test(content)) return true
-                if (/saya telah melakukan pencarian/i.test(content)) return true
-                if (/rangkuman temuan/i.test(content)) return true
-            }
-            return false
-        }
-
-        // Helper: detect if user message is a confirmation/approval (should prefer paper tools over search)
-        const isUserConfirmationMessage = (text: string): boolean => {
-            if (isExplicitSearchRequest(text)) {
-                return false
-            }
-            const normalized = text.toLowerCase().trim()
-            // Short confirmations
-            if (normalized.length <= 400) {
-                const confirmationPatterns = [
-                    /^(ya|yes|ok|oke|okay|yup|yep|sip|siap|baik|boleh)\.?$/i,
-                    /^setuju\.?$/i,
-                    /^lanjut(kan)?\.?$/i,
-                    /^silakan\.?$/i,
-                    /^approve\.?$/i,
-                    /^simpan\.?$/i,
-                    /^save\.?$/i,
-                    /sudah (bagus|oke|ok|baik)/i,
-                    /tidak ada (revisi|perubahan)/i,
-                    /sudah sesuai/i,
-                    /sudah puas/i,
-                ]
-                if (confirmationPatterns.some(p => p.test(normalized))) return true
             }
             return false
         }
@@ -1044,71 +961,90 @@ ${sourcesJson}`
             isPaperMode: boolean
             currentStage: PaperStageId | "completed" | undefined | null
             stagePolicy: "active" | "passive" | "none"
-            searchAlreadyDone: boolean
-            isUserConfirmation: boolean
-        }): Promise<{ enableWebSearch: boolean; confidence: number; reason: string }> => {
-            // CRITICAL: If user is confirming/approving, prefer paper tools for save/artifact
-            if (options.isUserConfirmation && options.isPaperMode) {
-                return {
-                    enableWebSearch: false,
-                    confidence: 0.95,
-                    reason: "user_confirmation_prefer_paper_tools"
-                }
-            }
-
-            // CRITICAL: If search was already done in previous turns, prefer paper tools
-            // This prevents the "stuck in search mode" bug
-            if (options.searchAlreadyDone && options.isPaperMode) {
-                return {
-                    enableWebSearch: false,
-                    confidence: 0.9,
-                    reason: "search_already_done_prefer_paper_tools"
-                }
-            }
-
+            previousSearchDone: boolean
+            previousSearchSourceCount?: number
+            researchStatus?: { incomplete: boolean; requirement?: string }
+        }): Promise<{ enableWebSearch: boolean; confidence: number; reason: string; intentType: string }> => {
             const paperModeContext = options.isPaperMode
                 ? `
 
-KONTEKS PENTING - PAPER MODE AKTIF:
+IMPORTANT CONTEXT - PAPER MODE ACTIVE:
 Current stage: ${options.currentStage ?? "unknown"}
 Stage policy: ${options.stagePolicy.toUpperCase()}
+Research status: ${options.researchStatus?.incomplete
+    ? `INCOMPLETE — ${options.researchStatus.requirement}`
+    : "complete (sufficient references exist)"}
+Previous search: ${options.previousSearchDone
+    ? `done (${options.previousSearchSourceCount ?? "unknown"} sources found)`
+    : "not done yet"}
 
-Aturan stage policy (HARUS dipatuhi):
-- Jika policy = PASSIVE: enableWebSearch = true HANYA jika user EKSPLISIT minta search.
-- Jika policy = ACTIVE: enableWebSearch boleh true jika user minta search atau model butuh data faktual.
-
-Catatan tambahan:
-- Referensi dan data faktual HARUS dari web search, TIDAK BOLEH di-hallucinate.
-- Set false jika user meminta simpan/approve hasil yang sudah ada, ATAU semua data sudah tersedia dari pencarian sebelumnya.`
+Stage policy rules (MUST follow):
+- ACTIVE policy: enable search if the conversation needs factual data, references, or the user/AI
+  expressed intent to search. Even if the user sends a short confirmation like "ya" or "ok",
+  consider what the AI previously proposed — if AI asked "shall I search?", the confirmation
+  means YES to search.
+- PASSIVE policy: enable search ONLY if the user EXPLICITLY requests it (e.g., "cari referensi",
+  "search for..."). Do NOT enable for general discussion.
+- If previous search is done AND research is complete, prefer enableWebSearch=false
+  UNLESS the user explicitly asks for MORE references/data.
+- If research is INCOMPLETE and no search has been done, strongly prefer enableWebSearch=true.`
                 : ""
 
-            const routerPrompt = `Anda adalah "router" yang memutuskan apakah jawaban untuk user WAJIB memakai pencarian web.
+            const routerPrompt = `You are a "router" that decides whether the response to the user MUST use web search.
 
-Tujuan:
-- enableWebSearch = true jika:
-  (A) user meminta cek internet/pencarian/referensi, ATAU
-  (B) AI akan menyertakan referensi/literatur/sumber dalam jawabannya, ATAU
-  (C) AI membutuhkan DATA FAKTUAL (statistik, angka, fakta, nama, tanggal, peristiwa) yang berisiko salah jika di-hallucinate.
-- PENTING: Untuk MENCEGAH HALUSINASI, selalu enableWebSearch = true jika jawaban memerlukan data faktual yang spesifik.
-- Set false HANYA jika: user meminta simpan/approve data yang sudah ada, ATAU jawaban murni opini/diskusi tanpa klaim faktual.
+Purpose:
+- enableWebSearch = true if:
+  (A) user requests internet/search/references, OR
+  (B) AI will include references/literature/sources in its response, OR
+  (C) AI needs FACTUAL DATA (statistics, numbers, facts, names, dates, events) that risks being wrong if hallucinated.
+- IMPORTANT: To PREVENT HALLUCINATION, always enableWebSearch = true if the response requires specific factual data.
+- Set false ONLY if: user requests save/approve of existing data, OR the response is purely opinion/discussion without factual claims.
 ${paperModeContext}
 
-Aturan output:
-- Output HARUS satu JSON object SAJA.
-- TANPA markdown, TANPA backticks, TANPA penjelasan di luar JSON.
+INTENT CLASSIFICATION — you MUST set intentType to one of these values:
+
+1. "sync_request" — User wants to sync/check session state (e.g., "sinkronkan", "cek state",
+   "status sesi", "status terbaru", "lanjut dari state"). Always set enableWebSearch=false.
+
+2. "compile_daftar_pustaka" — User wants to compile/preview bibliography (daftar pustaka).
+   Always set enableWebSearch=false.
+
+3. "save_submit" — User wants to save, submit, or approve the current stage draft
+   (e.g., "simpan", "save", "submit", "approve", "approved", "disetujui",
+   "selesaikan tahap", "approve & lanjut"). Always set enableWebSearch=false.
+
+4. "search" — User requests search/references/factual data, or AI needs factual data.
+   Set enableWebSearch=true. Reason explains what data is needed.
+
+5. "discussion" — Pure discussion, opinion, or workflow action without factual claims.
+   Set enableWebSearch=false. Reason explains why no search needed.
+
+Priority: sync_request > compile_daftar_pustaka > save_submit > search > discussion
+
+Output rules:
+- Output MUST be one JSON object ONLY.
+- NO markdown, NO backticks, NO explanation outside JSON.
 - confidence 0..1.
 
 JSON schema:
 {
   "enableWebSearch": boolean,
   "confidence": number,
-  "reason": string
+  "reason": string,
+  "intentType": "search" | "discussion" | "sync_request" | "compile_daftar_pustaka" | "save_submit"
 }`
 
             const routerSchema = z.object({
                 enableWebSearch: z.boolean(),
                 confidence: z.number().min(0).max(1),
                 reason: z.string().max(500),
+                intentType: z.enum([
+                    "search",
+                    "discussion",
+                    "sync_request",
+                    "compile_daftar_pustaka",
+                    "save_submit",
+                ]),
             })
 
             const runStructuredRouter = async () => {
@@ -1130,6 +1066,7 @@ JSON schema:
                         enableWebSearch: result.enableWebSearch,
                         confidence: result.confidence,
                         reason: result.reason,
+                        intentType: result.intentType,
                     }
                 } catch {
                     // Retry on failure
@@ -1154,7 +1091,7 @@ JSON schema:
             const start = cleaned.indexOf("{")
             const end = cleaned.lastIndexOf("}")
             if (start < 0 || end < 0 || end <= start) {
-                return { enableWebSearch: false, confidence: 0, reason: "router_invalid_json_shape" }
+                return { enableWebSearch: true, confidence: 0, reason: "router_failure_safe_default", intentType: "search" as const }
             }
 
             try {
@@ -1162,16 +1099,21 @@ JSON schema:
                     enableWebSearch?: unknown
                     confidence?: unknown
                     reason?: unknown
+                    intentType?: unknown
                 }
 
                 const enableWebSearch = parsed.enableWebSearch === true
                 const confidenceRaw = typeof parsed.confidence === "number" ? parsed.confidence : 0
                 const confidence = Number.isFinite(confidenceRaw) ? Math.max(0, Math.min(1, confidenceRaw)) : 0
                 const reason = typeof parsed.reason === "string" ? parsed.reason.slice(0, 240) : ""
+                const intentType = typeof parsed.intentType === "string"
+                    && ["search", "discussion", "sync_request", "compile_daftar_pustaka", "save_submit"].includes(parsed.intentType)
+                    ? parsed.intentType as "search" | "discussion" | "sync_request" | "compile_daftar_pustaka" | "save_submit"
+                    : enableWebSearch ? "search" : "discussion"
 
-                return { enableWebSearch, confidence, reason }
+                return { enableWebSearch, confidence, reason, intentType }
             } catch {
-                return { enableWebSearch: false, confidence: 0, reason: "router_json_parse_failed" }
+                return { enableWebSearch: true, confidence: 0, reason: "router_failure_safe_default", intentType: "search" as const }
             }
         }
 
@@ -1532,17 +1474,17 @@ Tool ini akan:
 PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan AI sebelumnya.`,
                 inputSchema: z.object({
                     artifactId: z.string()
-                        .describe("ID dari artifact yang akan di-update. Harus artifact yang sudah ada."),
+                        .describe("ID of the artifact to update. Must be an existing artifact."),
                     content: z.string().min(10)
-                        .describe("Konten baru untuk artifact (akan menggantikan konten sebelumnya)"),
+                        .describe("New content for the artifact (replaces previous content)"),
                     title: z.string().max(200).optional()
-                        .describe("Judul baru (opsional). Jika tidak diisi, judul lama dipertahankan."),
+                        .describe("New title (optional). If not provided, previous title is retained."),
                     sources: z.array(z.object({
                         url: z.string(),
                         title: z.string(),
                         publishedAt: z.number().optional(),
                     })).optional()
-                        .describe("Web sources jika update berbasis web search. Jika tidak diisi, sources dari versi sebelumnya dipertahankan."),
+                        .describe("Web sources if update is based on web search. If not provided, sources from previous version are retained."),
                 }),
                 execute: async ({ artifactId, content, title, sources }) => {
                     try {
@@ -1863,161 +1805,136 @@ Aturan:
             const model = await getGatewayModel()
 
             // Router: tentukan apakah request ini perlu mode websearch.
-            // Web search uses separate models (Perplexity/Grok) — no tool mixing constraint.
+            // Web search uses separate models (Perplexity/Grok/Google Grounding Gemini) — no tool mixing constraint.
             const recentForRouter = modelMessages.slice(-8)
             const currentStage = paperSession?.currentStage as PaperStageId | "completed" | undefined
             const stagePolicy = getStageSearchPolicy(currentStage)
             const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession)
                 || (!paperSession && hasRecentSourcesInDb)
-            const explicitSyncRequest = !!paperModePrompt
-                && isExplicitSyncRequest(lastUserContent)
-
             // Force disable web search if paper intent detected but no session yet
             // This allows AI to call startPaperSession tool first before any web search
             const forcePaperToolsMode = !!paperWorkflowReminder && !paperModePrompt
-            const compileDaftarPustakaIntent = isCompileDaftarPustakaIntent(lastUserContent)
 
             // ════════════════════════════════════════════════════════════════
-            // ACTIVE STAGE OVERRIDE: Deterministic search decision
-            // Bypasses non-deterministic LLM router for ACTIVE stages
-            // 3-Layer Protection:
-            // 1. Task-based: Check stageData completion (referensi fields)
-            // 2. Intent-based: Check AI's previous promise to search
-            // 3. Language-based: Check explicit save/submit patterns
+            // Search Mode Decision — Unified LLM Router
+            // Pre-router guardrails (structural/data) → LLM router → post-decision notes
             // ════════════════════════════════════════════════════════════════
             let activeStageSearchReason = ""
             let activeStageSearchNote = ""
             let searchRequestedByPolicy = false
+            let isSyncRequest = false
+            let isSaveSubmitIntent = false
 
-            if (compileDaftarPustakaIntent && !!paperModePrompt) {
+            // --- Pre-router guardrails (deterministic, structural) ---
+            if (forcePaperToolsMode) {
                 searchRequestedByPolicy = false
-                activeStageSearchReason = "compile_daftar_pustaka_intent"
-                activeStageSearchNote = getFunctionToolsModeNote("Compile daftar pustaka")
-
-                console.log("[SearchDecision] Compile intent override: enableWebSearch=false (function tools mode)")
-            } else if (stagePolicy === "active" && paperSession && !forcePaperToolsMode) {
-                // Layer 1: Task-based - check if research is incomplete
-                const { incomplete, requirement } = isStageResearchIncomplete(
-                    paperSession.stageData as Record<string, unknown> | undefined,
-                    currentStage as PaperStageId
-                )
-
-                // Layer 2: Intent-based - check AI's previous promise
-                const lastAssistantMsg = getLastAssistantMessage(modelMessages as Array<{ role: string; content?: string | unknown }>)
-                const aiPromisedSearch = lastAssistantMsg ? aiIndicatedSearchIntent(lastAssistantMsg) : false
-                const aiPromisedSave = lastAssistantMsg ? aiIndicatedSaveIntent(lastAssistantMsg) : false
-
-                // Layer 3: Language-based - check user's explicit request
-                const userWantsToSave = isExplicitSaveSubmitRequest(lastUserContent)
-                const userConfirms = isUserConfirmation(lastUserContent)
-
-                // Decision logic (deterministic, prioritized)
-                // Key insight: User intent (save/search) should be respected over automatic decisions
-                if (searchAlreadyDone && !incomplete) {
-                    // Priority 1a: Search done AND research complete → only enable if user explicitly wants more
-                    const wantsMoreSearch = isExplicitMoreSearchRequest(lastUserContent)
-                    if (wantsMoreSearch) {
-                        searchRequestedByPolicy = true
-                        activeStageSearchReason = "user_wants_more_search"
-                    } else {
-                        searchRequestedByPolicy = false
-                        activeStageSearchReason = "search_already_done"
-                        activeStageSearchNote = getFunctionToolsModeNote("Search selesai")
-                    }
-                } else if (searchAlreadyDone && incomplete) {
-                    // Priority 1b: Search done BUT research still incomplete → auto-enable search
-                    searchRequestedByPolicy = true
-                    activeStageSearchReason = "search_done_but_research_incomplete"
-                    activeStageSearchNote = getResearchIncompleteNote(currentStage as string, requirement ?? "")
-                } else if (userWantsToSave) {
-                    // Priority 2: User explicitly wants to save → no search
-                    searchRequestedByPolicy = false
-                    activeStageSearchReason = "explicit_save_request"
-                } else if (aiPromisedSave && userConfirms) {
-                    // Priority 3: AI promised to save AND user confirms → honor save intent
-                    // e.g., AI: "Saya akan menyimpan..." → User: "Lakukan"
-                    searchRequestedByPolicy = false
-                    activeStageSearchReason = "ai_promised_save_user_confirms"
-                } else if (userConfirms && !aiPromisedSearch) {
-                    // Priority 3b: User confirmation without explicit search promise
-                    // Prefer paper tools to avoid repetitive search loops.
-                    searchRequestedByPolicy = false
-                    activeStageSearchReason = "user_confirmation_prefer_paper_tools"
-                } else if (aiPromisedSearch) {
-                    // Priority 4: AI promised search → honor search promise
-                    searchRequestedByPolicy = true
-                    activeStageSearchReason = "ai_promised_search"
-                } else if (incomplete) {
-                    // Priority 5: Research incomplete → suggest search (but don't force if user doesn't want)
-                    searchRequestedByPolicy = true
-                    activeStageSearchReason = "research_incomplete"
-                    activeStageSearchNote = getResearchIncompleteNote(currentStage as string, requirement ?? "")
-                } else {
-                    // Priority 5: Default → FUNCTION TOOLS (safer default)
-                    searchRequestedByPolicy = false
-                    activeStageSearchReason = "active_stage_default_function_tools"
-                    activeStageSearchNote = PAPER_TOOLS_ONLY_NOTE
-                }
-                console.log(
-                    `[SearchDecision] ACTIVE stage override: ${activeStageSearchReason}, searchAlreadyDone: ${searchAlreadyDone}, searchRequestedByPolicy: ${searchRequestedByPolicy}`
-                )
+                activeStageSearchReason = "force_paper_tools_mode"
+                console.log("[SearchDecision] Force paper tools: no session yet")
             } else {
-                // PASSIVE/NONE stages OR no paper session: use existing LLM router logic
-                const isUserConfirmation = isUserConfirmationMessage(lastUserContent)
+                // --- Unified LLM router for ALL stages (ACTIVE + PASSIVE + chat) ---
+                const { incomplete, requirement } = paperSession
+                    ? isStageResearchIncomplete(
+                        paperSession.stageData as Record<string, unknown> | undefined,
+                        currentStage as PaperStageId
+                      )
+                    : { incomplete: false, requirement: undefined }
+
                 const webSearchDecision = await decideWebSearchMode({
                     model,
                     recentMessages: recentForRouter,
                     isPaperMode: !!paperModePrompt,
                     currentStage,
                     stagePolicy,
-                    searchAlreadyDone,
-                    isUserConfirmation,
+                    previousSearchDone: searchAlreadyDone,
+                    previousSearchSourceCount: undefined,
+                    researchStatus: { incomplete, requirement },
                 })
 
-                const routerFailed = ["router_invalid_json_shape", "router_json_parse_failed"].includes(
-                    webSearchDecision.reason
+                // Trust the router decision. Router prompt handles stage policy rules.
+                // PASSIVE stages: router prompt says "ONLY if user EXPLICITLY requests."
+                // Router failure: safe default (enableWebSearch=true) — search is never harmful.
+                searchRequestedByPolicy = !paperModePrompt
+                    ? webSearchDecision.enableWebSearch
+                    : stagePolicy === "none"
+                        ? false  // completed paper, no search
+                        : webSearchDecision.enableWebSearch
+
+                activeStageSearchReason = webSearchDecision.reason
+
+                // Post-decision: inject appropriate system note
+                if (!searchRequestedByPolicy && !!paperModePrompt) {
+                    if (incomplete) {
+                        activeStageSearchNote = getResearchIncompleteNote(
+                            currentStage as string,
+                            requirement ?? ""
+                        )
+                    } else if (searchAlreadyDone) {
+                        activeStageSearchNote = getFunctionToolsModeNote("Search completed")
+                    } else {
+                        activeStageSearchNote = PAPER_TOOLS_ONLY_NOTE
+                    }
+                }
+
+                console.log(
+                    `[SearchDecision] Unified router: ${activeStageSearchReason}, ` +
+                    `confidence: ${webSearchDecision.confidence}, ` +
+                    `searchAlreadyDone: ${searchAlreadyDone}, ` +
+                    `searchRequestedByPolicy: ${searchRequestedByPolicy}`
                 )
-                const explicitSearchRequest = lastUserContent
-                    ? isExplicitSearchRequest(lastUserContent)
-                    : false
-                const explicitSearchFallback = routerFailed && explicitSearchRequest
 
-                const stagePolicyAllowsSearch = !paperModePrompt
-                        ? true
-                        : (stagePolicy === "active"
-                            ? true
-                            : stagePolicy === "passive"
-                                ? explicitSearchRequest
-                                : explicitSearchRequest)
+                // Post-router sync detection via intentType
+                isSyncRequest = !!paperModePrompt
+                    && webSearchDecision.intentType === "sync_request"
 
-                searchRequestedByPolicy = !forcePaperToolsMode
-                    && stagePolicyAllowsSearch
-                    && (webSearchDecision.enableWebSearch || explicitSearchFallback || explicitSearchRequest)
+                if (isSyncRequest) {
+                    searchRequestedByPolicy = false
+                    activeStageSearchReason = "sync_request"
+                    activeStageSearchNote = getFunctionToolsModeNote("Session state sync")
+                    console.log("[SearchDecision] Router detected sync request: enableWebSearch=false")
+                }
+
+                // Post-router compile detection via intentType
+                const isCompileIntent = !!paperModePrompt
+                    && webSearchDecision.intentType === "compile_daftar_pustaka"
+
+                if (isCompileIntent) {
+                    searchRequestedByPolicy = false
+                    activeStageSearchReason = "compile_daftar_pustaka"
+                    activeStageSearchNote = getFunctionToolsModeNote("Compile bibliography")
+                    console.log("[SearchDecision] Router detected compile intent: enableWebSearch=false")
+                }
+
+                // Post-router save/submit detection via intentType
+                isSaveSubmitIntent = !!paperModePrompt
+                    && webSearchDecision.intentType === "save_submit"
             }
 
-            if (explicitSyncRequest && !forcePaperToolsMode) {
-                searchRequestedByPolicy = false
-                activeStageSearchReason = "explicit_sync_request"
-                activeStageSearchNote = getFunctionToolsModeNote("Sinkronisasi status sesi")
-                console.log("[SearchDecision] Explicit sync override: forced getCurrentPaperState path")
-            }
+            // Build retriever chain once — reused for both mode resolution and execution
+            const retrieverChain = buildRetrieverChain({
+                webSearchRetrievers: webSearchConfig.webSearchRetrievers,
+                legacyConfig: {
+                    primaryWebSearchEnabled: webSearchConfig.primaryEnabled,
+                    fallbackWebSearchEnabled: webSearchConfig.fallbackEnabled,
+                    webSearchModel: webSearchConfig.webSearchModel,
+                    webSearchFallbackModel: webSearchConfig.webSearchFallbackModel,
+                    fallbackWebSearchEngine: webSearchConfig.fallbackEngine,
+                    fallbackWebSearchMaxResults: webSearchConfig.fallbackMaxResults,
+                },
+                openrouterApiKey: webSearchConfig.openrouterApiKey ?? "",
+                googleApiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+            })
 
             const searchExecutionMode = resolveSearchExecutionMode({
                 searchRequired: searchRequestedByPolicy,
-                retrievers: webSearchConfig.webSearchRetrievers
-                    ? webSearchConfig.webSearchRetrievers
-                        .sort((a: { priority: number }, b: { priority: number }) => a.priority - b.priority)
-                        .map((r: { name: string; enabled: boolean; modelId: string }) => ({ name: r.name as SearchExecutionMode, enabled: r.enabled, modelId: r.modelId }))
-                    : [
-                        { name: "perplexity" as const, enabled: webSearchConfig.primaryEnabled, modelId: webSearchConfig.webSearchModel },
-                        { name: "grok" as const, enabled: webSearchConfig.fallbackEnabled, modelId: webSearchConfig.webSearchFallbackModel },
-                    ],
+                retrievers: retrieverChain.map((entry) => ({
+                    name: entry.retriever.name as SearchExecutionMode,
+                    enabled: true, // chain only contains enabled retrievers
+                    modelId: entry.retrieverConfig.modelId,
+                })),
             })
             console.log(
-                `[SearchExecution] mode=${searchExecutionMode}, searchRequired=${searchRequestedByPolicy}`,
-                webSearchConfig.webSearchRetrievers
-                    ? `retrievers=[${webSearchConfig.webSearchRetrievers.map((r: { name: string; enabled: boolean }) => `${r.name}:${r.enabled}`).join(",")}]`
-                    : `primaryEnabled=${webSearchConfig.primaryEnabled}, fallbackEnabled=${webSearchConfig.fallbackEnabled}`
+                `[SearchExecution] mode=${searchExecutionMode}, searchRequired=${searchRequestedByPolicy},`,
+                `chain=[${retrieverChain.map((e) => e.retriever.name).join(",")}]`
             )
             let searchUnavailableReasonCode: string | undefined
 
@@ -2046,19 +1963,13 @@ Aturan:
 
             shouldForceGetCurrentPaperState = !enableWebSearch
                 && !!paperModePrompt
-                && explicitSyncRequest
+                && isSyncRequest
 
-            // For ACTIVE stages with explicit save request, force submit validation
-            // Use isExplicitSaveSubmitRequest since isUserConfirmation is now scoped to else block
+            // Force submit validation when user explicitly requests save/submit
             shouldForceSubmitValidation = !enableWebSearch
                 && !!paperModePrompt
                 && !shouldForceGetCurrentPaperState
-                && (
-                    activeStageSearchReason === "explicit_save_request" ||
-                    activeStageSearchReason === "ai_promised_save_user_confirms" ||
-                    activeStageSearchReason === "user_confirmation_prefer_paper_tools" ||
-                    isExplicitSaveSubmitRequest(lastUserContent)
-                )
+                && isSaveSubmitIntent
                 && paperSession?.stageStatus === "drafting"
                 && hasStageRingkasan(paperSession)
                 && hasStageArtifact(paperSession)
@@ -2068,13 +1979,8 @@ Aturan:
                 && hasStageRingkasan(paperSession)
                 && !hasStageArtifact(paperSession)
                 && paperSession?.stageStatus === "drafting"
-                && (
-                    activeStageSearchReason === "user_confirmation_prefer_paper_tools" ||
-                    activeStageSearchReason === "ai_promised_save_user_confirms" ||
-                    activeStageSearchReason === "explicit_save_request" ||
-                    isExplicitSaveSubmitRequest(lastUserContent)
-                )
-                ? `\n⚠️ ARTIFACT BELUM DIBUAT untuk tahap ini. WAJIB panggil createArtifact() dengan konten yang sudah disimpan di updateStageData SEBELUM memanggil submitStageForValidation(). Pastikan include parameter 'sources' jika ada AVAILABLE_WEB_SOURCES.\n`
+                && isSaveSubmitIntent
+                ? `\n⚠️ ARTIFACT NOT YET CREATED for this stage. You MUST call createArtifact() with the content saved in updateStageData BEFORE calling submitStageForValidation(). Make sure to include the 'sources' parameter if AVAILABLE_WEB_SOURCES exist.\n`
                 : ""
 
             const forcedToolTelemetryName = shouldForceGetCurrentPaperState
@@ -2151,24 +2057,11 @@ Aturan:
 
             // ════════════════════════════════════════════════════════════════
             // WEB SEARCH: Orchestrator-based two-pass flow
-            // Phase 1: Silent search via retriever chain (Perplexity → Grok → ...)
+            // Phase 1: Silent search via retriever chain (agnostic, priority-ordered)
             // Phase 2: Compose with skill instructions, stream to client
             // ════════════════════════════════════════════════════════════════
             if (enableWebSearch) {
-                const retrieverChain = buildRetrieverChain({
-                    webSearchRetrievers: webSearchConfig.webSearchRetrievers,
-                    legacyConfig: {
-                        primaryWebSearchEnabled: webSearchConfig.primaryEnabled,
-                        fallbackWebSearchEnabled: webSearchConfig.fallbackEnabled,
-                        webSearchModel: webSearchConfig.webSearchModel,
-                        webSearchFallbackModel: webSearchConfig.webSearchFallbackModel,
-                        fallbackWebSearchEngine: webSearchConfig.fallbackEngine,
-                        fallbackWebSearchMaxResults: webSearchConfig.fallbackMaxResults,
-                    },
-                    openrouterApiKey: webSearchConfig.openrouterApiKey ?? "",
-                    googleApiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-                })
-
+                // retrieverChain already built above (reused from mode resolution)
                 if (retrieverChain.length === 0) {
                     return createSearchUnavailableResponse({
                         reasonCode: "no_retrievers_configured",
@@ -2186,6 +2079,7 @@ Aturan:
                     systemPrompt,
                     paperModePrompt: paperModePrompt || undefined,
                     paperWorkflowReminder: paperWorkflowReminder || undefined,
+                    currentStage: paperStageScope ?? undefined,
                     fileContext: fileContext || undefined,
                     samplingOptions,
                     reasoningTraceEnabled,

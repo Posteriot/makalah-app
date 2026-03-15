@@ -136,12 +136,12 @@ function validateWorkingTitle(title: string): string {
     const normalized = normalizePaperTitle(title);
 
     if (!normalized) {
-        throw new Error("Working title tidak boleh kosong.");
+        throw new Error("Working title must not be empty.");
     }
 
     if (normalized.length > MAX_WORKING_TITLE_LENGTH) {
         throw new Error(
-            `Working title terlalu panjang (maksimal ${MAX_WORKING_TITLE_LENGTH} karakter).`
+            `Working title too long (maximum ${MAX_WORKING_TITLE_LENGTH} characters).`
         );
     }
 
@@ -625,7 +625,7 @@ export const create = mutation({
 });
 
 /**
- * Mengupdate data untuk tahap saat ini.
+ * Update data for the current stage.
  */
 export const updateStageData = mutation({
     args: {
@@ -645,8 +645,8 @@ export const updateStageData = mutation({
         // Guard: Block update if stage is pending validation
         if (session.stageStatus === "pending_validation") {
             throw new Error(
-                "updateStageData gagal: Stage sedang pending validation. " +
-                "Minta revisi dulu jika ingin mengubah draft."
+                "updateStageData failed: Stage is pending validation. " +
+                "Request revision first if you want to modify the draft."
             );
         }
 
@@ -664,7 +664,7 @@ export const updateStageData = mutation({
                 await ctx.db.insert("systemAlerts", {
                     alertType: "stage_key_dropped",
                     severity: "info",
-                    message: `Key "${droppedKey}" dropped dari tahap ${args.stage}`,
+                    message: `Key "${droppedKey}" dropped from stage ${args.stage}`,
                     source: "updateStageData",
                     resolved: false,
                     metadata: {
@@ -730,21 +730,21 @@ export const updateStageData = mutation({
         const warnings: string[] = [];
         if (unknownKeys.length > 0) {
             warnings.push(
-                `Key tidak dikenal di-strip: ${unknownKeys.join(", ")}. ` +
-                `Gunakan key yang sesuai skema tahap ${args.stage}.`
+                `Unknown keys stripped: ${unknownKeys.join(", ")}. ` +
+                `Use keys matching the schema for stage ${args.stage}.`
             );
         }
         if (!hasRingkasan) {
             warnings.push(
-                "Ringkasan belum diisi. Tahap ini TIDAK BISA di-approve tanpa ringkasan. " +
-                "Panggil updateStageData lagi dengan field 'ringkasan' yang berisi keputusan utama yang disepakati (max 280 karakter)."
+                "Ringkasan not provided. This stage CANNOT be approved without ringkasan. " +
+                "Call updateStageData again with the 'ringkasan' field containing the agreed key decisions (max 280 characters)."
             );
         }
         if (urlValidation) {
             warnings.push(
-                `ANTI-HALUSINASI: ${urlValidation.missingUrlCount} dari ${urlValidation.totalCount} ` +
-                `referensi di field '${urlValidation.field}' TIDAK memiliki URL. ` +
-                `Semua referensi WAJIB berasal dari google_search dan memiliki URL sumber.`
+                `ANTI-HALLUCINATION: ${urlValidation.missingUrlCount} of ${urlValidation.totalCount} ` +
+                `references in field '${urlValidation.field}' do NOT have a URL. ` +
+                `All references MUST come from web search and have a source URL.`
             );
         }
         if (truncationWarnings.length > 0) {
@@ -871,13 +871,13 @@ export const compileDaftarPustaka = mutation({
         if (mode === "persist") {
             if (session.currentStage !== "daftar_pustaka") {
                 throw new Error(
-                    `compileDaftarPustaka mode persist hanya bisa dipanggil di stage daftar_pustaka. Stage aktif: ${session.currentStage}`
+                    `compileDaftarPustaka persist mode can only be called in daftar_pustaka stage. Active stage: ${session.currentStage}`
                 );
             }
 
             if (session.stageStatus === "pending_validation") {
                 throw new Error(
-                    "compileDaftarPustaka gagal: Stage sedang pending validation. Minta revisi dulu jika ingin compile ulang."
+                    "compileDaftarPustaka failed: Stage is pending validation. Request revision first to recompile."
                 );
             }
         }
@@ -924,24 +924,24 @@ export const compileDaftarPustaka = mutation({
         const result = compileDaftarPustakaFromStages({ stages });
         if (mode === "persist" && result.compiled.totalCount === 0) {
             throw new Error(
-                "compileDaftarPustaka gagal: Tidak ada referensi dari stage yang sudah approved."
+                "compileDaftarPustaka failed: No references found from approved stages."
             );
         }
 
         const warnings: string[] = [];
         if (mode === "preview" && result.compiled.totalCount === 0) {
             warnings.push(
-                "Belum ada referensi dari stage yang sudah approved. Lanjutkan pengisian referensi di stage aktif lalu jalankan preview lagi."
+                "No references found from approved stages yet. Continue adding references in the active stage, then run preview again."
             );
         }
         if (result.stats.skippedStageCount > 0) {
             warnings.push(
-                `${result.stats.skippedStageCount} stage dilewati (belum approved atau invalidated oleh rewind).`
+                `${result.stats.skippedStageCount} stages skipped (not yet approved or invalidated by rewind).`
             );
         }
         if (result.compiled.incompleteCount > 0) {
             warnings.push(
-                `${result.compiled.incompleteCount} referensi terdeteksi incomplete (metadata minimum belum cukup).`
+                `${result.compiled.incompleteCount} references detected as incomplete (minimum metadata not sufficient).`
             );
         }
 
@@ -971,10 +971,10 @@ export const compileDaftarPustaka = mutation({
 });
 
 /**
- * Submit draf tahap saat ini untuk validasi user.
+ * Submit current stage draft for user validation.
  *
- * GUARD: Akan throw error jika ringkasan belum diisi.
- * Ini memastikan AI selalu menyertakan ringkasan sebelum submit.
+ * GUARD: Throws error if ringkasan is not provided.
+ * This ensures AI always includes ringkasan before submitting.
  */
 export const submitForValidation = mutation({
     args: { sessionId: v.id("paperSessions") },
@@ -992,8 +992,8 @@ export const submitForValidation = mutation({
 
         if (!ringkasan || ringkasan.trim() === "") {
             throw new Error(
-                "submitForValidation gagal: Ringkasan wajib diisi terlebih dahulu. " +
-                "Gunakan updateStageData untuk menambahkan ringkasan sebelum submit."
+                "submitForValidation failed: Ringkasan must be provided first. " +
+                "Use updateStageData to add ringkasan before submitting."
             );
         }
 
@@ -1005,13 +1005,13 @@ export const submitForValidation = mutation({
         return {
             success: true,
             stage: currentStage,
-            message: `Tahap ${currentStage} berhasil di-submit untuk validasi user.`,
+            message: `Stage ${currentStage} successfully submitted for user validation.`,
         };
     },
 });
 
 /**
- * User menyetujui tahap saat ini dan lanjut ke tahap berikutnya.
+ * User approves the current stage and proceeds to the next stage.
  */
 export const approveStage = mutation({
     args: {
@@ -1039,8 +1039,8 @@ export const approveStage = mutation({
 
         if (!ringkasan || ringkasan.trim() === "") {
             throw new Error(
-                "approveStage gagal: Ringkasan wajib diisi. " +
-                "Gunakan updateStageData untuk menambahkan ringkasan."
+                "approveStage failed: Ringkasan must be provided. " +
+                "Use updateStageData to add ringkasan."
             );
         }
 
@@ -1072,10 +1072,10 @@ export const approveStage = mutation({
         // Soft warning: Only enforce if outline has budget and content exceeds 150%
         if (outlineBudgetChars && totalContentChars > outlineBudgetChars * 1.5) {
             throw new Error(
-                `approveStage gagal: Konten melebihi budget outline. ` +
-                `Estimasi: ${Math.ceil(totalContentChars / 6)} kata, ` +
-                `Budget: ${outlineTotalWordCount} kata. ` +
-                `Pertimbangkan untuk meringkas konten.`
+                `approveStage failed: Content exceeds outline budget. ` +
+                `Estimated: ${Math.ceil(totalContentChars / 6)} words, ` +
+                `Budget: ${outlineTotalWordCount} words. ` +
+                `Consider condensing the content.`
             );
         }
 
@@ -1177,7 +1177,7 @@ export const approveStage = mutation({
 });
 
 /**
- * User meminta revisi untuk tahap saat ini.
+ * User requests revision for the current stage.
  */
 export const requestRevision = mutation({
     args: {
@@ -1407,7 +1407,7 @@ export const updateWorkingTitle = mutation({
         if (session.userId !== args.userId) throw new Error("Unauthorized");
 
         if (typeof session.paperTitle === "string" && session.paperTitle.trim().length > 0) {
-            throw new Error("Judul final sudah ditetapkan. Working title tidak bisa diubah lagi.");
+            throw new Error("Final title already set. Working title can no longer be changed.");
         }
 
         const normalizedTitle = validateWorkingTitle(args.title);
@@ -1475,7 +1475,7 @@ function isValidRewindTarget(
     if (targetIndex >= currentIndex) {
         return {
             valid: false,
-            error: "Tidak bisa rewind ke stage saat ini atau stage yang belum dilewati",
+            error: "Cannot rewind to current stage or a stage that has not been passed",
         };
     }
 
@@ -1484,7 +1484,7 @@ function isValidRewindTarget(
     if (stagesBack > 2) {
         return {
             valid: false,
-            error: `Hanya bisa rewind maksimal 2 tahap ke belakang. Target: ${targetStage} (${stagesBack} tahap ke belakang)`,
+            error: `Can only rewind up to 2 stages back. Target: ${targetStage} (${stagesBack} stages back)`,
         };
     }
 
@@ -1632,7 +1632,7 @@ export const rewindToStage = mutation({
         const stageData = session.stageData as Record<string, Record<string, unknown>>;
         const targetStageData = stageData[args.targetStage];
         if (!targetStageData?.validatedAt) {
-            throw new Error("Target stage belum pernah divalidasi");
+            throw new Error("Target stage has never been validated");
         }
 
         const now = Date.now();
