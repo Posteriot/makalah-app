@@ -1,7 +1,7 @@
 "use client"
 
 import { UIMessage } from "ai"
-import { EditPencil, Xmark, Send, CheckCircle, Page, MediaImage } from "iconoir-react"
+import { EditPencil, Xmark, Send, CheckCircle, Page, MediaImage, Copy, Check } from "iconoir-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
 import { ToolStateIndicator } from "./ToolStateIndicator"
@@ -107,6 +107,7 @@ export function MessageBubble({
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
+    const [isCopied, setIsCopied] = useState(false)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const editAreaRef = useRef<HTMLDivElement>(null)
 
@@ -396,6 +397,16 @@ export function MessageBubble({
         }
     }
 
+    const handleCopyUserMessage = async () => {
+        try {
+            await navigator.clipboard.writeText(content)
+            setIsCopied(true)
+            setTimeout(() => setIsCopied(false), 2000)
+        } catch {
+            alert("Failed to copy to clipboard")
+        }
+    }
+
     useEffect(() => {
         if (!isEditing) return
 
@@ -611,39 +622,58 @@ export function MessageBubble({
                 isUser && "flex justify-end items-start gap-2"
             )}
         >
-            {/* Edit Button - Outside bubble, to the left (for user messages) */}
-            {!isEditing && isUser && onEdit && (
-                <div className="flex items-center md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">
-                    {editPermission.allowed ? (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <button
-                                    onClick={startEditing}
-                                    className="p-1.5 hover:bg-[var(--chat-accent)] rounded-action text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] transition-colors"
-                                    aria-label="Edit message"
-                                >
-                                    <EditPencil className="h-4 w-4" />
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent>Edit</TooltipContent>
-                        </Tooltip>
-                    ) : (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <button
-                                    disabled
-                                    className="p-1.5 rounded-action text-[var(--chat-muted-foreground)] opacity-40 cursor-not-allowed"
-                                    aria-label="Edit message"
-                                    aria-disabled="true"
-                                >
-                                    <EditPencil className="h-4 w-4" />
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left" className="max-w-[250px]">
-                                <p>{editPermission.reason}</p>
-                            </TooltipContent>
-                        </Tooltip>
+            {/* Action Buttons - Outside bubble, to the left (for user messages) */}
+            {!isEditing && isUser && (
+                <div className="flex flex-col items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">
+                    {onEdit && (
+                        editPermission.allowed ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        onClick={startEditing}
+                                        className="p-1.5 hover:bg-[var(--chat-accent)] rounded-action text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] transition-colors"
+                                        aria-label="Edit message"
+                                    >
+                                        <EditPencil className="h-4 w-4" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Edit</TooltipContent>
+                            </Tooltip>
+                        ) : (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        disabled
+                                        className="p-1.5 rounded-action text-[var(--chat-muted-foreground)] opacity-40 cursor-not-allowed"
+                                        aria-label="Edit message"
+                                        aria-disabled="true"
+                                    >
+                                        <EditPencil className="h-4 w-4" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="max-w-[250px]">
+                                    <p>{editPermission.reason}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        )
                     )}
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                onClick={handleCopyUserMessage}
+                                className={cn(
+                                    "p-1.5 rounded-action transition-colors",
+                                    isCopied
+                                        ? "text-[var(--chat-success)]"
+                                        : "text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]"
+                                )}
+                                aria-label="Copy message"
+                            >
+                                {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">{isCopied ? "Copied" : "Copy"}</TooltipContent>
+                    </Tooltip>
                 </div>
             )}
 
