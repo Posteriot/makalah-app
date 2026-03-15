@@ -153,4 +153,26 @@ describe("ChatLayout sidebar tree architecture", () => {
       expect(screen.getAllByTestId("chat-sidebar")[0]).toHaveTextContent("progress")
     })
   })
+
+  it("menyusun header sidebar mobile dengan slot kiri dan kanan yang simetris", () => {
+    render(
+      <ChatLayout
+        conversationId="conversation-active"
+        artifactPanel={<div data-testid="artifact-panel">artifact-panel</div>}
+      >
+        <div>chat-window</div>
+      </ChatLayout>
+    )
+
+    const mobileHeader = screen.getByTestId("mobile-sidebar-header")
+    const leftSlot = screen.getByTestId("mobile-sidebar-header-left")
+    const tabs = screen.getByTestId("mobile-workspace-tabs")
+    const rightSlot = screen.getByTestId("mobile-sidebar-header-right")
+
+    expect(mobileHeader.className).toContain("grid")
+    expect(mobileHeader.className).toContain("grid-cols-[2rem_minmax(0,1fr)_2rem]")
+    expect(leftSlot.className).toContain("w-8")
+    expect(rightSlot.className).toContain("w-8")
+    expect(tabs).toBeInTheDocument()
+  })
 })

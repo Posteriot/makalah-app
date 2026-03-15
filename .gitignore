@@ -52,6 +52,9 @@ stack-requirements.txt
 # Screenshots (testing artifacts)
 screenshots/
 
+# Superpowers brainstorm sessions
+.superpowers/
+
 # Claude Code / Agent OS (local-only)
 .claude/
 .development/
