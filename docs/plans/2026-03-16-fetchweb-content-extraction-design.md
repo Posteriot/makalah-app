@@ -13,9 +13,15 @@ The compose model (Gemini 2.5 Flash) hallucinates because it receives zero actua
 
 The compose model has no ground truth to verify claims against. Prompt engineering (INFORMATION SUFFICIENCY in SKILL.md) does not fix this — Gemini Flash ignores insufficiency instructions on biographical/factual queries.
 
+## Rejected Alternative: Jina Reader
+
+Jina Reader (r.jina.ai) was tested before this design. Results: 60% failure rate on Indonesian websites, 20-32s latency, Kompas.com blocked by Jina's anti-DDoS, government domains (.go.id) DNS resolution failures. Not viable. This motivated the two-tier approach (local fetch primary + Tavily fallback) instead of relying on a single external extraction service.
+
 ## Solution: FetchWeb Layer
 
 Add a content extraction step between retriever search (Phase 1) and compose (Phase 2). Fetch actual page content from source URLs, convert to markdown, and include in compose context as ground truth.
+
+**Retriever-agnostic:** FetchWeb only consumes `sources[].url` from the retriever output. It works with any retriever (Perplexity, Grok, Google Grounding, or future retrievers) since all retrievers produce `NormalizedCitation[]` with URLs. No coupling to any specific retriever.
 
 ## Architecture
 
@@ -67,7 +73,7 @@ All sources from retriever, capped at 7. Retriever already filters for relevance
 
 ### Token budget per page?
 
-3,000 tokens per page, truncated. 7 pages × 3K = 21K tokens. Context window 128K, current usage ~9K. Budget is safe at ~21% of remaining capacity.
+3,000 tokens per page, truncated. 7 pages × 3K = 21K tokens. Context window 128K, current usage ~9K, remaining ~119K. Budget is safe at ~18% of remaining capacity.
 
 ### searchText kept, replaced, or used alongside?
 
@@ -91,7 +97,7 @@ Two-tier per URL, not sequential like retriever chain. Primary fetch for all URL
 
 ### Sequential or parallel? Timeout?
 
-Parallel via `Promise.allSettled()`. 5s timeout per URL (AbortController). 10s total batch safety net. Tavily fallback: 10s timeout (default).
+Parallel via `Promise.allSettled()`. 5s timeout per URL (AbortController). No batch-level timeout needed — parallel execution means max primary tier duration equals the slowest single URL (~5s). Tavily fallback: uses its own default timeout (~10s), only called for URLs that fail primary tier.
 
 ### Paper mode vs chat mode?
 
@@ -125,8 +131,9 @@ No scoring, filtering, or quality judgment. Fetch → parse → return.
 
 ### 3. `search-results-context.ts` (MODIFIED)
 
-SearchSource interface gains `pageContent?: string`. Output format:
+SearchSource interface gains `pageContent?: string`. Output format changes conditionally:
 
+**When at least one source has pageContent (FetchWeb working):**
 ```
 Sources:
 1. Title — URL
@@ -141,9 +148,21 @@ Search findings (raw):
 <searchText>
 ```
 
+**When NO source has pageContent (FetchWeb entirely failed/unavailable):**
+```
+Sources:
+1. Title — URL
+   Snippet: <citedText>
+
+Search findings (raw):
+<searchText>
+```
+
+This conditional behavior prevents the compose model from seeing ALL sources as "unverified" when FetchWeb is down — which would be worse than the current pipeline (compose becomes too cautious). When FetchWeb is unavailable, behave exactly like the current pipeline.
+
 ### 4. SKILL.md (MODIFIED)
 
-Add CONTENT VERIFICATION section after INFORMATION SUFFICIENCY.
+Add CONTENT VERIFICATION section after INFORMATION SUFFICIENCY. Per language policy constraint, all model instructions must be in English.
 
 ### 5. Types — pageContent is NOT added to NormalizedCitation
 
@@ -187,7 +206,10 @@ No error breaks the flow. Every failure = graceful degradation.
 |---|---|
 | `package.json` | Add 4 dependencies |
 | `src/lib/ai/web-search/content-fetcher.ts` | NEW — fetch + parse + Tavily fallback |
-| `src/lib/ai/web-search/orchestrator.ts` | Add Phase 1.5, move context build into execute |
-| `src/lib/ai/search-results-context.ts` | Add pageContent to SearchSource and output format |
-| `src/lib/ai/skills/web-search-quality/SKILL.md` | Add CONTENT VERIFICATION section |
-| Vercel env vars | Add TAVILY_API_KEY |
+| `src/lib/ai/web-search/orchestrator.ts` | Add Phase 1.5, move context build + compose streamText into execute |
+| `src/lib/ai/web-search/types.ts` | Add `tavilyApiKey?: string` to `WebSearchOrchestratorConfig` |
+| `src/lib/ai/search-results-context.ts` | Add pageContent to SearchSource, conditional verified/unverified labels |
+| `src/lib/ai/skills/web-search-quality/SKILL.md` | Add CONTENT VERIFICATION section (English) |
+| `src/components/chat/SearchStatusIndicator.tsx` | Add `"fetching-content"` to `SearchStatus` type + display text |
+| `src/app/api/chat/route.ts` | Wire `process.env.TAVILY_API_KEY` to orchestrator config |
+| Vercel env vars | Add `TAVILY_API_KEY` to Vercel project environment |
