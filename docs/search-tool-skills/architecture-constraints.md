@@ -47,8 +47,11 @@ Core architectural principle validated through experimentation. See README.md fo
 
 ### Skills Provide Intelligence
 
-- SKILL.md = knowledge layer that tells Gemini HOW to evaluate, filter, and present
+- Skills operate at TWO phases:
+  - **Retriever phase:** `getSearchSystemPrompt()` teaches the retriever model what to search for (priority sources, query construction strategy)
+  - **Compose phase:** `SKILL.md` teaches the compose model how to evaluate, filter, and present (blocklist, priority preference, credibility criteria, narration rules)
 - Blocklist enforcement via natural language in SKILL.md (not code)
+- Priority source guidance via natural language in both retriever prompt and SKILL.md (not API filters)
 - Source credibility evaluation via skill instructions (not domain tier scoring)
 - Stage behavior guidance via skill instructions (not hardcoded strings)
 - Quality judgment delegated to LLM, not hardcoded in pipeline
@@ -79,10 +82,10 @@ Core architectural principle validated through experimentation. See README.md fo
 
 ## Search System Prompt Strategy
 
-- Retrievers receive a minimal system prompt: "You are a research assistant..."
-- NO blocklist in search system prompt — let search models retrieve freely
-- User message augmented with diversity hints (breadth, minimum sources, multi-domain)
-- Perplexity uses user message content as search query basis — system prompt affects text, not retrieval
+- Retrievers receive an enriched system prompt with search strategy guidance: priority source categories (academic databases, Indonesian university repositories, Indonesian media), specific domain names, and query construction techniques
+- NO blocklist in search system prompt — blocklist enforcement is delegated to compose model via SKILL.md
+- User message augmented with diversity hints + priority source names (dual-channel delivery alongside system prompt)
+- All retrievers receive both system prompt and user message via `streamText()` — how each provider processes them internally is provider-specific behavior outside our control
 
 ## Retriever Architecture
 

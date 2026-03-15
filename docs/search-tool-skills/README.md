@@ -11,7 +11,8 @@ Validated through iterative experimentation on the `search-tool-skills` branch:
 | Layer | Role | Example |
 |-------|------|---------|
 | **Tool** | Simple executor — fetch data, no judgment | Perplexity retrieve sources, Grok search web, Google Grounding |
-| **Skill** | Knowledge layer — teach LLM HOW to judge | SKILL.md: credibility evaluation, blocklist, narration rules |
+| **Skill (Retriever)** | Teach retriever model HOW to search | `getSearchSystemPrompt()`: priority sources, search query strategy |
+| **Skill (Compose)** | Teach compose model HOW to judge and present | SKILL.md: credibility evaluation, blocklist, priority source preference, narration rules |
 | **Code Pipeline** | Minimal deterministic transform | Normalize URLs, format citations, resolve redirects |
 
 ### Where This Applies
@@ -20,7 +21,7 @@ This architecture is not search-specific. Any domain where an LLM needs knowledg
 
 | Domain | Tools (Simple Executors) | Skills (Knowledge Layer) | Code Pipeline |
 |--------|--------------------------|--------------------------|---------------|
-| **Web Search** | Perplexity, Grok, Google Grounding retrievers | `web-search-quality/SKILL.md` | Normalize citations, resolve proxy URLs |
+| **Web Search** | Perplexity, Grok, Google Grounding retrievers | Retriever: `getSearchSystemPrompt()` (search strategy + priority sources). Compose: `web-search-quality/SKILL.md` (evaluation + priority preference) | Normalize citations, resolve proxy URLs |
 | **Paper Stages** | `startPaperSession`, `updateStageData`, `submitStageForValidation` | Stage instructions in `paper-stages/*.ts` (migration candidate) | `formatStageData` context injection |
 | **Future domains** | Any data-fetching tool | SKILL.md with domain-specific guidance | Format normalization only |
 
@@ -32,9 +33,10 @@ This architecture is not search-specific. Any domain where an LLM needs knowledg
 
 In practice:
 - ❌ Blocklist in search model's system prompt (constrains retrieval)
-- ❌ Specific domain names in instructions ("search BPS, World Bank, McKinsey")
-- ✅ Generic diversity hints in user message ("search broadly, cite 10+ sources")
-- ✅ Retrievers free to gather from anywhere
+- ❌ Programmatic domain filtering via API parameters (rigid, binary include/exclude)
+- ✅ Priority source guidance in system prompt — teaches retriever model what to actively seek and how to construct targeted queries (e.g., "Search specifically for content from: Kompas (kompas.com), Tempo (tempo.co)"). This is teaching, not restricting.
+- ✅ Diversity hints in user message with priority source names — dual-channel delivery alongside system prompt
+- ✅ Retrievers free to gather from anywhere — priority sources are guidance, not filters
 
 **Paper stage equivalent:**
 - ❌ Hardcoded validation that blocks stage progression based on rigid field counts
@@ -42,15 +44,21 @@ In practice:
 
 ## Principle 2: Skills Provide Intelligence
 
-**Quality judgment = LLM's job, not code's job.**
+**Quality judgment = LLM's job, not code's job.** This applies to BOTH the retriever model and the compose model.
 
-LLMs like Gemini are trained to follow instructions. A blocklist written as "NEVER cite wikipedia.org" in SKILL.md is as effective as `isBlockedSourceDomain()` in code — but without the risk of losing sources in a pipeline.
+LLMs like Gemini are trained to follow instructions. A blocklist written as "NEVER cite wikipedia.org" in SKILL.md is as effective as `isBlockedSourceDomain()` in code — but without the risk of losing sources in a pipeline. Similarly, priority source guidance in the retriever system prompt teaches the retriever model to actively seek authoritative sources — more effective than API-level domain filtering.
+
+Skills operate at two phases:
+- **Retriever phase:** `getSearchSystemPrompt()` teaches the retriever model search strategy — what priority sources to seek, how to construct targeted queries. This is the retriever's skill-equivalent.
+- **Compose phase:** `SKILL.md` teaches the compose model how to evaluate, filter, and present sources — blocklists, credibility criteria, priority source preference, narration rules.
 
 In practice:
 - ❌ `isBlockedSourceDomain()` filter in code pipeline
 - ❌ Domain tier scoring (academic: 90, news: 70, blog: 30)
 - ❌ Diversity enforcement algorithm
-- ✅ Blocklist as natural language in SKILL.md
+- ❌ API-level `search_domain_filter` (rigid binary include/exclude)
+- ✅ Blocklist as natural language in SKILL.md (compose phase)
+- ✅ Priority source guidance in retriever system prompt (retriever phase) AND SKILL.md (compose phase)
 - ✅ Credibility evaluation instructions (primary data, authorship, methodology)
 - ✅ Diversification instructions ("mix data, news, expert analysis")
 
@@ -121,10 +129,13 @@ These differences belong in the **tool layer** (retriever implementations), not 
 ### Web Search — Skills Pattern (implemented)
 
 ```
+getSearchSystemPrompt() + augmentUserMessageForSearch()
+    ↓ (both carry priority source guidance)
 Retriever (tool) → normalize citations → pass ALL to Gemini + SKILL.md
 ```
 
-- `src/lib/ai/skills/web-search-quality/SKILL.md` — knowledge layer
+- `src/lib/ai/search-system-prompt.ts` — retriever-phase skill: search strategy + priority sources
+- `src/lib/ai/skills/web-search-quality/SKILL.md` — compose-phase skill: evaluation + priority preference
 - `src/lib/ai/web-search/orchestrator.ts` — two-pass flow
 - `src/lib/ai/web-search/retrievers/*.ts` — strategy pattern tools
 
