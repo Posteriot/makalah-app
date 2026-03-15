@@ -293,6 +293,9 @@ export async function executeWebSearch(
         model: config.composeModel,
         messages: composeMessages,
         ...config.samplingOptions,
+        ...(config.reasoningProviderOptions
+          ? { providerOptions: config.reasoningProviderOptions as Parameters<typeof streamText>[0]["providerOptions"] }
+          : {}),
       })
 
       // Transition to composing

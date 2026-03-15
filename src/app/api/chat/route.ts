@@ -2085,6 +2085,7 @@ Aturan:
                     samplingOptions,
                     reasoningTraceEnabled,
                     isTransparentReasoning,
+                    reasoningProviderOptions: primaryReasoningProviderOptions ?? undefined,
                     traceMode: getTraceModeLabel(!!paperModePrompt, true),
                     onFinish: async (result) => {
                         const retrieverModelName = result.retrieverName || "unknown"
