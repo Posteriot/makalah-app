@@ -59,8 +59,11 @@ export async function isAuthenticated(): Promise<boolean> {
 export async function isAuthenticatedFromBetterAuthCookies(
   betterAuthCookies: string | null
 ): Promise<boolean> {
-  const token = await getTokenFromBetterAuthCookies(betterAuthCookies);
-  return !!token;
+  // Middleware is a lightweight cookie-presence guard.
+  // Real auth validation happens client-side via Convex queries.
+  // If user has session cookies, let them through — don't redirect to
+  // sign-in on transient network failures (ETIMEDOUT) during token validation.
+  return !!betterAuthCookies;
 }
 
 /**
