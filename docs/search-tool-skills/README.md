@@ -46,18 +46,18 @@ In practice:
 
 **Quality judgment = LLM's job, not code's job.** This applies to BOTH the retriever model and the compose model.
 
-LLMs like Gemini are trained to follow instructions. A blocklist written as "NEVER cite wikipedia.org" in SKILL.md is as effective as `isBlockedSourceDomain()` in code — but without the risk of losing sources in a pipeline. Similarly, priority source guidance in the retriever system prompt teaches the retriever model to actively seek authoritative sources — more effective than API-level domain filtering.
+LLMs like Gemini are trained to follow instructions. A blocklist written as "NEVER cite wikipedia.org" in SKILL.md is effective as a primary intelligence layer. The code-level `isBlockedSourceDomain()` in the citation normalizer serves as a deterministic safety net — binary yes/no, zero risk of losing legitimate sources. Together they form defense-in-depth. Similarly, priority source guidance in the retriever system prompt teaches the retriever model to actively seek authoritative sources — more effective than API-level domain filtering.
 
 Skills operate at two phases:
 - **Retriever phase:** `getSearchSystemPrompt()` teaches the retriever model search strategy — what priority sources to seek, how to construct targeted queries. This is the retriever's skill-equivalent.
 - **Compose phase:** `SKILL.md` teaches the compose model how to evaluate, filter, and present sources — blocklists, credibility criteria, priority source preference, narration rules.
 
 In practice:
-- ❌ `isBlockedSourceDomain()` filter in code pipeline
 - ❌ Domain tier scoring (academic: 90, news: 70, blog: 30)
 - ❌ Diversity enforcement algorithm
 - ❌ API-level `search_domain_filter` (rigid binary include/exclude)
-- ✅ Blocklist as natural language in SKILL.md (compose phase)
+- ✅ `isBlockedSourceDomain()` as deterministic safety net in citation normalizer (binary filter, not quality judgment)
+- ✅ Blocklist as natural language in SKILL.md (compose phase — primary enforcement)
 - ✅ Priority source guidance in retriever system prompt (retriever phase) AND SKILL.md (compose phase)
 - ✅ Credibility evaluation instructions (primary data, authorship, methodology)
 - ✅ Diversification instructions ("mix data, news, expert analysis")
