@@ -2073,6 +2073,7 @@ Aturan:
 
                 return await executeWebSearch({
                     retrieverChain,
+                    tavilyApiKey: process.env.TAVILY_API_KEY,
                     messages: fullMessagesGateway,
                     composeMessages: trimmedModelMessages,
                     composeModel: model,
