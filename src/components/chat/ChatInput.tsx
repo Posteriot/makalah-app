@@ -54,7 +54,6 @@ export function ChatInput({
     const fullscreenTextareaRef = useRef<HTMLTextAreaElement>(null)
     const [isMobileFocused, setIsMobileFocused] = useState(false)
     const [isFullscreen, setIsFullscreen] = useState(false)
-    const [mobileTextareaHeight, setMobileTextareaHeight] = useState(0)
 
     const handleBoundedInputChange = useCallback((
         event: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>
@@ -100,9 +99,6 @@ export function ChatInput({
             textarea.style.height = "auto"
             const nextHeight = Math.min(textarea.scrollHeight, MOBILE_MAX_HEIGHT)
             textarea.style.height = `${nextHeight}px`
-            setMobileTextareaHeight(nextHeight)
-        } else {
-            setMobileTextareaHeight(0)
         }
     }, [input])
 
@@ -114,8 +110,7 @@ export function ChatInput({
         }
     }
 
-    // Mobile: determine if expanded (has text or focused)
-    const isMobileExpanded = isMobileFocused || input.length > 0
+    const showMobileFullscreenButton = isMobileFocused || input.length > 0
 
     // Fullscreen open — focus textarea after mount
     const openFullscreen = useCallback(() => {
@@ -142,7 +137,6 @@ export function ChatInput({
     const displayedContextFiles = contextFiles ?? attachedFiles
     const hasContextFiles = displayedContextFiles.length > 0
     const canClearContext = hasContextFiles || hasActiveAttachmentContext
-    const isMobileStackedLayout = canClearContext || mobileTextareaHeight > 44
 
     const thinScrollbarClassName = cn(
         "scrollbar-thin [scrollbar-width:thin]",
@@ -370,95 +364,22 @@ export function ChatInput({
             </div>
 
             {/* ═══════════════════════════════════════════════
-                MOBILE (< md) — 3-state: collapsed → expanded → fullscreen
-
-                State 1 & 2 use INLINE layout (flex items-end):
-                  📎 | textarea/placeholder | ⛶ ▶
-                Buttons are never in a separate row below — they stay
-                inline so iOS keyboard can never clip them.
+                MOBILE (< md) — stable 2-row composer matching desktop
                ═══════════════════════════════════════════════ */}
-            <div className="md:hidden shrink-0 px-3 py-2 bg-transparent">
+            <div
+                data-testid="mobile-chat-input-wrapper"
+                className="md:hidden shrink-0 bg-transparent px-3 pt-2 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
+            >
                 <form onSubmit={handleMobileSubmit} className="flex">
                     <div
                         data-testid="mobile-chat-input-shell"
                         className={cn(
-                            "w-full rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-card)] transition-all duration-150",
+                            "w-full rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-card)] transition-colors duration-150",
                         )}
                     >
-                        {isMobileStackedLayout ? (
-                            <div data-testid="mobile-chat-input-stacked">
-                                <div className="flex items-start gap-2 px-2 pt-2">
-                                    <div className="min-w-0 flex-1 flex flex-wrap items-center gap-2">
-                                        <FileUploadButton
-                                            conversationId={conversationId}
-                                            onFileUploaded={onFileAttached}
-                                            onImageDataUrl={onImageDataUrl}
-                                            ariaLabel="Upload file tambahan konteks"
-                                            tooltipText="Upload file tambahan konteks"
-                                            label="+ Konteks"
-                                        />
-                                        {renderContextFileChips()}
-                                    </div>
-                                    {renderClearContextButton({ hideWhenDisabled: true })}
-                                </div>
-                                <div className="px-2 pt-2">
-                                    <div className="h-px w-full bg-[color:var(--chat-border)]/80" aria-hidden="true" />
-                                </div>
-                                <div className="flex items-end gap-1 px-2 py-1.5">
-                                    {!isMobileExpanded ? (
-                                        <div
-                                            className="flex-1 flex items-center min-h-[32px] cursor-text"
-                                            onClick={() => {
-                                                setIsMobileFocused(true)
-                                                requestAnimationFrame(() => mobileTextareaRef.current?.focus())
-                                            }}
-                                        >
-                                            <span className="text-sm text-[var(--chat-muted-foreground)] select-none">
-                                                Kirim percakapan...
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <textarea
-                                            ref={mobileTextareaRef}
-                                            className="flex-1 min-w-0 resize-none bg-transparent focus:outline-none text-sm leading-relaxed text-[var(--chat-foreground)] placeholder:text-sm placeholder:text-[var(--chat-muted-foreground)] py-1"
-                                            value={input}
-                                            onChange={handleBoundedInputChange}
-                                            onKeyDown={handleKeyDown}
-                                            onFocus={() => setIsMobileFocused(true)}
-                                            onBlur={() => {
-                                                if (!input.trim()) {
-                                                    setIsMobileFocused(false)
-                                                }
-                                            }}
-                                            placeholder="Kirim percakapan..."
-                                            rows={1}
-                                            aria-label="Message input"
-                                        />
-                                    )}
-
-                                    <div className="shrink-0 self-end flex items-center gap-0.5">
-                                        {isMobileExpanded && (
-                                            <button
-                                                type="button"
-                                                onClick={openFullscreen}
-                                                className={cn(
-                                                    "w-8 h-8 flex items-center justify-center rounded-action",
-                                                    "text-[var(--chat-muted-foreground)]",
-                                                    "active:bg-[var(--chat-accent)] active:text-[var(--chat-foreground)]",
-                                                    "transition-colors duration-150"
-                                                )}
-                                                aria-label="Expand to fullscreen"
-                                            >
-                                                <Expand className="h-4 w-4" />
-                                            </button>
-                                        )}
-                                        {renderSendButton("sm")}
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div data-testid="mobile-chat-input-compact" className="flex items-end gap-1.5 px-2 py-1.5">
-                                <div className="shrink-0 py-0.5">
+                        <div data-testid="mobile-chat-input-stacked">
+                            <div className="flex items-start gap-2 px-2 pt-2">
+                                <div className="min-w-0 flex-1 flex flex-wrap items-center gap-2">
                                     <FileUploadButton
                                         conversationId={conversationId}
                                         onFileUploaded={onFileAttached}
@@ -467,44 +388,41 @@ export function ChatInput({
                                         tooltipText="Upload file tambahan konteks"
                                         label="+ Konteks"
                                     />
+                                    {renderContextFileChips()}
                                 </div>
-                                {!isMobileExpanded ? (
-                                    <div
-                                        className="flex-1 flex items-center min-h-[32px] cursor-text"
-                                        onClick={() => {
-                                            setIsMobileFocused(true)
-                                            requestAnimationFrame(() => mobileTextareaRef.current?.focus())
-                                        }}
-                                    >
-                                        <span className="text-sm text-[var(--chat-muted-foreground)] select-none">
-                                            Kirim percakapan...
-                                        </span>
-                                    </div>
-                                ) : (
-                                    <textarea
-                                        ref={mobileTextareaRef}
-                                        className="flex-1 min-w-0 resize-none bg-transparent focus:outline-none text-sm leading-relaxed text-[var(--chat-foreground)] placeholder:text-sm placeholder:text-[var(--chat-muted-foreground)] py-1"
-                                        value={input}
-                                        onChange={handleBoundedInputChange}
-                                        onKeyDown={handleKeyDown}
-                                        onFocus={() => setIsMobileFocused(true)}
-                                        onBlur={() => {
-                                            if (!input.trim()) {
-                                                setIsMobileFocused(false)
-                                            }
-                                        }}
-                                        placeholder="Kirim percakapan..."
-                                        rows={1}
-                                        aria-label="Message input"
-                                    />
-                                )}
+                                {renderClearContextButton({ hideWhenDisabled: true })}
+                            </div>
+                            <div className="px-2 pt-2">
+                                <div className="h-px w-full bg-[color:var(--chat-border)]/80" aria-hidden="true" />
+                            </div>
+                            <div
+                                data-testid="mobile-chat-input-row"
+                                className="flex min-h-[40px] items-end gap-1 px-2 py-1"
+                            >
+                                <textarea
+                                    ref={mobileTextareaRef}
+                                    className={cn(
+                                        "flex-1 min-w-0 min-h-[28px] max-h-[144px] resize-none bg-transparent py-1",
+                                        "text-sm leading-relaxed text-[var(--chat-foreground)] placeholder:text-sm placeholder:text-[var(--chat-muted-foreground)]",
+                                        "overflow-y-auto focus:outline-none",
+                                        thinScrollbarClassName
+                                    )}
+                                    value={input}
+                                    onChange={handleBoundedInputChange}
+                                    onKeyDown={handleKeyDown}
+                                    onFocus={() => setIsMobileFocused(true)}
+                                    onBlur={() => setIsMobileFocused(false)}
+                                    placeholder="Kirim percakapan..."
+                                    rows={1}
+                                    aria-label="Message input"
+                                />
                                 <div className="shrink-0 self-end flex items-center gap-0.5">
-                                    {isMobileExpanded && (
+                                    {showMobileFullscreenButton && (
                                         <button
                                             type="button"
                                             onClick={openFullscreen}
                                             className={cn(
-                                                "w-8 h-8 flex items-center justify-center rounded-action",
+                                                "flex h-8 w-8 items-center justify-center rounded-action",
                                                 "text-[var(--chat-muted-foreground)]",
                                                 "active:bg-[var(--chat-accent)] active:text-[var(--chat-foreground)]",
                                                 "transition-colors duration-150"
@@ -517,7 +435,7 @@ export function ChatInput({
                                     {renderSendButton("sm")}
                                 </div>
                             </div>
-                        )}
+                        </div>
                     </div>
                 </form>
             </div>
@@ -529,9 +447,13 @@ export function ChatInput({
                 <div
                     className="md:hidden fixed inset-0 z-50 flex flex-col bg-[var(--chat-background)]"
                     data-chat-scope=""
+                    style={{
+                        paddingTop: "env(safe-area-inset-top, 0px)",
+                        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+                    }}
                 >
                     {/* Header */}
-                    <div className="flex items-center h-12 px-3 border-b border-[color:var(--chat-border)] shrink-0">
+                    <div className="flex h-12 shrink-0 items-center border-b border-[color:var(--chat-border)] px-3">
                         <button
                             type="button"
                             onClick={closeFullscreen}
@@ -552,7 +474,7 @@ export function ChatInput({
 
                     {/* Textarea fills remaining space */}
                     <form onSubmit={handleMobileSubmit} className="flex-1 flex flex-col min-h-0">
-                        <div className="flex-1 px-4 py-3 overflow-y-auto">
+                        <div className="flex-1 overflow-y-auto px-4 py-3">
                             {renderContextTray("fullscreen", "mb-3")}
                             <textarea
                                 ref={fullscreenTextareaRef}
@@ -566,7 +488,7 @@ export function ChatInput({
                         </div>
 
                         {/* Footer toolbar */}
-                        <div className="flex justify-end px-3 py-2 border-t border-[color:var(--chat-border)] shrink-0">
+                        <div className="flex shrink-0 justify-end border-t border-[color:var(--chat-border)] px-3 py-2">
                             {renderSendButton("sm")}
                         </div>
                     </form>
