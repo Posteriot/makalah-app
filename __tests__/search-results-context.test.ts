@@ -48,4 +48,37 @@ describe("buildSearchResultsContext", () => {
     )
     expect(result).not.toContain("Search findings")
   })
+
+  it("renders snippet when citedText is provided", () => {
+    const result = buildSearchResultsContext(
+      [{ url: "https://a.com", title: "Source A", citedText: "Key finding from page" }],
+      ""
+    )
+    expect(result).toContain("1. Source A — https://a.com")
+    expect(result).toContain("   Snippet: Key finding from page")
+  })
+
+  it("omits snippet line when citedText is absent", () => {
+    const result = buildSearchResultsContext(
+      [{ url: "https://a.com", title: "Source A" }],
+      ""
+    )
+    expect(result).toContain("1. Source A — https://a.com")
+    expect(result).not.toContain("Snippet:")
+  })
+
+  it("renders mixed sources with and without citedText", () => {
+    const result = buildSearchResultsContext(
+      [
+        { url: "https://a.com", title: "Source A", citedText: "Snippet A" },
+        { url: "https://b.com", title: "Source B" },
+        { url: "https://c.com", title: "Source C", citedText: "Snippet C" },
+      ],
+      ""
+    )
+    expect(result).toContain("1. Source A — https://a.com\n   Snippet: Snippet A")
+    expect(result).toContain("2. Source B — https://b.com")
+    expect(result).not.toContain("2. Source B — https://b.com\n   Snippet:")
+    expect(result).toContain("3. Source C — https://c.com\n   Snippet: Snippet C")
+  })
 })

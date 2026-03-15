@@ -3,6 +3,7 @@ interface SearchSource {
   title: string
   tier?: string
   score?: number
+  citedText?: string
 }
 
 export function buildSearchResultsContext(
@@ -16,7 +17,8 @@ export function buildSearchResultsContext(
   const sourceList = sources
     .map((s, i) => {
       const tierLabel = s.tier ? ` (${s.tier})` : ""
-      return `${i + 1}. ${s.title} — ${s.url}${tierLabel}`
+      const snippet = s.citedText ? `\n   Snippet: ${s.citedText}` : ""
+      return `${i + 1}. ${s.title} — ${s.url}${tierLabel}${snippet}`
     })
     .join("\n")
 
