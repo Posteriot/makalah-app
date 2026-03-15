@@ -53,6 +53,7 @@ interface SidebarChatHistoryProps {
   onArtifactPanelToggle?: () => void
   onCloseMobile?: () => void
   isLoading?: boolean
+  isLoadingMore?: boolean
   hasMore?: boolean
   onLoadMore?: () => void
   manageRequestNonce?: number
@@ -97,6 +98,8 @@ interface ConversationTreeNode {
   paperSession: PaperSessionListItem | null
   latestFiles: ConversationTreeFile[]
 }
+
+const INLINE_LOADING_PLACEHOLDER_COUNT = 4
 
 const TREE_CONNECTOR_CLASSES = {
   subtreePaddingLeft: "pl-[2.95rem]",
@@ -217,6 +220,27 @@ function FolderNodeIcon({ solid }: { solid: boolean }) {
   )
 }
 
+function ConversationLoadingPlaceholder() {
+  return (
+    <div
+      data-testid="conversation-loading-placeholder"
+      className="flex items-start gap-2 px-3 py-3"
+      aria-hidden="true"
+    >
+      <div className="-mt-[1px] flex h-[1.12rem] w-4 shrink-0 items-center justify-center">
+        <span className="h-[1.12rem] w-[1.12rem] rounded-action border border-dashed border-[color:var(--chat-border)]" />
+      </div>
+      <div className="-mt-[1px] flex h-[1.12rem] w-[1.12rem] shrink-0 items-center justify-center">
+        <Skeleton className="h-[1.12rem] w-[1.12rem] rounded-sm" />
+      </div>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <Skeleton className="h-3.5 w-3/4" />
+        <Skeleton className="h-2.5 w-1/3" />
+      </div>
+    </div>
+  )
+}
+
 function getFileConnectorStyle(isFirstFile: boolean, isLastFile: boolean) {
   const top = isFirstFile ? "-0.9rem" : "-0.55rem"
 
@@ -292,6 +316,7 @@ export function SidebarChatHistory({
   onArtifactPanelToggle,
   onCloseMobile,
   isLoading,
+  isLoadingMore = false,
   hasMore = false,
   onLoadMore,
   manageRequestNonce = 0,
@@ -306,6 +331,8 @@ export function SidebarChatHistory({
   const loadMoreLockedRef = useRef(false)
   const editInputRef = useRef<HTMLInputElement>(null)
   const lastSyncedConversationIdRef = useRef<string | null>(null)
+  const cachedPaperSessionsRef = useRef<PaperSessionListItem[] | undefined>(undefined)
+  const cachedArtifactsRef = useRef<ArtifactListItem[] | undefined>(undefined)
   const visibleConversationIds = useMemo(
     () => conversations.map((conversation) => conversation._id),
     [conversations]
@@ -319,14 +346,28 @@ export function SidebarChatHistory({
     api.artifacts.listLatestByConversationIds,
     user?._id ? { userId: user._id, conversationIds: visibleConversationIds } : "skip"
   ) as ArtifactListItem[] | undefined
+  const resolvedPaperSessions = paperSessions ?? cachedPaperSessionsRef.current
+  const resolvedArtifacts = artifacts ?? cachedArtifactsRef.current
+
+  useEffect(() => {
+    if (paperSessions !== undefined) {
+      cachedPaperSessionsRef.current = paperSessions
+    }
+  }, [paperSessions])
+
+  useEffect(() => {
+    if (artifacts !== undefined) {
+      cachedArtifactsRef.current = artifacts
+    }
+  }, [artifacts])
 
   const treeNodes = useMemo<ConversationTreeNode[]>(() => {
     const sessionMap = new Map<string, PaperSessionListItem>(
-      (paperSessions ?? []).map((session) => [String(session.conversationId), session])
+      (resolvedPaperSessions ?? []).map((session) => [String(session.conversationId), session])
     )
     const artifactsByConversation = new Map<string, ArtifactListItem[]>()
 
-    for (const artifact of artifacts ?? []) {
+    for (const artifact of resolvedArtifacts ?? []) {
       const key = String(artifact.conversationId)
       const existing = artifactsByConversation.get(key)
       if (existing) {
@@ -350,7 +391,7 @@ export function SidebarChatHistory({
         latestFiles,
       }
     })
-  }, [artifacts, conversations, paperSessions])
+  }, [conversations, resolvedArtifacts, resolvedPaperSessions])
 
   const [expandedConversationId, setExpandedConversationId] = useState<Id<"conversations"> | null>(null)
   const [manuallyCollapsedConversationIds, setManuallyCollapsedConversationIds] = useState<string[]>([])
@@ -396,7 +437,7 @@ export function SidebarChatHistory({
 
   useEffect(() => {
     if (!isTreeStateHydrated) return
-    if (paperSessions === undefined || artifacts === undefined) return
+    if (resolvedPaperSessions === undefined || resolvedArtifacts === undefined) return
     if (lastSyncedConversationIdRef.current === currentConversationId) return
 
     const activeNode = treeNodes.find((node) => String(node.conversationId) === currentConversationId)
@@ -414,11 +455,11 @@ export function SidebarChatHistory({
 
     lastSyncedConversationIdRef.current = currentConversationId
   }, [
-    artifacts,
+    resolvedArtifacts,
     currentConversationId,
     isTreeStateHydrated,
     manuallyCollapsedConversationIds,
-    paperSessions,
+    resolvedPaperSessions,
     treeNodes,
   ])
 
@@ -466,6 +507,13 @@ export function SidebarChatHistory({
   }, [hasMore, onLoadMore])
 
   const selectedCount = selectedConversationIds.length
+  const remainingConversationCount =
+    typeof _totalConversationCount === "number"
+      ? Math.max(_totalConversationCount - conversations.length, 0)
+      : INLINE_LOADING_PLACEHOLDER_COUNT
+  const inlineLoadingPlaceholderCount = isLoadingMore
+    ? Math.max(1, Math.min(INLINE_LOADING_PLACEHOLDER_COUNT, remainingConversationCount || INLINE_LOADING_PLACEHOLDER_COUNT))
+    : 0
 
   const handleStartEdit = useCallback((conversationId: Id<"conversations">, title: string) => {
     if (!onUpdateConversationTitle || isManageMode) return
@@ -588,7 +636,7 @@ export function SidebarChatHistory({
     })
   }, [])
 
-  if (isLoading || paperSessions === undefined || artifacts === undefined) {
+  if (isLoading || resolvedPaperSessions === undefined || resolvedArtifacts === undefined) {
     return (
       <div className="flex h-full flex-col">
         <div className="border-b border-[color:var(--chat-border)] px-3 py-2">
@@ -932,9 +980,23 @@ export function SidebarChatHistory({
               )
             })}
 
+            {Array.from({ length: inlineLoadingPlaceholderCount }).map((_, index) => (
+              <ConversationLoadingPlaceholder key={`conversation-loading-placeholder-${index}`} />
+            ))}
+
             {hasMore ? (
-              <div ref={loadMoreRef} className="px-3 py-3 text-center text-[11px] font-mono text-[var(--chat-muted-foreground)]">
-                Memuat percakapan lainnya...
+              <div className="px-3 py-3">
+                <div
+                  ref={loadMoreRef}
+                  className={cn(
+                    "flex min-h-4 items-center justify-center text-[var(--chat-muted-foreground)]",
+                    isLoadingMore && "pt-1"
+                  )}
+                >
+                  {isLoadingMore ? (
+                    <RefreshDouble className="h-3.5 w-3.5 animate-spin" aria-label="Memuat percakapan" />
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </div>

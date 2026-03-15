@@ -61,6 +61,8 @@ interface ChatSidebarProps {
   onCloseMobile?: () => void
   /** Loading state for conversations */
   isLoading?: boolean
+  /** Incremental loading state for conversation pagination */
+  isLoadingMore?: boolean
   /** More conversations available */
   hasMoreConversations?: boolean
   /** Incremental load more callback */
@@ -99,6 +101,7 @@ export function ChatSidebar({
   className,
   onCloseMobile,
   isLoading,
+  isLoadingMore,
   hasMoreConversations,
   onLoadMoreConversations,
   isCreating,
@@ -157,6 +160,7 @@ export function ChatSidebar({
             onArtifactPanelToggle={onArtifactPanelToggle}
             onCloseMobile={onCloseMobile}
             isLoading={isLoading}
+            isLoadingMore={isLoadingMore}
             hasMore={hasMoreConversations}
             onLoadMore={onLoadMoreConversations}
             manageRequestNonce={historyManageRequestNonce}

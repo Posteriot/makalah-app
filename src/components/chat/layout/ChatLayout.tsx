@@ -81,6 +81,7 @@ export function ChatLayout({
     deleteAllConversations,
     updateConversationTitle,
     isLoading,
+    isLoadingMore,
     hasMore,
     loadMore,
   } = useConversations()
@@ -282,6 +283,7 @@ export function ChatLayout({
             isArtifactPanelOpen={isArtifactPanelOpen}
             onArtifactPanelToggle={onArtifactPanelToggle}
             isLoading={isLoading}
+            isLoadingMore={isLoadingMore}
             hasMoreConversations={hasMore}
             onLoadMoreConversations={loadMore}
             isCreating={isCreating}
@@ -438,6 +440,7 @@ export function ChatLayout({
             onArtifactPanelToggle={onArtifactPanelToggle}
             onCloseMobile={() => setIsMobileOpen(false)}
             isLoading={isLoading}
+            isLoadingMore={isLoadingMore}
             hasMoreConversations={hasMore}
             onLoadMoreConversations={loadMore}
             isCreating={isCreating}
