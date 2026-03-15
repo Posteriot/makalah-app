@@ -124,6 +124,11 @@ export const webSearchQualitySkill: WebSearchSkill = {
       parts.push(`## REFERENCE INTEGRITY\n\n${referenceIntegrity}`)
     }
 
+    const informationSufficiency = parsed.sections.get("INFORMATION SUFFICIENCY")
+    if (informationSufficiency) {
+      parts.push(`## INFORMATION SUFFICIENCY\n\n${informationSufficiency}`)
+    }
+
     // Add stage-specific guidance
     if (context.isPaperMode && context.currentStage) {
       const stageGuide =
