@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-The web search pipeline suffers from compose model hallucination. The compose model (Gemini 2.5 Flash) fabricates claims with high confidence and attributes them to sources it never read.
+The web search pipeline suffered from compose model hallucination. The compose model (Gemini 2.5 Flash) fabricated claims with high confidence and attributed them to sources it never read.
 
 ### Evidence
 
@@ -14,15 +14,15 @@ Query: "Siapa Erik Supit?" — the compose model fabricated:
 
 ### Root Cause Analysis
 
-The compose model receives two inputs:
+The compose model received two inputs, both unreliable:
 
 1. **`searchText`** — the retriever model's synthesized prose. The retriever (Gemini with Google Search via direct `@ai-sdk/google` API) generates this text. It reads web pages internally but the generated text can contain hallucinations.
 
 2. **`sources[]`** — URL + title + `citedText`. But `citedText` is NOT actual page content. It is the retriever's OWN generated text mapped back to source URLs by Google Grounding (`groundingSupports[].segment.text`). This is circular — hallucinated text citing itself.
 
-Neither input contains actual web page content. The compose model has no way to verify claims against real source material. It operates on a retriever synthesis that may be wrong, and citation metadata that confirms the retriever's own output.
+Neither input contained actual web page content. The compose model had no way to verify claims against real source material.
 
-### What We Already Tried
+### What Was Tried Before FetchWeb
 
 1. **Propagate `citedText` to compose context** — Done. Works mechanically, but `citedText` from Google Grounding is the retriever's own text, not page content. Does not solve hallucination.
 
@@ -32,96 +32,126 @@ Neither input contains actual web page content. The compose model has no way to 
 
 ### Why This Matters
 
-This application serves academic paper writing. Hallucinated citations destroy academic integrity, damage user trust, and would kill the product's reputation. This is not a nice-to-have fix.
+This application serves academic paper writing. Hallucinated citations destroy academic integrity, damage user trust, and would kill the product's reputation.
 
-## Proposed Direction: FetchWeb
+## Solution: FetchWeb (Implemented)
 
-The hypothesis: if the compose model receives **actual page content** (not just retriever synthesis), it can verify claims against real source material and avoid fabrication.
+FetchWeb adds a content extraction phase (Phase 1.5) between retriever search and compose. It fetches actual page content from source URLs, converts to markdown, and provides this as ground truth to the compose model.
 
-Two candidate mechanisms identified:
-
-### 1. Node.js `fetch()` + HTML Parser
-
-- Standard `fetch()` with browser User-Agent headers
-- Parse HTML to clean text/markdown using `@mozilla/readability` or `cheerio`
-- Runs on the server (Next.js serverless on Vercel)
-- Zero cost, ~0.5-2s latency per page
-- Limitations: fails on Cloudflare-protected sites, JS-rendered SPAs
-- Likely works for: .go.id sites, academic repositories, simple news sites
-
-### 2. Tavily Extract API (Fallback)
-
-- `POST https://api.tavily.com/extract` with URLs
-- Returns `raw_content` (full page markdown)
-- Accepts up to 20 URLs per request
-- Cost: 1 credit per 5 successful URLs, free 1,000 credits/month (= 5,000 pages)
-- `TAVILY_API_KEY` already configured in `.env.local` (prefix: `tvly-`)
-- Needs to be added to Vercel environment variables
-
-### Evaluated but Not Viable
-
-- **Cloudflare markdown.new** (`https://markdown.new/{url}`): Free service that converts HTML to clean markdown via three-tier fallback (Accept header → Workers AI → Browser Rendering). 500 requests/day per IP, no paid tier. Good as a technique (`Accept: text/markdown` header to Cloudflare-enabled sites) but unreliable for production — no SLA, no way to scale beyond 500/day, rate limit tied to server IP not API key.
-
-### Open Questions (Not Yet Decided)
-
-- Where in the pipeline does fetching happen? After search? During search? Replacing search?
-- How many URLs to fetch? All sources? Top-N? Based on what criteria?
-- Token budget: full page content vs truncated? How much per page?
-- Should `searchText` be kept, replaced, or used alongside fetched content?
-- How does SKILL.md change when actual content is available?
-- What happens when both `fetch()` and Tavily fail for a URL?
-- Does the retriever chain pattern apply here (fetch chain with fallback)?
-- Performance: sequential or parallel fetching? Timeout strategy?
-- How does this interact with paper mode stages vs chat mode?
-
-## Current Pipeline Architecture
+### Architecture
 
 ```
-Phase 1: Retriever Search (silent, before streaming)
-  ┌─────────────────────────────────────────────┐
-  │ User message                                │
-  │   → augmentUserMessageForSearch()           │
-  │   → streamText() with retriever model       │
-  │   → searchText (retriever synthesis)        │
-  │   → extractSources() → sources[] (URLs)     │
-  └─────────────────────────────────────────────┘
-                    │
-                    ▼
+Phase 1: Retriever Search (silent, blocking)
+  User message → retriever chain → searchText + sources[]
+
+Phase 1.5: FetchWeb (inside stream execute — Vercel timeout safe)
+  sources[].url (max 7)
+    → Primary: fetch() + linkedom + readability + turndown → markdown
+    → Fallback: @tavily/core .extract() for failed URLs
+    → Metadata extraction: author, date, site from readability + HTML meta tags
+    → Output: pageContent (truncated 12K for compose) + fullContent (raw for RAG)
+
 Phase 2: Compose (streaming to client)
-  ┌─────────────────────────────────────────────┐
-  │ COMPOSE_PHASE_DIRECTIVE                     │
-  │ + searchResultsContext (sources + searchText)│
-  │ + systemPrompt                              │
-  │ + SKILL.md (with INFORMATION SUFFICIENCY)   │
-  │ → streamText() to client                    │
-  └─────────────────────────────────────────────┘
+  COMPOSE_PHASE_DIRECTIVE (anti-hallucination rules, position #1)
+  + searchResultsContext (with verified page content per source)
+  + systemPrompt + SKILL.md + fileContext
+  → compose model → streaming response
+
+  KEY: searchText DROPPED when page content available (eliminates contamination)
+
+Phase 3: RAG Ingest (background, after compose)
+  fullContent → chunk (~500 tokens) → embed (gemini-embedding-001) → Convex vectorIndex
+  → Available for verbatim quoting in follow-up turns
 ```
 
-Key files:
-- `src/lib/ai/web-search/orchestrator.ts` — two-pass flow
-- `src/lib/ai/search-results-context.ts` — builds compose context
-- `src/lib/ai/skills/web-search-quality/SKILL.md` — compose instructions
-- `src/lib/ai/web-search/retrievers/*.ts` — strategy pattern retrievers
-- `src/lib/citations/normalizer.ts` — two normalizers: `normalizeSourcesList()` (AI SDK) and `normalizeGoogleGrounding()` (Google direct API)
+### What FetchWeb Solved
 
-## Constraints
+1. **Hallucination from searchText** — `searchText` (retriever synthesis) was the primary contamination source. When page content is available, searchText is dropped from compose context entirely. The compose model only sees actual page content.
 
-- Architecture principle: tools are simple executors, skills provide intelligence, code pipeline is minimal
-- Retriever-agnostic: any retriever can be swapped via admin panel config
-- Language policy: all model instructions in English, output in Indonesian
-- Vercel serverless deployment (Next.js)
-- Token budget: ~119K tokens available in 128K context window (current usage ~9K)
+2. **Anti-hallucination enforcement** — `COMPOSE_PHASE_DIRECTIVE` (position #1, highest priority) instructs: "You may ONLY state facts that appear in Page content (verified) sections. NEVER add details from training knowledge."
+
+3. **Identity disambiguation** — SKILL.md CONTENT VERIFICATION section: when sources attribute contradictory identities to the same name, present separately. Don't merge profiles from different people.
+
+4. **Inline domain pollution** — SKILL.md bans embedding domain names in response text. Sources referenced only by citation number [1], [2], etc.
+
+### What FetchWeb Cannot Solve (Addressed by RAG)
+
+1. **Truncation loss** — FetchWeb caps page content at 12,000 chars for compose context. Academic papers run 20,000-60,000+ chars. RAG stores full content as chunks for later retrieval.
+
+2. **Verbatim quoting** — Even with page content in context, LLMs paraphrase. RAG tools (`quoteFromSource`) retrieve exact chunks for verbatim citation.
+
+3. **Follow-up access** — Page content exists only in the compose turn's context. RAG persists chunks in Convex for retrieval in any subsequent turn.
+
+4. **Cross-source retrieval** — Finding specific passages across 20-50 sources requires semantic search. RAG tool `searchAcrossSources` provides this.
+
+See `docs/search-tool-skills/rag/` for RAG pipeline documentation.
+
+### Implementation Details
+
+**Primary tier: fetch + readability**
+- Node.js `fetch()` with browser User-Agent + `Accept-Language: id-ID`
+- `linkedom` for DOM (920 KB, vs jsdom 6.9 MB)
+- `@mozilla/readability` extracts article content (clean HTML)
+- `turndown` converts HTML → markdown
+- Metadata extraction: `article.byline`, `article.publishedTime`, `article.siteName` + HTML meta tags (`citation_author`, `og:author`, `article:author`, etc.)
+- Zero cost, ~0.5-2s latency per page
+- Fails on: Cloudflare-protected sites, JS-rendered SPAs
+- `MIN_CONTENT_CHARS = 50` filter for trivially short extractions
+
+**Fallback tier: Tavily Extract**
+- `@tavily/core` SDK, `.extract()` method
+- Handles Cloudflare, JS-rendered pages
+- 1 credit per 5 successful URLs, free 1,000 credits/month
+- Only called for URLs that fail primary tier
+
+**FetchedContent interface:**
+```typescript
+interface FetchedContent {
+  url: string
+  pageContent: string | null      // truncated for compose context
+  fullContent: string | null       // raw for RAG ingest
+  fetchMethod: "fetch" | "tavily" | null
+}
+```
+
+### Decisions Made (Previously Open Questions)
+
+| Question | Decision | Reasoning |
+|---|---|---|
+| Where does fetching happen? | Inside stream `execute` callback, after Phase 1 | Vercel timeout safe — first byte already sent |
+| How many URLs? | All sources, max 7 | Retriever already filters relevance. No scoring in pipeline. |
+| Token budget per page? | 12,000 chars (~3,000 tokens) truncated for compose | 7 × 3K = 21K tokens. ~18% of 119K available. Full content goes to RAG. |
+| searchText kept? | Dropped when page content available | searchText was the contamination source. Page content replaces it. |
+| SKILL.md changes? | Added: CONTENT VERIFICATION, identity disambiguation, no inline domains, verbatim quoting tools | Multiple iterations to find what Gemini Flash actually follows. |
+| Both fetch + Tavily fail? | Graceful degradation per-URL, never breaks flow | Sources without pageContent marked "[no page content — unverified source]" |
+| Sequential or parallel? | Parallel fetch (Promise.allSettled), sequential RAG ingest | Fetch: latency = slowest single URL. RAG: sequential to avoid embedding rate limits. |
+| Paper vs chat mode? | Same — shared orchestrator | Paper mode even more critical for academic integrity. |
+
+### Key Files
+
+| File | Description |
+|------|-------------|
+| `src/lib/ai/web-search/content-fetcher.ts` | FetchWeb: fetch + readability + turndown + metadata, Tavily fallback |
+| `src/lib/ai/web-search/orchestrator.ts` | Three-phase flow + RAG ingest fire-and-forget |
+| `src/lib/ai/search-results-context.ts` | Build compose context with pageContent, conditional verified/unverified labels |
+| `src/lib/ai/rag-ingest.ts` | Core RAG pipeline: chunk → embed → store |
+| `src/lib/ai/chunking.ts` | Section-aware content chunker |
+| `src/lib/ai/embedding.ts` | Google gemini-embedding-001 with retry + retry-after |
+| `src/lib/ai/skills/web-search-quality/SKILL.md` | Compose instructions: content verification, disambiguation, quoting tools |
 
 ## Related Documents
 
-- `docs/search-tool-skills/README.md` — architecture principles
+- `docs/search-tool-skills/README.md` — architecture principles (updated)
+- `docs/search-tool-skills/rag/context-rationale.md` — why RAG + FetchWeb
+- `docs/search-tool-skills/rag/design.md` — RAG pipeline design
+- `docs/search-tool-skills/rag/known-issues.md` — known issues and resolution status
+- `docs/plans/2026-03-16-fetchweb-content-extraction-design.md` — original FetchWeb design
 - `docs/search-tool-skills/enforcement/README.md` — full technical documentation
-- `docs/search-tool-skills/architecture-constraints.md` — constraints and rules
-- `docs/superpowers/specs/2026-03-15-search-anti-hallucination-design.md` — Layer 1+2 design (citedText + INFORMATION SUFFICIENCY)
+- `docs/superpowers/specs/2026-03-15-search-anti-hallucination-design.md` — Layer 1+2 design (pre-FetchWeb)
 
 ## Screenshots
 
-Evidence of hallucination:
+Evidence of hallucination (before FetchWeb):
 - `screenshots/Screen Shot 2026-03-15 at 19.54.38.png` — first hallucination case
 - `screenshots/Screen Shot 2026-03-15 at 19.54.47.png`
 - `screenshots/Screen Shot 2026-03-15 at 19.54.57.png`
@@ -129,3 +159,6 @@ Evidence of hallucination:
 - `screenshots/Screen Shot 2026-03-16 at 01.36.19.png`
 - `screenshots/Screen Shot 2026-03-16 at 01.36.44.png`
 - `screenshots/Screen Shot 2026-03-16 at 01.36.53.png`
+
+After FetchWeb + searchText removal:
+- `screenshots/Screen Shot 2026-03-16 at 05.54.27.png` — accurate results, no fabrication
