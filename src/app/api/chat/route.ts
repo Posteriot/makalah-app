@@ -230,6 +230,41 @@ export async function POST(req: Request) {
             )
         }
 
+        // ── RAG Backfill: ingest uploaded files that missed RAG due to null conversationId ──
+        // When files are uploaded on the landing page (no conversation yet), file.conversationId
+        // is undefined and RAG ingest is skipped. Now that conversation exists, backfill.
+        if (isNewConversation && effectiveFileIds.length > 0) {
+            void (async () => {
+                try {
+                    const { ingestToRag } = await import("@/lib/ai/rag-ingest")
+                    for (const fileId of effectiveFileIds) {
+                        try {
+                            // Patch file's conversationId
+                            await fetchMutationWithToken(api.files.patchConversationId, {
+                                fileId,
+                                conversationId: currentConversationId as Id<"conversations">,
+                            })
+                            // Get file to check if extraction is done
+                            const file = await fetchQueryWithToken(api.files.getFile, { fileId })
+                            if (file?.extractedText && file.extractionStatus === "success") {
+                                await ingestToRag({
+                                    conversationId: currentConversationId as string,
+                                    sourceType: "upload",
+                                    sourceId: fileId as string,
+                                    content: file.extractedText,
+                                    metadata: { title: file.name },
+                                })
+                            }
+                        } catch (err) {
+                            console.error(`[RAG Backfill] Failed for file ${fileId}:`, err)
+                        }
+                    }
+                } catch (err) {
+                    console.error("[RAG Backfill] Import/setup failed:", err)
+                }
+            })()
+        }
+
         if (process.env.NODE_ENV !== "production") {
             console.info("[ATTACH-DIAG][route] effective fileIds", {
                 reason: attachmentResolution.reason,
