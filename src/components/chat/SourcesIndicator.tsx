@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { NavArrowDown, NavArrowUp, CheckCircle, OpenNewWindow } from "iconoir-react"
+import { NavArrowDown, NavArrowUp, NavArrowRight, CheckCircle, OpenNewWindow } from "iconoir-react"
 import {
     Collapsible,
     CollapsibleContent,
@@ -37,6 +37,7 @@ export function SourcesIndicator({ sources, onOpenSheet }: SourcesIndicatorProps
                 <span className="font-mono text-[11px] font-medium uppercase tracking-wide text-[var(--chat-muted-foreground)]">
                     Menemukan {sources.length} rujukan
                 </span>
+                <NavArrowRight className="h-3.5 w-3.5 text-[var(--chat-muted-foreground)] transition-colors" />
             </button>
         )
     }
