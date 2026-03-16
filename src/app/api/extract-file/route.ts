@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
 
       // ── RAG Ingest: fire-and-forget ──
       if (file.conversationId && extractedText) {
-        fetch(`${process.env.NEXT_PUBLIC_APP_URL || ""}/api/rag/ingest`, {
+        void fetch(`${process.env.NEXT_PUBLIC_APP_URL || ""}/api/rag/ingest`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
