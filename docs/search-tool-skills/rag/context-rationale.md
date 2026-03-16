@@ -6,11 +6,12 @@ This document explains why a RAG (Retrieval-Augmented Generation) pipeline is ne
 
 ## Background: FetchWeb
 
-FetchWeb (implemented March 2026) adds a content extraction layer to the web search pipeline. It fetches actual page content from source URLs, converts HTML to markdown via readability + turndown, and provides this content to the compose model as ground truth.
+FetchWeb (implemented March 2026) adds a content extraction layer to the web search pipeline. It fetches actual page content from source URLs, converts HTML to markdown via readability + turndown, and provides this content to the compose model as ground truth. Two-tier: primary fetch (Node.js fetch + linkedom + readability + turndown) with Tavily Extract API as fallback for Cloudflare-blocked or JS-rendered sites. Content below 50 characters is discarded (MIN_CONTENT_CHARS filter for trivially short extractions like login pages).
 
 **What FetchWeb solved:**
 - Compose model hallucination — the model fabricated claims because it had zero actual page content. It only received the retriever's synthesis (`searchText`) which itself could contain errors.
 - Dropping `searchText` from compose context when page content is available eliminated the contamination source.
+- Anti-hallucination rules in `COMPOSE_PHASE_DIRECTIVE` (first system message, highest priority) instruct the model to only state facts from verified page content and never fill gaps with training knowledge.
 
 **What FetchWeb cannot solve:**
 
