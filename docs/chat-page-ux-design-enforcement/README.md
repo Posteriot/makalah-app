@@ -18,6 +18,13 @@ README ini sudah diselaraskan dengan implementasi aktual branch ini. Arah lama y
   - mode kelola percakapan dipindah ke dalam sidebar `Riwayat`
   - data loading, cleanup cascade, dan kontrol akses Convex ikut diperkuat
 
+## Status Merge Final
+
+- Implementasi utama branch ini sudah masuk ke `main` lewat PR `#109`
+- Merge commit final: `ac07b39439290e0a31e4114842c982d22f149e08`
+- Remote branch `chat-page-ux-design-enforcement` dan `origin/main` sudah disinkronkan ke commit yang sama
+- README ini dipertahankan sebagai catatan handoff final setelah sinkronisasi branch selesai
+
 ## Keputusan Arsitektur yang Sudah Dikunci
 
 ### 1. Workspace panel percakapan dan sesi paper dibatalkan
