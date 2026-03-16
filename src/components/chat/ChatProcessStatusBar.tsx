@@ -15,6 +15,9 @@ interface ChatProcessStatusBarProps {
   elapsedSeconds: number
   reasoningSteps?: ReasoningTraceStep[]
   reasoningHeadline?: string | null
+  /** External control for the reasoning panel open state */
+  isPanelOpen?: boolean
+  onPanelOpenChange?: (open: boolean) => void
 }
 
 export function ChatProcessStatusBar({
@@ -24,8 +27,12 @@ export function ChatProcessStatusBar({
   elapsedSeconds,
   reasoningSteps = [],
   reasoningHeadline,
+  isPanelOpen,
+  onPanelOpenChange,
 }: ChatProcessStatusBarProps) {
-  const [isPanelOpen, setIsPanelOpen] = useState(false)
+  const [internalPanelOpen, setInternalPanelOpen] = useState(false)
+  const isPanelOpenValue = isPanelOpen ?? internalPanelOpen
+  const setPanelOpen = onPanelOpenChange ?? setInternalPanelOpen
 
   const safeProgress = Math.max(0, Math.min(100, Math.round(progress)))
   const isProcessing = status === "submitted" || status === "streaming"
@@ -64,7 +71,7 @@ export function ChatProcessStatusBar({
   if (!shouldShow) return null
 
   const hasSteps = reasoningSteps.length > 0
-  const openPanel = () => hasSteps && setIsPanelOpen(true)
+  const openPanel = () => hasSteps && setPanelOpen(true)
 
   return (
     <>
@@ -142,8 +149,8 @@ export function ChatProcessStatusBar({
 
       {hasSteps && (
         <ReasoningActivityPanel
-          open={isPanelOpen}
-          onOpenChange={setIsPanelOpen}
+          open={isPanelOpenValue}
+          onOpenChange={setPanelOpen}
           steps={reasoningSteps}
         />
       )}

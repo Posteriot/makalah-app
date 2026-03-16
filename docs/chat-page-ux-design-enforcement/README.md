@@ -8,7 +8,7 @@ README ini sudah diselaraskan dengan implementasi aktual branch ini. Arah lama y
 
 - Branch aktif: `chat-page-ux-design-enforcement`
 - Worktree aktif: `/Users/eriksupit/Desktop/makalahapp/.worktrees/chat-page-ux-design-enforcement`
-- Fokus branch: penegakan UI/UX halaman chat dengan pusat perubahan pada activity bar, sidebar, riwayat percakapan, top bar, viewer artifact/refrasa, dan alur data pendukungnya
+- Fokus branch: penegakan UI/UX halaman chat dengan pusat perubahan pada activity bar, sidebar, riwayat percakapan, top bar, viewer artifact/refrasa, sources sheet, dan alur data pendukungnya
 - Hasil utama branch ini:
   - activity bar chat disederhanakan
   - sidebar `Riwayat` diubah menjadi tree ala explorer
@@ -16,6 +16,7 @@ README ini sudah diselaraskan dengan implementasi aktual branch ini. Arah lama y
   - panel kanan dikembalikan hanya untuk viewer `artifact` dan `refrasa`
   - `Linimasa Progres` tetap dipertahankan sebagai panel terpisah
   - mode kelola percakapan dipindah ke dalam sidebar `Riwayat`
+  - sources/rujukan diubah dari inline dropdown menjadi right sheet dengan enriched cards
   - data loading, cleanup cascade, dan kontrol akses Convex ikut diperkuat
 
 ## Status Merge Final
@@ -218,6 +219,34 @@ File terkait:
 
 Design doc: `docs/superpowers/specs/2026-03-15-table-rendering-improvement-design.md`
 
+#### J. Sources right sheet (rujukan sebagai sidebar)
+
+Sudah aktif:
+
+- sources/rujukan di chat message tidak lagi tampil sebagai inline collapsible dropdown
+- klik "MENEMUKAN X RUJUKAN" sekarang membuka right sheet (desktop) atau bottom sheet (mobile)
+- sheet menampilkan enriched source cards: favicon, clean domain name, judul bold clickable, tanggal publikasi (jika ada)
+- header sheet: "Rujukan" + "X sumber ditemukan"
+- mutual exclusive dengan Proses (reasoning) sheet — buka satu otomatis tutup yang lain
+- `SourcesIndicator` tetap dual-mode: sheet mode di `MessageBubble`, inline collapsible di `ArtifactViewer`/`FullsizeArtifactModal`
+- chevron responsif di trigger button: right chevron (desktop, sheet dari kanan), down chevron (mobile, sheet dari bawah)
+- `ChatProcessStatusBar` sekarang mendukung controlled mode (`isPanelOpen`/`onPanelOpenChange`) untuk koordinasi mutual exclusive
+- state `activeSheet` di-lift ke `ChatWindow` sebagai single source of truth
+
+Komponen baru:
+
+- `src/components/chat/SourcesPanel.tsx` — sheet component mirroring `ReasoningActivityPanel` pattern
+
+File yang dimodifikasi:
+
+- `src/components/chat/SourcesIndicator.tsx` — dual-mode (sheet button atau inline collapsible)
+- `src/components/chat/MessageBubble.tsx` — threading `onOpenSources` callback
+- `src/components/chat/ChatWindow.tsx` — `activeSheet` state, render `SourcesPanel`, wire mutual exclusivity
+- `src/components/chat/ChatProcessStatusBar.tsx` — externalized panel open state
+
+Design doc: `docs/plans/2026-03-16-sources-right-sheet-design.md`
+Implementation plan: `docs/plans/2026-03-16-sources-right-sheet-implementation.md`
+
 #### G. Data flow, cleanup, dan security
 
 Sudah aktif:
@@ -356,6 +385,16 @@ Urutan commit yang paling relevan terhadap bentuk akhir branch ini:
 - `8bc26efb` `fix: table overflow and URL truncation not working`
 - `4827250a` `feat: add copy icons and rename table copy buttons`
 
+### Sources right sheet
+
+- `18d39abb` `feat(chat): add SourcesPanel sheet component`
+- `d75208cd` `feat(chat): add dual-mode to SourcesIndicator (sheet or collapsible)`
+- `fad00ec5` `feat(chat): thread onOpenSources callback through MessageBubble`
+- `c3981633` `feat(chat): wire mutual exclusive sheet state for Sources and Proses panels`
+- `1d1a65fa` `fix(chat): add right chevron to sources button as sheet affordance`
+- `8fb222c4` `fix(chat): responsive chevron direction on sources button`
+- `b4ac5b8b` `refactor(chat): remove dead domain fallback in SourceCard`
+
 ## Constraint Visual dan UX yang Wajib Dipatuhi
 
 ### 1. Halaman chat wajib tunduk ke token `--chat-*`
@@ -386,7 +425,18 @@ Aturan yang sudah divalidasi:
 - jangan menambah level tengah `Sesi Paper`
 - jangan membuat parent row menjadi kartu info yang berat
 
-### 4. Delete harus tetap jujur
+### 4. Sheet kanan bersifat mutual exclusive
+
+Aturan yang berlaku:
+
+- hanya satu sheet yang boleh terbuka pada satu waktu (Proses ATAU Rujukan, tidak keduanya)
+- state dikontrol terpusat di `ChatWindow` via `activeSheet`
+- sheet baru yang ditambahkan harus ikut mekanisme `activeSheet` yang sama
+- desktop: sheet muncul dari kanan (`side="right"`)
+- mobile: sheet muncul dari bawah (`side="bottom"`)
+- pattern referensi: `ReasoningActivityPanel` dan `SourcesPanel`
+
+### 5. Delete harus tetap jujur
 
 Delete di sidebar harus selalu dipahami sebagai delete conversation subtree, bukan delete file parsial.
 
@@ -430,6 +480,10 @@ Kalau ada anomali Convex baru, cek dulu:
   design spec table rendering improvement
 - `../superpowers/plans/2026-03-15-table-rendering-improvement.md`
   implementation plan table rendering improvement
+- `../plans/2026-03-16-sources-right-sheet-design.md`
+  design doc sources right sheet (rujukan sebagai sidebar)
+- `../plans/2026-03-16-sources-right-sheet-implementation.md`
+  implementation plan sources right sheet
 
 ## Titik Lanjut yang Masuk Akal
 
@@ -439,6 +493,8 @@ Kalau branch ini dilanjutkan lagi, titik lanjut yang paling logis sekarang adala
 2. audit minor UX mobile lanjutan untuk polish, bukan lagi perubahan arsitektur composer/header
 3. audit performa / cost query lebih lanjut untuk user dengan histori sangat besar
 4. integrasi kelak dengan `Knowledge Base` tanpa menghidupkan lagi panel kanan manager lama
+5. enrichment lanjutan sources sheet (snippet/deskripsi dari source, thumbnail) — butuh perubahan data pipeline
+6. sheet ketiga (jika ada) harus ikut mekanisme `activeSheet` mutual exclusive di `ChatWindow`
 
 Untuk memulai sesi baru dengan aman:
 
