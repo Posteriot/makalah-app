@@ -255,6 +255,23 @@ export async function POST(request: NextRequest) {
         processedAt: Date.now(),
       }, convexOptions)
 
+      // ── RAG Ingest: fire-and-forget ──
+      if (file.conversationId && extractedText) {
+        fetch(`${process.env.NEXT_PUBLIC_APP_URL || ""}/api/rag/ingest`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversationId: file.conversationId,
+            sourceType: "upload",
+            sourceId: fileId,
+            content: extractedText,
+            metadata: { title: file.name },
+          }),
+        }).catch((err) => {
+          console.error(`[ExtractFile] RAG ingest failed for ${fileId}:`, err)
+        })
+      }
+
       return NextResponse.json({
         success: true,
         fileId,
