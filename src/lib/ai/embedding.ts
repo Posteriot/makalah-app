@@ -26,12 +26,16 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
 export async function embedTexts(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return []
 
+  const model = google.textEmbeddingModel(EMBEDDING_MODEL)
   const { embeddings } = await withRetry(() => embedMany({
-    model: google.textEmbeddingModel(EMBEDDING_MODEL, {
-      outputDimensionality: DIMENSIONS,
-      taskType: "RETRIEVAL_DOCUMENT",
-    }),
+    model,
     values: texts,
+    providerOptions: {
+      google: {
+        outputDimensionality: DIMENSIONS,
+        taskType: "RETRIEVAL_DOCUMENT",
+      },
+    },
   }))
 
   return embeddings
@@ -42,12 +46,16 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
  * Uses taskType RETRIEVAL_QUERY. Retries 3x with exponential backoff.
  */
 export async function embedQuery(query: string): Promise<number[]> {
+  const model = google.textEmbeddingModel(EMBEDDING_MODEL)
   const { embedding } = await withRetry(() => embed({
-    model: google.textEmbeddingModel(EMBEDDING_MODEL, {
-      outputDimensionality: DIMENSIONS,
-      taskType: "RETRIEVAL_QUERY",
-    }),
+    model,
     value: query,
+    providerOptions: {
+      google: {
+        outputDimensionality: DIMENSIONS,
+        taskType: "RETRIEVAL_QUERY",
+      },
+    },
   }))
 
   return embedding
