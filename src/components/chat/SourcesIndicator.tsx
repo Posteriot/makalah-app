@@ -18,13 +18,36 @@ interface Source {
 
 interface SourcesIndicatorProps {
     sources: Source[]
+    /** When provided, clicking opens the Sources sheet instead of expanding inline */
+    onOpenSheet?: (sources: Source[]) => void
 }
 
-export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
+export function SourcesIndicator({ sources, onOpenSheet }: SourcesIndicatorProps) {
+    if (!sources || sources.length === 0) return null
+
+    // Sheet mode: simple button, no inline expand
+    if (onOpenSheet) {
+        return (
+            <button
+                type="button"
+                onClick={() => onOpenSheet(sources)}
+                className="flex w-full items-center gap-2 py-1.5 text-left transition-colors hover:opacity-80"
+            >
+                <CheckCircle className="h-3.5 w-3.5 flex-shrink-0 text-[var(--chat-muted-foreground)]" />
+                <span className="font-mono text-[11px] font-medium uppercase tracking-wide text-[var(--chat-muted-foreground)]">
+                    Menemukan {sources.length} rujukan
+                </span>
+            </button>
+        )
+    }
+
+    // Inline collapsible mode (for ArtifactViewer / FullsizeArtifactModal)
+    return <SourcesCollapsible sources={sources} />
+}
+
+function SourcesCollapsible({ sources }: { sources: Source[] }) {
     const [isOpen, setIsOpen] = useState(false)
     const [showAll, setShowAll] = useState(false)
-
-    if (!sources || sources.length === 0) return null
 
     const indexedSources = sources.map((source, idx) => ({ source, idx }))
     const displayedSources = showAll ? indexedSources : indexedSources.slice(0, 5)
