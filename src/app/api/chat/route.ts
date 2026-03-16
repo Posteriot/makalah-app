@@ -2072,6 +2072,7 @@ Aturan:
                 }
 
                 return await executeWebSearch({
+                    conversationId: currentConversationId as string,
                     retrieverChain,
                     tavilyApiKey: process.env.TAVILY_API_KEY,
                     messages: fullMessagesGateway,

@@ -24,6 +24,7 @@ export interface RetrieverChainEntry {
 }
 
 export interface WebSearchOrchestratorConfig {
+  conversationId: string // needed for RAG ingest
   retrieverChain: RetrieverChainEntry[]
   messages: Parameters<typeof import("ai").streamText>[0]["messages"]
   composeMessages: Parameters<typeof import("ai").streamText>[0]["messages"]

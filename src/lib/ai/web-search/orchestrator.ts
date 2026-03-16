@@ -440,6 +440,25 @@ export async function executeWebSearch(
               retrieverIndex: successRetrieverIndex,
               attemptedRetrievers,
             })
+            // ── RAG Ingest: fire-and-forget ──
+            for (const fetched of fetchedContent) {
+              if (fetched.fullContent) {
+                const source = enrichedSources.find((s) => s.url === fetched.url)
+                fetch(`${process.env.NEXT_PUBLIC_APP_URL || ""}/api/rag/ingest`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    conversationId: config.conversationId,
+                    sourceType: "web",
+                    sourceId: fetched.url,
+                    content: fetched.fullContent,
+                    metadata: { title: source?.title },
+                  }),
+                }).catch((err) => {
+                  console.error(`[Orchestrator] RAG ingest failed for ${fetched.url}:`, err)
+                })
+              }
+            }
           } catch (err) {
             // Citation finalize failed — ensure search status is terminal
             writer.write({
