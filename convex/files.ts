@@ -71,19 +71,6 @@ export const updateExtractionResult = mutation({
     },
 })
 
-// Backfill conversationId for files uploaded before conversation was created
-export const patchConversationId = mutation({
-    args: {
-        fileId: v.id("files"),
-        conversationId: v.id("conversations"),
-    },
-    handler: async (ctx, { fileId, conversationId }) => {
-        const { file } = await requireFileOwner(ctx, fileId)
-        if (!file.conversationId) {
-            await ctx.db.patch(fileId, { conversationId })
-        }
-    },
-})
 
 // Get file by ID
 export const getFile = query({

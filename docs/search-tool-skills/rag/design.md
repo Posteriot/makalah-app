@@ -40,12 +40,6 @@ Currently `content-fetcher.ts` truncates all content to 12K chars inside `fetchA
 - **Web search (orchestrator.ts):** Inside the `execute` callback, after `config.onFinish()` completes (line ~442). The `fetchedContent` array (with full content after refactor) is still in scope. Fire-and-forget `fetch("/api/rag/ingest", ...)` for each source with content.
 - **File upload (extract-file/route.ts):** After successful `updateExtractionResult` mutation (line ~256). `extractedText` and `file.conversationId` are both available. Fire-and-forget to `/api/rag/ingest`.
 
-### Edge Case: File Upload Without conversationId
-
-The `files` table has `conversationId` as `v.optional(v.id("conversations"))`. It can be `undefined` if a file is uploaded before the conversation is created (e.g., user uploads a file in a brand-new chat that has no ID yet). The upload flow in `FileUploadButton.tsx` passes `conversationId` from props, which comes from the current chat — but on a fresh page with no conversation, this is `null`.
-
-**Handling:** If `file.conversationId` is `undefined` after extraction, skip RAG ingest. The file content is still stored in `files.extractedText` and injected into chat context via the existing `fileContext` mechanism. RAG ingest for this file can happen later — when the first message is sent and a conversation is created, a backfill could associate orphaned files and trigger ingest. However, this backfill is NOT in scope for the initial RAG implementation. For v1: no conversationId = no RAG ingest for that file.
-
 ### Authentication for /api/rag/ingest
 
 Both callers are server-side Next.js API routes — they can pass the user's auth token via internal fetch header. The ingest route validates with `isAuthenticated()` + `getToken()`, same as `/api/extract-file`.
