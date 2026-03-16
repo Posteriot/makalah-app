@@ -421,13 +421,14 @@ The tool will:
 
                     return {
                         success: true,
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         chunks: results.map((r: any) => ({
                             content: r.content,
                             sectionHeading: r.metadata?.sectionHeading,
                             relevanceScore: r._score,
                         })),
                     }
-                } catch (error) {
+                } catch (_error) {
                     return { success: false, error: "Failed to retrieve source content." }
                 }
             },
@@ -465,6 +466,7 @@ The tool will:
 
                     return {
                         success: true,
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         chunks: results.map((r: any) => ({
                             content: r.content,
                             sourceId: r.sourceId,
@@ -472,7 +474,7 @@ The tool will:
                             relevanceScore: r._score,
                         })),
                     }
-                } catch (error) {
+                } catch (_error) {
                     return { success: false, error: "Failed to search across sources." }
                 }
             },
