@@ -31,6 +31,19 @@ Shared Pipeline (POST /api/rag/ingest):
 
 Both entry points fire async — user never waits for RAG ingestion.
 
+### How Full Content Is Obtained (FetchWeb)
+
+Currently `content-fetcher.ts` truncates all content to 12K chars inside `fetchAndParse()` before returning. For RAG, we need the full content. Refactor: `fetchAndParse()` returns full markdown. Truncation moves to the orchestrator — compose context gets `truncate(content)`, RAG ingest gets the raw full content. This is a small change: move the `truncate()` call from content-fetcher to orchestrator.
+
+### Ingest Insertion Points
+
+- **Web search (orchestrator.ts):** Inside the `execute` callback, after `config.onFinish()` completes (line ~442). The `fetchedContent` array (with full content after refactor) is still in scope. Fire-and-forget `fetch("/api/rag/ingest", ...)` for each source with content.
+- **File upload (extract-file/route.ts):** After successful `updateExtractionResult` mutation (line ~256). `extractedText` and `file.conversationId` are both available. Fire-and-forget to `/api/rag/ingest`.
+
+### Authentication for /api/rag/ingest
+
+Both callers are server-side Next.js API routes — they can pass the user's auth token via internal fetch header. The ingest route validates with `isAuthenticated()` + `getToken()`, same as `/api/extract-file`.
+
 ## Convex Schema
 
 New `sourceChunks` table:
@@ -147,6 +160,18 @@ Input: { query: string, sourceType?: "web" | "upload" }
 4. Model synthesizes from chunks, quotes verbatim when citing
 ```
 
+### Tool Availability — Important Constraint
+
+RAG tools are **NOT available during web search compose phase.** The compose phase in `orchestrator.ts` explicitly has no tools — the `COMPOSE_PHASE_DIRECTIVE` states "You have NO access to tools." This is by design.
+
+RAG tools are available in **follow-up turns** (normal chat and paper mode), where the full tool set from `paper-tools.ts` is registered. This means:
+
+- **Web search compose turn:** Model uses truncated page content (from FetchWeb) to produce initial response. No RAG access.
+- **Follow-up turn:** User asks "kutipannya mana?" → Model calls `quoteFromSource` → retrieves verbatim chunk from Convex → quotes it.
+- **Paper writing turns:** Model calls `searchAcrossSources` to find relevant passages for literature review, discussion, etc.
+
+This is the correct behavior — RAG ingestion happens in background AFTER compose, so chunks aren't available yet during that same turn anyway.
+
 ### Why Tool Calls, Not Auto-Inject
 
 - Auto-inject = chunks in every turn even when not needed. Wastes tokens.
@@ -174,13 +199,21 @@ Input: { query: string, sourceType?: "web" | "upload" }
 
 **Core principle:** RAG never breaks existing flow. All failures = graceful degradation to pre-RAG behavior.
 
+### Cleanup on Conversation Deletion
+
+When a conversation is deleted, all associated `sourceChunks` must be cascade-deleted. Add a `deleteByConversation` mutation to `convex/sourceChunks.ts` and call it from the existing conversation deletion logic in `convex/conversations.ts`.
+
+### Convex Action Requirement
+
+`vectorSearch` can only be called from Convex **actions** (not queries or mutations). This is a Convex platform constraint. The `searchByEmbedding` function in `convex/sourceChunks.ts` must be defined as an `action`, not a `query`. It calls `ctx.vectorSearch()`, then loads full documents via `ctx.runQuery()` to return content.
+
 ## Files Changed
 
 | File | Change |
 |---|---|
 | **Convex** | |
 | `convex/schema.ts` | Add `sourceChunks` table with vectorIndex |
-| `convex/sourceChunks.ts` | NEW — mutations: `ingestChunks`, `getBySource`, `deleteBySource`. Action: `searchByEmbedding` |
+| `convex/sourceChunks.ts` | NEW — mutations: `ingestChunks`, `getBySource`, `deleteBySource`, `deleteByConversation`. Action: `searchByEmbedding` (vectorSearch must be in action, not query) |
 | **API Routes** | |
 | `src/app/api/rag/ingest/route.ts` | NEW — chunking + embedding + store pipeline |
 | **AI Tools** | |
@@ -195,8 +228,10 @@ Input: { query: string, sourceType?: "web" | "upload" }
 | **SKILL.md** | |
 | `src/lib/ai/skills/web-search-quality/SKILL.md` | Add instructions for `quoteFromSource` and `searchAcrossSources` usage |
 
+| `convex/conversations.ts` | Add cascade-delete of sourceChunks when conversation deleted |
+| `src/lib/ai/web-search/content-fetcher.ts` | Refactor: return full content, move truncation to caller (orchestrator) |
+
 **Unchanged:**
-- FetchWeb pipeline (content-fetcher.ts) — still truncates for compose context, full content sent to RAG separately
 - File upload UI — no user-facing changes
 - Paper stages structure — stageData unchanged, RAG lives in separate table
 - Citation formatter — unchanged
