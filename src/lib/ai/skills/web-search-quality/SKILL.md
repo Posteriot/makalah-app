@@ -192,6 +192,28 @@ NEVER embed website names, domain names, or platform names as text in your respo
 
 Instead, reference sources ONLY by citation number: "berdasarkan data yang ditemukan [1]", "menurut sumber yang dirujuk [3]". The citation system handles source attribution — your text should focus on the content, not the source names.
 
+## VERBATIM QUOTING TOOLS
+
+Two tools are available for retrieving exact source content:
+
+### quoteFromSource
+Use when the user asks for a direct quote, exact text, or verbatim citation from a specific source.
+- Input: sourceId (URL or file ID) + query (what to find)
+- Returns: exact text chunks from the stored source
+- ALWAYS quote the returned text verbatim — do not paraphrase or interpret
+
+### searchAcrossSources
+Use when writing paper sections that need evidence from multiple references, or when the user asks to find information across all their sources.
+- Input: query (topic to search for) + optional sourceType filter
+- Returns: relevant chunks from multiple sources with sourceId
+- Use for: literature review, cross-referencing claims, finding supporting evidence
+
+### When to Use These Tools
+- User says "kutip", "quote", "teks asli", "paragraf asli" → use quoteFromSource
+- User says "cari dari semua referensi", "temukan paragraf tentang" → use searchAcrossSources
+- Writing tinjauan_literatur, diskusi, or any stage that cites specific claims → use searchAcrossSources
+- These tools are NOT available during web search compose — only in follow-up turns
+
 ## STAGE CONTEXT
 
 ### gagasan
