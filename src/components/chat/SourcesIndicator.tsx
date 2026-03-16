@@ -37,7 +37,8 @@ export function SourcesIndicator({ sources, onOpenSheet }: SourcesIndicatorProps
                 <span className="font-mono text-[11px] font-medium uppercase tracking-wide text-[var(--chat-muted-foreground)]">
                     Menemukan {sources.length} rujukan
                 </span>
-                <NavArrowRight className="h-3.5 w-3.5 text-[var(--chat-muted-foreground)] transition-colors" />
+                <NavArrowDown className="h-3.5 w-3.5 text-[var(--chat-muted-foreground)] transition-colors md:hidden" />
+                <NavArrowRight className="hidden h-3.5 w-3.5 text-[var(--chat-muted-foreground)] transition-colors md:block" />
             </button>
         )
     }
