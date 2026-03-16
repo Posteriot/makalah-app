@@ -106,6 +106,7 @@ import type * as permissions from "../permissions.js";
 import type * as pricingPlans from "../pricingPlans.js";
 import type * as richTextPages from "../richTextPages.js";
 import type * as siteConfig from "../siteConfig.js";
+import type * as sourceChunks from "../sourceChunks.js";
 import type * as stageSkills from "../stageSkills.js";
 import type * as stageSkills_constants from "../stageSkills/constants.js";
 import type * as styleConstitutions from "../styleConstitutions.js";
@@ -223,6 +224,7 @@ declare const fullApi: ApiFromModules<{
   pricingPlans: typeof pricingPlans;
   richTextPages: typeof richTextPages;
   siteConfig: typeof siteConfig;
+  sourceChunks: typeof sourceChunks;
   stageSkills: typeof stageSkills;
   "stageSkills/constants": typeof stageSkills_constants;
   styleConstitutions: typeof styleConstitutions;
