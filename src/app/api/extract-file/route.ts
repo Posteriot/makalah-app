@@ -255,18 +255,16 @@ export async function POST(request: NextRequest) {
         processedAt: Date.now(),
       }, convexOptions)
 
-      // ── RAG Ingest: fire-and-forget ──
+      // ── RAG Ingest: fire-and-forget (direct call, no HTTP) ──
       if (file.conversationId && extractedText) {
-        void fetch(`${process.env.NEXT_PUBLIC_APP_URL || ""}/api/rag/ingest`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            conversationId: file.conversationId,
-            sourceType: "upload",
-            sourceId: fileId,
-            content: extractedText,
-            metadata: { title: file.name },
-          }),
+        const { ingestToRag } = await import("@/lib/ai/rag-ingest")
+        void ingestToRag({
+          conversationId: file.conversationId,
+          sourceType: "upload",
+          sourceId: fileId,
+          content: extractedText,
+          metadata: { title: file.name },
+          convexToken: convexToken ?? undefined,
         }).catch((err) => {
           console.error(`[ExtractFile] RAG ingest failed for ${fileId}:`, err)
         })

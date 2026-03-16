@@ -21,6 +21,7 @@ import type {
 } from "./types"
 import type { SkillContext } from "@/lib/ai/skills/types"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
+import { ingestToRag } from "@/lib/ai/rag-ingest"
 
 /**
  * Compose Phase Directive — injected into compose context to prevent
@@ -440,20 +441,16 @@ export async function executeWebSearch(
               retrieverIndex: successRetrieverIndex,
               attemptedRetrievers,
             })
-            // ── RAG Ingest: fire-and-forget ──
+            // ── RAG Ingest: fire-and-forget (direct call, no HTTP) ──
             for (const fetched of fetchedContent) {
               if (fetched.fullContent) {
                 const source = enrichedSources.find((s) => s.url === fetched.url)
-                fetch(`${process.env.NEXT_PUBLIC_APP_URL || ""}/api/rag/ingest`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    conversationId: config.conversationId,
-                    sourceType: "web",
-                    sourceId: fetched.url,
-                    content: fetched.fullContent,
-                    metadata: { title: source?.title },
-                  }),
+                ingestToRag({
+                  conversationId: config.conversationId,
+                  sourceType: "web",
+                  sourceId: fetched.url,
+                  content: fetched.fullContent,
+                  metadata: { title: source?.title },
                 }).catch((err) => {
                   console.error(`[Orchestrator] RAG ingest failed for ${fetched.url}:`, err)
                 })
