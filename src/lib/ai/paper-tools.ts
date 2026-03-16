@@ -1,7 +1,7 @@
 import { tool } from "ai"
 
 import { z } from "zod"
-import { fetchQuery, fetchMutation } from "convex/nextjs"
+import { fetchQuery, fetchMutation, fetchAction } from "convex/nextjs"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { retryMutation, retryQuery } from "../convex/retry"
@@ -386,6 +386,94 @@ The tool will:
                         ? error.message
                         : "Failed to submit validation signal.";
                     return { success: false, error: errorMessage };
+                }
+            },
+        }),
+
+        quoteFromSource: tool({
+            description:
+                "Retrieve exact text chunks from a previously searched web source or uploaded file. Use when the user asks for a direct quote, verbatim citation, or the exact text from a specific source.",
+            inputSchema: z.object({
+                sourceId: z
+                    .string()
+                    .describe("The URL (for web sources) or fileId (for uploaded files) to quote from"),
+                query: z.string().describe("What to search for within this source"),
+            }),
+            execute: async ({ sourceId, query }) => {
+                try {
+                    const { embedQuery } = await import("@/lib/ai/embedding")
+                    const embedding = await embedQuery(query)
+
+                    const results = await fetchAction(
+                        api.sourceChunks.searchByEmbedding,
+                        {
+                            conversationId: context.conversationId,
+                            embedding,
+                            sourceId,
+                            limit: 5,
+                        },
+                        convexOptions
+                    )
+
+                    if (!results || results.length === 0) {
+                        return { success: false, error: "No matching content found for this source." }
+                    }
+
+                    return {
+                        success: true,
+                        chunks: results.map((r: any) => ({
+                            content: r.content,
+                            sectionHeading: r.metadata?.sectionHeading,
+                            relevanceScore: r._score,
+                        })),
+                    }
+                } catch (error) {
+                    return { success: false, error: "Failed to retrieve source content." }
+                }
+            },
+        }),
+
+        searchAcrossSources: tool({
+            description:
+                "Search across all previously searched web sources and uploaded files in this conversation. Use for finding relevant passages about a topic across multiple references.",
+            inputSchema: z.object({
+                query: z.string().describe("The topic or claim to search for across all sources"),
+                sourceType: z
+                    .enum(["web", "upload"])
+                    .optional()
+                    .describe("Filter by source type. Omit to search all."),
+            }),
+            execute: async ({ query, sourceType }) => {
+                try {
+                    const { embedQuery } = await import("@/lib/ai/embedding")
+                    const embedding = await embedQuery(query)
+
+                    const results = await fetchAction(
+                        api.sourceChunks.searchByEmbedding,
+                        {
+                            conversationId: context.conversationId,
+                            embedding,
+                            sourceType: sourceType ?? undefined,
+                            limit: 10,
+                        },
+                        convexOptions
+                    )
+
+                    if (!results || results.length === 0) {
+                        return { success: false, error: "No matching content found across sources." }
+                    }
+
+                    return {
+                        success: true,
+                        chunks: results.map((r: any) => ({
+                            content: r.content,
+                            sourceId: r.sourceId,
+                            sectionHeading: r.metadata?.sectionHeading,
+                            relevanceScore: r._score,
+                        })),
+                    }
+                } catch (error) {
+                    return { success: false, error: "Failed to search across sources." }
                 }
             },
         }),
