@@ -89,6 +89,8 @@ interface MessageBubbleProps {
     fileNameMap?: Map<string, string>
     /** File metadata lookup map (fileId → name/size/type) for history messages */
     fileMetaMap?: Map<string, { name: string; size: number; type: string }>
+    /** Callback to open the Sources sheet with the given sources */
+    onOpenSources?: (sources: { url: string; title: string; publishedAt?: number | null }[]) => void
 }
 
 export function MessageBubble({
@@ -104,6 +106,7 @@ export function MessageBubble({
     persistedArtifacts,
     fileNameMap,
     fileMetaMap,
+    onOpenSources,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
@@ -901,7 +904,7 @@ export function MessageBubble({
 
                             {hasSources && (
                                 <section aria-label="Sumber referensi">
-                                    <SourcesIndicator sources={sources} />
+                                    <SourcesIndicator sources={sources} onOpenSheet={onOpenSources} />
                                 </section>
                             )}
 
