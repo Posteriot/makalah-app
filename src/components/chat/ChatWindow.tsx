@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
+import { SourcesPanel } from "./SourcesPanel"
 import type { ReasoningTraceStep, ReasoningTraceStatus } from "./ReasoningTracePanel"
 import { useMessages } from "@/lib/hooks/useMessages"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
@@ -435,6 +436,10 @@ export function ChatWindow({
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
   const [chatViewportNode, setChatViewportNode] = useState<HTMLDivElement | null>(null)
   const [chatViewportWidth, setChatViewportWidth] = useState(0)
+  type ActiveSheet = "proses" | "sources" | null
+  const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null)
+  const [sourcesForSheet, setSourcesForSheet] = useState<{ url: string; title: string; publishedAt?: number | null }[]>([])
+
   const [processUi, setProcessUi] = useState<{
     visible: boolean
     status: ProcessVisualStatus
@@ -1509,6 +1514,15 @@ export function ChatWindow({
     stop()
   }, [hasPendingAssistantGeneration, stop])
 
+  const handleOpenSources = useCallback((sources: { url: string; title: string; publishedAt?: number | null }[]) => {
+    setSourcesForSheet(sources)
+    setActiveSheet("sources")
+  }, [])
+
+  const handleSheetChange = useCallback((sheet: "proses" | "sources" | null) => {
+    setActiveSheet(sheet)
+  }, [])
+
   const handleEdit = async (payload: {
     messageId: string
     newContent: string
@@ -2055,6 +2069,7 @@ export function ChatWindow({
                         // File name lookup for history messages
                         fileNameMap={fileNameMap}
                         fileMetaMap={fileMetaMap}
+                        onOpenSources={handleOpenSources}
                       />
                     </div>
                   </div>
@@ -2164,6 +2179,13 @@ export function ChatWindow({
           elapsedSeconds={processUi.elapsedSeconds}
           reasoningSteps={activeReasoningState.steps}
           reasoningHeadline={activeReasoningState.headline}
+          isPanelOpen={activeSheet === "proses"}
+          onPanelOpenChange={(open) => handleSheetChange(open ? "proses" : null)}
+        />
+        <SourcesPanel
+          open={activeSheet === "sources"}
+          onOpenChange={(open) => handleSheetChange(open ? "sources" : null)}
+          sources={sourcesForSheet}
         />
 
         {/* Input Area */}
