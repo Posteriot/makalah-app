@@ -78,7 +78,6 @@ export function SourcesPanel({ open, onOpenChange, sources }: SourcesPanelProps)
 
 function SourceCard({ source }: { source: Source }) {
   const parts = getWebCitationDisplayParts(source)
-  const domain = extractDomain(parts.url)
   const siteName = deriveSiteNameFromUrl(parts.url)
 
   return (
@@ -102,7 +101,7 @@ function SourceCard({ source }: { source: Source }) {
       <div className="min-w-0 flex-1">
         {/* Domain + date row */}
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <span className="truncate">{siteName || domain}</span>
+          <span className="truncate">{siteName}</span>
           {parts.dateText && (
             <>
               <span className="text-muted-foreground/50">·</span>
