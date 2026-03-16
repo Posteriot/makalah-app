@@ -4,7 +4,7 @@ import { google } from "@ai-sdk/google"
 const EMBEDDING_MODEL = "gemini-embedding-001"
 const DIMENSIONS = 768
 const MAX_RETRIES = 3
-const BASE_DELAY_MS = 1000
+const BASE_DELAY_MS = 10000 // 10s — Google free tier rate limit resets per minute
 
 async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -12,11 +12,28 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
       return await fn()
     } catch (error) {
       if (attempt === MAX_RETRIES - 1) throw error
-      const delay = BASE_DELAY_MS * Math.pow(2, attempt)
+      // Parse retry-after from error if available (Google 429 includes retryDelay)
+      const retryAfterMs = extractRetryAfterMs(error)
+      const delay = retryAfterMs ?? BASE_DELAY_MS * Math.pow(2, attempt)
+      console.log(`[Embedding] Retry ${attempt + 1}/${MAX_RETRIES} in ${Math.round(delay / 1000)}s...`)
       await new Promise((resolve) => setTimeout(resolve, delay))
     }
   }
   throw new Error("Unreachable")
+}
+
+function extractRetryAfterMs(error: unknown): number | undefined {
+  try {
+    // AI SDK wraps errors — dig into lastError.responseBody for Google's retryDelay
+    const lastError = (error as { lastError?: { responseBody?: string } })?.lastError
+    const body = lastError?.responseBody
+    if (!body) return undefined
+    const match = body.match(/"retryDelay":\s*"(\d+(?:\.\d+)?)s"/)
+    if (match) return Math.ceil(parseFloat(match[1]) * 1000) + 1000 // add 1s buffer
+  } catch {
+    // Fall through to default
+  }
+  return undefined
 }
 
 /**

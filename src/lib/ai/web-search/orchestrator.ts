@@ -441,21 +441,26 @@ export async function executeWebSearch(
               retrieverIndex: successRetrieverIndex,
               attemptedRetrievers,
             })
-            // ── RAG Ingest: fire-and-forget (direct call, no HTTP) ──
-            for (const fetched of fetchedContent) {
-              if (fetched.fullContent) {
-                const source = enrichedSources.find((s) => s.url === fetched.url)
-                ingestToRag({
-                  conversationId: config.conversationId,
-                  sourceType: "web",
-                  sourceId: fetched.url,
-                  content: fetched.fullContent,
-                  metadata: { title: source?.title },
-                }).catch((err) => {
-                  console.error(`[Orchestrator] RAG ingest failed for ${fetched.url}:`, err)
-                })
+            // ── RAG Ingest: fire-and-forget, SEQUENTIAL to avoid rate limit ──
+            // Each source ingested one at a time to stay within embedding API quota.
+            void (async () => {
+              for (const fetched of fetchedContent) {
+                if (fetched.fullContent) {
+                  try {
+                    const source = enrichedSources.find((s) => s.url === fetched.url)
+                    await ingestToRag({
+                      conversationId: config.conversationId,
+                      sourceType: "web",
+                      sourceId: fetched.url,
+                      content: fetched.fullContent,
+                      metadata: { title: source?.title },
+                    })
+                  } catch (err) {
+                    console.error(`[Orchestrator] RAG ingest failed for ${fetched.url}:`, err)
+                  }
+                }
               }
-            }
+            })()
           } catch (err) {
             // Citation finalize failed — ensure search status is terminal
             writer.write({
