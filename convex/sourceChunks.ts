@@ -35,40 +35,6 @@ export const ingestChunks = mutation({
   },
 })
 
-export const getBySource = query({
-  args: {
-    conversationId: v.id("conversations"),
-    sourceId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("sourceChunks")
-      .withIndex("by_source", (q) =>
-        q.eq("conversationId", args.conversationId).eq("sourceId", args.sourceId)
-      )
-      .collect()
-  },
-})
-
-export const deleteBySource = mutation({
-  args: {
-    conversationId: v.id("conversations"),
-    sourceId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const chunks = await ctx.db
-      .query("sourceChunks")
-      .withIndex("by_source", (q) =>
-        q.eq("conversationId", args.conversationId).eq("sourceId", args.sourceId)
-      )
-      .collect()
-    for (const chunk of chunks) {
-      await ctx.db.delete(chunk._id)
-    }
-    return { deleted: chunks.length }
-  },
-})
-
 export const hasChunks = query({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
