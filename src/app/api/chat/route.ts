@@ -234,6 +234,7 @@ export async function POST(req: Request) {
         // When files are uploaded on the landing page (no conversation yet), file.conversationId
         // is undefined and RAG ingest is skipped. Now that conversation exists, backfill.
         if (isNewConversation && effectiveFileIds.length > 0) {
+            console.log(`[RAG Backfill] New conversation with ${effectiveFileIds.length} files — starting backfill`)
             void (async () => {
                 try {
                     const { ingestToRag } = await import("@/lib/ai/rag-ingest")
@@ -244,9 +245,11 @@ export async function POST(req: Request) {
                                 fileId,
                                 conversationId: currentConversationId as Id<"conversations">,
                             })
+                            console.log(`[RAG Backfill] Patched conversationId for file ${fileId}`)
                             // Get file to check if extraction is done
                             const file = await fetchQueryWithToken(api.files.getFile, { fileId })
                             if (file?.extractedText && file.extractionStatus === "success") {
+                                console.log(`[RAG Backfill] Ingesting file "${file.name}" (${file.extractedText.length} chars)`)
                                 await ingestToRag({
                                     conversationId: currentConversationId as string,
                                     sourceType: "upload",
@@ -254,6 +257,8 @@ export async function POST(req: Request) {
                                     content: file.extractedText,
                                     metadata: { title: file.name },
                                 })
+                            } else {
+                                console.log(`[RAG Backfill] Skip file ${fileId} — extraction not ready (status: ${file?.extractionStatus})`)
                             }
                         } catch (err) {
                             console.error(`[RAG Backfill] Failed for file ${fileId}:`, err)
