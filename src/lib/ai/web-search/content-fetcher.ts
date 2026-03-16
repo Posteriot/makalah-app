@@ -4,7 +4,8 @@ import TurndownService from "turndown"
 
 export interface FetchedContent {
   url: string
-  pageContent: string | null
+  pageContent: string | null      // truncated for compose context
+  fullContent: string | null       // full content for RAG ingest (no truncation)
   fetchMethod: "fetch" | "tavily" | null
 }
 
@@ -51,11 +52,11 @@ export async function fetchPageContent(
   const results: FetchedContent[] = primaryResults.map((settled, i) => {
     if (settled.status === "fulfilled" && settled.value) {
       console.log(`[FetchWeb] ✓ PRIMARY ok: ${urls[i]} (${settled.value.length} chars)`)
-      return { url: urls[i], pageContent: settled.value, fetchMethod: "fetch" as const }
+      return { url: urls[i], pageContent: truncate(settled.value), fullContent: settled.value, fetchMethod: "fetch" as const }
     }
     const reason = settled.status === "rejected" ? settled.reason?.message : "empty/null content"
     console.log(`[FetchWeb] ✗ PRIMARY fail: ${urls[i]} — ${reason}`)
-    return { url: urls[i], pageContent: null, fetchMethod: null }
+    return { url: urls[i], pageContent: null, fullContent: null, fetchMethod: null }
   })
 
   // Fallback tier: Tavily for failed URLs
@@ -72,6 +73,7 @@ export async function fetchPageContent(
         if (idx !== -1 && tr.content) {
           console.log(`[FetchWeb] ✓ TAVILY ok: ${tr.url} (${tr.content.length} chars)`)
           results[idx].pageContent = truncate(tr.content)
+          results[idx].fullContent = tr.content
           results[idx].fetchMethod = "tavily"
         } else {
           console.log(`[FetchWeb] ✗ TAVILY fail: ${tr.url}`)
@@ -120,7 +122,7 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<string | n
       const markdown = turndown.turndown(article.content)
       // Skip trivially short extractions (login forms, nav-only pages)
       if (markdown.trim().length < MIN_CONTENT_CHARS) return null
-      return truncate(markdown)
+      return markdown
     } catch {
       return null
     }

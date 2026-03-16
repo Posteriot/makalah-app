@@ -39,6 +39,8 @@ describe("fetchPageContent", () => {
     expect(results[0].url).toBe("https://example.com/article")
     expect(results[0].pageContent).toBeTruthy()
     expect(results[0].pageContent).toContain("main content")
+    expect(results[0].fullContent).toBeTruthy()
+    expect(results[0].fullContent).toContain("main content")
     expect(results[0].fetchMethod).toBe("fetch")
     // Should NOT contain nav/footer
     expect(results[0].pageContent).not.toContain("Navigation")
@@ -60,6 +62,7 @@ describe("fetchPageContent", () => {
     const results = await fetchPageContent(["https://example.com/login"])
 
     expect(results[0].pageContent).toBeNull()
+    expect(results[0].fullContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
   })
 
@@ -72,6 +75,7 @@ describe("fetchPageContent", () => {
 
     expect(results).toHaveLength(1)
     expect(results[0].pageContent).toBeNull()
+    expect(results[0].fullContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
   })
 
@@ -82,6 +86,7 @@ describe("fetchPageContent", () => {
 
     expect(results).toHaveLength(1)
     expect(results[0].pageContent).toBeNull()
+    expect(results[0].fullContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
   })
 
@@ -126,6 +131,9 @@ describe("fetchPageContent", () => {
 
     expect(results[0].pageContent).toBeTruthy()
     expect(results[0].pageContent!.length).toBeLessThan(15000)
+    // fullContent should have the full (untruncated) text
+    expect(results[0].fullContent).toBeTruthy()
+    expect(results[0].fullContent!.length).toBeGreaterThan(results[0].pageContent!.length)
   })
 
   it("returns empty array for empty URL list", async () => {
@@ -141,6 +149,7 @@ describe("fetchPageContent", () => {
     const results = await fetchPageContent(["https://slow.com"], { timeoutMs: 100 })
 
     expect(results[0].pageContent).toBeNull()
+    expect(results[0].fullContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
   })
 })
@@ -182,6 +191,7 @@ describe("fetchPageContent — Tavily fallback", () => {
     )
 
     expect(results[0].pageContent).toContain("Extracted Content")
+    expect(results[0].fullContent).toContain("Extracted Content")
     expect(results[0].fetchMethod).toBe("tavily")
   })
 
@@ -194,6 +204,7 @@ describe("fetchPageContent — Tavily fallback", () => {
     const results = await fetchFn(["https://blocked.com/page"])
     // No tavilyApiKey → no fallback → stays null
     expect(results[0].pageContent).toBeNull()
+    expect(results[0].fullContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
   })
 
