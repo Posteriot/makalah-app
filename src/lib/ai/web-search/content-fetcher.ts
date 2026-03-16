@@ -122,7 +122,10 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<string | n
       const markdown = turndown.turndown(article.content)
       // Skip trivially short extractions (login forms, nav-only pages)
       if (markdown.trim().length < MIN_CONTENT_CHARS) return null
-      return markdown
+
+      // Extract metadata that readability parses but excludes from content
+      const metadataBlock = buildMetadataBlock(article, document)
+      return metadataBlock ? `${metadataBlock}\n\n${markdown}` : markdown
     } catch {
       return null
     }
@@ -154,6 +157,73 @@ async function fetchViaTavily(
     // Tavily failure — return all as failed
     return urls.map((url) => ({ url, content: null }))
   }
+}
+
+/**
+ * Extract author, date, and site metadata from readability article and HTML meta tags.
+ * Returns a markdown metadata block to prepend to content, or empty string if no metadata found.
+ */
+function buildMetadataBlock(
+  article: { byline?: string | null; publishedTime?: string | null; siteName?: string | null; excerpt?: string | null },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  document: any,
+): string {
+  const lines: string[] = []
+
+  // 1. Author — from readability byline or HTML meta tags
+  let author = article.byline?.trim()
+  if (!author) {
+    author = extractMetaContent(document, [
+      'meta[name="author"]',
+      'meta[name="citation_author"]',
+      'meta[property="article:author"]',
+      'meta[property="og:author"]',
+      'meta[name="dcterms.creator"]',
+    ])
+  }
+  if (author) lines.push(`**Author:** ${author}`)
+
+  // 2. Published date — from readability or meta tags
+  let date = article.publishedTime?.trim()
+  if (!date) {
+    date = extractMetaContent(document, [
+      'meta[name="citation_date"]',
+      'meta[name="citation_publication_date"]',
+      'meta[property="article:published_time"]',
+      'meta[name="dcterms.date"]',
+      'meta[name="date"]',
+      'time[datetime]',
+    ])
+  }
+  if (date) lines.push(`**Published:** ${date}`)
+
+  // 3. Site name — from readability or meta
+  let site = article.siteName?.trim()
+  if (!site) {
+    site = extractMetaContent(document, [
+      'meta[property="og:site_name"]',
+      'meta[name="application-name"]',
+    ])
+  }
+  if (site) lines.push(`**Source:** ${site}`)
+
+  return lines.length > 0 ? lines.join("\n") : ""
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractMetaContent(document: any, selectors: string[]): string | undefined {
+  for (const selector of selectors) {
+    try {
+      const el = document.querySelector(selector)
+      if (!el) continue
+      // For <time datetime="...">
+      const value = el.getAttribute("content") ?? el.getAttribute("datetime")
+      if (value?.trim()) return value.trim()
+    } catch {
+      continue
+    }
+  }
+  return undefined
 }
 
 function truncate(text: string): string {
