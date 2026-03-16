@@ -130,6 +130,7 @@ export default defineSchema({
       model: v.optional(v.string()),
       tokens: v.optional(v.number()),
       finishReason: v.optional(v.string()),
+      interaction: v.optional(v.any()),
     })),
     sources: v.optional(v.array(v.object({
       url: v.string(),
@@ -197,6 +198,28 @@ export default defineSchema({
     .index("by_conversation", ["conversationId", "createdAt"])
     .index("by_message", ["messageId"])
     .index("by_extraction_status", ["extractionStatus"]),
+
+  sourceChunks: defineTable({
+    conversationId: v.id("conversations"),
+    sourceType: v.union(v.literal("web"), v.literal("upload")),
+    sourceId: v.string(),
+    chunkIndex: v.number(),
+    content: v.string(),
+    embedding: v.array(v.float64()),
+    metadata: v.object({
+      title: v.optional(v.string()),
+      pageNumber: v.optional(v.number()),
+      sectionHeading: v.optional(v.string()),
+    }),
+    createdAt: v.number(),
+  })
+    .index("by_conversation", ["conversationId", "createdAt"])
+    .index("by_source", ["conversationId", "sourceId"])
+    .vectorIndex("by_embedding", {
+      vectorField: "embedding",
+      dimensions: 768,
+      filterFields: ["conversationId", "sourceType", "sourceId"],
+    }),
 
   // Style Constitutions for Refrasa tool (admin-managed)
   // Two-layer architecture: Layer 1 (Naturalness) and Layer 2 (Style) both editable via this table

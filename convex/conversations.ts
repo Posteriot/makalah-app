@@ -102,6 +102,15 @@ async function deleteConversationCascade(ctx: MutationCtx, conversationId: Id<"c
         await ctx.db.delete(file._id)
     }
 
+    // Delete source chunks (RAG data)
+    const sourceChunks = await ctx.db
+        .query("sourceChunks")
+        .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+        .collect()
+    for (const chunk of sourceChunks) {
+        await ctx.db.delete(chunk._id)
+    }
+
     const artifacts = await ctx.db
         .query("artifacts")
         .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))

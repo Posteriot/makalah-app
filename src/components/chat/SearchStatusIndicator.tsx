@@ -3,7 +3,7 @@
 import { Globe, WarningCircle } from "iconoir-react"
 import { cn } from "@/lib/utils"
 
-export type SearchStatus = "searching" | "composing" | "done" | "off" | "error"
+export type SearchStatus = "searching" | "fetching-content" | "composing" | "done" | "off" | "error"
 
 interface SearchStatusIndicatorProps {
     status: SearchStatus
@@ -13,13 +13,13 @@ interface SearchStatusIndicatorProps {
     sourceCount?: number
 }
 
-const SHIMMER_STATUSES: ReadonlySet<SearchStatus> = new Set(["searching", "composing"])
+const SHIMMER_STATUSES: ReadonlySet<SearchStatus> = new Set(["searching", "fetching-content", "composing"])
 
 export function SearchStatusIndicator({ status, message, sourceCount }: SearchStatusIndicatorProps) {
     if (status === "off") return null
 
     const isError = status === "error"
-    const isProcessing = status === "searching" || status === "composing" || status === "done"
+    const isProcessing = status === "searching" || status === "fetching-content" || status === "composing" || status === "done"
     const text = resolveText(status, message, sourceCount)
     const shouldShimmer = SHIMMER_STATUSES.has(status)
 
@@ -67,6 +67,7 @@ function resolveText(status: SearchStatus, customMessage?: string, sourceCount?:
         return customMessage
     }
     if (status === "searching") return "Pencarian internet..."
+    if (status === "fetching-content") return "Mengambil konten sumber..."
     if (status === "composing") {
         return sourceCount ? `Menyusun jawaban dari ${sourceCount} sumber...` : "Menyusun jawaban..."
     }

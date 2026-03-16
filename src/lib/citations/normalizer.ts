@@ -1,22 +1,24 @@
 /**
- * Citation Normalizer
+ * Citation Normalizers
  *
- * Normalize citation formats dari berbagai AI providers ke unified NormalizedCitation[].
- * Semua normalizer functions dirancang untuk fail gracefully (return [] on error, no throw).
+ * Two normalizer functions — one per citation format:
+ * - normalizeSourcesList(): AI SDK result.sources — [{ url, title }]
+ * - normalizeGoogleGrounding(): Google providerMetadata — groundingChunks + groundingSupports
+ *
+ * Each retriever calls the normalizer it needs directly.
+ * No dispatcher, no provider routing, no hardcoded provider names.
  */
 
 import type {
   NormalizedCitation,
-  CitationProvider,
   GoogleGroundingMetadata,
   GoogleGroundingChunk,
   GoogleGroundingSupport,
-  OpenAIAnnotation,
 } from './types'
 import { isBlockedSourceDomain } from '@/lib/ai/blocked-domains'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Type Guards & Helpers
+// Shared Helpers
 // ═══════════════════════════════════════════════════════════════════════════
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -28,7 +30,6 @@ const isValidUrl = (value: unknown): value is string => {
     new URL(value)
     return true
   } catch {
-    // Allow URLs without protocol (will be handled by consumer)
     return value.includes('.') && !value.includes(' ')
   }
 }
@@ -36,13 +37,63 @@ const isValidUrl = (value: unknown): value is string => {
 const isValidNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0
 
+/**
+ * Post-filter: remove blocked domains from any citation array.
+ */
+export function filterBlockedDomains(citations: NormalizedCitation[]): NormalizedCitation[] {
+  return citations.filter(c => !isBlockedSourceDomain(c.url))
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
-// Task 1.2: Google Grounding Normalizer
+// AI SDK Sources Normalizer
 // ═══════════════════════════════════════════════════════════════════════════
 
+interface AiSdkSource {
+  url: string
+  title?: string
+}
+
+const isAiSdkSource = (value: unknown): value is AiSdkSource => {
+  if (!isRecord(value)) return false
+  return typeof value.url === 'string'
+}
+
 /**
- * Type guard untuk Google Grounding chunk
+ * Normalize AI SDK result.sources to NormalizedCitation[].
+ *
+ * AI SDK unified format: [{ url, title? }] — returned by all providers
+ * via result.sources (Perplexity via OpenRouter, Grok via OpenRouter,
+ * Google direct, etc). No content snippets — only URL and title.
  */
+export function normalizeSourcesList(
+  sources: unknown
+): NormalizedCitation[] {
+  try {
+    if (!Array.isArray(sources)) return []
+
+    const citations: NormalizedCitation[] = []
+
+    for (const source of sources) {
+      if (!isAiSdkSource(source)) continue
+      if (!isValidUrl(source.url)) continue
+
+      citations.push({
+        url: source.url,
+        title: source.title ?? '',
+      })
+    }
+
+    return filterBlockedDomains(citations)
+  } catch (error) {
+    console.error('[normalizeSourcesList] Error:', error)
+    return []
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Google Grounding Normalizer
+// ═══════════════════════════════════════════════════════════════════════════
+
 const isGroundingChunk = (value: unknown): value is GoogleGroundingChunk => {
   if (!isRecord(value)) return false
   const web = value.web
@@ -50,17 +101,13 @@ const isGroundingChunk = (value: unknown): value is GoogleGroundingChunk => {
   return typeof web.uri === 'string' || typeof web.title === 'string'
 }
 
-/**
- * Type guard untuk Google Grounding support
- */
 const isGroundingSupport = (value: unknown): value is GoogleGroundingSupport => {
   if (!isRecord(value)) return false
-  // groundingSupport harus punya segment atau groundingChunkIndices
   return 'segment' in value || 'groundingChunkIndices' in value
 }
 
 /**
- * Extract GoogleGroundingMetadata dari provider metadata object.
+ * Extract GoogleGroundingMetadata from providerMetadata.
  * Handles nested structure: providerMetadata.google.groundingMetadata
  */
 const extractGoogleGroundingMetadata = (
@@ -68,20 +115,16 @@ const extractGoogleGroundingMetadata = (
 ): GoogleGroundingMetadata | null => {
   if (!isRecord(providerMetadata)) return null
 
-  // Direct groundingMetadata at root level
   if ('groundingChunks' in providerMetadata || 'groundingSupports' in providerMetadata) {
     return providerMetadata as GoogleGroundingMetadata
   }
 
-  // Nested under 'google' key (AI SDK format)
   const google = providerMetadata.google
   if (isRecord(google)) {
-    // Check for groundingMetadata inside google
     const groundingMetadata = google.groundingMetadata
     if (isRecord(groundingMetadata)) {
       return groundingMetadata as GoogleGroundingMetadata
     }
-    // Or direct at google level
     if ('groundingChunks' in google || 'groundingSupports' in google) {
       return google as GoogleGroundingMetadata
     }
@@ -91,15 +134,11 @@ const extractGoogleGroundingMetadata = (
 }
 
 /**
- * Normalize Google Grounding metadata ke NormalizedCitation[].
+ * Normalize Google Grounding metadata to NormalizedCitation[].
  *
- * Extraction flow:
- * 1. Extract unique URLs dari groundingChunks[].web.uri
- * 2. Map groundingSupports[].groundingChunkIndices ke citations
- * 3. Extract startIndex/endIndex dari segment data
- *
- * @param providerMetadata - Raw provider metadata (bisa nested atau flat)
- * @returns NormalizedCitation[] - Empty array if invalid/missing data
+ * Extracts from providerMetadata returned by direct Google API
+ * (@ai-sdk/google) when using google.tools.googleSearch().
+ * Captures citedText from groundingSupports[].segment.text.
  */
 export function normalizeGoogleGrounding(
   providerMetadata: unknown
@@ -111,7 +150,6 @@ export function normalizeGoogleGrounding(
     const chunks = metadata.groundingChunks
     if (!Array.isArray(chunks) || chunks.length === 0) return []
 
-    // Step 1: Build source map from chunks
     const sourceMap = new Map<number, { url: string; title: string }>()
 
     for (let i = 0; i < chunks.length; i++) {
@@ -129,12 +167,8 @@ export function normalizeGoogleGrounding(
 
     if (sourceMap.size === 0) return []
 
-    // Step 2: Process groundingSupports to get position data
     const supports = metadata.groundingSupports
     const citations: NormalizedCitation[] = []
-
-    // Track which chunks have been used (for deduplication)
-    const processedChunkIndices = new Set<number>()
 
     if (Array.isArray(supports)) {
       for (const support of supports) {
@@ -153,9 +187,6 @@ export function normalizeGoogleGrounding(
           const source = sourceMap.get(chunkIndex)
           if (!source) continue
 
-          // Mark this chunk as processed
-          processedChunkIndices.add(chunkIndex)
-
           citations.push({
             url: source.url,
             title: source.title,
@@ -167,8 +198,7 @@ export function normalizeGoogleGrounding(
       }
     }
 
-    // Step 3: If no supports, return citations without position data
-    // This handles case where chunks exist but no supports mapping
+    // Fallback: chunks exist but no supports mapping
     if (citations.length === 0) {
       for (const [, source] of sourceMap) {
         citations.push({
@@ -178,252 +208,15 @@ export function normalizeGoogleGrounding(
       }
     }
 
-    return citations
+    return filterBlockedDomains(citations)
   } catch (error) {
-    // Graceful failure - log for debugging but don't throw
     console.error('[normalizeGoogleGrounding] Error:', error)
     return []
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Task 1.3: OpenRouter/OpenAI Annotations Normalizer
+// Re-export types
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Type guard untuk OpenAI URL citation annotation
- */
-const isUrlCitationAnnotation = (value: unknown): value is OpenAIAnnotation => {
-  if (!isRecord(value)) return false
-  return value.type === 'url_citation' && typeof value.url === 'string'
-}
-
-/**
- * Extract annotations array dari response object.
- * Handles multiple possible locations.
- */
-const extractAnnotations = (response: unknown): OpenAIAnnotation[] => {
-  if (!isRecord(response)) return []
-
-  // Direct annotations array
-  if (Array.isArray(response.annotations)) {
-    return response.annotations.filter(isRecord) as OpenAIAnnotation[]
-  }
-
-  // Nested under message (OpenAI chat completion format)
-  const message = response.message
-  if (isRecord(message) && Array.isArray(message.annotations)) {
-    return message.annotations.filter(isRecord) as OpenAIAnnotation[]
-  }
-
-  // Nested under openrouter key (AI SDK v5 providerMetadata format)
-  const openrouter = response.openrouter
-  if (isRecord(openrouter) && Array.isArray(openrouter.annotations)) {
-    return openrouter.annotations.filter(isRecord) as OpenAIAnnotation[]
-  }
-
-  // Nested under experimental_providerMetadata.openrouter (legacy AI SDK format)
-  const providerMeta = response.experimental_providerMetadata
-  if (isRecord(providerMeta)) {
-    const orLegacy = providerMeta.openrouter
-    if (isRecord(orLegacy) && Array.isArray(orLegacy.annotations)) {
-      return orLegacy.annotations.filter(isRecord) as OpenAIAnnotation[]
-    }
-  }
-
-  return []
-}
-
-/**
- * Normalize OpenRouter/OpenAI annotations ke NormalizedCitation[].
- *
- * Format yang di-handle:
- * - response.annotations[] dengan type === 'url_citation'
- * - response.message.annotations[] (chat completion format)
- * - experimental_providerMetadata.openrouter.annotations[]
- *
- * @param response - Raw response object dari OpenRouter/OpenAI
- * @returns NormalizedCitation[] - Empty array if invalid/missing data
- */
-export function normalizeOpenAIAnnotations(
-  response: unknown
-): NormalizedCitation[] {
-  try {
-    const annotations = extractAnnotations(response)
-    if (annotations.length === 0) return []
-
-    const citations: NormalizedCitation[] = []
-
-    for (const annotation of annotations) {
-      // Only process url_citation type
-      if (!isUrlCitationAnnotation(annotation)) continue
-
-      const url = annotation.url
-      if (!isValidUrl(url)) continue
-
-      const title = typeof annotation.title === 'string' && annotation.title.trim()
-        ? annotation.title.trim()
-        : url
-
-      // Map snake_case to camelCase
-      const startIndex = isValidNumber(annotation.start_index)
-        ? annotation.start_index
-        : undefined
-      const endIndex = isValidNumber(annotation.end_index)
-        ? annotation.end_index
-        : undefined
-
-      citations.push({
-        url,
-        title,
-        ...(startIndex !== undefined && { startIndex }),
-        ...(endIndex !== undefined && { endIndex }),
-      })
-    }
-
-    return citations
-  } catch (error) {
-    // Graceful failure - log for debugging but don't throw
-    console.error('[normalizeOpenAIAnnotations] Error:', error)
-    return []
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Task 1.4: Anthropic Citations Normalizer (Stub)
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Normalize Anthropic citations ke NormalizedCitation[].
- *
- * TODO: Implement when Anthropic adds citation support.
- * Currently returns empty array as placeholder.
- *
- * @param _providerMetadata - Raw provider metadata from Anthropic
- * @returns NormalizedCitation[] - Always empty (not yet implemented)
- */
- 
-export function normalizeAnthropicCitations(
-  _providerMetadata: unknown
-): NormalizedCitation[] {
-  void _providerMetadata
-  // TODO: Implement when Anthropic adds native citation support
-  // Reference: https://docs.anthropic.com/
-  return []
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Perplexity Sonar Normalizer
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Perplexity source format dari AI SDK response.
- * Perplexity Sonar returns sources sebagai array of { url, title? }.
- */
-interface PerplexitySource {
-  url: string
-  title?: string
-}
-
-/**
- * Type guard untuk Perplexity source
- */
-const isPerplexitySource = (value: unknown): value is PerplexitySource => {
-  if (!isRecord(value)) return false
-  return typeof value.url === 'string'
-}
-
-/**
- * Normalize Perplexity Sonar sources ke NormalizedCitation[].
- *
- * Pure mapping — no filtering inside. Domain filtering dilakukan
- * di dispatcher level (normalizeCitations) untuk konsistensi antar provider.
- *
- * @param sources - Raw sources array dari Perplexity response
- * @returns NormalizedCitation[] - Empty array if invalid/missing data
- */
-export function normalizePerplexityCitations(
-  sources: unknown
-): NormalizedCitation[] {
-  try {
-    if (!Array.isArray(sources)) return []
-
-    const citations: NormalizedCitation[] = []
-
-    for (const source of sources) {
-      if (!isPerplexitySource(source)) continue
-      if (!isValidUrl(source.url)) continue
-
-      citations.push({
-        url: source.url,
-        title: source.title ?? '',
-      })
-    }
-
-    return citations
-  } catch (error) {
-    console.error('[normalizePerplexityCitations] Error:', error)
-    return []
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Main Normalizer Dispatcher
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Main dispatcher untuk normalize citations dari berbagai providers.
- *
- * Usage:
- * ```typescript
- * // Gateway (Google Grounding)
- * const citations = normalizeCitations(providerMetadata, 'gateway')
- *
- * // OpenRouter (:online)
- * const citations = normalizeCitations(response, 'openrouter')
- * ```
- *
- * @param providerData - Raw provider metadata atau response object
- * @param provider - Provider type untuk determine normalizer yang digunakan
- * @returns NormalizedCitation[] - Empty array for unknown providers
- */
-export function normalizeCitations(
-  providerData: unknown,
-  provider: CitationProvider
-): NormalizedCitation[] {
-  let citations: NormalizedCitation[]
-
-  switch (provider) {
-    case 'perplexity':
-      citations = normalizePerplexityCitations(providerData)
-      break
-
-    case 'gateway':
-      citations = normalizeGoogleGrounding(providerData)
-      break
-
-    case 'openrouter':
-    case 'openai':
-      citations = normalizeOpenAIAnnotations(providerData)
-      break
-
-    case 'anthropic':
-      citations = normalizeAnthropicCitations(providerData)
-      break
-
-    default:
-      // Unknown provider - return empty array (no throw)
-      console.warn(`[normalizeCitations] Unknown provider: ${provider}`)
-      citations = []
-      break
-  }
-
-  // Universal post-filter — applied to ALL providers
-  return citations.filter(c => !isBlockedSourceDomain(c.url))
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Re-export types for convenience
-// ═══════════════════════════════════════════════════════════════════════════
-
-export type { NormalizedCitation, CitationProvider } from './types'
+export type { NormalizedCitation } from './types'

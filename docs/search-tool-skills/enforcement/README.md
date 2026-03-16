@@ -17,14 +17,17 @@ The system follows three core principles:
 ┌─────────────────────────────────────────────────────────────────┐
 │                        route.ts (API Layer)                     │
 │  Search Mode Decision → Retriever Chain → Orchestrator Dispatch │
+│  RAG-aware override: skip search when chunks available          │
 └────────────┬───────────────────────────────────────┬────────────┘
              │                                       │
     ┌────────▼────────┐                   ┌──────────▼──────────┐
     │   LLM Router    │                   │    Orchestrator      │
-    │ decideWebSearch  │                   │  Two-Pass Flow       │
+    │ decideWebSearch  │                   │  Three-Phase Flow    │
     │    Mode()       │                   │  Phase 1: Retrieve   │
-    │                 │                   │  Phase 2: Compose    │
-    └─────────────────┘                   └──────────┬──────────┘
+    │ + RAG override  │                   │  Phase 1.5: FetchWeb │
+    └─────────────────┘                   │  Phase 2: Compose    │
+                                          │  Phase 3: RAG Ingest │
+                                          └──────────┬──────────┘
                                                      │
                          ┌───────────────────────────┼───────────────┐
                          │                           │               │
@@ -34,10 +37,22 @@ The system follows three core principles:
                 └────────────────┘         └───────────────┘  └────────────┘
                                                      │
                                           ┌──────────▼──────────┐
+                                          │   FetchWeb           │
+                                          │  fetch+readability   │
+                                          │  + Tavily fallback   │
+                                          └──────────┬──────────┘
+                                                     │
+                                          ┌──────────▼──────────┐
                                           │   Citation Pipeline  │
                                           │  normalize → format  │
                                           │  → internal thought  │
                                           │  → stream to client  │
+                                          └──────────┬──────────┘
+                                                     │
+                                          ┌──────────▼──────────┐
+                                          │   RAG Pipeline       │
+                                          │  chunk → embed →     │
+                                          │  Convex vectorIndex   │
                                           └─────────────────────┘
 ```
 
@@ -45,11 +60,13 @@ The system follows three core principles:
 
 | Layer | Responsibility | Location |
 |-------|---------------|----------|
-| **Search Mode Decision** | Determine WHETHER to search (LLM router + structural guardrails) | `route.ts:960-1118` |
+| **Search Mode Decision** | Determine WHETHER to search (LLM router + RAG-aware override) | `route.ts` |
 | **Retriever Chain** | Build ordered list of retriever candidates from admin config | `web-search/config-builder.ts` |
-| **Orchestrator** | Execute the two-pass search flow (retrieve → compose) | `web-search/orchestrator.ts` |
+| **Orchestrator** | Execute three-phase search flow (retrieve → FetchWeb → compose) + RAG ingest | `web-search/orchestrator.ts` |
+| **FetchWeb** | Fetch actual page content from source URLs, convert to markdown | `web-search/content-fetcher.ts` |
 | **Retrievers** | Simple executors: call external API, extract citations | `web-search/retrievers/*.ts` |
 | **Skills** | Natural language instructions guiding LLM synthesis | `skills/web-search-quality/SKILL.md` |
+| **RAG** | Chunk, embed, store source content; retrieve verbatim for quoting | `chunking.ts`, `embedding.ts`, `rag-ingest.ts`, `convex/sourceChunks.ts` |
 | **Citation Pipeline** | Normalize, format, and stream citations to client | `citations/*.ts`, `internal-thought-separator.ts` |
 | **System Notes** | Contextual instructions injected based on search decision | `paper-search-helpers.ts` |
 
@@ -75,6 +92,7 @@ All search mode decisions — for ACTIVE stages, PASSIVE stages, and chat mode �
     incomplete: boolean
     requirement?: string
   }
+  ragChunksAvailable?: boolean   // RAG chunks exist for this conversation?
 }
 ```
 
@@ -117,8 +135,9 @@ Before the LLM router runs, one structural check applies:
 After the LLM router returns, the decision flows through:
 
 1. **Post-router intent handling** — `sync_request`, `compile_daftar_pustaka`, and `save_submit` intents override search to `false` and inject appropriate system notes
-2. **Retriever chain resolution** — `resolveSearchExecutionMode()` maps the boolean decision to an actual retriever or `"off"` / `"blocked_unavailable"`
-3. **System note injection** — contextual instructions injected into the model's prompt based on the search decision (see [System Notes](#system-notes))
+2. **RAG-aware override** — If `ragChunksAvailable && searchAlreadyDone && !explicitNewSearchTrigger`, force `enableWebSearch = false`. This prevents redundant web searches when the user asks about previously cited sources — RAG tools (`quoteFromSource`, `searchAcrossSources`) handle these in the normal chat path. Explicit new-search triggers ("cari lagi", "tambah sumber", "search again", "sumber baru") bypass the override.
+3. **Retriever chain resolution** — `resolveSearchExecutionMode()` maps the boolean decision to an actual retriever or `"off"` / `"blocked_unavailable"`
+4. **System note injection** — contextual instructions injected into the model's prompt based on the search decision (see [System Notes](#system-notes))
 
 ### Stage Search Policy
 
@@ -134,9 +153,9 @@ The policy is passed as context to the LLM router prompt, not enforced as a hard
 
 ---
 
-## Two-Pass Orchestrator Flow
+## Three-Phase Orchestrator Flow
 
-`executeWebSearch()` in `orchestrator.ts` implements a two-pass architecture:
+`executeWebSearch()` in `orchestrator.ts` implements a three-phase architecture with background RAG ingest:
 
 ### Phase 1: Silent Retriever Search
 
@@ -161,18 +180,40 @@ User message → augmentUserMessageForSearch() → searchMessages
 - Each retriever in the chain is tried sequentially; first success wins
 - Sources extracted via `retriever.extractSources()`, then canonicalized (UTM removal, hash stripping, trailing slash normalization)
 
+### Phase 1.5: FetchWeb Content Extraction
+
+Runs INSIDE stream `execute` callback (after first byte sent — Vercel timeout doesn't apply).
+
+```
+sources[].url (max 7)
+    ↓
+Primary: fetch() + linkedom + readability + turndown → markdown
+    + metadata extraction: author, date, site (readability + HTML meta tags)
+    ↓ (failed URLs)
+Fallback: @tavily/core .extract() → markdown
+    ↓
+pageContent (truncated 12K for compose) + fullContent (raw for RAG)
+```
+
+- Parallel fetch via `Promise.allSettled`, 5s timeout per URL
+- `MIN_CONTENT_CHARS = 50` — skip trivially short extractions
+- Metadata prepended as markdown block: `**Author:** ...`, `**Published:** ...`, `**Source:** ...`
+- Enriched sources with `pageContent` used in compose context
+
 ### Phase 2: Compose with Streaming
 
-After Phase 1 succeeds, the orchestrator builds compose context and streams to the client.
+After Phase 1.5 completes, the orchestrator builds compose context and streams to the client.
+
+**Key change:** `searchText` is DROPPED from compose context when page content is available. `searchText` (retriever synthesis) was the primary contamination source for hallucination. Page content replaces it as ground truth.
 
 **System message injection order (critical — position determines override priority):**
 
 | Position | Content | Size | Purpose |
 |----------|---------|------|---------|
-| 1st | `COMPOSE_PHASE_DIRECTIVE` | ~1.5K | Defines compose phase, overrides conflicting instructions |
-| 2nd | `searchResultsContext` | Variable | Numbered source list + raw search findings |
+| 1st | `COMPOSE_PHASE_DIRECTIVE` | ~2.5K | Defines compose phase, anti-hallucination rules, overrides conflicting instructions |
+| 2nd | `searchResultsContext` | Variable | Numbered source list with `Page content (verified):` blocks per source. Sources without page content marked `[no page content — unverified source]`. When no source has page content, labels omitted (behaves like pre-FetchWeb). |
 | 3rd | `systemPrompt` | ~10K | Main app persona/tone/rules from database |
-| 4th | `skillInstructions` | ~6K | `SKILL.md` — quality, credibility, composition rules |
+| 4th | `skillInstructions` | ~6K | `SKILL.md` — quality, credibility, content verification, identity disambiguation, verbatim quoting tools |
 | 5th | `fileContext` (optional) | ≤20K | User-uploaded document context |
 
 **Deliberately EXCLUDED from compose phase:**
@@ -186,14 +227,33 @@ After Phase 1 succeeds, the orchestrator builds compose context and streams to t
 The orchestrator emits a sequence of typed events to the UI:
 
 ```
-data-search { status: "searching" }     → Phase 1 indicator
-data-search { status: "composing" }     → Phase 2 started
-text-delta (streaming)                  → Compose output chunks
-data-search { status: "done" }          → Search complete
-data-cited-text { text }                → Final text with paragraph-end citations
-data-internal-thought { text }          → Leading "wait" sentences stripped from response
-data-cited-sources { sources[] }        → Source list for UI rendering
+data-search { status: "searching" }        → Phase 1 indicator
+data-search { status: "fetching-content" } → Phase 1.5: FetchWeb in progress
+data-search { status: "composing" }        → Phase 2 started
+data-reasoning-thought { delta, traceId }  → Reasoning chunks (when transparent reasoning enabled)
+text-delta (streaming)                     → Compose output chunks
+data-search { status: "done" }             → Search complete
+data-cited-text { text }                   → Final text with paragraph-end citations
+data-internal-thought { text }             → Leading "wait" sentences stripped from response
+data-cited-sources { sources[] }           → Source list for UI rendering
 ```
+
+### Phase 3: RAG Ingest (Background)
+
+After compose completes and `onFinish` callback runs, RAG ingest fires sequentially (one source at a time to avoid embedding API rate limits):
+
+```
+for each source with fullContent:
+    ingestToRag({
+      conversationId, sourceType: "web",
+      sourceId: url, content: fullContent
+    })
+    → chunkContent() → ~500 token chunks
+    → embedTexts() → gemini-embedding-001, 768 dims
+    → Convex sourceChunks.ingestChunks()
+```
+
+RAG ingest is fire-and-forget — never blocks the user. Failed ingests are logged but don't affect the response.
 
 ---
 
@@ -277,7 +337,7 @@ interface SkillContext {
   isPaperMode: boolean
   currentStage: string | null
   hasRecentSources: boolean
-  availableSources: SourceEntry[]    // { url, title, publishedAt? }
+  availableSources: SourceEntry[]    // { url, title, publishedAt?, citedText? }
 }
 ```
 
@@ -292,6 +352,11 @@ The currently active skill covers:
 | **RESEARCH SOURCE STRATEGY** | How to evaluate source credibility — primary data, authorship, methodology | Yes |
 | **RESPONSE COMPOSITION** | Researcher persona, depth expectations, source usage requirements | Yes |
 | **REFERENCE INTEGRITY** | Integration over decoration, source honesty, claim-source alignment | Yes |
+| **INFORMATION SUFFICIENCY** | Prevents hallucination from thin sources — evidence-based synthesis, insufficiency declaration, no gap-filling | Yes |
+| **CONTENT VERIFICATION** | Cross-reference claims against verified page content. Trust page content over search findings. Flag unverified sources. | Yes |
+| **Identity Disambiguation** | When sources attribute contradictory identities to the same name, present separately — never merge profiles | Yes |
+| **No Inline Domain References** | Ban embedding website/domain names in response text. Reference sources by citation number [1], [2] only. | Yes |
+| **VERBATIM QUOTING TOOLS** | Instructions for `quoteFromSource` and `searchAcrossSources` RAG tools — when to use, what to expect | Yes |
 | **STAGE CONTEXT** | Per-stage guidance with priority source references. Active stages (gagasan, topik, tinjauan_literatur, pendahuluan, metodologi, diskusi) get stage-specific enrichment; passive stages fall back to `### default` | Yes (stage-specific or default) |
 
 ### Blocklist Strategy
@@ -342,7 +407,7 @@ interface NormalizedCitation {
   title: string            // Source title (or URL if unavailable)
   startIndex?: number      // Character position in text (0-indexed)
   endIndex?: number        // Character position end (exclusive)
-  citedText?: string       // Cited text segment (debug/display)
+  citedText?: string       // Cited text segment — propagated to compose context as Snippet: lines
   publishedAt?: number     // Unix timestamp (ms)
 }
 ```
@@ -500,7 +565,8 @@ The `webSearchRetrievers` array is the modern configuration. Legacy fields are u
 | Variable | Purpose |
 |----------|---------|
 | `OPENROUTER_API_KEY` | API key for Perplexity and Grok retrievers (via OpenRouter) |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | API key for Google Grounding retriever |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | API key for Google Grounding retriever + gemini-embedding-001 (RAG) |
+| `TAVILY_API_KEY` | API key for Tavily Extract fallback in FetchWeb |
 
 ---
 
@@ -538,7 +604,11 @@ This separation ensures a single source of truth for output language policy (dat
 | `src/lib/ai/paper-search-helpers.ts` | System notes, research completeness checks, stage requirements |
 | `src/lib/ai/stage-skill-contracts.ts` | ACTIVE/PASSIVE stage classification |
 | `src/lib/ai/search-system-prompt.ts` | Search strategy system prompt (priority sources, query construction guidance) + user message augmentation (diversity hints + priority source names) |
-| `src/lib/ai/search-results-context.ts` | Builds numbered source list for compose context |
+| `src/lib/ai/web-search/content-fetcher.ts` | FetchWeb: fetch + readability + turndown + metadata extraction, Tavily fallback |
+| `src/lib/ai/chunking.ts` | Section-aware content chunker (~500 tokens) for RAG |
+| `src/lib/ai/embedding.ts` | Google gemini-embedding-001 client with retry + retry-after parsing |
+| `src/lib/ai/rag-ingest.ts` | Core RAG pipeline: chunk → embed → store in Convex |
+| `src/lib/ai/search-results-context.ts` | Builds source list with pageContent (verified/unverified labels) for compose context |
 | `src/lib/ai/internal-thought-separator.ts` | Splits internal thought from public content |
 | `src/lib/ai/blocked-domains.ts` | Blocked domain list + `isBlockedSourceDomain()` |
 | `src/lib/citations/normalizer.ts` | Multi-provider citation normalizer dispatcher |
@@ -546,24 +616,41 @@ This separation ensures a single source of truth for output language policy (dat
 | `src/lib/citations/paragraph-citation-formatter.ts` | Paragraph-end citation formatting with table immunity |
 | `src/components/chat/MessageBubble.tsx` | Frontend message display: citation rendering, legacy fallback |
 | `src/components/chat/MarkdownRenderer.tsx` | Markdown rendering with table detection + inline citation chips |
+| `src/components/chat/SearchStatusIndicator.tsx` | Search status UI: searching → fetching-content → composing → done |
+| `convex/sourceChunks.ts` | RAG: mutations (ingestChunks, hasChunks, deleteByConversation) + vector search action |
+| `convex/schema.ts` | sourceChunks table with vectorIndex (768 dims, filterFields: conversationId, sourceType, sourceId) |
 
 ---
 
 ## Request Flow Examples
 
-### Chat Mode (No Paper Session)
+### Chat Mode — Initial Search
 
 ```
-1. User sends message
+1. User sends message: "Apa dampak AI terhadap pendidikan tinggi di Indonesia?"
 2. route.ts: no paperModePrompt → LLM router runs with isPaperMode=false
 3. Router returns: { enableWebSearch: true, intentType: "search" }
-4. buildRetrieverChain() → [perplexity, google-grounding]
-5. resolveSearchExecutionMode() → "perplexity"
+4. buildRetrieverChain() → [google-grounding, perplexity]
+5. resolveSearchExecutionMode() → "google-grounding"
 6. executeWebSearch() called:
-   Phase 1: Perplexity searches → searchText + 16 sources
-   Phase 2: Compose with COMPOSE_PHASE_DIRECTIVE + sources + systemPrompt + SKILL.md
-7. Stream: data-search(searching) → data-search(composing) → text-delta... → data-cited-text → data-cited-sources
+   Phase 1: Google Grounding searches → searchText + 20 sources
+   Phase 1.5: FetchWeb extracts content for top 7 URLs → pageContent per source
+   Phase 2: Compose with page content (searchText dropped), COMPOSE_PHASE_DIRECTIVE
+   Phase 3 (background): RAG ingest → chunk + embed + store in Convex
+7. Stream: searching → fetching-content → composing → text-delta... → done
 8. Frontend: MessageBubble renders citedText via MarkdownRenderer
+```
+
+### Chat Mode — Follow-up with RAG
+
+```
+1. User asks: "Kutip paragraf pertama dari sumber kedua"
+2. route.ts: ragChunksAvailable=true, searchAlreadyDone=true
+3. Router says: enableWebSearch=true (wants to search)
+4. RAG override: chunks available + no explicit new-search trigger → force false
+5. Normal chat path with tools → model calls quoteFromSource({ sourceId, query })
+6. quoteFromSource → embed query → Convex vectorSearch → return verbatim chunks
+7. Model quotes exact text from stored chunk
 ```
 
 ### Paper Mode — ACTIVE Stage (e.g., tinjauan_literatur)
@@ -608,8 +695,13 @@ This separation ensures a single source of truth for output language policy (dat
 | Single retriever fails | Try next in chain (logged, not user-visible) |
 | Citation extraction timeout | Return `[]` sources (logged warning), compose proceeds without citations |
 | LLM router failure (2 retries + fallback) | Safe default: `{ enableWebSearch: true }` — search is never harmful |
+| FetchWeb primary fetch fails | Tavily fallback for failed URLs. Both fail → source has no pageContent (marked unverified) |
+| FetchWeb all URLs fail | Proceed with searchText (pre-FetchWeb behavior). Labels omitted. |
 | Compose phase error | Error propagates to route.ts; search status closed as terminal |
 | Citation formatting error | Caught in orchestrator finish handler; search status set to "done"/"off" |
+| RAG embedding fails (429 rate limit) | Retry 3x with exponential backoff, parse retry-after from Google 429 response. If all retries fail, chunks not stored — flow continues |
+| RAG ingest fails | Fire-and-forget — logged but never blocks user response |
+| RAG vectorSearch returns 0 results | Model receives empty array. SKILL.md instructs: inform user quote unavailable |
 
 ---
 
@@ -621,5 +713,20 @@ The compose phase (`streamText` in orchestrator Phase 2) runs **without tools**.
 - "You have NO access to tools in this phase"
 - "Do NOT output JSON tool calls as text — it will appear as raw text to the user"
 - "Saving data happens in a SUBSEQUENT turn when tools are available"
+- Anti-hallucination: "ONLY state facts from Page content (verified) sections. NEVER add training knowledge."
+- Identity disambiguation: "If sources describe different entities with same name, present SEPARATELY."
 
-This is an intentional design: the compose phase synthesizes search results into a response. Tool actions (saving data, creating artifacts) happen on the next turn when the model runs through the normal `streamText` path with full tool access.
+This is an intentional design: the compose phase synthesizes search results into a response. Tool actions (saving data, creating artifacts) and RAG retrieval (`quoteFromSource`, `searchAcrossSources`) happen on subsequent turns when the model runs through the normal `streamText` path with full tool access.
+
+### RAG Tools in Follow-up Turns
+
+When the search decision routes to the non-search path (`enableWebSearch = false`), the model gets paper tools including two RAG tools:
+
+| Tool | Purpose | Input |
+|------|---------|-------|
+| `quoteFromSource` | Retrieve verbatim text from a specific source | `sourceId` (URL or fileId) + `query` |
+| `searchAcrossSources` | Find relevant passages across all stored sources | `query` + optional `sourceType` filter |
+
+Both tools call `convex/sourceChunks.searchByEmbedding` (Convex action with `ctx.vectorSearch`). Query is embedded via `embedQuery()` with `taskType: "RETRIEVAL_QUERY"`.
+
+RAG tools are available in ALL modes (chat + paper) when the non-search path is active.

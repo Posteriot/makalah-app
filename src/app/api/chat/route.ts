@@ -964,6 +964,7 @@ ${sourcesJson}`
             previousSearchDone: boolean
             previousSearchSourceCount?: number
             researchStatus?: { incomplete: boolean; requirement?: string }
+            ragChunksAvailable?: boolean
         }): Promise<{ enableWebSearch: boolean; confidence: number; reason: string; intentType: string }> => {
             const paperModeContext = options.isPaperMode
                 ? `
@@ -987,7 +988,14 @@ Stage policy rules (MUST follow):
   "search for..."). Do NOT enable for general discussion.
 - If previous search is done AND research is complete, prefer enableWebSearch=false
   UNLESS the user explicitly asks for MORE references/data.
-- If research is INCOMPLETE and no search has been done, strongly prefer enableWebSearch=true.`
+- If research is INCOMPLETE and no search has been done, strongly prefer enableWebSearch=true.
+${options.ragChunksAvailable ? `
+RAG SOURCE CHUNKS AVAILABLE:
+Stored source content from previous searches is available via RAG tools (quoteFromSource, searchAcrossSources).
+The model can retrieve verbatim quotes and specific passages WITHOUT a new web search.
+Set enableWebSearch=false when the user asks about previously cited sources, requests quotes,
+asks for author/date/details from earlier results, or references information from prior search responses.
+Only set enableWebSearch=true when the user explicitly asks for NEW/ADDITIONAL sources on a NEW topic.` : ""}`
                 : ""
 
             const routerPrompt = `You are a "router" that decides whether the response to the user MUST use web search.
@@ -1811,6 +1819,19 @@ Aturan:
             const stagePolicy = getStageSearchPolicy(currentStage)
             const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession)
                 || (!paperSession && hasRecentSourcesInDb)
+            // Check if RAG chunks are available for this conversation.
+            // When chunks exist, the normal chat path (with RAG tools) can answer
+            // follow-up questions about cited sources without a new web search.
+            let ragChunksAvailable = false
+            try {
+                ragChunksAvailable = await fetchQuery(
+                    api.sourceChunks.hasChunks,
+                    { conversationId: currentConversationId as Id<"conversations"> },
+                    convexOptions,
+                )
+            } catch {
+                // Non-critical — if check fails, don't block the flow
+            }
             // Force disable web search if paper intent detected but no session yet
             // This allows AI to call startPaperSession tool first before any web search
             const forcePaperToolsMode = !!paperWorkflowReminder && !paperModePrompt
@@ -1847,6 +1868,7 @@ Aturan:
                     stagePolicy,
                     previousSearchDone: searchAlreadyDone,
                     previousSearchSourceCount: undefined,
+                    ragChunksAvailable,
                     researchStatus: { incomplete, requirement },
                 })
 
@@ -1907,6 +1929,26 @@ Aturan:
                 // Post-router save/submit detection via intentType
                 isSaveSubmitIntent = !!paperModePrompt
                     && webSearchDecision.intentType === "save_submit"
+
+                // Post-router RAG override: if RAG chunks exist and router still wants search,
+                // check if user is asking about existing sources (not requesting new ones).
+                // Deterministic fallback — router prompt alone isn't reliable enough.
+                if (searchRequestedByPolicy && ragChunksAvailable && searchAlreadyDone) {
+                    const lastUserMsg = (recentForRouter
+                        .filter((m: { role?: string }) => m.role === "user")
+                        .pop() as { content?: string } | undefined)?.content ?? ""
+                    const msgLower = typeof lastUserMsg === "string" ? lastUserMsg.toLowerCase() : ""
+
+                    // Explicit new-search triggers — user wants NEW sources
+                    const wantsNewSearch = /\b(cari\s+(lagi|lebih|baru|tentang)|tambah\s+sumber|search\s+(again|for|more)|referensi\s+(baru|tambahan)|sumber\s+(baru|lain))\b/i.test(msgLower)
+
+                    if (!wantsNewSearch) {
+                        searchRequestedByPolicy = false
+                        activeStageSearchReason = "rag_chunks_available"
+                        activeStageSearchNote = getFunctionToolsModeNote("RAG tools available for existing sources")
+                        console.log("[SearchDecision] RAG override: chunks available, no explicit new-search trigger → enableWebSearch=false")
+                    }
+                }
             }
 
             // Build retriever chain once — reused for both mode resolution and execution
@@ -2072,7 +2114,9 @@ Aturan:
                 }
 
                 return await executeWebSearch({
+                    conversationId: currentConversationId as string,
                     retrieverChain,
+                    tavilyApiKey: process.env.TAVILY_API_KEY,
                     messages: fullMessagesGateway,
                     composeMessages: trimmedModelMessages,
                     composeModel: model,
@@ -2084,6 +2128,7 @@ Aturan:
                     samplingOptions,
                     reasoningTraceEnabled,
                     isTransparentReasoning,
+                    reasoningProviderOptions: primaryReasoningProviderOptions ?? undefined,
                     traceMode: getTraceModeLabel(!!paperModePrompt, true),
                     onFinish: async (result) => {
                         const retrieverModelName = result.retrieverName || "unknown"

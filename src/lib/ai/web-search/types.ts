@@ -24,6 +24,7 @@ export interface RetrieverChainEntry {
 }
 
 export interface WebSearchOrchestratorConfig {
+  conversationId: string // needed for RAG ingest
   retrieverChain: RetrieverChainEntry[]
   messages: Parameters<typeof import("ai").streamText>[0]["messages"]
   composeMessages: Parameters<typeof import("ai").streamText>[0]["messages"]
@@ -38,6 +39,7 @@ export interface WebSearchOrchestratorConfig {
   isTransparentReasoning: boolean
   reasoningProviderOptions?: Record<string, unknown>
   traceMode: string
+  tavilyApiKey?: string
   onFinish: (result: WebSearchResult) => Promise<void>
 }
 

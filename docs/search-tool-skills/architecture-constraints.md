@@ -73,12 +73,13 @@ Core architectural principle validated through experimentation. See README.md fo
 
 ## Blocklist Strategy
 
-**Blocklist lives in SKILL.md as natural language, NOT as programmatic code filter.**
+**Blocklist uses defense-in-depth: SKILL.md as primary intelligence layer + code filter as safety net.**
 
-- `src/lib/ai/blocked-domains.ts` exists as canonical reference list (shared across skills)
-- But `isBlockedSourceDomain()` is NOT called in the search pipeline
-- Gemini respects "NEVER cite these domains" instruction in SKILL.md
-- Validated: 14 sources preserved, zero blocked domains in final output
+- `src/lib/ai/blocked-domains.ts` exports the canonical blocked domain list and `isBlockedSourceDomain()`
+- `isBlockedSourceDomain()` is called as a universal post-filter in `src/lib/citations/normalizer.ts` — applied to ALL providers at normalization time (deterministic, binary, zero data loss risk for legitimate sources)
+- `isBlockedSourceDomain()` was removed from `route.ts` (search decision path) — it does NOT influence whether search runs
+- SKILL.md instructs the compose model to "NEVER cite these domains" — primary enforcement during synthesis
+- Both layers work together: normalizer catches blocked URLs before they reach the LLM, SKILL.md catches any that slip through in the compose output
 
 ## Search System Prompt Strategy
 

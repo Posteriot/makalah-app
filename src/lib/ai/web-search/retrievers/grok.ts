@@ -1,5 +1,5 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
-import { normalizeCitations } from "@/lib/citations/normalizer"
+import { normalizeSourcesList } from "@/lib/citations/normalizer"
 import type { NormalizedCitation } from "@/lib/citations/types"
 import type { AnyStreamTextResult, RetrieverConfig, SearchRetriever } from "../types"
 
@@ -35,7 +35,7 @@ export const grokRetriever: SearchRetriever = {
           setTimeout(() => reject(new Error("Grok sources timeout")), SOURCE_TIMEOUT_MS)
         ),
       ])
-      const citations = normalizeCitations(rawSources, "perplexity")
+      const citations = normalizeSourcesList(rawSources)
       return citations.filter((c) => !isVertexProxyUrl(c.url))
     } catch {
       console.warn("[grok] Failed to extract sources within timeout")
