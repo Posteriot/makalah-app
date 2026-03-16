@@ -69,6 +69,17 @@ export const deleteBySource = mutation({
   },
 })
 
+export const hasChunks = query({
+  args: { conversationId: v.id("conversations") },
+  handler: async (ctx, args) => {
+    const first = await ctx.db
+      .query("sourceChunks")
+      .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
+      .first()
+    return first !== null
+  },
+})
+
 export const hasSource = query({
   args: {
     conversationId: v.id("conversations"),
