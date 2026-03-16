@@ -74,7 +74,7 @@ sourceChunks: defineTable({
   .vectorIndex("by_embedding", {
     vectorField: "embedding",
     dimensions: 768,
-    filterFields: ["conversationId", "sourceType"],
+    filterFields: ["conversationId", "sourceType", "sourceId"],
   })
 ```
 

@@ -341,31 +341,46 @@ import { google } from "@ai-sdk/google"
 
 const EMBEDDING_MODEL = "gemini-embedding-001"
 const DIMENSIONS = 768
+const MAX_RETRIES = 3
+const BASE_DELAY_MS = 1000
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      if (attempt === MAX_RETRIES - 1) throw error
+      const delay = BASE_DELAY_MS * Math.pow(2, attempt)
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
+  }
+  throw new Error("Unreachable")
+}
 
 /**
  * Embed multiple texts for document storage.
- * Uses taskType RETRIEVAL_DOCUMENT.
+ * Uses taskType RETRIEVAL_DOCUMENT. Retries 3x with exponential backoff.
  */
 export async function embedTexts(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return []
 
-  const { embeddings } = await embedMany({
+  const { embeddings } = await withRetry(() => embedMany({
     model: google.textEmbeddingModel(EMBEDDING_MODEL, {
       outputDimensionality: DIMENSIONS,
       taskType: "RETRIEVAL_DOCUMENT",
     }),
     values: texts,
-  })
+  }))
 
   return embeddings
 }
 
 /**
  * Embed a single query for retrieval.
- * Uses taskType RETRIEVAL_QUERY.
+ * Uses taskType RETRIEVAL_QUERY. Retries 3x with exponential backoff.
  */
 export async function embedQuery(query: string): Promise<number[]> {
-  const { embedding } = await embed({
+  const { embedding } = await withRetry(() => embed({
     model: google.textEmbeddingModel(EMBEDDING_MODEL, {
       outputDimensionality: DIMENSIONS,
       taskType: "RETRIEVAL_QUERY",
@@ -429,7 +444,7 @@ sourceChunks: defineTable({
   .vectorIndex("by_embedding", {
     vectorField: "embedding",
     dimensions: 768,
-    filterFields: ["conversationId", "sourceType"],
+    filterFields: ["conversationId", "sourceType", "sourceId"],
   }),
 ```
 
@@ -510,6 +525,25 @@ export const getBySource = query({
   },
 })
 
+export const deleteBySource = mutation({
+  args: {
+    conversationId: v.id("conversations"),
+    sourceId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const chunks = await ctx.db
+      .query("sourceChunks")
+      .withIndex("by_source", (q) =>
+        q.eq("conversationId", args.conversationId).eq("sourceId", args.sourceId)
+      )
+      .collect()
+    for (const chunk of chunks) {
+      await ctx.db.delete(chunk._id)
+    }
+    return { deleted: chunks.length }
+  },
+})
+
 export const hasSource = query({
   args: {
     conversationId: v.id("conversations"),
@@ -556,13 +590,10 @@ export const searchByEmbedding = action({
       vector: args.embedding,
       limit: args.limit ?? 10,
       filter: (q) => {
-        if (args.sourceType) {
-          return q.and(
-            q.eq("conversationId", args.conversationId),
-            q.eq("sourceType", args.sourceType),
-          )
-        }
-        return q.eq("conversationId", args.conversationId)
+        const filters = [q.eq("conversationId", args.conversationId)]
+        if (args.sourceId) filters.push(q.eq("sourceId", args.sourceId))
+        if (args.sourceType) filters.push(q.eq("sourceType", args.sourceType))
+        return filters.length === 1 ? filters[0] : q.and(...filters)
       },
     })
 
@@ -579,7 +610,10 @@ export const searchByEmbedding = action({
 })
 
 // Internal query for loading documents from action
-export const getById = query({
+// MUST be internalQuery (not query) — called via internal.sourceChunks.getById
+import { internalQuery } from "./_generated/server"
+
+export const getById = internalQuery({
   args: { id: v.id("sourceChunks") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.id)
@@ -611,10 +645,10 @@ git commit -m "feat: add sourceChunks mutations, queries, and vector search acti
 
 ```typescript
 import { NextRequest, NextResponse } from "next/server"
-import { isAuthenticated, getToken } from "@/lib/auth/server"
+import { isAuthenticated, getToken } from "@/lib/auth-server"
 import { fetchMutation, fetchQuery } from "convex/nextjs"
-import { api } from "../../../../../convex/_generated/api"
-import { Id } from "../../../../../convex/_generated/dataModel"
+import { api } from "@convex/_generated/api"
+import { Id } from "@convex/_generated/dataModel"
 import { chunkContent } from "@/lib/ai/chunking"
 import { embedTexts } from "@/lib/ai/embedding"
 
@@ -819,11 +853,11 @@ for (const fetched of fetchedContent) {
 }
 ```
 
-**Important:** `config.conversationId` must be available. Check if `WebSearchOrchestratorConfig` already has it — if not, add it to `types.ts` and wire from `route.ts`.
+**Important:** `config.conversationId` does NOT currently exist in `WebSearchOrchestratorConfig`. It must be added.
 
-**Step 2: Add conversationId to types if needed**
+**Step 2: Add conversationId to WebSearchOrchestratorConfig**
 
-Check `types.ts` for `conversationId` in `WebSearchOrchestratorConfig`. If missing, add:
+In `src/lib/ai/web-search/types.ts`, add to `WebSearchOrchestratorConfig`:
 
 ```typescript
 conversationId: string  // needed for RAG ingest
