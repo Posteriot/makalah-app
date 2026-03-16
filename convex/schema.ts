@@ -130,6 +130,7 @@ export default defineSchema({
       model: v.optional(v.string()),
       tokens: v.optional(v.number()),
       finishReason: v.optional(v.string()),
+      interaction: v.optional(v.any()),
     })),
     sources: v.optional(v.array(v.object({
       url: v.string(),
