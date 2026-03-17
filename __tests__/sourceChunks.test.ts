@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { hasSource, ingestChunks, searchByEmbedding } from "./sourceChunks"
-import { requireConversationOwner } from "./authHelpers"
+import { hasSource, ingestChunks, searchByEmbedding } from "../convex/sourceChunks"
+import { requireConversationOwner } from "../convex/authHelpers"
 
-vi.mock("./authHelpers", () => ({
+vi.mock("../convex/authHelpers", () => ({
   requireConversationOwner: vi.fn(),
 }))
 
