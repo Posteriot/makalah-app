@@ -59,11 +59,8 @@ export async function isAuthenticated(): Promise<boolean> {
 export async function isAuthenticatedFromBetterAuthCookies(
   betterAuthCookies: string | null
 ): Promise<boolean> {
-  // Middleware is a lightweight cookie-presence guard.
-  // Real auth validation happens client-side via Convex queries.
-  // If user has session cookies, let them through — don't redirect to
-  // sign-in on transient network failures (ETIMEDOUT) during token validation.
-  return !!betterAuthCookies;
+  const validation = await validateBetterAuthCookies(betterAuthCookies);
+  return validation.status === "authenticated" || validation.status === "network_error";
 }
 
 /**
@@ -82,7 +79,20 @@ export async function getToken(): Promise<string | null> {
 export async function getTokenFromBetterAuthCookies(
   betterAuthCookies: string | null
 ): Promise<string | null> {
-  if (!betterAuthCookies) return null;
+  const validation = await validateBetterAuthCookies(betterAuthCookies);
+  return validation.status === "authenticated" ? validation.token : null;
+}
+
+type BetterAuthCookieValidation =
+  | { status: "missing" }
+  | { status: "invalid" }
+  | { status: "network_error" }
+  | { status: "authenticated"; token: string };
+
+async function validateBetterAuthCookies(
+  betterAuthCookies: string | null
+): Promise<BetterAuthCookieValidation> {
+  if (!betterAuthCookies) return { status: "missing" };
 
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_CONVEX_SITE_URL}/api/auth/convex/token`, {
@@ -91,10 +101,13 @@ export async function getTokenFromBetterAuthCookies(
       },
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) return { status: "invalid" };
     const data = await response.json();
-    return data?.token ?? null;
+    if (typeof data?.token === "string" && data.token.length > 0) {
+      return { status: "authenticated", token: data.token };
+    }
+    return { status: "invalid" };
   } catch {
-    return null;
+    return { status: "network_error" };
   }
 }

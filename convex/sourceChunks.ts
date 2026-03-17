@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 import { mutation, action, query, internalQuery } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { api, internal } from "./_generated/api"
+import { requireConversationOwner } from "./authHelpers"
 
 export const ingestChunks = mutation({
   args: {
@@ -19,6 +20,8 @@ export const ingestChunks = mutation({
     })),
   },
   handler: async (ctx, args) => {
+    await requireConversationOwner(ctx, args.conversationId)
+
     for (const chunk of args.chunks) {
       await ctx.db.insert("sourceChunks", {
         conversationId: args.conversationId,
@@ -38,6 +41,8 @@ export const ingestChunks = mutation({
 export const hasChunks = query({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
+    await requireConversationOwner(ctx, args.conversationId)
+
     const first = await ctx.db
       .query("sourceChunks")
       .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
@@ -52,6 +57,8 @@ export const hasSource = query({
     sourceId: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireConversationOwner(ctx, args.conversationId)
+
     const first = await ctx.db
       .query("sourceChunks")
       .withIndex("by_source", (q) =>
@@ -65,6 +72,8 @@ export const hasSource = query({
 export const deleteByConversation = mutation({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
+    await requireConversationOwner(ctx, args.conversationId)
+
     const chunks = await ctx.db
       .query("sourceChunks")
       .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
@@ -85,6 +94,18 @@ export const searchByEmbedding = action({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      throw new Error("Unauthorized")
+    }
+
+    const conversation = await ctx.runQuery(api.conversations.getConversation, {
+      conversationId: args.conversationId,
+    })
+    if (!conversation) {
+      throw new Error("Unauthorized")
+    }
+
     // Convex VectorFilterBuilder only supports eq and or — no and.
     // We always filter by conversationId in the vector search, then
     // post-filter by sourceId/sourceType after hydrating documents.
