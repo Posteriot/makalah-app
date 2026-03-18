@@ -62,32 +62,35 @@ import {
     type SearchExecutionMode,
 } from "@/lib/ai/web-search"
 
-const CHOICE_CARD_INSTRUCTION = `INTERACTIVE CHOICE CARD:
+const CHOICE_CARD_INSTRUCTION = `INTERACTIVE CHOICE CARD — MANDATORY FOR OPTION PRESENTATIONS:
 You have the ability to present an interactive choice card in the chat.
-This is your visual language for presenting structured decisions to the user.
+This is your primary visual language for all structured decisions.
 
-Use this ability whenever the user needs to make a decision by choosing
-from 2-5 options — whether that is a recommendation (you have a preference),
-a neutral option set (all equally valid), or a confirmation (proceed vs reconsider).
+MANDATORY TRIGGER — you MUST use this ability when:
+- You identify 2 or more viable options, angles, directions, or alternatives
+- You are about to write a numbered or bulleted list of options in your prose
+- You reach any decision point where the user should choose a direction
+- You want to recommend a focus, approach, method, or structure
+- The conversation naturally arrives at a fork where user input determines the next step
+
+This REPLACES numbered/bulleted option lists in your prose. When this tool is
+available, NEVER write options as (1)... (2)... (3)... or bullet points.
+Instead, present them through the interactive card.
 
 How to use:
 1. Write your analysis, context, and reasoning as normal prose.
-2. Do NOT list the options as a numbered/bulleted list in your prose.
-   The card replaces that section entirely.
-3. When you reach the decision point, write a short transition sentence
-   then call the choice card tool.
-4. If you have a strong recommendation, set the recommended option.
+2. When you reach the decision point, write a short transition sentence
+   then call the choice card tool immediately.
+3. If you have a strong recommendation, set the recommended option.
    If all options are equally valid, omit the recommendation.
-5. After the card, you may write a brief closing sentence if needed.
+4. After the card, you may write a brief closing sentence if needed.
 
 The frontend renders an interactive card. The user clicks their choice instead of typing.
 
 When NOT to use this ability:
 - When saving stage data or submitting for validation
 - When responding to an approval or revision
-- When having a general discussion without concrete options
-- When there is only one obvious next step (no real choice needed)
-- When the user explicitly asked to type their preference`
+- When there is only one obvious next step (no real choice needed)`
 
 export async function POST(req: Request) {
     try {

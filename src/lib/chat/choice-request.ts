@@ -65,12 +65,26 @@ export function buildChoiceContextNote(
   }
 
   if (requestedValidation) {
+    baseLines.push("- Mode: validation-ready")
+
+    // daftar_pustaka has a special compilation step that must run before submit
+    if (event.stage === "daftar_pustaka") {
+      baseLines.push(
+        "- Next action: call compileDaftarPustaka with mode 'persist' and a ringkasan summarizing the bibliography. This compiles and deduplicates references server-side.",
+        "- After compileDaftarPustaka succeeds, call createArtifact with the compiled bibliography content.",
+        "- Then call submitStageForValidation.",
+        "- Do NOT call updateStageData directly — compileDaftarPustaka handles data persistence internally."
+      )
+    } else {
+      baseLines.push(
+        "- Next action: summarize the stage decision, then call updateStageData, createArtifact, and submitStageForValidation in sequence. Do not open new branches.",
+        "- If the current stage draft is not yet saved, you MUST call updateStageData first.",
+        "- If the current stage does not have an artifact yet, you MUST call createArtifact after updateStageData.",
+        "- Once stage data and artifact both exist, call submitStageForValidation in the same response."
+      )
+    }
+
     baseLines.push(
-      "- Mode: validation-ready",
-      "- Next action: summarize the stage decision, then call updateStageData, createArtifact, and submitStageForValidation in sequence. Do not open new branches.",
-      "- If the current stage draft is not yet saved, you MUST call updateStageData first.",
-      "- If the current stage does not have an artifact yet, you MUST call createArtifact after updateStageData.",
-      "- Once stage data and artifact both exist, call submitStageForValidation in the same response.",
       "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
     )
     return baseLines.join("\n")
