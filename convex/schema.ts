@@ -131,6 +131,8 @@ export default defineSchema({
       tokens: v.optional(v.number()),
       finishReason: v.optional(v.string()),
       uiMessageId: v.optional(v.string()),
+      // Legacy V1 interaction data (backward compat for existing documents)
+      interaction: v.optional(v.any()),
     })),
     sources: v.optional(v.array(v.object({
       url: v.string(),
