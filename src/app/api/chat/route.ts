@@ -43,6 +43,12 @@ import { getSearchSkill, composeSkillInstructions, type SkillContext } from "@/l
 import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
 // buildUserFacingSearchPayload now handled by orchestrator
+import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
+import {
+    parseOptionalChoiceInteractionEvent,
+    validateChoiceInteractionEvent,
+    buildChoiceContextNote,
+} from "@/lib/chat/choice-request"
 import { resolveEffectiveFileIds } from "@/lib/chat/effective-file-ids"
 import {
     classifyAttachmentHealth,
@@ -55,6 +61,25 @@ import {
     resolveSearchExecutionMode,
     type SearchExecutionMode,
 } from "@/lib/ai/web-search"
+
+const CHOICE_CARD_INSTRUCTION = `INTERACTIVE CHOICE CARD:
+You have access to the \`emitChoiceCard\` tool. This is your visual language for presenting structured choices to the user. Use it whenever the user needs to make a decision by choosing from 2-5 options — whether that is a recommendation (you have a preference), a neutral option set (all equally valid), or a confirmation (proceed vs reconsider).
+
+How to use:
+1. Write your analysis, context, and reasoning as normal prose.
+2. Do NOT list the options as a numbered/bulleted list in your prose. The card replaces that section entirely.
+3. When you reach the decision point, write a short transition (e.g., "Berikut beberapa arah yang bisa dipilih:") and immediately call emitChoiceCard.
+4. If you have a strong recommendation, set recommendedId to that option. If all options are equally valid, omit recommendedId.
+5. After the tool call, you may write a brief closing sentence if needed.
+
+The frontend renders an interactive card. The user clicks their choice instead of typing.
+
+When NOT to use this tool:
+- When saving stage data (updateStageData, createArtifact, submitStageForValidation)
+- When responding to an approval or revision
+- When having a general discussion without concrete options
+- When there is only one obvious next step (no real choice needed)
+- When the user explicitly asked to type their preference`
 
 export async function POST(req: Request) {
     try {
@@ -106,6 +131,7 @@ export async function POST(req: Request) {
             inheritAttachmentContext,
             clearAttachmentContext,
         } = body
+        const choiceInteractionEvent = parseOptionalChoiceInteractionEvent(body)
         const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
         if (process.env.NODE_ENV !== "production") {
             console.info("[ATTACH-DIAG][route] request body", {
@@ -347,6 +373,23 @@ export async function POST(req: Request) {
             paperSession && paperSession.currentStage !== "completed"
                 ? (paperSession.currentStage as PaperStageId)
                 : undefined
+
+        let choiceContextNote: string | undefined
+        if (choiceInteractionEvent) {
+            validateChoiceInteractionEvent({
+                event: choiceInteractionEvent,
+                conversationId: currentConversationId,
+                currentStage: paperStageScope ?? null,
+                isPaperMode: !!paperModePrompt,
+            })
+            choiceContextNote = buildChoiceContextNote(choiceInteractionEvent)
+        }
+
+        const isPhaseOneDraftingStage =
+            (paperStageScope === "gagasan" ||
+              paperStageScope === "topik" ||
+              paperStageScope === "outline") &&
+            paperSession?.stageStatus === "drafting"
 
         // Update billing context with paper session info
         if (paperSession) {
@@ -694,6 +737,12 @@ ${sourcesJson}`
                 }))
                 return instr ? [{ role: "system" as const, content: instr }] : []
             })(),
+            ...(isPhaseOneDraftingStage
+                ? [{ role: "system" as const, content: CHOICE_CARD_INSTRUCTION }]
+                : []),
+            ...(choiceContextNote
+                ? [{ role: "system" as const, content: choiceContextNote }]
+                : []),
             ...trimmedModelMessages,
         ]
 
@@ -1270,7 +1319,9 @@ JSON schema:
             content: string,
             sources?: { url: string; title: string; publishedAt?: number | null }[],
             usedModel?: string, // Model name from config (primary or fallback)
-            reasoningTrace?: PersistedCuratedTraceSnapshot
+            reasoningTrace?: PersistedCuratedTraceSnapshot,
+            jsonRendererChoice?: JsonRendererChoicePayload,
+            uiMessageId?: string
         ) => {
             const normalizedSources = sources
                 ?.map((source) => ({
@@ -1288,9 +1339,14 @@ JSON schema:
                     content: content,
                     metadata: {
                         model: usedModel ?? modelNames.primary.model, // From database config
+                        ...(uiMessageId ? { uiMessageId } : {}),
                     },
                     sources: normalizedSources && normalizedSources.length > 0 ? normalizedSources : undefined,
                     reasoningTrace: sanitizeReasoningTraceForPersistence(reasoningTrace),
+                    ...(jsonRendererChoice
+                        ? { jsonRendererChoice: JSON.stringify(jsonRendererChoice) }
+                        : {}),
+                    ...(uiMessageId ? { uiMessageId } : {}),
                 }),
                 "messages.createMessage(assistant)"
             )
@@ -2178,6 +2234,9 @@ Aturan:
                 })
             }
 
+            let primaryStreamChoicePayload: JsonRendererChoicePayload | null = null
+            const primaryMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+
             const result = streamText({
                 model,
                 messages: fullMessagesGateway,
@@ -2241,7 +2300,9 @@ Aturan:
                                 persistedContent,
                                 normalizedText.length > 0 ? sources : undefined,
                                 modelNames.primary.model,
-                                persistedReasoningTrace
+                                persistedReasoningTrace,
+                                primaryStreamChoicePayload ?? undefined,
+                                primaryMessageId
                             )
                         }
 
@@ -2296,7 +2357,7 @@ Aturan:
             })
 
             {
-                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                const messageId = primaryMessageId
                 const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
                 const reasoningTrace = createCuratedTraceController({
                     enabled: reasoningTraceEnabled,
@@ -2351,6 +2412,28 @@ Aturan:
                                     )
                                 }
                                 continue
+                            }
+
+                            if ((chunk as { type: string }).type === "tool-result") {
+                                const toolChunk = chunk as { type: string; toolName?: string; result?: unknown }
+                                if (toolChunk.toolName === "emitChoiceCard") {
+                                    const output = toolChunk.result as { success?: boolean; payload?: JsonRendererChoicePayload } | undefined
+                                    if (output?.success && output?.payload?.engine === "json-render") {
+                                        primaryStreamChoicePayload = output.payload
+                                        ensureStart()
+                                        writer.write({
+                                            type: "data-json-renderer-choice",
+                                            id: `${messageId}-json-renderer-choice`,
+                                            data: {
+                                                payload: output.payload,
+                                            },
+                                        })
+                                    }
+                                    // Pass through the original chunk (tool part hidden by MessageBubble)
+                                    ensureStart()
+                                    writer.write(chunk)
+                                    continue
+                                }
                             }
 
                             if (chunk.type === "source-url") {
@@ -2481,6 +2564,9 @@ Aturan:
                         return undefined
                     }
                     : undefined
+                let fallbackStreamChoicePayload: JsonRendererChoicePayload | null = null
+                const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+
                 const result = streamText({
                     model: fallbackModel,
                     messages: missingArtifactNote
@@ -2521,7 +2607,9 @@ Aturan:
                                 persistedContent,
                                 undefined,
                                 modelNames.fallback.model,
-                                persistedReasoningTrace
+                                persistedReasoningTrace,
+                                fallbackStreamChoicePayload ?? undefined,
+                                fallbackMessageId
                             )
                         }
                         if (normalizedText.length > 0) {
@@ -2573,7 +2661,7 @@ Aturan:
                         // ═════════════════════════════════════════════════
                     },
                 })
-                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                const messageId = fallbackMessageId
                 const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
                 const reasoningTrace = createCuratedTraceController({
                     enabled: reasoningTraceEnabled,
@@ -2631,6 +2719,28 @@ Aturan:
                                     )
                                 }
                                 continue
+                            }
+
+                            if ((chunk as { type: string }).type === "tool-result") {
+                                const toolChunk = chunk as { type: string; toolName?: string; result?: unknown }
+                                if (toolChunk.toolName === "emitChoiceCard") {
+                                    const output = toolChunk.result as { success?: boolean; payload?: JsonRendererChoicePayload } | undefined
+                                    if (output?.success && output?.payload?.engine === "json-render") {
+                                        fallbackStreamChoicePayload = output.payload
+                                        ensureStart()
+                                        writer.write({
+                                            type: "data-json-renderer-choice",
+                                            id: `${messageId}-json-renderer-choice`,
+                                            data: {
+                                                payload: output.payload,
+                                            },
+                                        })
+                                    }
+                                    // Pass through the original chunk (tool part hidden by MessageBubble)
+                                    ensureStart()
+                                    writer.write(chunk)
+                                    continue
+                                }
                             }
 
                             if (chunk.type === "source-url") {
