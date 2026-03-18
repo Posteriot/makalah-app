@@ -63,19 +63,27 @@ import {
 } from "@/lib/ai/web-search"
 
 const CHOICE_CARD_INSTRUCTION = `INTERACTIVE CHOICE CARD:
-You have access to the \`emitChoiceCard\` tool. This is your visual language for presenting structured choices to the user. Use it whenever the user needs to make a decision by choosing from 2-5 options — whether that is a recommendation (you have a preference), a neutral option set (all equally valid), or a confirmation (proceed vs reconsider).
+You have the ability to present an interactive choice card in the chat.
+This is your visual language for presenting structured decisions to the user.
+
+Use this ability whenever the user needs to make a decision by choosing
+from 2-5 options — whether that is a recommendation (you have a preference),
+a neutral option set (all equally valid), or a confirmation (proceed vs reconsider).
 
 How to use:
 1. Write your analysis, context, and reasoning as normal prose.
-2. Do NOT list the options as a numbered/bulleted list in your prose. The card replaces that section entirely.
-3. When you reach the decision point, write a short transition (e.g., "Berikut beberapa arah yang bisa dipilih:") and immediately call emitChoiceCard.
-4. If you have a strong recommendation, set recommendedId to that option. If all options are equally valid, omit recommendedId.
-5. After the tool call, you may write a brief closing sentence if needed.
+2. Do NOT list the options as a numbered/bulleted list in your prose.
+   The card replaces that section entirely.
+3. When you reach the decision point, write a short transition sentence
+   then call the choice card tool.
+4. If you have a strong recommendation, set the recommended option.
+   If all options are equally valid, omit the recommendation.
+5. After the card, you may write a brief closing sentence if needed.
 
 The frontend renders an interactive card. The user clicks their choice instead of typing.
 
-When NOT to use this tool:
-- When saving stage data (updateStageData, createArtifact, submitStageForValidation)
+When NOT to use this ability:
+- When saving stage data or submitting for validation
 - When responding to an approval or revision
 - When having a general discussion without concrete options
 - When there is only one obvious next step (no real choice needed)
@@ -2404,11 +2412,21 @@ Aturan:
 
                         emitTrace(reasoningTrace.initialEvents)
 
+                        const toolCallIdToName = new Map<string, string>()
+
                         for await (const chunk of result.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
                             sendReasoning: isTransparentReasoning,
                         })) {
+                            // Track toolCallId → toolName for tool-output-available interception
+                            if (chunk.type === "tool-input-start") {
+                                const tis = chunk as { toolCallId?: string; toolName?: string }
+                                if (tis.toolCallId && tis.toolName) {
+                                    toolCallIdToName.set(tis.toolCallId, tis.toolName)
+                                }
+                            }
+
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
                                 if (chunk.type === "reasoning-delta") {
                                     reasoningAccumulator.onReasoningDelta(
@@ -2420,10 +2438,11 @@ Aturan:
                                 continue
                             }
 
-                            if ((chunk as { type: string }).type === "tool-result") {
-                                const toolChunk = chunk as { type: string; toolName?: string; result?: unknown }
-                                if (toolChunk.toolName === "emitChoiceCard") {
-                                    const output = toolChunk.result as { success?: boolean; payload?: JsonRendererChoicePayload } | undefined
+                            if ((chunk as { type: string }).type === "tool-output-available") {
+                                const toa = chunk as { type: string; toolCallId?: string; output?: unknown }
+                                const resolvedToolName = toa.toolCallId ? toolCallIdToName.get(toa.toolCallId) : undefined
+                                if (resolvedToolName === "emitChoiceCard") {
+                                    const output = toa.output as { success?: boolean; payload?: JsonRendererChoicePayload } | undefined
                                     console.info(`[CHOICE-CARD][stream-intercept] primary success=${output?.success} engine=${output?.payload?.engine} stage=${output?.payload?.stage} optionCount=${output?.payload?.options?.length ?? 0}`)
                                     if (output?.success && output?.payload?.engine === "json-render") {
                                         primaryStreamChoicePayload = output.payload
@@ -2712,11 +2731,21 @@ Aturan:
 
                         emitTrace(reasoningTrace.initialEvents)
 
+                        const toolCallIdToName = new Map<string, string>()
+
                         for await (const chunk of result.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
                             sendReasoning: fallbackTransparent,
                         })) {
+                            // Track toolCallId → toolName for tool-output-available interception
+                            if (chunk.type === "tool-input-start") {
+                                const tis = chunk as { toolCallId?: string; toolName?: string }
+                                if (tis.toolCallId && tis.toolName) {
+                                    toolCallIdToName.set(tis.toolCallId, tis.toolName)
+                                }
+                            }
+
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
                                 if (chunk.type === "reasoning-delta") {
                                     reasoningAccumulator.onReasoningDelta(
@@ -2728,11 +2757,12 @@ Aturan:
                                 continue
                             }
 
-                            if ((chunk as { type: string }).type === "tool-result") {
-                                const toolChunk = chunk as { type: string; toolName?: string; result?: unknown }
-                                if (toolChunk.toolName === "emitChoiceCard") {
-                                    const output = toolChunk.result as { success?: boolean; payload?: JsonRendererChoicePayload } | undefined
-                                    console.info(`[CHOICE-CARD][stream-intercept] fallback success=${output?.success} engine=${output?.payload?.engine} stage=${output?.payload?.stage}`)
+                            if ((chunk as { type: string }).type === "tool-output-available") {
+                                const toa = chunk as { type: string; toolCallId?: string; output?: unknown }
+                                const resolvedToolName = toa.toolCallId ? toolCallIdToName.get(toa.toolCallId) : undefined
+                                if (resolvedToolName === "emitChoiceCard") {
+                                    const output = toa.output as { success?: boolean; payload?: JsonRendererChoicePayload } | undefined
+                                    console.info(`[CHOICE-CARD][stream-intercept] fallback success=${output?.success} engine=${output?.payload?.engine} stage=${output?.payload?.stage} optionCount=${output?.payload?.options?.length ?? 0}`)
                                     if (output?.success && output?.payload?.engine === "json-render") {
                                         fallbackStreamChoicePayload = output.payload
                                         ensureStart()
