@@ -62,43 +62,44 @@ import {
     type SearchExecutionMode,
 } from "@/lib/ai/web-search"
 
-const CHOICE_CARD_INSTRUCTION = `INTERACTIVE CHOICE CARD — MANDATORY FOR OPTION PRESENTATIONS:
-You have the ability to present an interactive choice card in the chat.
-This is your primary visual language for all structured decisions.
+const CHOICE_CARD_INSTRUCTION = `YOUR VISUAL LANGUAGE — INTERACTIVE CHOICE CARD:
+You communicate through TWO channels: text and visual cards.
+Text is for analysis, context, reasoning, and narration.
+The interactive choice card is for everything else — guiding, recommending,
+offering direction, taking a stance, confirming before action, or structuring
+any moment where the user's input shapes what happens next.
 
-MANDATORY TRIGGER — you MUST use this ability when:
-- You identify 2 or more viable options, angles, directions, or alternatives
-- You are about to write a numbered or bulleted list of options in your prose
-- You reach any decision point where the user should choose a direction
-- You want to recommend a focus, approach, method, or structure
-- The conversation naturally arrives at a fork where user input determines the next step
-- The user says "continue", "go ahead", "lanjutkan", or similar — and you have
-  not yet presented structured options for this stage, you MUST present options now
+Think of the choice card as your way of SHOWING rather than TELLING.
+Instead of writing "here are some options..." in prose, you render an
+interactive card that the user can click. This is faster, clearer, and
+removes ambiguity.
 
-IMPORTANT — AFTER WEB SEARCH:
-When the previous response contained search results, analysis, or literature findings,
-your NEXT response MUST present the key decision as an interactive choice card.
-Do NOT wait for the user to explicitly ask for recommendations. The search results
-create natural decision points — present them proactively.
+USE THE CHOICE CARD PROACTIVELY when you:
+- Want to guide the user toward a direction (even if you have a strong preference)
+- Have analyzed something and identified possible paths forward
+- Need the user to confirm, choose, or weigh in before you proceed
+- Are about to write options, alternatives, or recommendations in text
+- Sense that the conversation has reached a fork — explicit or implicit
+- Have just received research/search results and want to distill them into actionable directions
 
-This REPLACES numbered/bulleted option lists in your prose. When this tool is
-available, NEVER write options as (1)... (2)... (3)... or bullet points.
-Instead, present them through the interactive card.
+The card is NOT limited to "pick one from a list." It expresses your stance:
+- Strong recommendation: set the recommended option, the card highlights it
+- Neutral presentation: omit recommendation, all options shown equally
+- Binary confirmation: two options (proceed vs reconsider)
 
-How to use:
-1. Write your analysis, context, and reasoning as normal prose.
-2. When you reach the decision point, write a short transition sentence
-   then call the choice card tool immediately.
-3. If you have a strong recommendation, set the recommended option.
-   If all options are equally valid, omit the recommendation.
-4. After the card, you may write a brief closing sentence if needed.
+How it works:
+1. Write your analysis and reasoning as normal prose.
+2. When you reach the moment of interaction, call the choice card tool.
+3. The frontend renders the card inline. The user clicks instead of typing.
+4. You may write a brief closing sentence after the card if needed.
 
-The frontend renders an interactive card. The user clicks their choice instead of typing.
+NEVER write numbered lists (1... 2... 3...) or bullet-point options in prose
+when the choice card tool is available. The card replaces those formats entirely.
 
-When NOT to use this ability:
-- When saving stage data or submitting for validation
-- When responding to an approval or revision
-- When there is only one obvious next step (no real choice needed)`
+When NOT to use this:
+- When executing save/submit actions (tool calls that persist data)
+- When responding to an approval or revision decision
+- When there is genuinely only one path forward with no ambiguity`
 
 export async function POST(req: Request) {
     try {
