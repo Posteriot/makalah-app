@@ -395,10 +395,14 @@ The tool will:
         }),
 
         // ── Choice Card Tool (phase-one drafting stages only) ──────
-        ...((context.paperStageScope === "gagasan" ||
-          context.paperStageScope === "topik" ||
-          context.paperStageScope === "outline") &&
-          context.paperStageStatus === "drafting"
+        ...((() => {
+            const isPhaseOneDrafting = (context.paperStageScope === "gagasan" ||
+              context.paperStageScope === "topik" ||
+              context.paperStageScope === "outline") &&
+              context.paperStageStatus === "drafting"
+            console.info(`[CHOICE-CARD][register] stage=${context.paperStageScope ?? "none"} status=${context.paperStageStatus ?? "none"} registered=${isPhaseOneDrafting}`)
+            return isPhaseOneDrafting
+        })()
           ? {
               emitChoiceCard: tool({
                 description:
@@ -433,6 +437,7 @@ The tool will:
                     .describe("Button label. Defaults to 'Lanjutkan'."),
                 }),
                 execute: async (input) => {
+                  console.info(`[CHOICE-CARD][execute] kind=${input.kind} title="${input.title}" options=${input.options.length} recommendedId=${input.recommendedId ?? "none"}`)
                   const { spec, normalizedOptions } = compileChoiceSpec({
                     stage: context.paperStageScope!,
                     kind: input.kind,

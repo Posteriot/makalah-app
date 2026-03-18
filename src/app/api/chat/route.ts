@@ -132,6 +132,9 @@ export async function POST(req: Request) {
             clearAttachmentContext,
         } = body
         const choiceInteractionEvent = parseOptionalChoiceInteractionEvent(body)
+        if (choiceInteractionEvent) {
+            console.info(`[CHOICE-CARD][event-received] type=${choiceInteractionEvent.type} stage=${choiceInteractionEvent.stage} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
+        }
         const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
         if (process.env.NODE_ENV !== "production") {
             console.info("[ATTACH-DIAG][route] request body", {
@@ -1332,6 +1335,9 @@ JSON schema:
                         : {}),
                 }))
                 .filter((source) => source.url && source.title)
+            if (jsonRendererChoice) {
+                console.info(`[CHOICE-CARD][persist] stage=${jsonRendererChoice.stage} kind=${jsonRendererChoice.kind} optionCount=${jsonRendererChoice.options.length} uiMessageId=${uiMessageId ?? "none"}`)
+            }
             await retryMutation(
                 () => fetchMutationWithToken(api.messages.createMessage, {
                     conversationId: currentConversationId as Id<"conversations">,
@@ -2418,6 +2424,7 @@ Aturan:
                                 const toolChunk = chunk as { type: string; toolName?: string; result?: unknown }
                                 if (toolChunk.toolName === "emitChoiceCard") {
                                     const output = toolChunk.result as { success?: boolean; payload?: JsonRendererChoicePayload } | undefined
+                                    console.info(`[CHOICE-CARD][stream-intercept] primary success=${output?.success} engine=${output?.payload?.engine} stage=${output?.payload?.stage} optionCount=${output?.payload?.options?.length ?? 0}`)
                                     if (output?.success && output?.payload?.engine === "json-render") {
                                         primaryStreamChoicePayload = output.payload
                                         ensureStart()
@@ -2725,6 +2732,7 @@ Aturan:
                                 const toolChunk = chunk as { type: string; toolName?: string; result?: unknown }
                                 if (toolChunk.toolName === "emitChoiceCard") {
                                     const output = toolChunk.result as { success?: boolean; payload?: JsonRendererChoicePayload } | undefined
+                                    console.info(`[CHOICE-CARD][stream-intercept] fallback success=${output?.success} engine=${output?.payload?.engine} stage=${output?.payload?.stage}`)
                                     if (output?.success && output?.payload?.engine === "json-render") {
                                         fallbackStreamChoicePayload = output.payload
                                         ensureStart()
