@@ -13,7 +13,7 @@ All 14 paper stages during `stageStatus === "drafting"`. The choice card is not 
 
 The model emits interactive cards by writing YAML specs as text in its response — the same way it writes code blocks. This is the model's **visual language**: prose for analysis, YAML for structured interaction. No tool calling. No extra LLM calls. No skip logic. Works in ALL code paths including web search compose.
 
-The `@json-render/yaml` package provides `pipeYamlRender()` — a stream transform that intercepts YAML code fences from text, parses them into specs, and emits `spec:data` parts to the frontend. The `yamlPrompt()` function auto-generates system prompts from the component catalog.
+The `@json-render/yaml` package provides `pipeYamlRender()` — a stream transform that intercepts YAML code fences from text, parses them into specs, and emits `data-spec` parts to the frontend (constant: `SPEC_DATA_PART_TYPE = "data-" + "spec"`). The `yamlPrompt()` function auto-generates system prompts from the component catalog.
 
 ## Constraints
 
@@ -44,7 +44,7 @@ MODEL                          STREAM TRANSFORM                    FRONTEND
   │  YAML fence, parses it         │                                  │
   │       │                        │                                  │
   │       ▼                        │                                  │
-  │                                ├─ emit spec:data patches ────────►│ render card
+  │                                ├─ emit data-spec patches ────────►│ render card
   │                                │                                  │
   ├─ more prose ──────────────────►├─ pass through as text ──────────►│ render prose
   │                                │                                  │
@@ -123,7 +123,7 @@ const result = streamText({
 
 const stream = createUIMessageStream({
     execute: async ({ writer }) => {
-        // pipeYamlRender intercepts yaml-spec fences, emits spec:data parts
+        // pipeYamlRender intercepts yaml-spec fences, emits data-spec parts
         writer.merge(pipeYamlRender(result.toUIMessageStream({
             sendStart: false,
             generateMessageId: () => messageId,
@@ -136,7 +136,7 @@ const stream = createUIMessageStream({
 This replaces the `for await` chunk loop for spec handling. The loop still exists for reasoning trace and other custom logic — but choice card handling is delegated to `pipeYamlRender`.
 
 **IMPORTANT**: If the existing `for await` loop handles other custom logic (reasoning traces, source detection, etc.), we need to pipe through BOTH:
-1. `pipeYamlRender` for YAML → spec:data conversion
+1. `pipeYamlRender` for YAML → data-spec conversion
 2. Custom logic for reasoning, sources, etc.
 
 This may require piping the stream through `pipeYamlRender` first, then iterating the result for custom logic. Or using a two-pass approach. The exact integration depends on whether `writer.merge` and custom chunk iteration can coexist.
@@ -166,7 +166,7 @@ Same pattern as primary.
 
 ### Option A: Use useJsonRenderMessage hook (recommended)
 
-`@json-render/react` provides `useJsonRenderMessage(message)` which extracts `spec:data` parts from UIMessage parts and builds the spec. This replaces our manual `extractJsonRendererChoice` function.
+`@json-render/react` provides `useJsonRenderMessage(message)` which extracts `data-spec` parts from UIMessage parts and builds the spec. This replaces our manual `extractJsonRendererChoice` function.
 
 ```tsx
 import { useJsonRenderMessage } from "@json-render/react"
@@ -194,13 +194,13 @@ function MessageBubble({ message }) {
 
 ### Option B: Manual extraction (if hook doesn't fit our architecture)
 
-If `useJsonRenderMessage` doesn't integrate cleanly with our existing MessageBubble (which has complex parts iteration), we can manually extract `spec:data` parts:
+If `useJsonRenderMessage` doesn't integrate cleanly with our existing MessageBubble (which has complex parts iteration), we can manually extract `data-spec` parts:
 
 ```typescript
 function extractSpecFromParts(parts: UIMessage["parts"]): Spec | null {
-    // Look for spec:data part type emitted by pipeYamlRender
+    // Look for data-spec part type emitted by pipeYamlRender
     for (const part of parts ?? []) {
-        if (part.type === "spec:data") {
+        if (part.type === "data-spec") {
             // build spec from patches
         }
     }
@@ -208,13 +208,13 @@ function extractSpecFromParts(parts: UIMessage["parts"]): Spec | null {
 }
 ```
 
-The exact approach depends on how `spec:data` parts integrate with our existing parts iteration in MessageBubble. This needs investigation during implementation.
+The exact approach depends on how `data-spec` parts integrate with our existing parts iteration in MessageBubble. This needs investigation during implementation.
 
 ## Component 5: Persistence
 
 Same as v2 — capture the final spec from the stream and persist as `jsonRendererChoice` JSON string in the messages table.
 
-`pipeYamlRender` emits `spec:data` parts. We need to capture the final compiled spec at stream finish and include it in `saveAssistantMessage`. The `createYamlStreamCompiler` has `getResult()` method that returns the current spec state.
+`pipeYamlRender` emits `data-spec` parts. We need to capture the final compiled spec at stream finish and include it in `saveAssistantMessage`. The `createYamlStreamCompiler` has `getResult()` method that returns the current spec state.
 
 ```typescript
 // After stream finishes, get the compiled spec
@@ -239,15 +239,15 @@ The `choice-submit.ts` and `choice-request.ts` contracts remain identical.
 
 ## Component 7: History Rehydration
 
-Parse `jsonRendererChoice` from persisted message. The persisted data is the compiled spec (same structure as what `pipeYamlRender` produces). On rehydration, inject it as a `spec:data` part with type `flat` (a complete spec, not incremental patches):
+Parse `jsonRendererChoice` from persisted message. The persisted data is the compiled spec (same structure as what `pipeYamlRender` produces). On rehydration, inject it as a `data-spec` part with type `flat` (a complete spec, not incremental patches):
 
 ```typescript
 const rawChoice = (historyMsg as Record<string, unknown>)?.jsonRendererChoice
 if (rawChoice && typeof rawChoice === "string") {
     const spec = JSON.parse(rawChoice)
-    // Inject as spec:data part with flat type — same format useJsonRenderMessage expects
+    // Inject as data-spec part with flat type — same format useJsonRenderMessage expects
     parts.push({
-        type: "spec:data",
+        type: "data-spec", // SPEC_DATA_PART_TYPE from @json-render/core
         data: { type: "flat", spec },
     })
 }
@@ -257,7 +257,7 @@ This uses the `flat` discriminator from `isSpecDataPart` validation in `@json-re
 
 ### Part Type Compatibility
 
-`spec:data` is the part type used by `@json-render/yaml` and consumed by `@json-render/react`. This replaces our custom `data-json-renderer-choice` type. The existing MessageBubble parts iteration must be updated to recognize `spec:data` instead of `data-json-renderer-choice`. The `extractJsonRendererChoice` function is replaced by `useJsonRenderMessage` or manual `spec:data` extraction.
+`data-spec` (`SPEC_DATA_PART_TYPE`) is the part type used by `@json-render/yaml` and consumed by `@json-render/react`. This replaces our custom `data-json-renderer-choice` type. The existing MessageBubble parts iteration must be updated to recognize `data-spec` instead of `data-json-renderer-choice`. The `extractJsonRendererChoice` function is replaced by `useJsonRenderMessage` or manual `data-spec` extraction.
 
 ## What Changes vs V2
 
@@ -270,7 +270,7 @@ This uses the `flat` discriminator from `isSpecDataPart` validation in `@json-re
 | Tool registration | Conditional per stage + stageStatus | Not needed |
 | paper-tools.ts | Added `emitChoiceCard` tool | Remove `emitChoiceCard` tool |
 | New dependency | None | `@json-render/yaml`, `yaml` |
-| Frontend extraction | Manual `extractJsonRendererChoice` | `useJsonRenderMessage` hook or `spec:data` part extraction |
+| Frontend extraction | Manual `extractJsonRendererChoice` | `useJsonRenderMessage` hook or `data-spec` part extraction |
 
 ## What Does NOT Change
 
@@ -298,6 +298,6 @@ This uses the `flat` discriminator from `isSpecDataPart` validation in `@json-re
 
 1. **pipeYamlRender + existing for-await loop**: Can they coexist? The existing loop handles reasoning traces, source detection, etc. Need to verify if `writer.merge(pipeYamlRender(...))` can be combined with custom chunk iteration, or if we need to pipe the stream through pipeYamlRender first and then iterate the result.
 
-2. **Spec capture for persistence**: How to capture the final compiled spec for DB persistence. `pipeYamlRender` may not expose this directly. Options: (a) maintain a parallel `createYamlStreamCompiler` instance, (b) intercept `spec:data` parts after pipeYamlRender, (c) read back from the stream. Must be verified by reading `pipeYamlRender` source.
+2. **Spec capture for persistence**: How to capture the final compiled spec for DB persistence. `pipeYamlRender` may not expose this directly. Options: (a) maintain a parallel `createYamlStreamCompiler` instance, (b) intercept `data-spec` parts after pipeYamlRender, (c) read back from the stream. Must be verified by reading `pipeYamlRender` source.
 
 3. **State management**: Does `yamlPrompt` include instructions for `$state` references and `$bindState` bindings? The choice card needs `/selection/selectedOptionId` state tracking. The `yamlPrompt` source shows it generates state management documentation, but the exact format must be verified against our catalog's action params that use `$state`.
