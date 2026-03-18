@@ -22,6 +22,8 @@ import { formatFileSize, isImageType, splitFileName } from "@/lib/types/attached
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { extractLegacySourcesFromText } from "@/lib/citations/legacy-source-extractor"
 import { splitInternalThought } from "@/lib/ai/internal-thought-separator"
+import { JsonRendererChoiceBlock } from "./json-renderer/JsonRendererChoiceBlock"
+import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
 
 // Types for paper permission checking
 interface StageDataEntry {
@@ -91,6 +93,16 @@ interface MessageBubbleProps {
     fileMetaMap?: Map<string, { name: string; size: number; type: string }>
     /** Callback to open the Sources sheet with the given sources */
     onOpenSources?: (sources: { url: string; title: string; publishedAt?: number | null }[]) => void
+    /** Whether the choice card for this message has already been submitted */
+    isChoiceSubmitted?: boolean
+    /** Callback when user submits a choice card selection */
+    onChoiceSubmit?: (params: {
+        sourceMessageId: string
+        choicePartId: string
+        payload: JsonRendererChoicePayload
+        selectedOptionId: string
+        customText?: string
+    }) => void | Promise<void>
 }
 
 export function MessageBubble({
@@ -107,6 +119,8 @@ export function MessageBubble({
     fileNameMap,
     fileMetaMap,
     onOpenSources,
+    isChoiceSubmitted,
+    onChoiceSubmit,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
@@ -247,6 +261,8 @@ export function MessageBubble({
             if (isCompletedState && !persistProcessIndicators) continue
 
             const toolName = maybeToolPart.type.replace("tool-", "")
+            // Skip emitChoiceCard tool display (card renders from data part)
+            if (toolName === "emitChoiceCard") continue
             let errorText: string | undefined
             const normalizedState = isCompletedState && persistProcessIndicators
                 ? "input-available"
@@ -354,8 +370,22 @@ export function MessageBubble({
         return null
     }
 
+    const extractJsonRendererChoice = (uiMessage: UIMessage): JsonRendererChoicePayload | null => {
+        for (const part of uiMessage.parts ?? []) {
+            if (!part || typeof part !== "object") continue
+            const maybeDataPart = part as unknown as { type?: string; data?: unknown }
+            if (maybeDataPart.type !== "data-json-renderer-choice") continue
+            const data = maybeDataPart.data as { payload?: unknown } | null
+            if (!data || typeof data !== "object") continue
+            if (!data.payload || typeof data.payload !== "object") continue
+            return data.payload as JsonRendererChoicePayload
+        }
+        return null
+    }
+
     const searchStatus = extractSearchStatus(message)
     const citedText = extractCitedText(message)
+    const choicePayload = extractJsonRendererChoice(message)
 
     const startEditing = () => {
         setIsEditing(true)
@@ -882,8 +912,8 @@ export function MessageBubble({
                         </div>
                     )}
 
-                    {/* Assistant follow-up blocks: artifact output -> sources -> quick actions */}
-                    {isAssistant && !isEditing && (hasArtifactSignals || hasSources || hasQuickActions) && (
+                    {/* Assistant follow-up blocks: artifact output -> sources -> choice card -> quick actions */}
+                    {isAssistant && !isEditing && (hasArtifactSignals || hasSources || hasQuickActions || choicePayload) && (
                         <div className="mt-3 space-y-3">
                             {hasArtifactSignals && (
                                 <section className="space-y-2 pt-2" aria-label="Hasil artifak">
@@ -906,6 +936,26 @@ export function MessageBubble({
                                 <section aria-label="Sumber referensi">
                                     <SourcesIndicator sources={sources} onOpenSheet={onOpenSources} />
                                 </section>
+                            )}
+
+                            {choicePayload && (
+                                <JsonRendererChoiceBlock
+                                    payload={choicePayload}
+                                    isSubmitted={isChoiceSubmitted}
+                                    onSubmit={
+                                        onChoiceSubmit
+                                            ? async ({ selectedOptionId, customText }) => {
+                                                  await onChoiceSubmit?.({
+                                                      sourceMessageId: message.id,
+                                                      choicePartId: `${message.id}-json-renderer-choice`,
+                                                      payload: choicePayload,
+                                                      selectedOptionId,
+                                                      customText,
+                                                  })
+                                              }
+                                            : undefined
+                                    }
+                                />
                             )}
 
                             {hasQuickActions && <QuickActions content={displayMarkdown || content} />}

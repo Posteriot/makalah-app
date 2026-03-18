@@ -29,6 +29,8 @@ import { QuotaWarningBanner } from "./QuotaWarningBanner"
 import { MobileEditDeleteSheet } from "./mobile/MobileEditDeleteSheet"
 import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
+import { buildChoiceInteractionEvent, buildChoiceSyntheticText } from "@/lib/chat/choice-submit"
+import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import {
   buildChatQuotaOfferFromError,
@@ -434,6 +436,7 @@ export function ChatWindow({
   const [pendingRewindTarget, setPendingRewindTarget] = useState<PaperStageId | null>(null)
   const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
+  const [submittedChoiceKeys, setSubmittedChoiceKeys] = useState<Set<string>>(new Set())
   const [chatViewportNode, setChatViewportNode] = useState<HTMLDivElement | null>(null)
   const [chatViewportWidth, setChatViewportWidth] = useState(0)
   type ActiveSheet = "proses" | "sources" | null
@@ -1001,6 +1004,40 @@ export function ChatWindow({
     sendUserMessageWithContext,
   ])
 
+  const handleChoiceSubmit = useCallback(async (params: {
+    sourceMessageId: string
+    choicePartId: string
+    payload: JsonRendererChoicePayload
+    selectedOptionId: string
+    customText?: string
+  }) => {
+    const submissionKey = `${params.sourceMessageId}::${params.choicePartId}`
+    setSubmittedChoiceKeys((prev) => new Set([...prev, submissionKey]))
+
+    const selectedLabel =
+      params.payload.options.find((o) => o.id === params.selectedOptionId)?.label ??
+      params.selectedOptionId
+
+    const event = buildChoiceInteractionEvent({
+      conversationId: conversationId ?? "",
+      sourceMessageId: params.sourceMessageId,
+      choicePartId: params.choicePartId,
+      stage: params.payload.stage as PaperStageId,
+      kind: params.payload.kind,
+      selectedOptionId: params.selectedOptionId,
+      customText: params.customText,
+    })
+
+    const syntheticText = buildChoiceSyntheticText({
+      stage: params.payload.stage as PaperStageId,
+      selectedOptionId: params.selectedOptionId,
+      selectedLabel,
+      customText: params.customText,
+    })
+
+    sendMessage({ text: syntheticText }, { body: { interactionEvent: event } })
+  }, [conversationId, sendMessage])
+
   // Auto-send pending starter prompt after redirect from landing state.
   useEffect(() => {
     if (!conversationId || !isAuthenticated) return
@@ -1127,13 +1164,30 @@ export function ChatWindow({
               }))
           : []
 
+        // Rehydrate persisted json-renderer choice as a data part
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rawChoice = (msg as any).jsonRendererChoice as string | undefined
+        const persistedChoiceParts: { type: string; id: string; data: { payload: unknown } }[] = []
+        if (rawChoice && typeof rawChoice === "string") {
+          try {
+            const choicePayload = JSON.parse(rawChoice)
+            persistedChoiceParts.push({
+              type: "data-json-renderer-choice",
+              id: `${msg._id}-json-renderer-choice`,
+              data: { payload: choicePayload },
+            })
+          } catch {
+            // Skip invalid JSON
+          }
+        }
+
         return {
           id: msg._id,
           role: msg.role as "user" | "assistant" | "system" | "data",
           content: msg.content,
           fileIds: msg.fileIds,
           attachmentMode: msg.attachmentMode,
-          parts: [{ type: "text", text: msg.content } as const, ...persistedTraceParts],
+          parts: [{ type: "text", text: msg.content } as const, ...persistedTraceParts, ...persistedChoiceParts],
           annotations: msg.fileIds
             ? [
                 {
@@ -1168,6 +1222,27 @@ export function ChatWindow({
       starterPromptPendingHistorySyncRef.current = null
     }
   }, [conversationId, historyMessages, isHistoryLoading, setMessages, fileMetaMap])
+
+  // Rehydrate submitted choice keys from history — mark choices that already have a follow-up user message
+  useEffect(() => {
+    if (!historyMessages || historyMessages.length === 0) return
+    const keys = new Set<string>()
+    for (let i = 0; i < historyMessages.length; i++) {
+      const msg = historyMessages[i]
+      if (msg.role === "user" && typeof msg.content === "string" && msg.content.startsWith("[Choice:")) {
+        // Walk backwards to find the assistant message with the choice card
+        for (let j = i - 1; j >= 0; j--) {
+          const prev = historyMessages[j]
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if (prev.role === "assistant" && (prev as any).jsonRendererChoice) {
+            keys.add(`${prev._id}::${prev._id}-json-renderer-choice`)
+            break
+          }
+        }
+      }
+    }
+    if (keys.size > 0) setSubmittedChoiceKeys(keys)
+  }, [historyMessages])
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
@@ -2070,6 +2145,8 @@ export function ChatWindow({
                         fileNameMap={fileNameMap}
                         fileMetaMap={fileMetaMap}
                         onOpenSources={handleOpenSources}
+                        isChoiceSubmitted={submittedChoiceKeys.has(`${message.id}::${message.id}-json-renderer-choice`)}
+                        onChoiceSubmit={handleChoiceSubmit}
                       />
                     </div>
                   </div>
