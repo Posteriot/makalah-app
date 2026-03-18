@@ -24,7 +24,7 @@ MODEL                    BACKEND (route.ts stream loop)           FRONTEND
   │       │                      │                                   │
   │       ▼                      │                                   │
   ├─ tool-output-available ─────►├─ intercept tool output            │
-  │                              ├─ emit data-json-renderer-rec ────►│ render card
+  │                              ├─ emit data-json-renderer-choice ─►│ render card
   │                              ├─ writer.write(chunk) ────────────►│ (tool part hidden)
   │                              │                                   │
   ├─ finish ────────────────────►├─ persist message + payload ──────►│
@@ -143,13 +143,13 @@ if (chunk.type === "tool-output-available") {
   const output = (chunk as any).output
   if (output?.success && output?.payload) {
     // Store for persistence
-    streamRecommendationPayload = output.payload
+    streamChoicePayload = output.payload
 
     // Emit to UI stream
     ensureStart()
     writer.write({
       type: "data-json-renderer-choice",
-      id: `${messageId}-json-renderer-recommendation`,
+      id: `${messageId}-json-renderer-choice`,
       data: output.payload,
     })
   }
@@ -177,7 +177,7 @@ if (chunk.type === "finish") {
     model,
     reasoningTrace,
     uiMessageId,
-    streamRecommendationPayload ?? undefined  // NEW: include payload
+    streamChoicePayload ?? undefined  // NEW: include payload
   )
 }
 ```
@@ -190,7 +190,7 @@ Same interception logic in the fallback `runFallbackWithoutSearch` stream loop.
 
 ### onFinish Path
 
-`onFinish` does NOT need to generate recommendation payload. It's already captured from the stream. If `streamRecommendationPayload` exists, include it in the save:
+`onFinish` does NOT need to generate the choice payload. It's already captured from the stream. If `streamChoicePayload` exists, include it in the save:
 
 ```typescript
 onFinish: async ({ text, ... }) => {
@@ -202,7 +202,7 @@ onFinish: async ({ text, ... }) => {
       model,
       reasoningTrace,
       uiMessageId,
-      streamRecommendationPayload ?? undefined  // Already captured
+      streamChoicePayload ?? undefined  // Already captured
     )
     primaryAssistantMessagePersisted = true
   }
@@ -256,7 +256,7 @@ This instruction is the **only** mechanism that guides when the card appears. No
 Add extractor in `MessageBubble.tsx` following existing pattern:
 
 ```typescript
-function extractJsonRendererRecommendation(uiMessage: UIMessage) {
+function extractJsonRendererChoice(uiMessage: UIMessage) {
   for (const part of uiMessage.parts ?? []) {
     if (!part || typeof part !== "object") continue
     const dataPart = part as { type?: string; data?: unknown }
@@ -285,7 +285,7 @@ if (part.type === "tool-emitChoiceCard") continue
 
 ## Component 5: History Rehydration
 
-On page refresh, reconstruct recommendation card from persisted data:
+On page refresh, reconstruct choice card from persisted data:
 
 ```typescript
 // In ChatWindow history mapping
@@ -294,7 +294,7 @@ if (rawPayload) {
   const payload = JSON.parse(rawPayload)
   parts.push({
     type: "data-json-renderer-choice",
-    id: `${messageId}-json-renderer-recommendation`,
+    id: `${messageId}-json-renderer-choice`,
     data: payload,
   })
 }
@@ -372,13 +372,13 @@ After submission, the card becomes read-only:
 
 | Area | V1 | V2 |
 |------|----|----|
-| `json-renderer-recommendation.ts` (LLM generator) | 400 lines, `generateText` call | **DELETED** — no second LLM call |
+| `json-renderer-choice.ts` (LLM generator) | 400 lines, `generateText` call | **DELETED** — no second LLM call |
 | `route.ts` skip logic | 6+ conditions, 80+ lines | **ZERO** — tool availability = natural gate |
 | `route.ts` stream finish | Build payload + persist | Just persist (payload already captured) |
 | `route.ts` onFinish | Build payload + persist | Just persist (payload already captured) |
 | `paper-tools.ts` | No choice tool | New `emitChoiceCard` tool |
 | System prompt | No card awareness | Card tool usage instruction with anti-duplication rule |
-| Spec compilation | In `json-renderer-recommendation.ts` | In tool `execute` function |
+| Spec compilation | In `json-renderer-choice.ts` | In tool `execute` function |
 | Naming | "recommendation" everywhere | "choice" — generic for recommendations, options, confirmations |
 | `recommendedId` | Required | Optional — supports neutral option presentations |
 | State key | `recommendation.selectedOptionId` | `selection.selectedOptionId` — generic |

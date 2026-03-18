@@ -20,18 +20,27 @@ This document defines the correct paradigm and constraints for v2.
 
 The json-renderer card is **not a separate system that interprets the model's prose**. It is a **native output modality** of the model — the same way the model can output text, call tools, or emit reasoning traces.
 
-When the model wants to present options or recommendations, it has two output channels:
+The model has two output channels:
 
 1. **Text** — for analysis, context, reasoning, narration
-2. **Visual card** — for actionable choices the user should click
+2. **Visual card** — for any structured interaction that requires the user to make an explicit decision
+
+The visual card is the model's way of saying "I need you to choose" — whether that is:
+- **Recommendations** (model has a strong preference among options)
+- **Neutral options** (all choices are equally valid, model presents without bias)
+- **Confirmations** (proceed vs reconsider — binary decision points)
+- **Prioritization requests** (future: rank items by importance)
+- **Action selections** (future: choose what to do next from a set of actions)
+
+In short: **any moment where clicking is faster, clearer, and less ambiguous than typing** is a valid use case for the visual card.
 
 These two channels work together in the same response:
 - Model writes context/analysis as prose (paragraphs 1-2)
-- Model emits a structured recommendation block (replaces what would have been paragraphs 3-4 of option listings)
+- Model emits a structured choice block (replaces what would have been paragraphs 3-4 of option listings)
 - Frontend renders prose + card as one coherent message
 - User reads context, then clicks choice in card
 
-The model **knows** the card will appear. It does not duplicate the options in prose because it knows the card handles that.
+The model **knows** the card will appear. It does not duplicate the choices in prose because it knows the card handles that.
 
 ## How This Differs From V1
 
@@ -47,14 +56,14 @@ The model **knows** the card will appear. It does not duplicate the options in p
 
 ## Technical Mechanism: Tool-Based Emission
 
-The model emits a recommendation card by calling a **tool**. This is the natural AI SDK pattern — tools are how models produce structured output alongside text.
+The model emits a visual card by calling a **tool** (`emitChoiceCard`). This is the natural AI SDK pattern — tools are how models produce structured output alongside text.
 
 ```
 Model response flow:
 1. Model streams text (analysis, context)
-2. Model calls `emitRecommendationCard` tool with structured payload
+2. Model calls `emitChoiceCard` tool with structured payload
 3. Backend compiles payload into json-render spec
-4. Backend emits `data-json-renderer-recommendation` part to stream
+4. Backend emits `data-json-renderer-choice` part to stream
 5. Frontend renders card inside the message bubble
 6. Model continues with closing text if needed
 ```
@@ -70,7 +79,7 @@ Why a tool and not structured output or a magic token:
 
 ### 1. Paper workflow must not be disrupted
 
-The 14-stage workflow (gagasan → judul) has its own lifecycle: `drafting → pending_validation → approved/revision`. The recommendation card is a UX enhancement within the `drafting` phase. It must not:
+The 14-stage workflow (gagasan → judul) has its own lifecycle: `drafting → pending_validation → approved/revision`. The visual card is a UX enhancement within the `drafting` phase. It must not:
 
 - Block or delay `submitStageForValidation`
 - Interfere with validation panel appearance
@@ -79,7 +88,7 @@ The 14-stage workflow (gagasan → judul) has its own lifecycle: `drafting → p
 
 ### 2. Shell chat architecture stays intact
 
-The existing streaming protocol (`createUIMessageStream`, `writer.write`, `data-*` parts) and client-side rendering (`MessageBubble`, `message.parts` extraction) are the foundation. The recommendation card is a new `data-*` part type, not a new rendering system.
+The existing streaming protocol (`createUIMessageStream`, `writer.write`, `data-*` parts) and client-side rendering (`MessageBubble`, `message.parts` extraction) are the foundation. The visual card is a new `data-*` part type (`data-json-renderer-choice`), not a new rendering system.
 
 ### 3. User always has text fallback
 
@@ -119,7 +128,7 @@ The following components from the rolled-back v1 (`backup/json-renderer-v1-befor
 ## Existing Infrastructure to Leverage
 
 ### Streaming protocol
-- `writer.write({ type: "data-json-renderer-recommendation", id, data })` — same pattern as `data-search`, `data-cited-text`, etc.
+- `writer.write({ type: "data-json-renderer-choice", id, data })` — same pattern as `data-search`, `data-cited-text`, etc.
 - Client reads `message.parts` and extracts by type in `MessageBubble.tsx`
 
 ### Tool definition pattern
@@ -127,20 +136,22 @@ The following components from the rolled-back v1 (`backup/json-renderer-v1-befor
 - Existing tools: `updateStageData`, `createArtifact`, `submitStageForValidation`, `getCurrentPaperState`
 
 ### Persistence
-- `convex/schema.ts` messages table can store recommendation payload as `jsonRendererRecommendation: v.optional(v.string())` (JSON-serialized, avoids `$state` reserved key issue)
-- Rehydration from history: parse stored string back to payload, inject as `data-json-renderer-recommendation` part
+- `convex/schema.ts` messages table stores choice payload as `jsonRendererChoice: v.optional(v.string())` (JSON-serialized, avoids `$state` reserved key issue)
+- Rehydration from history: parse stored string back to payload, inject as `data-json-renderer-choice` part
 
 ### Read-only lock after submission
-- `cloneRecommendationSpecWithReadOnlyState()` pattern from v1 — disable buttons, change submit label to "Sudah dikirim"
+- `cloneSpecWithReadOnlyState()` pattern from v1 — disable buttons, change submit label to "Sudah dikirim"
 
 ## Key Design Questions for Implementation
 
-1. **Tool schema**: What minimal payload does the model emit via the tool? (title, options with labels, recommended option ID, submit label)
-2. **Spec compilation**: How does backend compile the tool output into a full json-render spec? (deterministic, no LLM call)
-3. **Stream emission timing**: Tool result handler emits `data-json-renderer-recommendation` to stream — how does this integrate with the existing `for await` chunk loop?
-4. **Persistence**: When and how is the recommendation payload saved alongside the assistant message?
-5. **Submit flow**: When user clicks an option and submits, how does the event flow back to the chat API? (same `interactionEvent` pattern as v1, or simplified?)
-6. **System prompt**: What instruction tells the model about the tool and when to use it?
+All answered in the design doc (`2026-03-18-json-renderer-v2-design.md`):
+
+1. **Tool schema**: `emitChoiceCard` with `kind`, `title`, `options`, optional `recommendedId`, optional `submitLabel`
+2. **Spec compilation**: Deterministic in tool `execute` — no LLM call
+3. **Stream emission timing**: Intercept `tool-output-available` in `for await` chunk loop, emit `data-json-renderer-choice`
+4. **Persistence**: Payload captured from stream, included in `saveAssistantMessage` at `finish`
+5. **Submit flow**: `interactionEvent` with `paper.choice.submit` type, context note injected to model
+6. **System prompt**: "INTERACTIVE CHOICE CARD" instruction — when to use, when not to use, anti-duplication rule
 
 ## Relationship to Other Documents
 
