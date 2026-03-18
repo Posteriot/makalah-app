@@ -169,6 +169,8 @@ export default defineSchema({
     })),
     // Json Renderer V2: persisted choice card payload (JSON string)
     jsonRendererChoice: v.optional(v.string()),
+    // Legacy V1: persisted recommendation payload (backward compat)
+    jsonRendererRecommendation: v.optional(v.string()),
     // UI message ID for history rehydration
     uiMessageId: v.optional(v.string()),
   })

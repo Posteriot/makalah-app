@@ -108,6 +108,8 @@ export const createMessage = mutation({
         }))),
         reasoningTrace: v.optional(reasoningTraceValidator),
         jsonRendererChoice: v.optional(v.string()),
+        // Legacy V1 (backward compat)
+        jsonRendererRecommendation: v.optional(v.string()),
         uiMessageId: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
