@@ -387,6 +387,9 @@ export async function POST(req: Request) {
         )
         const paperModePrompt = paperModeContext.prompt
         const skillResolverFallback = paperModeContext.skillResolverFallback
+        if (paperModeContext.stageInstructionSource) {
+            console.info(`[STAGE-SKILL] source=${paperModeContext.stageInstructionSource} skillId=${paperModeContext.activeSkillId ?? "none"} version=${paperModeContext.activeSkillVersion ?? "none"} fallbackReason=${paperModeContext.fallbackReason ?? "none"}`)
+        }
         const paperSession = paperModePrompt
             ? await fetchQueryWithToken(api.paperSessions.getByConversation, {
                 conversationId: currentConversationId as Id<"conversations">,
