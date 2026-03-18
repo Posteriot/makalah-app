@@ -1677,6 +1677,8 @@ Aturan:
                 convexToken,
                 availableSources: recentSourcesList,
                 hasRecentSources: hasRecentSourcesInDb,
+                paperStageScope: paperStageScope,
+                paperStageStatus: paperSession?.stageStatus,
             }),
         } satisfies ToolSet
 
