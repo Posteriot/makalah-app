@@ -4,7 +4,22 @@ import { z } from "zod"
 // Stage
 // ---------------------------------------------------------------------------
 
-const choiceStageSchema = z.enum(["gagasan", "topik", "outline"])
+const choiceStageSchema = z.enum([
+  "gagasan",
+  "topik",
+  "outline",
+  "abstrak",
+  "pendahuluan",
+  "tinjauan_literatur",
+  "metodologi",
+  "hasil",
+  "diskusi",
+  "kesimpulan",
+  "pembaruan_abstrak",
+  "daftar_pustaka",
+  "lampiran",
+  "judul",
+])
 
 export type JsonRendererChoiceStage = z.infer<typeof choiceStageSchema>
 

@@ -396,10 +396,8 @@ export async function POST(req: Request) {
             choiceContextNote = buildChoiceContextNote(choiceInteractionEvent)
         }
 
-        const isPhaseOneDraftingStage =
-            (paperStageScope === "gagasan" ||
-              paperStageScope === "topik" ||
-              paperStageScope === "outline") &&
+        const isDraftingStage =
+            !!paperStageScope &&
             paperSession?.stageStatus === "drafting"
 
         // Update billing context with paper session info
@@ -748,7 +746,7 @@ ${sourcesJson}`
                 }))
                 return instr ? [{ role: "system" as const, content: instr }] : []
             })(),
-            ...(isPhaseOneDraftingStage
+            ...(isDraftingStage
                 ? [{ role: "system" as const, content: CHOICE_CARD_INSTRUCTION }]
                 : []),
             ...(choiceContextNote

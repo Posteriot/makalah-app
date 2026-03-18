@@ -394,14 +394,13 @@ The tool will:
             },
         }),
 
-        // ── Choice Card Tool (phase-one drafting stages only) ──────
+        // ── Choice Card Tool (all stages during drafting) ──────
         ...((() => {
-            const isPhaseOneDrafting = (context.paperStageScope === "gagasan" ||
-              context.paperStageScope === "topik" ||
-              context.paperStageScope === "outline") &&
+            const isDrafting = !!context.paperStageScope &&
+              context.paperStageScope !== "completed" &&
               context.paperStageStatus === "drafting"
-            console.info(`[CHOICE-CARD][register] stage=${context.paperStageScope ?? "none"} status=${context.paperStageStatus ?? "none"} registered=${isPhaseOneDrafting}`)
-            return isPhaseOneDrafting
+            console.info(`[CHOICE-CARD][register] stage=${context.paperStageScope ?? "none"} status=${context.paperStageStatus ?? "none"} registered=${isDrafting}`)
+            return isDrafting
         })()
           ? {
               emitChoiceCard: tool({
