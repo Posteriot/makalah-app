@@ -108,11 +108,30 @@ Define Zod prop schemas for each component type:
 - `buildChoiceInteractionEvent(params)` — builds `paper.choice.submit` event
 - `buildChoiceSyntheticText(params)` — builds `[Choice: {stage}] Pilihan: {label}`
 
+**InteractionEvent schema** (from design doc Component 6):
+
+```typescript
+{
+  type: "paper.choice.submit",
+  version: 1,
+  conversationId: string,
+  stage: PaperStageId,
+  sourceMessageId: string,
+  choicePartId: string,
+  kind: "single-select",
+  selectedOptionIds: [string],
+  customText?: string,
+  submittedAt: number,
+}
+```
+
 **File**: `src/lib/chat/choice-request.ts` (NEW)
 
 - `parseOptionalChoiceInteractionEvent(body)` — extract from request body
 - `validateChoiceInteractionEvent(params)` — validate stage, conversationId, paper mode
-- `buildChoiceContextNote(event)` — build context note for model (decision-to-draft or validation-ready)
+- `buildChoiceContextNote(event)` — build context note for model:
+  - Normal choice → `USER_CHOICE_DECISION: ... Mode: decision-to-draft`
+  - Validation option → `USER_CHOICE_DECISION: ... Mode: validation-ready`
 
 **Verify**: Unit test — event shape, synthetic text, context note for both modes.
 
@@ -291,7 +310,41 @@ In `fullMessagesBase` construction, inject when tool is available:
 }] : []),
 ```
 
-Define `CHOICE_CARD_INSTRUCTION` as a const near the top of the handler, or import from a shared file.
+Define `CHOICE_CARD_INSTRUCTION` as a const. Full text from design doc Component 3:
+
+```
+INTERACTIVE CHOICE CARD:
+You have access to the `emitChoiceCard` tool. This is your visual language for presenting
+structured choices to the user. Use it whenever the user needs to make a decision by
+choosing from 2-5 options — whether that is a recommendation (you have a preference),
+a neutral option set (all equally valid), or a confirmation (proceed vs reconsider).
+
+How to use:
+1. Write your analysis, context, and reasoning as normal prose.
+2. Do NOT list the options as a numbered/bulleted list in your prose. The card replaces
+   that section entirely.
+3. When you reach the decision point, write a short transition (e.g., "Berikut beberapa
+   arah yang bisa dipilih:") and immediately call emitChoiceCard.
+4. If you have a strong recommendation, set recommendedId to that option. If all options
+   are equally valid, omit recommendedId.
+5. After the tool call, you may write a brief closing sentence if needed.
+
+The frontend renders an interactive card. The user clicks their choice instead of typing.
+
+Examples of when to use:
+- Presenting research angle options in gagasan stage
+- Presenting topic focus alternatives in topik stage
+- Presenting outline structure choices in outline stage
+- Asking user to confirm a direction (2 options: proceed vs reconsider)
+- Any decision point where clicking is faster and clearer than typing
+
+When NOT to use this tool:
+- When saving stage data (updateStageData, createArtifact, submitStageForValidation)
+- When responding to an approval or revision
+- When having a general discussion without concrete options
+- When there is only one obvious next step (no real choice needed)
+- When the user explicitly asked to type their preference
+```
 
 `isPhaseOneDraftingStage` is derived from `paperStageScope` and `paperSession?.stageStatus`.
 
@@ -450,7 +503,8 @@ npx vitest run  # full suite
 | 9 | Non-phase-one stage (abstrak) | No card, model writes prose | Tool gating |
 | 10 | Approval turn | No card | Natural gating |
 | 11 | Terminal: persist logs | Single `[ASSISTANT-DIAG][persist]` per turn | No duplicate |
-| 12 | Full workflow gagasan→topik→outline | Smooth transitions, no stuck stages | Workflow health |
+| 12 | Terminal: no `[JSONR-DIAG]` logs | Zero occurrences (skip system removed entirely) | Clean architecture |
+| 13 | Full workflow gagasan→topik→outline | Smooth transitions, no stuck stages | Workflow health |
 
 ### Rollback
 
