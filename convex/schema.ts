@@ -130,6 +130,7 @@ export default defineSchema({
       model: v.optional(v.string()),
       tokens: v.optional(v.number()),
       finishReason: v.optional(v.string()),
+      uiMessageId: v.optional(v.string()),
     })),
     sources: v.optional(v.array(v.object({
       url: v.string(),
@@ -164,6 +165,10 @@ export default defineSchema({
         })),
       })),
     })),
+    // Json Renderer V2: persisted choice card payload (JSON string)
+    jsonRendererChoice: v.optional(v.string()),
+    // UI message ID for history rehydration
+    uiMessageId: v.optional(v.string()),
   })
     .index("by_conversation", ["conversationId", "createdAt"])
     .index("by_conversation_role", ["conversationId", "role", "createdAt"]),

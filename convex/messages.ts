@@ -97,6 +97,7 @@ export const createMessage = mutation({
             model: v.optional(v.string()),
             tokens: v.optional(v.number()),
             finishReason: v.optional(v.string()),
+            uiMessageId: v.optional(v.string()),
         })),
         sources: v.optional(v.array(v.object({
             url: v.string(),
@@ -104,6 +105,8 @@ export const createMessage = mutation({
             publishedAt: v.optional(v.number()),
         }))),
         reasoningTrace: v.optional(reasoningTraceValidator),
+        jsonRendererChoice: v.optional(v.string()),
+        uiMessageId: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         await requireConversationOwner(ctx, args.conversationId)
