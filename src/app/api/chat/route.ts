@@ -62,45 +62,6 @@ import {
     type SearchExecutionMode,
 } from "@/lib/ai/web-search"
 
-const CHOICE_CARD_INSTRUCTION = `YOUR VISUAL LANGUAGE — INTERACTIVE CHOICE CARD:
-You communicate through TWO channels: text and visual cards.
-Text is for analysis, context, reasoning, and narration.
-The interactive choice card is for everything else — guiding, recommending,
-offering direction, taking a stance, confirming before action, or structuring
-any moment where the user's input shapes what happens next.
-
-Think of the choice card as your way of SHOWING rather than TELLING.
-Instead of writing "here are some options..." in prose, you render an
-interactive card that the user can click. This is faster, clearer, and
-removes ambiguity.
-
-USE THE CHOICE CARD PROACTIVELY when you:
-- Want to guide the user toward a direction (even if you have a strong preference)
-- Have analyzed something and identified possible paths forward
-- Need the user to confirm, choose, or weigh in before you proceed
-- Are about to write options, alternatives, or recommendations in text
-- Sense that the conversation has reached a fork — explicit or implicit
-- Have just received research/search results and want to distill them into actionable directions
-
-The card is NOT limited to "pick one from a list." It expresses your stance:
-- Strong recommendation: set the recommended option, the card highlights it
-- Neutral presentation: omit recommendation, all options shown equally
-- Binary confirmation: two options (proceed vs reconsider)
-
-How it works:
-1. Write your analysis and reasoning as normal prose.
-2. When you reach the moment of interaction, call the choice card tool.
-3. The frontend renders the card inline. The user clicks instead of typing.
-4. You may write a brief closing sentence after the card if needed.
-
-NEVER write numbered lists (1... 2... 3...) or bullet-point options in prose
-when the choice card tool is available. The card replaces those formats entirely.
-
-When NOT to use this:
-- When executing save/submit actions (tool calls that persist data)
-- When responding to an approval or revision decision
-- When there is genuinely only one path forward with no ambiguity`
-
 export async function POST(req: Request) {
     try {
         // 1. Authenticate with BetterAuth
@@ -387,9 +348,6 @@ export async function POST(req: Request) {
         )
         const paperModePrompt = paperModeContext.prompt
         const skillResolverFallback = paperModeContext.skillResolverFallback
-        if (paperModeContext.stageInstructionSource) {
-            console.info(`[STAGE-SKILL] source=${paperModeContext.stageInstructionSource} skillId=${paperModeContext.activeSkillId ?? "none"} version=${paperModeContext.activeSkillVersion ?? "none"} fallbackReason=${paperModeContext.fallbackReason ?? "none"}`)
-        }
         const paperSession = paperModePrompt
             ? await fetchQueryWithToken(api.paperSessions.getByConversation, {
                 conversationId: currentConversationId as Id<"conversations">,
@@ -410,10 +368,6 @@ export async function POST(req: Request) {
             })
             choiceContextNote = buildChoiceContextNote(choiceInteractionEvent)
         }
-
-        const isDraftingStage =
-            !!paperStageScope &&
-            paperSession?.stageStatus === "drafting"
 
         // Update billing context with paper session info
         if (paperSession) {
@@ -761,9 +715,6 @@ ${sourcesJson}`
                 }))
                 return instr ? [{ role: "system" as const, content: instr }] : []
             })(),
-            ...(isDraftingStage
-                ? [{ role: "system" as const, content: CHOICE_CARD_INSTRUCTION }]
-                : []),
             ...(choiceContextNote
                 ? [{ role: "system" as const, content: choiceContextNote }]
                 : []),
@@ -1356,9 +1307,6 @@ JSON schema:
                         : {}),
                 }))
                 .filter((source) => source.url && source.title)
-            if (jsonRendererChoice) {
-                console.info(`[CHOICE-CARD][persist] stage=${jsonRendererChoice.stage} kind=${jsonRendererChoice.kind} optionCount=${jsonRendererChoice.options.length} uiMessageId=${uiMessageId ?? "none"}`)
-            }
             await retryMutation(
                 () => fetchMutationWithToken(api.messages.createMessage, {
                     conversationId: currentConversationId as Id<"conversations">,
@@ -1760,8 +1708,6 @@ Aturan:
                 convexToken,
                 availableSources: recentSourcesList,
                 hasRecentSources: hasRecentSourcesInDb,
-                paperStageScope: paperStageScope,
-                paperStageStatus: paperSession?.stageStatus,
             }),
         } satisfies ToolSet
 
@@ -2261,7 +2207,6 @@ Aturan:
                 })
             }
 
-            let primaryStreamChoicePayload: JsonRendererChoicePayload | null = null
             const primaryMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
 
             const result = streamText({
@@ -2328,7 +2273,7 @@ Aturan:
                                 normalizedText.length > 0 ? sources : undefined,
                                 modelNames.primary.model,
                                 persistedReasoningTrace,
-                                primaryStreamChoicePayload ?? undefined,
+                                undefined,
                                 primaryMessageId
                             )
                         }
@@ -2425,21 +2370,11 @@ Aturan:
 
                         emitTrace(reasoningTrace.initialEvents)
 
-                        const toolCallIdToName = new Map<string, string>()
-
                         for await (const chunk of result.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
                             sendReasoning: isTransparentReasoning,
                         })) {
-                            // Track toolCallId → toolName for tool-output-available interception
-                            if (chunk.type === "tool-input-start") {
-                                const tis = chunk as { toolCallId?: string; toolName?: string }
-                                if (tis.toolCallId && tis.toolName) {
-                                    toolCallIdToName.set(tis.toolCallId, tis.toolName)
-                                }
-                            }
-
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
                                 if (chunk.type === "reasoning-delta") {
                                     reasoningAccumulator.onReasoningDelta(
@@ -2449,30 +2384,6 @@ Aturan:
                                     )
                                 }
                                 continue
-                            }
-
-                            if ((chunk as { type: string }).type === "tool-output-available") {
-                                const toa = chunk as { type: string; toolCallId?: string; output?: unknown }
-                                const resolvedToolName = toa.toolCallId ? toolCallIdToName.get(toa.toolCallId) : undefined
-                                if (resolvedToolName === "emitChoiceCard") {
-                                    const output = toa.output as { success?: boolean; payload?: JsonRendererChoicePayload } | undefined
-                                    console.info(`[CHOICE-CARD][stream-intercept] primary success=${output?.success} engine=${output?.payload?.engine} stage=${output?.payload?.stage} optionCount=${output?.payload?.options?.length ?? 0}`)
-                                    if (output?.success && output?.payload?.engine === "json-render") {
-                                        primaryStreamChoicePayload = output.payload
-                                        ensureStart()
-                                        writer.write({
-                                            type: "data-json-renderer-choice",
-                                            id: `${messageId}-json-renderer-choice`,
-                                            data: {
-                                                payload: output.payload,
-                                            },
-                                        })
-                                    }
-                                    // Pass through the original chunk (tool part hidden by MessageBubble)
-                                    ensureStart()
-                                    writer.write(chunk)
-                                    continue
-                                }
                             }
 
                             if (chunk.type === "source-url") {
@@ -2603,7 +2514,6 @@ Aturan:
                         return undefined
                     }
                     : undefined
-                let fallbackStreamChoicePayload: JsonRendererChoicePayload | null = null
                 const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
 
                 const result = streamText({
@@ -2647,7 +2557,7 @@ Aturan:
                                 undefined,
                                 modelNames.fallback.model,
                                 persistedReasoningTrace,
-                                fallbackStreamChoicePayload ?? undefined,
+                                undefined,
                                 fallbackMessageId
                             )
                         }
@@ -2744,21 +2654,11 @@ Aturan:
 
                         emitTrace(reasoningTrace.initialEvents)
 
-                        const toolCallIdToName = new Map<string, string>()
-
                         for await (const chunk of result.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
                             sendReasoning: fallbackTransparent,
                         })) {
-                            // Track toolCallId → toolName for tool-output-available interception
-                            if (chunk.type === "tool-input-start") {
-                                const tis = chunk as { toolCallId?: string; toolName?: string }
-                                if (tis.toolCallId && tis.toolName) {
-                                    toolCallIdToName.set(tis.toolCallId, tis.toolName)
-                                }
-                            }
-
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
                                 if (chunk.type === "reasoning-delta") {
                                     reasoningAccumulator.onReasoningDelta(
@@ -2768,30 +2668,6 @@ Aturan:
                                     )
                                 }
                                 continue
-                            }
-
-                            if ((chunk as { type: string }).type === "tool-output-available") {
-                                const toa = chunk as { type: string; toolCallId?: string; output?: unknown }
-                                const resolvedToolName = toa.toolCallId ? toolCallIdToName.get(toa.toolCallId) : undefined
-                                if (resolvedToolName === "emitChoiceCard") {
-                                    const output = toa.output as { success?: boolean; payload?: JsonRendererChoicePayload } | undefined
-                                    console.info(`[CHOICE-CARD][stream-intercept] fallback success=${output?.success} engine=${output?.payload?.engine} stage=${output?.payload?.stage} optionCount=${output?.payload?.options?.length ?? 0}`)
-                                    if (output?.success && output?.payload?.engine === "json-render") {
-                                        fallbackStreamChoicePayload = output.payload
-                                        ensureStart()
-                                        writer.write({
-                                            type: "data-json-renderer-choice",
-                                            id: `${messageId}-json-renderer-choice`,
-                                            data: {
-                                                payload: output.payload,
-                                            },
-                                        })
-                                    }
-                                    // Pass through the original chunk (tool part hidden by MessageBubble)
-                                    ensureStart()
-                                    writer.write(chunk)
-                                    continue
-                                }
                             }
 
                             if (chunk.type === "source-url") {

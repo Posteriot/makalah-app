@@ -5,8 +5,6 @@ import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { retryMutation, retryQuery } from "../convex/retry"
-import { compileChoiceSpec, type NormalizedOption } from "@/lib/json-render/compile-choice-spec"
-import { parseJsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
 
 /**
  * Factory for creating AI tools specific to the paper writing workflow.
@@ -17,8 +15,6 @@ export const createPaperTools = (context: {
     convexToken?: string
     availableSources?: Array<{ url: string; title: string; publishedAt?: number }>
     hasRecentSources?: boolean
-    paperStageScope?: string   // current stage for tool gating
-    paperStageStatus?: string  // drafting/pending_validation/approved/revision
 }) => {
     const convexOptions = context.convexToken ? { token: context.convexToken } : undefined
     return {
@@ -394,85 +390,5 @@ The tool will:
             },
         }),
 
-        // ── Choice Card Tool (all stages during drafting) ──────
-        ...((() => {
-            const isDrafting = !!context.paperStageScope &&
-              context.paperStageScope !== "completed" &&
-              context.paperStageStatus === "drafting"
-            console.info(`[CHOICE-CARD][register] stage=${context.paperStageScope ?? "none"} status=${context.paperStageStatus ?? "none"} registered=${isDrafting}`)
-            return isDrafting
-        })()
-          ? {
-              emitChoiceCard: tool({
-                description:
-                  "Present an interactive choice card to the user. Use this when the user needs to make a decision by choosing from 2-5 options. The frontend renders an interactive card — the user clicks instead of typing. Do NOT list the options as a numbered/bulleted list in your prose when using this tool.",
-                inputSchema: z.object({
-                  kind: z.enum(["single-select"]).describe(
-                    "Interaction type. Currently only single-select is supported."
-                  ),
-                  title: z.string().min(1).describe(
-                    "Short heading for the decision point, in Indonesian."
-                  ),
-                  options: z
-                    .array(
-                      z.object({
-                        id: z.string().min(1).describe("Kebab-case identifier."),
-                        label: z.string().min(1).describe("Human-readable label in Indonesian, under 60 chars."),
-                      })
-                    )
-                    .min(2)
-                    .max(5)
-                    .describe("The selectable options."),
-                  recommendedId: z
-                    .string()
-                    .optional()
-                    .describe(
-                      "The id of the option you recommend. Omit if all options are equally valid."
-                    ),
-                  submitLabel: z
-                    .string()
-                    .max(40)
-                    .optional()
-                    .describe("Button label. Defaults to 'Lanjutkan'."),
-                }),
-                execute: async (input) => {
-                  console.info(`[CHOICE-CARD][execute] kind=${input.kind} title="${input.title}" options=${input.options.length} recommendedId=${input.recommendedId ?? "none"}`)
-                  const { spec, normalizedOptions } = compileChoiceSpec({
-                    stage: context.paperStageScope!,
-                    kind: input.kind,
-                    title: input.title,
-                    options: input.options,
-                    recommendedId: input.recommendedId,
-                    submitLabel: input.submitLabel,
-                    appendValidationOption: true,
-                  })
-
-                  const selectedOptionId = input.recommendedId
-                    ? normalizedOptions.find(
-                        (o: NormalizedOption) => o._originalId === input.recommendedId
-                      )?.id ?? null
-                    : null
-
-                  return {
-                    success: true,
-                    payload: parseJsonRendererChoicePayload({
-                      version: 1,
-                      engine: "json-render",
-                      stage: context.paperStageScope!,
-                      kind: input.kind,
-                      spec,
-                      initialState: {
-                        selection: { selectedOptionId, customText: "" },
-                      },
-                      options: normalizedOptions.map((o: NormalizedOption) => ({
-                        id: o.id,
-                        label: o.label,
-                      })),
-                    }),
-                  }
-                },
-              }),
-            }
-          : {}),
     }
 }
