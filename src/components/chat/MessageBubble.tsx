@@ -263,8 +263,6 @@ export function MessageBubble({
             if (isCompletedState && !persistProcessIndicators) continue
 
             const toolName = maybeToolPart.type.replace("tool-", "")
-            // Skip emitChoiceCard tool display (card renders from data part)
-            if (toolName === "emitChoiceCard") continue
             let errorText: string | undefined
             const normalizedState = isCompletedState && persistProcessIndicators
                 ? "input-available"
