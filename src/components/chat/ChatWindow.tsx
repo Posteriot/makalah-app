@@ -1054,6 +1054,8 @@ export function ChatWindow({
     const lastAttemptAt = starterPromptLastAttemptAtRef.current.get(conversationId) ?? 0
     if (now - lastAttemptAt < 2000) return
 
+    // Clear immediately BEFORE send to prevent React Strict Mode double-invoke
+    clearPendingStarterPrompt(conversationId)
     starterPromptLastAttemptAtRef.current.set(conversationId, now)
     // Avoid syncing empty history snapshot while starter prompt is still optimistic in UI.
     starterPromptPendingHistorySyncRef.current = conversationId
