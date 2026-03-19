@@ -390,12 +390,18 @@ export function MessageBubble({
                 }
             }
         }
-        // Only return spec if fully formed: has root key AND root element exists in elements map
+        // Only return spec if fully formed and safe to render
         if (!spec) return null
         const s = spec as unknown as Record<string, unknown>
         if (!s.root || typeof s.root !== "string") return null
-        const elements = s.elements as Record<string, unknown> | undefined
-        if (!elements || !elements[s.root]) return null
+        const elements = s.elements as Record<string, Record<string, unknown>> | undefined
+        if (!elements || typeof elements !== "object") return null
+        // Root element must exist
+        if (!elements[s.root]) return null
+        // ALL elements must have valid props object (prevents resolveBindings crash on null/undefined)
+        for (const el of Object.values(elements)) {
+            if (!el || typeof el !== "object" || !el.props || typeof el.props !== "object") return null
+        }
         return spec
     }
 
