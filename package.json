@@ -25,6 +25,8 @@
     "@ai-sdk/openai": "^3.0.37",
     "@ai-sdk/react": "^3.0.108",
     "@convex-dev/better-auth": "^0.10.10",
+    "@json-render/react": "^0.14.1",
+    "@json-render/yaml": "^0.14.1",
     "@openrouter/ai-sdk-provider": "^2.2.3",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -77,6 +79,7 @@
     "svix": "^1.82.0",
     "tailwind-merge": "^3.4.0",
     "xlsx-populate": "^1.21.0",
+    "yaml": "^2.8.2",
     "zod": "^4.1.13"
   },
   "overrides": {
