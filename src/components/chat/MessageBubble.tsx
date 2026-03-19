@@ -376,15 +376,17 @@ export function MessageBubble({
             if (!part || typeof part !== "object") continue
             const dataPart = part as unknown as { type?: string; data?: unknown }
             if (dataPart.type !== SPEC_DATA_PART_TYPE) continue
-            const data = dataPart.data as { type?: string; spec?: Spec; patch?: JsonPatch[] } | null
+            const data = dataPart.data as { type?: string; spec?: Spec; patch?: unknown } | null
             if (!data || typeof data !== "object") continue
             if (data.type === "flat" && data.spec) {
                 spec = data.spec
             } else if (data.type === "patch" && data.patch) {
                 // Initialize empty spec on first patch — pipeYamlRender only emits patches during streaming
                 if (!spec) spec = {} as Spec
-                for (const p of data.patch) {
-                    spec = applySpecPatch(spec, p)
+                // pipeYamlRender emits single patch per chunk (not array)
+                const patches = Array.isArray(data.patch) ? data.patch : [data.patch]
+                for (const p of patches) {
+                    try { spec = applySpecPatch(spec, p as JsonPatch) } catch { /* skip invalid patch */ }
                 }
             }
         }
