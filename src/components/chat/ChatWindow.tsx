@@ -1015,29 +1015,36 @@ export function ChatWindow({
     const submissionKey = `${params.sourceMessageId}::${params.choicePartId}`
     setSubmittedChoiceKeys((prev) => new Set([...prev, submissionKey]))
 
-    const selectedLabel =
-      params.payload.options.find((o) => o.id === params.selectedOptionId)?.label ??
-      params.selectedOptionId
+    // V3 YAML: payload is { spec } — extract label from spec elements, stage from session
+    const specAny = params.payload as unknown as { spec?: { elements?: Record<string, { props?: { label?: string; optionId?: string } }> } }
+    const elements = specAny?.spec?.elements ?? {}
+    const matchedElement = Object.values(elements).find(
+      (el) => el?.props?.optionId === params.selectedOptionId
+    )
+    const selectedLabel = matchedElement?.props?.label ?? params.selectedOptionId
+
+    // Use current paper stage from session (spec doesn't carry stage info)
+    const currentStage = (paperSession?.currentStage ?? "gagasan") as PaperStageId
 
     const event = buildChoiceInteractionEvent({
       conversationId: conversationId ?? "",
       sourceMessageId: params.sourceMessageId,
       choicePartId: params.choicePartId,
-      stage: params.payload.stage as PaperStageId,
-      kind: params.payload.kind,
+      stage: currentStage,
+      kind: "single-select",
       selectedOptionId: params.selectedOptionId,
       customText: params.customText,
     })
 
     const syntheticText = buildChoiceSyntheticText({
-      stage: params.payload.stage as PaperStageId,
+      stage: currentStage,
       selectedOptionId: params.selectedOptionId,
       selectedLabel,
       customText: params.customText,
     })
 
     sendMessage({ text: syntheticText }, { body: { interactionEvent: event } })
-  }, [conversationId, sendMessage])
+  }, [conversationId, paperSession, sendMessage])
 
   // Auto-send pending starter prompt after redirect from landing state.
   useEffect(() => {
