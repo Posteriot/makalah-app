@@ -390,8 +390,13 @@ export function MessageBubble({
                 }
             }
         }
-        // Only return spec if it has a root element (valid json-render spec)
-        return spec && (spec as unknown as Record<string, unknown>).root ? spec : null
+        // Only return spec if fully formed: has root key AND root element exists in elements map
+        if (!spec) return null
+        const s = spec as unknown as Record<string, unknown>
+        if (!s.root || typeof s.root !== "string") return null
+        const elements = s.elements as Record<string, unknown> | undefined
+        if (!elements || !elements[s.root]) return null
+        return spec
     }
 
     const searchStatus = extractSearchStatus(message)
