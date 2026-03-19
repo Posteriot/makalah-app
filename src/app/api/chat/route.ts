@@ -44,6 +44,10 @@ import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
 // buildUserFacingSearchPayload now handled by orchestrator
 import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
+import { pipeYamlRender } from "@json-render/yaml"
+import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
+import type { Spec, JsonPatch } from "@json-render/core"
+import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
 import {
     parseOptionalChoiceInteractionEvent,
     validateChoiceInteractionEvent,
@@ -357,6 +361,7 @@ export async function POST(req: Request) {
             paperSession && paperSession.currentStage !== "completed"
                 ? (paperSession.currentStage as PaperStageId)
                 : undefined
+        const isDraftingStage = !!paperStageScope && paperSession?.stageStatus === "drafting"
 
         let choiceContextNote: string | undefined
         if (choiceInteractionEvent) {
@@ -717,6 +722,9 @@ ${sourcesJson}`
             })(),
             ...(choiceContextNote
                 ? [{ role: "system" as const, content: choiceContextNote }]
+                : []),
+            ...(isDraftingStage
+                ? [{ role: "system" as const, content: CHOICE_YAML_SYSTEM_PROMPT }]
                 : []),
             ...trimmedModelMessages,
         ]
@@ -1295,7 +1303,7 @@ JSON schema:
             sources?: { url: string; title: string; publishedAt?: number | null }[],
             usedModel?: string, // Model name from config (primary or fallback)
             reasoningTrace?: PersistedCuratedTraceSnapshot,
-            jsonRendererChoice?: JsonRendererChoicePayload,
+            jsonRendererChoice?: JsonRendererChoicePayload | Spec,
             uiMessageId?: string
         ) => {
             const normalizedSources = sources
@@ -2208,6 +2216,7 @@ Aturan:
             }
 
             const primaryMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+            let capturedChoiceSpec: Spec | null = null
 
             const result = streamText({
                 model,
@@ -2273,7 +2282,7 @@ Aturan:
                                 normalizedText.length > 0 ? sources : undefined,
                                 modelNames.primary.model,
                                 persistedReasoningTrace,
-                                undefined,
+                                capturedChoiceSpec && capturedChoiceSpec.root ? capturedChoiceSpec : undefined,
                                 primaryMessageId
                             )
                         }
@@ -2370,11 +2379,48 @@ Aturan:
 
                         emitTrace(reasoningTrace.initialEvents)
 
-                        for await (const chunk of result.toUIMessageStream({
+                        const uiStream = result.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
                             sendReasoning: isTransparentReasoning,
-                        })) {
+                        })
+                        const yamlTransformedStream = isDraftingStage
+                            ? pipeYamlRender(uiStream)
+                            : uiStream
+
+                        // ReadableStream from pipeYamlRender may not have [Symbol.asyncIterator]
+                        // in all runtimes, so use a reader-based async generator
+                        async function* iterateStream<T>(stream: ReadableStream<T>): AsyncGenerator<T> {
+                            const reader = stream.getReader()
+                            try {
+                                while (true) {
+                                    const { done, value } = await reader.read()
+                                    if (done) break
+                                    yield value
+                                }
+                            } finally {
+                                reader.releaseLock()
+                            }
+                        }
+
+                        for await (const chunk of iterateStream(yamlTransformedStream)) {
+                            // Capture data-spec parts emitted by pipeYamlRender for DB persistence
+                            if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
+                                try {
+                                    const data = (chunk as { data?: { type?: string; patch?: JsonPatch; spec?: Spec } }).data
+                                    if (data?.type === "patch" && data.patch) {
+                                        // Accumulate patches into a running spec
+                                        if (!capturedChoiceSpec) {
+                                            capturedChoiceSpec = { root: "", elements: {} } as Spec
+                                        }
+                                        applySpecPatch(capturedChoiceSpec, data.patch)
+                                    } else if (data?.type === "flat" && data.spec) {
+                                        // If a flat spec is emitted, use it directly
+                                        capturedChoiceSpec = data.spec
+                                    }
+                                } catch { /* spec capture error — non-critical */ }
+                            }
+
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
                                 if (chunk.type === "reasoning-delta") {
                                     reasoningAccumulator.onReasoningDelta(
@@ -2399,6 +2445,11 @@ Aturan:
 
 
                             if (chunk.type === "finish") {
+                                // Log captured YAML spec for persistence
+                                if (capturedChoiceSpec && capturedChoiceSpec.root) {
+                                    console.info(`[CHOICE-CARD][yaml-capture] primary stage=${paperStageScope} specKeys=${Object.keys(capturedChoiceSpec).join(",")}`)
+                                }
+
                                 if (reasoningAccumulator.hasReasoning()) {
                                     emitTrace(reasoningTrace.populateFromReasoning(
                                         reasoningAccumulator.getFullReasoning()
