@@ -380,18 +380,32 @@ export function MessageBubble({
             if (!data || typeof data !== "object") continue
             if (data.type === "flat" && data.spec) {
                 spec = data.spec
-            } else if (data.type === "patch" && data.patch && spec) {
+            } else if (data.type === "patch" && data.patch) {
+                // Initialize empty spec on first patch — pipeYamlRender only emits patches during streaming
+                if (!spec) spec = {} as Spec
                 for (const p of data.patch) {
                     spec = applySpecPatch(spec, p)
                 }
             }
         }
-        return spec
+        // Only return spec if it has a root element (valid json-render spec)
+        return spec && (spec as unknown as Record<string, unknown>).root ? spec : null
     }
 
     const searchStatus = extractSearchStatus(message)
     const citedText = extractCitedText(message)
     const choiceSpec = extractChoiceSpec(message)
+
+    // TEMP: diagnostic — log all part types to verify data-spec arrives
+    if (message.role === "assistant" && (message.parts?.length ?? 0) > 0) {
+        const partTypes = (message.parts ?? []).map((p) => {
+            if (!p || typeof p !== "object") return "null"
+            return (p as { type?: string }).type ?? "unknown"
+        })
+        if (partTypes.some(t => t !== "text" && t !== "null" && t !== "unknown")) {
+            console.info(`[CHOICE-CARD][frontend-parts] msgId=${message.id} partTypes=[${partTypes.join(",")}] choiceSpec=${choiceSpec ? "YES" : "NO"}`)
+        }
+    }
 
     const startEditing = () => {
         setIsEditing(true)
