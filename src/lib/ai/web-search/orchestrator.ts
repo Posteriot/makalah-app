@@ -19,6 +19,10 @@ import type {
   RetrieverChainEntry,
 } from "./types"
 import type { SkillContext } from "@/lib/ai/skills/types"
+import { pipeYamlRender } from "@json-render/yaml"
+import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
+import type { Spec, JsonPatch } from "@json-render/core"
+import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
 
 /**
  * Compose Phase Directive — injected into compose context to prevent
@@ -215,6 +219,9 @@ export async function executeWebSearch(
     ...(config.fileContext
       ? [{ role: "system" as const, content: `File Context:\n\n${config.fileContext}` }]
       : []),
+    ...(config.isDraftingStage
+      ? [{ role: "system" as const, content: CHOICE_YAML_SYSTEM_PROMPT }]
+      : []),
   ]
 
   const composeMessages = [
@@ -244,6 +251,9 @@ export async function executeWebSearch(
   const internalThoughtId =
     globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-internal-thought`
 
+  // Track captured YAML spec across the stream
+  let capturedChoiceSpec: Spec | null = null
+
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
       let composedText = ""
@@ -266,12 +276,48 @@ export async function executeWebSearch(
         },
       })
 
-      // Stream compose output to user
-      for await (const chunk of composeResult.toUIMessageStream({
+      // Build UI stream, optionally piping through YAML transform
+      const uiStream = composeResult.toUIMessageStream({
         sendStart: false,
         generateMessageId: () => messageId,
         sendReasoning: config.isTransparentReasoning,
-      })) {
+      })
+      const yamlTransformedStream = config.isDraftingStage
+        ? pipeYamlRender(uiStream)
+        : uiStream
+
+      // ReadableStream from pipeYamlRender may not have [Symbol.asyncIterator]
+      // in all runtimes, so use a reader-based async generator
+      async function* iterateStream<T>(stream: ReadableStream<T>): AsyncGenerator<T> {
+        const reader = stream.getReader()
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            yield value
+          }
+        } finally {
+          reader.releaseLock()
+        }
+      }
+
+      // Stream compose output to user
+      for await (const chunk of iterateStream(yamlTransformedStream)) {
+        // Capture data-spec parts emitted by pipeYamlRender for DB persistence
+        if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
+          try {
+            const data = (chunk as { data?: { type?: string; patch?: JsonPatch; spec?: Spec } }).data
+            if (data?.type === "patch" && data.patch) {
+              if (!capturedChoiceSpec) {
+                capturedChoiceSpec = { root: "", elements: {} } as Spec
+              }
+              applySpecPatch(capturedChoiceSpec, data.patch)
+            } else if (data?.type === "flat" && data.spec) {
+              capturedChoiceSpec = data.spec
+            }
+          } catch { /* spec capture error — non-critical */ }
+        }
+
         // Skip reasoning chunks (not forwarded in web search mode)
         if (
           chunk.type === "reasoning-start" ||
@@ -282,7 +328,7 @@ export async function executeWebSearch(
         }
 
         if (chunk.type === "text-delta") {
-          composedText += chunk.delta
+          composedText += (chunk as { delta?: string }).delta ?? ""
         }
 
         if (chunk.type === "finish") {
@@ -350,6 +396,11 @@ export async function executeWebSearch(
               (searchUsage?.outputTokens ?? 0) +
               (composeFinishUsage?.outputTokens ?? 0)
 
+            // Log captured YAML spec for persistence
+            if (capturedChoiceSpec && capturedChoiceSpec.root) {
+              console.info(`[CHOICE-CARD][yaml-capture] compose stage=${config.currentStage} specKeys=${Object.keys(capturedChoiceSpec).join(",")}`)
+            }
+
             // Call onFinish with the complete result
             await config.onFinish({
               text: textWithInlineCitations,
@@ -365,6 +416,7 @@ export async function executeWebSearch(
               retrieverName: successRetrieverName,
               retrieverIndex: successRetrieverIndex,
               attemptedRetrievers,
+              capturedChoiceSpec: capturedChoiceSpec && capturedChoiceSpec.root ? capturedChoiceSpec : undefined,
             })
           } catch (err) {
             // Citation finalize failed — ensure search status is terminal

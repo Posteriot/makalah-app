@@ -38,6 +38,8 @@ export interface WebSearchOrchestratorConfig {
   isTransparentReasoning: boolean
   reasoningProviderOptions?: Record<string, unknown>
   traceMode: string
+  /** When true, pipe compose stream through pipeYamlRender and inject CHOICE_YAML_SYSTEM_PROMPT. */
+  isDraftingStage?: boolean
   onFinish: (result: WebSearchResult) => Promise<void>
 }
 
@@ -49,6 +51,8 @@ export interface WebSearchResult {
   retrieverName: string
   retrieverIndex: number
   attemptedRetrievers: string[]
+  /** Captured YAML choice spec emitted by pipeYamlRender (drafting stages only). */
+  capturedChoiceSpec?: import("@json-render/core").Spec
 }
 
 export type SearchExecutionMode =

@@ -2124,6 +2124,7 @@ Aturan:
                     reasoningTraceEnabled,
                     isTransparentReasoning,
                     traceMode: getTraceModeLabel(!!paperModePrompt, true),
+                    isDraftingStage,
                     onFinish: async (result) => {
                         const retrieverModelName = result.retrieverName || "unknown"
                         const combinedModelName = `${retrieverModelName}+${modelNames.primary.model}`
@@ -2133,6 +2134,8 @@ Aturan:
                             result.text,
                             result.sources.length > 0 ? result.sources : undefined,
                             combinedModelName,
+                            undefined, // reasoningTrace — not captured in web search compose
+                            result.capturedChoiceSpec ?? undefined,
                         )
 
                         // ──── Auto-persist search references to paper stageData ────
@@ -2536,6 +2539,7 @@ Aturan:
                 let fallbackReasoningTraceController: ReturnType<typeof createCuratedTraceController> | null = null
                 let fallbackReasoningTraceSnapshot: PersistedCuratedTraceSnapshot | undefined
                 let fallbackReasoningSourceCount = 0
+                let fallbackCapturedChoiceSpec: Spec | null = null
                 const captureFallbackReasoningSnapshot = () => {
                     if (!fallbackReasoningTraceController?.enabled) return
                     fallbackReasoningTraceSnapshot = fallbackReasoningTraceController.getPersistedSnapshot()
@@ -2608,7 +2612,7 @@ Aturan:
                                 undefined,
                                 modelNames.fallback.model,
                                 persistedReasoningTrace,
-                                undefined,
+                                fallbackCapturedChoiceSpec && fallbackCapturedChoiceSpec.root ? fallbackCapturedChoiceSpec : undefined,
                                 fallbackMessageId
                             )
                         }
@@ -2705,11 +2709,45 @@ Aturan:
 
                         emitTrace(reasoningTrace.initialEvents)
 
-                        for await (const chunk of result.toUIMessageStream({
+                        const fallbackUiStream = result.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
                             sendReasoning: fallbackTransparent,
-                        })) {
+                        })
+                        const fallbackYamlStream = isDraftingStage
+                            ? pipeYamlRender(fallbackUiStream)
+                            : fallbackUiStream
+
+                        // ReadableStream from pipeYamlRender may not have [Symbol.asyncIterator]
+                        async function* iterateFallbackStream<T>(stream: ReadableStream<T>): AsyncGenerator<T> {
+                            const reader = stream.getReader()
+                            try {
+                                while (true) {
+                                    const { done, value } = await reader.read()
+                                    if (done) break
+                                    yield value
+                                }
+                            } finally {
+                                reader.releaseLock()
+                            }
+                        }
+
+                        for await (const chunk of iterateFallbackStream(fallbackYamlStream)) {
+                            // Capture data-spec parts emitted by pipeYamlRender for DB persistence
+                            if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
+                                try {
+                                    const data = (chunk as { data?: { type?: string; patch?: JsonPatch; spec?: Spec } }).data
+                                    if (data?.type === "patch" && data.patch) {
+                                        if (!fallbackCapturedChoiceSpec) {
+                                            fallbackCapturedChoiceSpec = { root: "", elements: {} } as Spec
+                                        }
+                                        applySpecPatch(fallbackCapturedChoiceSpec, data.patch)
+                                    } else if (data?.type === "flat" && data.spec) {
+                                        fallbackCapturedChoiceSpec = data.spec
+                                    }
+                                } catch { /* spec capture error — non-critical */ }
+                            }
+
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
                                 if (chunk.type === "reasoning-delta") {
                                     reasoningAccumulator.onReasoningDelta(
@@ -2734,6 +2772,11 @@ Aturan:
 
 
                             if (chunk.type === "finish") {
+                                // Log captured YAML spec for persistence
+                                if (fallbackCapturedChoiceSpec && fallbackCapturedChoiceSpec.root) {
+                                    console.info(`[CHOICE-CARD][yaml-capture] fallback stage=${paperStageScope} specKeys=${Object.keys(fallbackCapturedChoiceSpec).join(",")}`)
+                                }
+
                                 if (reasoningAccumulator.hasReasoning()) {
                                     emitTrace(reasoningTrace.populateFromReasoning(
                                         reasoningAccumulator.getFullReasoning()
