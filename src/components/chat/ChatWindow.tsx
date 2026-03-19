@@ -31,6 +31,7 @@ import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 import { buildChoiceInteractionEvent, buildChoiceSyntheticText } from "@/lib/chat/choice-submit"
 import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
+import { SPEC_DATA_PART_TYPE } from "@json-render/core"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import {
   buildChatQuotaOfferFromError,
@@ -1164,17 +1165,16 @@ export function ChatWindow({
               }))
           : []
 
-        // Rehydrate persisted json-renderer choice as a data part
+        // Rehydrate persisted json-renderer choice as a data-spec part
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rawChoice = (msg as any).jsonRendererChoice as string | undefined
-        const persistedChoiceParts: { type: string; id: string; data: { payload: unknown } }[] = []
+        const persistedChoiceParts: { type: string; data: { type: string; spec: unknown } }[] = []
         if (rawChoice && typeof rawChoice === "string") {
           try {
-            const choicePayload = JSON.parse(rawChoice)
+            const spec = JSON.parse(rawChoice)
             persistedChoiceParts.push({
-              type: "data-json-renderer-choice",
-              id: `${msg._id}-json-renderer-choice`,
-              data: { payload: choicePayload },
+              type: SPEC_DATA_PART_TYPE,
+              data: { type: "flat", spec },
             })
           } catch {
             // Skip invalid JSON
@@ -1235,7 +1235,7 @@ export function ChatWindow({
           const prev = historyMessages[j]
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           if (prev.role === "assistant" && (prev as any).jsonRendererChoice) {
-            keys.add(`${prev._id}::${prev._id}-json-renderer-choice`)
+            keys.add(`${prev._id}::${prev._id}-choice-spec`)
             break
           }
         }
@@ -2145,7 +2145,7 @@ export function ChatWindow({
                         fileNameMap={fileNameMap}
                         fileMetaMap={fileMetaMap}
                         onOpenSources={handleOpenSources}
-                        isChoiceSubmitted={submittedChoiceKeys.has(`${message.id}::${message.id}-json-renderer-choice`)}
+                        isChoiceSubmitted={submittedChoiceKeys.has(`${message.id}::${message.id}-choice-spec`)}
                         onChoiceSubmit={handleChoiceSubmit}
                       />
                     </div>

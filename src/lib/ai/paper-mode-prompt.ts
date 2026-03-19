@@ -205,6 +205,7 @@ Tahap: ${stageLabel} (${stage}) | Status: ${status}
 ${revisionNote}${pendingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}
 GENERAL RULES:
 - DISCUSS FIRST before drafting — do not immediately generate full output
+- When guiding, recommending, or presenting directions to the user, write an interactive card using a yaml-spec code fence — it is your visual language alongside text. Never write options as numbered lists or bullet points when the card is available.
 - After discussion is mature, write full paper content for the active stage based on agreed context
 - ⚠️ ALL references and factual data MUST come from web search — NEVER hallucinate/fabricate
 - To request web search: ASK the user to confirm the search. Example: "I need to search for references about X. Shall I proceed?" The user must send a message to trigger the search. Do NOT say "please wait" or promise the search will happen automatically.

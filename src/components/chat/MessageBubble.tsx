@@ -24,6 +24,8 @@ import { extractLegacySourcesFromText } from "@/lib/citations/legacy-source-extr
 import { splitInternalThought } from "@/lib/ai/internal-thought-separator"
 import { JsonRendererChoiceBlock } from "./json-renderer/JsonRendererChoiceBlock"
 import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
+import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
+import type { Spec, JsonPatch } from "@json-render/core"
 
 // Types for paper permission checking
 interface StageDataEntry {
@@ -370,22 +372,28 @@ export function MessageBubble({
         return null
     }
 
-    const extractJsonRendererChoice = (uiMessage: UIMessage): JsonRendererChoicePayload | null => {
+    const extractChoiceSpec = (uiMessage: UIMessage): Spec | null => {
+        let spec: Spec | null = null
         for (const part of uiMessage.parts ?? []) {
             if (!part || typeof part !== "object") continue
-            const maybeDataPart = part as unknown as { type?: string; data?: unknown }
-            if (maybeDataPart.type !== "data-json-renderer-choice") continue
-            const data = maybeDataPart.data as { payload?: unknown } | null
+            const dataPart = part as unknown as { type?: string; data?: unknown }
+            if (dataPart.type !== SPEC_DATA_PART_TYPE) continue
+            const data = dataPart.data as { type?: string; spec?: Spec; patch?: JsonPatch[] } | null
             if (!data || typeof data !== "object") continue
-            if (!data.payload || typeof data.payload !== "object") continue
-            return data.payload as JsonRendererChoicePayload
+            if (data.type === "flat" && data.spec) {
+                spec = data.spec
+            } else if (data.type === "patch" && data.patch && spec) {
+                for (const p of data.patch) {
+                    spec = applySpecPatch(spec, p)
+                }
+            }
         }
-        return null
+        return spec
     }
 
     const searchStatus = extractSearchStatus(message)
     const citedText = extractCitedText(message)
-    const choicePayload = extractJsonRendererChoice(message)
+    const choiceSpec = extractChoiceSpec(message)
 
     const startEditing = () => {
         setIsEditing(true)
@@ -913,7 +921,7 @@ export function MessageBubble({
                     )}
 
                     {/* Assistant follow-up blocks: artifact output -> sources -> choice card -> quick actions */}
-                    {isAssistant && !isEditing && (hasArtifactSignals || hasSources || hasQuickActions || choicePayload) && (
+                    {isAssistant && !isEditing && (hasArtifactSignals || hasSources || hasQuickActions || choiceSpec) && (
                         <div className="mt-3 space-y-3">
                             {hasArtifactSignals && (
                                 <section className="space-y-2 pt-2" aria-label="Hasil artifak">
@@ -938,17 +946,20 @@ export function MessageBubble({
                                 </section>
                             )}
 
-                            {choicePayload && (
+                            {choiceSpec && (
                                 <JsonRendererChoiceBlock
-                                    payload={choicePayload}
+                                    payload={{
+                                        spec: choiceSpec,
+                                        initialState: (choiceSpec as any).state ?? { selection: { selectedOptionId: null, customText: "" } },
+                                    } as any}
                                     isSubmitted={isChoiceSubmitted}
                                     onSubmit={
                                         onChoiceSubmit
                                             ? async ({ selectedOptionId, customText }) => {
                                                   await onChoiceSubmit?.({
                                                       sourceMessageId: message.id,
-                                                      choicePartId: `${message.id}-json-renderer-choice`,
-                                                      payload: choicePayload,
+                                                      choicePartId: `${message.id}-choice-spec`,
+                                                      payload: { spec: choiceSpec } as any,
                                                       selectedOptionId,
                                                       customText,
                                                   })
