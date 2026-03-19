@@ -2254,7 +2254,13 @@ Aturan:
                                 .filter(Boolean) as { url: string; title: string; publishedAt?: number | null }[]
                         }
 
-                        const normalizedText = typeof text === "string" ? text.trim() : ""
+                        const rawText = typeof text === "string" ? text.trim() : ""
+                        // Strip yaml-spec fences from persisted text — pipeYamlRender strips
+                        // them from the stream but onFinish receives raw model output
+                        const normalizedText = rawText.replace(
+                            /```yaml-spec[\s\S]*?```/g,
+                            ""
+                        ).replace(/\n{3,}/g, "\n\n").trim()
                         const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
                         const persistedContent = shouldPersistForcedSyncFallback
                             ? buildForcedSyncStatusMessage(paperSession)
@@ -2588,7 +2594,13 @@ Aturan:
                     stopWhen: stepCountIs(fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {
-                        const normalizedText = typeof text === "string" ? text.trim() : ""
+                        const rawText = typeof text === "string" ? text.trim() : ""
+                        // Strip yaml-spec fences from persisted text — pipeYamlRender strips
+                        // them from the stream but onFinish receives raw model output
+                        const normalizedText = rawText.replace(
+                            /```yaml-spec[\s\S]*?```/g,
+                            ""
+                        ).replace(/\n{3,}/g, "\n\n").trim()
                         const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
                         const persistedContent = shouldPersistForcedSyncFallback
                             ? buildForcedSyncStatusMessage(paperSession)
