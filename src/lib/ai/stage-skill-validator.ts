@@ -117,7 +117,11 @@ function hasDangerousOverridePhrase(content: string): boolean {
         /\bsubmit\s+without\s+user\s+confirmation\b/i,
     ];
 
-    return dangerousPatterns.some((pattern) => pattern.test(content));
+    const matched = dangerousPatterns.filter((pattern) => pattern.test(content));
+    if (matched.length > 0) {
+        console.warn(`[SKILL-VALIDATOR] Dangerous patterns matched: ${matched.map(p => p.source).join(" | ")}`);
+    }
+    return matched.length > 0;
 }
 
 export function validateStageSkillContent(input: StageSkillValidationInput): StageSkillValidationResult {
