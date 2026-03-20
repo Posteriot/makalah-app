@@ -130,6 +130,7 @@ export default defineSchema({
       model: v.optional(v.string()),
       tokens: v.optional(v.number()),
       finishReason: v.optional(v.string()),
+      // Legacy V1 interaction data (backward compat for existing documents)
       interaction: v.optional(v.any()),
       uiMessageId: v.optional(v.string()),
     })),
@@ -166,6 +167,12 @@ export default defineSchema({
         })),
       })),
     })),
+    // Json Renderer V2: persisted choice card payload (JSON string)
+    jsonRendererChoice: v.optional(v.string()),
+    // Legacy V1: persisted recommendation payload (backward compat)
+    jsonRendererRecommendation: v.optional(v.string()),
+    // UI message ID for history rehydration
+    uiMessageId: v.optional(v.string()),
   })
     .index("by_conversation", ["conversationId", "createdAt"])
     .index("by_conversation_role", ["conversationId", "role", "createdAt"]),
