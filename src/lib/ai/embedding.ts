@@ -1,10 +1,13 @@
 import { embed, embedMany } from "ai"
-import { google } from "@ai-sdk/google"
+import { gateway } from "@ai-sdk/gateway"
 
-const EMBEDDING_MODEL = "gemini-embedding-001"
+// Use Vercel AI Gateway for embedding — separate quota from Google direct API
+// (which is shared with grounding search via GOOGLE_GENERATIVE_AI_API_KEY).
+// Gateway uses OIDC auth, so no API key contention.
+const EMBEDDING_MODEL = "google/gemini-embedding-001"
 const DIMENSIONS = 768
 const MAX_RETRIES = 3
-const BASE_DELAY_MS = 10000 // 10s — Google free tier rate limit resets per minute
+const BASE_DELAY_MS = 10000 // 10s
 const MAX_BATCH_SIZE = 100 // Google batchEmbedContents hard limit
 
 async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
@@ -13,7 +16,6 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
       return await fn()
     } catch (error) {
       if (attempt === MAX_RETRIES - 1) throw error
-      // Parse retry-after from error if available (Google 429 includes retryDelay)
       const retryAfterMs = extractRetryAfterMs(error)
       const delay = retryAfterMs ?? BASE_DELAY_MS * Math.pow(2, attempt)
       console.log(`[Embedding] Retry ${attempt + 1}/${MAX_RETRIES} in ${Math.round(delay / 1000)}s...`)
@@ -25,12 +27,11 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
 
 function extractRetryAfterMs(error: unknown): number | undefined {
   try {
-    // AI SDK wraps errors — dig into lastError.responseBody for Google's retryDelay
     const lastError = (error as { lastError?: { responseBody?: string } })?.lastError
     const body = lastError?.responseBody
     if (!body) return undefined
     const match = body.match(/"retryDelay":\s*"(\d+(?:\.\d+)?)s"/)
-    if (match) return Math.ceil(parseFloat(match[1]) * 1000) + 1000 // add 1s buffer
+    if (match) return Math.ceil(parseFloat(match[1]) * 1000) + 1000
   } catch {
     // Fall through to default
   }
@@ -39,15 +40,14 @@ function extractRetryAfterMs(error: unknown): number | undefined {
 
 /**
  * Embed multiple texts for document storage.
- * Uses taskType RETRIEVAL_DOCUMENT. Retries 3x with exponential backoff.
+ * Uses Vercel AI Gateway → google/gemini-embedding-001.
+ * Retries 3x with exponential backoff. Batches at max 100.
  */
 export async function embedTexts(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return []
 
-  const model = google.textEmbeddingModel(EMBEDDING_MODEL)
+  const model = gateway.textEmbeddingModel(EMBEDDING_MODEL)
 
-  // Google batchEmbedContents has a hard limit of 100 requests per call.
-  // Split into batches if needed.
   if (texts.length <= MAX_BATCH_SIZE) {
     const { embeddings } = await withRetry(() => embedMany({
       model,
@@ -82,10 +82,10 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
 
 /**
  * Embed a single query for retrieval.
- * Uses taskType RETRIEVAL_QUERY. Retries 3x with exponential backoff.
+ * Uses Vercel AI Gateway → google/gemini-embedding-001.
  */
 export async function embedQuery(query: string): Promise<number[]> {
-  const model = google.textEmbeddingModel(EMBEDDING_MODEL)
+  const model = gateway.textEmbeddingModel(EMBEDDING_MODEL)
   const { embedding } = await withRetry(() => embed({
     model,
     value: query,
