@@ -3,8 +3,9 @@ import { parseHTML } from "linkedom"
 import TurndownService from "turndown"
 
 export interface FetchedContent {
-  url: string
-  pageContent: string | null      // truncated for compose context
+  url: string                      // input URL (may be proxy)
+  resolvedUrl: string              // final URL after redirect:follow
+  pageContent: string | null       // truncated for compose context
   fullContent: string | null       // full content for RAG ingest (no truncation)
   fetchMethod: "fetch" | "tavily" | null
 }
@@ -57,12 +58,13 @@ export async function fetchPageContent(
   const results: FetchedContent[] = primaryResults.map((settled, i) => {
     const elapsed = Date.now() - urlTimers[i]
     if (settled.status === "fulfilled" && settled.value) {
-      console.log(`[⏱ LATENCY] FetchWeb PRIMARY [${i+1}/${urls.length}] ✓ ${elapsed}ms ${urls[i].slice(0, 70)} (${settled.value.length} chars)`)
-      return { url: urls[i], pageContent: truncate(settled.value), fullContent: settled.value, fetchMethod: "fetch" as const }
+      const { content, resolvedUrl } = settled.value
+      console.log(`[⏱ LATENCY] FetchWeb PRIMARY [${i+1}/${urls.length}] ✓ ${elapsed}ms ${resolvedUrl.slice(0, 70)} (${content.length} chars)`)
+      return { url: urls[i], resolvedUrl, pageContent: truncate(content), fullContent: content, fetchMethod: "fetch" as const }
     }
     const reason = settled.status === "rejected" ? settled.reason?.message : "empty/null content"
     console.log(`[⏱ LATENCY] FetchWeb PRIMARY [${i+1}/${urls.length}] ✗ ${elapsed}ms ${urls[i].slice(0, 70)} — ${reason}`)
-    return { url: urls[i], pageContent: null, fullContent: null, fetchMethod: null }
+    return { url: urls[i], resolvedUrl: urls[i], pageContent: null, fullContent: null, fetchMethod: null }
   })
   console.log(`[⏱ LATENCY] FetchWeb PRIMARY batch=${Date.now() - primaryStart}ms (parallel, slowest URL determines total)`)
 
@@ -84,6 +86,8 @@ export async function fetchPageContent(
           results[idx].pageContent = truncate(tr.content)
           results[idx].fullContent = tr.content
           results[idx].fetchMethod = "tavily"
+          // Tavily returns the real URL — use it as resolvedUrl
+          results[idx].resolvedUrl = tr.url
         } else {
           console.log(`[FetchWeb] ✗ TAVILY fail: ${tr.url}`)
         }
@@ -99,7 +103,12 @@ export async function fetchPageContent(
   return results
 }
 
-async function fetchAndParse(url: string, timeoutMs: number): Promise<string | null> {
+interface FetchParseResult {
+  content: string
+  resolvedUrl: string
+}
+
+async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParseResult | null> {
   const controller = new AbortController()
 
   let timerId: ReturnType<typeof setTimeout>
@@ -110,7 +119,7 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<string | n
     }, timeoutMs)
   })
 
-  const fetchPromise = (async (): Promise<string | null> => {
+  const fetchPromise = (async (): Promise<FetchParseResult | null> => {
     try {
       const response = await fetch(url, {
         headers: FETCH_HEADERS,
@@ -119,6 +128,9 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<string | n
       })
 
       if (!response.ok) return null
+
+      // response.url is the final URL after following all redirects
+      const resolvedUrl = response.url || url
 
       const html = await response.text()
       const { document } = parseHTML(html)
@@ -134,7 +146,8 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<string | n
 
       // Extract metadata that readability parses but excludes from content
       const metadataBlock = buildMetadataBlock(article, document)
-      return metadataBlock ? `${metadataBlock}\n\n${markdown}` : markdown
+      const content = metadataBlock ? `${metadataBlock}\n\n${markdown}` : markdown
+      return { content, resolvedUrl }
     } catch {
       return null
     }

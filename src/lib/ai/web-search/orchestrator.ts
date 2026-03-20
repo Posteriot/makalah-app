@@ -26,6 +26,7 @@ import type { Spec, JsonPatch } from "@json-render/core"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
 import { ingestToRag } from "@/lib/ai/rag-ingest"
+import { isVertexProxyUrl, resolveVertexProxyUrls } from "./retrievers/google-grounding"
 
 /**
  * Compose Phase Directive — injected into compose context to prevent
@@ -250,6 +251,7 @@ export async function executeWebSearch(
       console.log(`[Orchestrator] Phase 1.5: fetching content for ${urlsToFetch.length} URLs...`)
       const fetchStart = Date.now()
 
+      // FetchWeb follows redirects automatically — proxy URLs resolve via response.url
       const fetchedContent = await fetchPageContent(
         urlsToFetch,
         { tavilyApiKey: config.tavilyApiKey, timeoutMs: 5_000 },
@@ -257,11 +259,33 @@ export async function executeWebSearch(
 
       console.log(`[Orchestrator] Phase 1.5 done in ${Date.now() - fetchStart}ms`)
 
-      // Enrich sources with pageContent
+      // Resolve remaining proxy URLs (non-fetched sources) in parallel with compose context build.
+      // FetchWeb already resolved top 7 via redirect:follow; this handles the other 13.
+      const unfetchedProxySources = scoredSources.slice(7).filter((s) => isVertexProxyUrl(s.url))
+      const proxyResolvePromise = unfetchedProxySources.length > 0
+        ? (async () => {
+            const resolveStart = Date.now()
+            const resolved = await resolveVertexProxyUrls(
+              unfetchedProxySources.map((s) => ({ url: s.url, title: s.title }))
+            )
+            console.log(`[⏱ LATENCY] proxyResolve (parallel) ${Date.now() - resolveStart}ms for ${unfetchedProxySources.length} URLs`)
+            return new Map(unfetchedProxySources.map((s, i) => [s.url, resolved[i].url]))
+          })()
+        : Promise.resolve(new Map<string, string>())
+
+      // Merge resolved URLs: top 7 from FetchWeb, rest from proxy resolve
+      const resolvedUrlMap = new Map<string, string>()
+      for (const f of fetchedContent) {
+        if (f.resolvedUrl !== f.url) resolvedUrlMap.set(f.url, f.resolvedUrl)
+      }
+
+      // Enrich sources with pageContent and resolved URLs
       const enrichedSources = scoredSources.map((s) => {
         const fetched = fetchedContent.find((f) => f.url === s.url)
+        const resolvedUrl = resolvedUrlMap.get(s.url) ?? s.url
         return {
           ...s,
+          url: resolvedUrl,
           ...(fetched?.pageContent ? { pageContent: fetched.pageContent } : {}),
         }
       })
@@ -270,7 +294,7 @@ export async function executeWebSearch(
       const fetchElapsed = Date.now() - fetchStart
       console.log(`[⏱ LATENCY] Phase1.5 FetchWeb total=${fetchElapsed}ms enriched=${enrichedCount}/${enrichedSources.length} urls=${urlsToFetch.length}`)
 
-      // ── Build compose context using enrichedSources ──
+      // ── Build compose context using enrichedSources (top 7 have real URLs) ──
       const contextBuildStart = Date.now()
       let searchResultsContext: string
       try {
@@ -428,17 +452,31 @@ export async function executeWebSearch(
 
         if (chunk.type === "finish") {
           try {
-            const persistedSources =
-              scoredSources.length > 0 ? scoredSources : undefined
+            // Await parallel proxy resolution for remaining sources (started alongside compose)
+            const remainingResolved = await proxyResolvePromise
+            for (const [proxyUrl, realUrl] of remainingResolved) {
+              resolvedUrlMap.set(proxyUrl, realUrl)
+            }
 
-            // Citation anchors: paragraph-end formatting
-            const citationAnchors = scoredSources.map((_, idx) => ({
+            // Build final sources with all resolved URLs for citation output
+            const finalSources = scoredSources.map((s) => ({
+              ...s,
+              url: resolvedUrlMap.get(s.url) ?? s.url,
+            }))
+            // Filter out any remaining unresolved proxy URLs
+            const cleanSources = finalSources.filter((s) => !isVertexProxyUrl(s.url))
+
+            const persistedSources =
+              cleanSources.length > 0 ? cleanSources : undefined
+
+            // Citation anchors: paragraph-end formatting (use cleanSources with resolved URLs)
+            const citationAnchors = cleanSources.map((_, idx) => ({
               position: null as number | null,
               sourceNumbers: [idx + 1],
             }))
             const textWithInlineCitations = formatParagraphEndCitations({
               text: composedText,
-              sources: scoredSources,
+              sources: cleanSources,
               anchors: citationAnchors,
             })
             const userFacingPayload =
@@ -503,7 +541,7 @@ export async function executeWebSearch(
             const onFinishStart = Date.now()
             await config.onFinish({
               text: textWithInlineCitations,
-              sources,
+              sources: cleanSources.map((s) => ({ url: s.url, title: s.title, ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}), ...(s.citedText ? { citedText: s.citedText } : {}) })),
               usage:
                 combinedInputTokens > 0 || combinedOutputTokens > 0
                   ? {
@@ -533,20 +571,22 @@ export async function executeWebSearch(
                 if (fetched.fullContent) {
                   try {
                     const sourceStart = Date.now()
-                    const source = enrichedSources.find((s) => s.url === fetched.url)
+                    // Use resolvedUrl for RAG sourceId (real URL, not proxy)
+                    const realUrl = fetched.resolvedUrl
+                    const source = enrichedSources.find((s) => s.url === realUrl || s.url === fetched.url)
                     await ingestToRag({
                       conversationId: config.conversationId,
                       sourceType: "web",
-                      sourceId: fetched.url,
+                      sourceId: realUrl,
                       content: fetched.fullContent,
                       metadata: { title: source?.title },
                       convexToken: config.convexToken,
                     })
                     ragIdx++
-                    console.log(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] ${fetched.url.slice(0, 60)}... ${Date.now() - sourceStart}ms`)
+                    console.log(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] ${realUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms`)
                   } catch (err) {
                     ragIdx++
-                    console.error(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] FAILED ${fetched.url.slice(0, 60)}:`, err)
+                    console.error(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`, err)
                   }
                 }
               }
