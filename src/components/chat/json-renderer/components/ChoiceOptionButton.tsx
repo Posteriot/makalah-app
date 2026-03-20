@@ -18,7 +18,8 @@ export function ChoiceOptionButton({
 }: BaseComponentProps<ChoiceOptionButtonProps>) {
   const selectedOptionId = useStateValue<string>("/selection/selectedOptionId")
   const isSelected = selectedOptionId === props.optionId
-  const isRecommended = props.recommended === true
+  // Detect recommendation from prop OR from pre-selection (model may set either)
+  const isRecommended = props.recommended === true || props.selected === true
   const disabled = props.disabled === true
 
   return (
