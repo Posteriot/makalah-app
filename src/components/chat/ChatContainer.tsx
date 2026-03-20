@@ -39,6 +39,11 @@ interface ChatContainerProps {
  * - useConversations integration (handled by ChatLayout)
  */
 export function ChatContainer({ conversationId }: ChatContainerProps) {
+  const containerRenderCount = useRef(0)
+  containerRenderCount.current++
+  if (process.env.NODE_ENV !== "production") {
+    console.info(`[CONTAINER] render #${containerRenderCount.current} conversationId=${conversationId ?? "null"}`)
+  }
   const { user } = useCurrentUser()
   const { data: session, isPending: isSessionPending } = useSession()
   const searchParams = useSearchParams()

@@ -97,11 +97,13 @@ The search results below are your source material. Use them.
 export async function executeWebSearch(
   config: WebSearchOrchestratorConfig,
 ): Promise<Response> {
+  const orchestratorStart = Date.now()
   const attemptedRetrievers: string[] = []
 
   // ────────────────────────────────────────────────────────────
   // PHASE 1: Silent search — iterate retrieverChain until one succeeds
   // ────────────────────────────────────────────────────────────
+  const phase1Start = Date.now()
   const rawMessages = config.messages ?? []
   const sanitizedMessages = sanitizeMessagesForSearch(rawMessages)
   const searchMessages = augmentUserMessageForSearch([
@@ -123,6 +125,7 @@ export async function executeWebSearch(
     attemptedRetrievers.push(retriever.name)
 
     try {
+      const retrieverStart = Date.now()
       const { model, tools } = retriever.buildStreamConfig(retrieverConfig)
 
       const searchResult = streamText({
@@ -134,16 +137,19 @@ export async function executeWebSearch(
 
       // Await full text (not streamed to user)
       searchText = await searchResult.text
+      const textDone = Date.now()
       const usage = await searchResult.usage
       searchUsage = usage
         ? { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 }
         : undefined
 
       // Extract and canonicalize sources
+      const extractStart = Date.now()
       const rawCitations = await retriever.extractSources(searchResult)
       sources = canonicalizeCitationUrls(rawCitations)
+      const extractDone = Date.now()
 
-      console.log(`[Orchestrator] success: ${retriever.name}, citations=${sources.length}, text=${searchText.length}chars`)
+      console.log(`[⏱ LATENCY] Phase1 retriever="${retriever.name}" textGen=${textDone - retrieverStart}ms extractSources=${extractDone - extractStart}ms total=${extractDone - retrieverStart}ms citations=${sources.length} text=${searchText.length}chars`)
 
       successRetrieverName = retriever.name
       successRetrieverIndex = i
@@ -156,6 +162,8 @@ export async function executeWebSearch(
       // Continue to next retriever in chain
     }
   }
+
+  console.log(`[⏱ LATENCY] Phase1 TOTAL=${Date.now() - phase1Start}ms tried=${attemptedRetrievers.join(",")} winner=${successRetrieverName || "NONE"}`)
 
   // All retrievers failed → return error response
   if (successRetrieverIndex === -1) {
@@ -259,9 +267,11 @@ export async function executeWebSearch(
       })
 
       const enrichedCount = enrichedSources.filter((s) => s.pageContent).length
-      console.log(`[Orchestrator] Enriched: ${enrichedCount}/${enrichedSources.length} sources have pageContent`)
+      const fetchElapsed = Date.now() - fetchStart
+      console.log(`[⏱ LATENCY] Phase1.5 FetchWeb total=${fetchElapsed}ms enriched=${enrichedCount}/${enrichedSources.length} urls=${urlsToFetch.length}`)
 
       // ── Build compose context using enrichedSources ──
+      const contextBuildStart = Date.now()
       let searchResultsContext: string
       try {
         searchResultsContext = buildSearchResultsContext(
@@ -309,7 +319,10 @@ export async function executeWebSearch(
         ...(config.composeMessages ?? []),
       ]
 
+      console.log(`[⏱ LATENCY] Phase2 contextBuild=${Date.now() - contextBuildStart}ms sysMsgCount=${composeSystemMessages.length} totalMsgCount=${composeMessages.length}`)
+
       // Start compose stream
+      const composeStartTime = Date.now()
       const composeResult = streamText({
         model: config.composeModel,
         messages: composeMessages,
@@ -358,6 +371,8 @@ export async function executeWebSearch(
       // events that the client UI expects (same pattern as non-search path in route.ts)
       const reasoningTraceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
       let reasoningChunkCount = 0
+      let firstTokenTime = 0
+      let textChunkCount = 0
 
       // Stream compose output to user
       for await (const chunk of iterateStream(yamlTransformedStream)) {
@@ -403,6 +418,11 @@ export async function executeWebSearch(
         }
 
         if (chunk.type === "text-delta") {
+          textChunkCount++
+          if (textChunkCount === 1) {
+            firstTokenTime = Date.now()
+            console.log(`[⏱ LATENCY] Phase2 firstToken=${firstTokenTime - composeStartTime}ms (time-to-first-text from compose start)`)
+          }
           composedText += (chunk as { delta?: string }).delta ?? ""
         }
 
@@ -476,7 +496,11 @@ export async function executeWebSearch(
               console.info(`[CHOICE-CARD][yaml-capture] compose stage=${config.currentStage} specKeys=${Object.keys(capturedChoiceSpec).join(",")}`)
             }
 
+            const composeElapsed = Date.now() - composeStartTime
+            console.log(`[⏱ LATENCY] Phase2 composeTotal=${composeElapsed}ms textChunks=${textChunkCount} composedChars=${composedText.length}`)
+
             // Call onFinish with the complete result
+            const onFinishStart = Date.now()
             await config.onFinish({
               text: textWithInlineCitations,
               sources,
@@ -493,12 +517,22 @@ export async function executeWebSearch(
               attemptedRetrievers,
               capturedChoiceSpec: capturedChoiceSpec && capturedChoiceSpec.root ? capturedChoiceSpec : undefined,
             })
+            console.log(`[⏱ LATENCY] onFinish(DB writes)=${Date.now() - onFinishStart}ms`)
+            console.log(`[⏱ LATENCY] ORCHESTRATOR TOTAL=${Date.now() - orchestratorStart}ms (Phase1=${phase1Start ? Date.now() - phase1Start : '?'}ms includes all)`)
+
             // ── RAG Ingest: fire-and-forget, SEQUENTIAL to avoid rate limit ──
             // Each source ingested one at a time to stay within embedding API quota.
+            const ragSourceCount = fetchedContent.filter((f) => f.fullContent).length
+            if (ragSourceCount > 0) {
+              console.log(`[⏱ LATENCY] RAG ingest starting (fire-and-forget): ${ragSourceCount} sources`)
+            }
             void (async () => {
+              const ragStart = Date.now()
+              let ragIdx = 0
               for (const fetched of fetchedContent) {
                 if (fetched.fullContent) {
                   try {
+                    const sourceStart = Date.now()
                     const source = enrichedSources.find((s) => s.url === fetched.url)
                     await ingestToRag({
                       conversationId: config.conversationId,
@@ -507,10 +541,16 @@ export async function executeWebSearch(
                       content: fetched.fullContent,
                       metadata: { title: source?.title },
                     })
+                    ragIdx++
+                    console.log(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] ${fetched.url.slice(0, 60)}... ${Date.now() - sourceStart}ms`)
                   } catch (err) {
-                    console.error(`[Orchestrator] RAG ingest failed for ${fetched.url}:`, err)
+                    ragIdx++
+                    console.error(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] FAILED ${fetched.url.slice(0, 60)}:`, err)
                   }
                 }
+              }
+              if (ragSourceCount > 0) {
+                console.log(`[⏱ LATENCY] RAG ingest ALL DONE total=${Date.now() - ragStart}ms sources=${ragSourceCount}`)
               }
             })()
           } catch (err) {

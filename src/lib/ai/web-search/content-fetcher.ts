@@ -45,19 +45,26 @@ export async function fetchPageContent(
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS
 
   // Primary tier: parallel fetch + readability
+  const primaryStart = Date.now()
+  const urlTimers = urls.map(() => Date.now())
   const primaryResults = await Promise.allSettled(
-    urls.map((url) => fetchAndParse(url, timeoutMs)),
+    urls.map((url, idx) => {
+      urlTimers[idx] = Date.now()
+      return fetchAndParse(url, timeoutMs)
+    }),
   )
 
   const results: FetchedContent[] = primaryResults.map((settled, i) => {
+    const elapsed = Date.now() - urlTimers[i]
     if (settled.status === "fulfilled" && settled.value) {
-      console.log(`[FetchWeb] ✓ PRIMARY ok: ${urls[i]} (${settled.value.length} chars)`)
+      console.log(`[⏱ LATENCY] FetchWeb PRIMARY [${i+1}/${urls.length}] ✓ ${elapsed}ms ${urls[i].slice(0, 70)} (${settled.value.length} chars)`)
       return { url: urls[i], pageContent: truncate(settled.value), fullContent: settled.value, fetchMethod: "fetch" as const }
     }
     const reason = settled.status === "rejected" ? settled.reason?.message : "empty/null content"
-    console.log(`[FetchWeb] ✗ PRIMARY fail: ${urls[i]} — ${reason}`)
+    console.log(`[⏱ LATENCY] FetchWeb PRIMARY [${i+1}/${urls.length}] ✗ ${elapsed}ms ${urls[i].slice(0, 70)} — ${reason}`)
     return { url: urls[i], pageContent: null, fullContent: null, fetchMethod: null }
   })
+  console.log(`[⏱ LATENCY] FetchWeb PRIMARY batch=${Date.now() - primaryStart}ms (parallel, slowest URL determines total)`)
 
   // Fallback tier: Tavily for failed URLs
   if (options?.tavilyApiKey) {
@@ -66,8 +73,10 @@ export async function fetchPageContent(
       .map((r) => r.url)
 
     if (failedUrls.length > 0) {
+      const tavilyStart = Date.now()
       console.log(`[FetchWeb] Tavily fallback for ${failedUrls.length} failed URLs...`)
       const tavilyResults = await fetchViaTavily(failedUrls, options.tavilyApiKey)
+      console.log(`[⏱ LATENCY] FetchWeb TAVILY batch=${Date.now() - tavilyStart}ms urls=${failedUrls.length}`)
       for (const tr of tavilyResults) {
         const idx = results.findIndex((r) => r.url === tr.url)
         if (idx !== -1 && tr.content) {

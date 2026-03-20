@@ -422,6 +422,9 @@ export function ChatWindow({
     }
   }, [currentUser])
 
+  // Ref for DOM visibility check — ChatLayout renders children twice (mobile + desktop).
+  // Only the visible instance should consume pending starter prompts.
+  const rootElRef = useRef<HTMLDivElement>(null)
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const scrollRafRef = useRef<number | null>(null)
   const pendingScrollToBottomRef = useRef(false)
@@ -1046,6 +1049,18 @@ export function ChatWindow({
     sendMessage({ text: syntheticText }, { body: { interactionEvent: event } })
   }, [conversationId, paperSession, sendMessage])
 
+  // Set isAwaitingAssistantStart after mount, only for the visible instance.
+  // ChatLayout renders children twice — only the DOM-visible instance should
+  // show skeleton while waiting for the pending starter prompt to auto-send.
+  useEffect(() => {
+    if (!conversationId) return
+    if (rootElRef.current && rootElRef.current.offsetParent === null) return
+    if (readPendingStarterPrompt(conversationId)) {
+      setIsAwaitingAssistantStart(true)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId])
+
   // Auto-send pending starter prompt after redirect from landing state.
   useEffect(() => {
     if (!conversationId || !isAuthenticated) return
@@ -1053,6 +1068,10 @@ export function ChatWindow({
     if (isHistoryLoading) return
     if (messages.length > 0) return
     if ((historyMessages?.length ?? 0) > 0) return
+
+    // ChatLayout renders children twice (mobile wrapper + desktop grid), creating
+    // two ChatWindow instances. Only the visible one should consume the prompt.
+    if (rootElRef.current && rootElRef.current.offsetParent === null) return
 
     const pendingPrompt = readPendingStarterPrompt(conversationId)
     if (!pendingPrompt) return
@@ -1361,9 +1380,13 @@ export function ChatWindow({
       setIsAwaitingAssistantStart(false)
       return
     }
-    if (status === "ready" || status === "error") {
+    if (status === "error") {
       setIsAwaitingAssistantStart(false)
     }
+    // Note: "ready" intentionally does NOT reset isAwaitingAssistantStart.
+    // The mount useEffect sets it true for visible instances with pending prompts.
+    // Resetting on "ready" would kill it before auto-send fires.
+    // It gets reset when status transitions to "submitted" (message sent).
   }, [status])
 
   useEffect(() => {
@@ -1797,7 +1820,15 @@ export function ChatWindow({
 
   // Handler for starting new chat from empty state
   const handleStartNewChat = async (initialPrompt?: string) => {
-    if (!userId || isCreatingChat) return
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[EMPTY-STATE] handleStartNewChat ENTERED", { userId: userId ?? "null", isCreatingChat, prompt: initialPrompt?.slice(0, 50) })
+    }
+    if (!userId || isCreatingChat) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[EMPTY-STATE] handleStartNewChat BLOCKED", { userId: userId ?? "null", isCreatingChat })
+      }
+      return
+    }
     const normalizedPrompt = initialPrompt?.trim() ?? ""
     setIsCreatingChat(true)
     try {
@@ -1811,6 +1842,9 @@ export function ChatWindow({
         setPendingStarterPrompt(newId, normalizedPrompt)
       }
 
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[EMPTY-STATE] navigating to", `/chat/${newId}`)
+      }
       // Keep navigation as the final state transition for this component path.
       router.push(`/chat/${newId}`)
       return
@@ -1823,6 +1857,9 @@ export function ChatWindow({
   }
 
   const handleStarterPromptClick = async (promptText: string) => {
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[EMPTY-STATE] template clicked", { promptText: promptText.slice(0, 50), isLoading, isCreatingChat })
+    }
     if (isLoading || isCreatingChat) return
     await handleStartNewChat(promptText)
   }
@@ -1866,8 +1903,11 @@ export function ChatWindow({
   // Landing page empty state (no conversation selected)
   // ChatInput is persistent — always visible at bottom, even in start state
   if (!conversationId) {
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[EMPTY-STATE] rendering empty state", { conversationId, isCreatingChat, isAuthenticated, userId: userId ?? "null" })
+    }
     return (
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div ref={rootElRef} className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile: Same content as desktop, adapted layout */}
         <div className="md:hidden flex-1 flex flex-col min-h-0">
           {/* Header: sidebar expand + theme toggle */}
@@ -1988,7 +2028,7 @@ export function ChatWindow({
   }
 
   return (
-    <div ref={chatViewportRef} className="flex-1 flex flex-col h-full overflow-hidden">
+    <div ref={(node) => { rootElRef.current = node; chatViewportRef(node) }} className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Mobile Header */}
       <div className="md:hidden px-3 pt-[calc(env(safe-area-inset-top,0px)+0.375rem)] bg-[var(--chat-background)]">
         <div className="flex items-center h-11">
@@ -2061,8 +2101,28 @@ export function ChatWindow({
       <div className="flex-1 overflow-hidden p-0 relative flex flex-col">
         {/* Message Container - padding handled at item level for Virtuoso compatibility */}
         <div className="flex-1 overflow-hidden relative py-2">
-          {(isHistoryLoading || isConversationLoading) && messages.length === 0 ? (
+          {(() => {
+            if (process.env.NODE_ENV !== "production" && conversationId) {
+              const showSkeleton = (isHistoryLoading || isConversationLoading || isAwaitingAssistantStart) && messages.length === 0
+              const showTemplate = !showSkeleton && messages.length === 0
+              const showMessages = messages.length > 0
+              if (!showMessages) {
+                console.info("[CHAT-VIEW] conv view", {
+                  branch: showSkeleton ? "SKELETON" : showTemplate ? "TEMPLATE" : "MESSAGES",
+                  msgLen: messages.length,
+                  isHistoryLoading,
+                  isConversationLoading,
+                  isAwaitingAssistantStart,
+                  status,
+                })
+              }
+            }
+            return null
+          })()}
+          {(isHistoryLoading || isConversationLoading || isAwaitingAssistantStart) && messages.length === 0 ? (
             // Loading skeleton - keep horizontal boundary in sync with ChatInput
+            // Also shown when starter prompt is pending (isAwaitingAssistantStart)
+            // to prevent TemplateGrid flash before first message appears
             <div className="space-y-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
               <div className="flex justify-start">
                 <Skeleton className="h-12 w-[60%] rounded-action" />
@@ -2077,6 +2137,12 @@ export function ChatWindow({
           ) : messages.length === 0 ? (
             // Empty state with horizontal boundary in sync with ChatInput
             <div className="flex flex-col items-center justify-center h-full" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
+              {(() => {
+                if (process.env.NODE_ENV !== "production" && conversationId) {
+                  console.warn("[CHAT-VIEW] TemplateGrid shown IN CONVERSATION VIEW — this is the bug", { conversationId, isAwaitingAssistantStart })
+                }
+                return null
+              })()}
               <TemplateGrid
                 onTemplateSelect={handleTemplateSelect}
                 onSidebarLinkClick={handleSidebarLinkClick}

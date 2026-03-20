@@ -1899,6 +1899,7 @@ Aturan:
                       )
                     : { incomplete: false, requirement: undefined }
 
+                const routerStart = Date.now()
                 const webSearchDecision = await decideWebSearchMode({
                     model,
                     recentMessages: recentForRouter,
@@ -1910,6 +1911,7 @@ Aturan:
                     ragChunksAvailable,
                     researchStatus: { incomplete, requirement },
                 })
+                console.log(`[⏱ LATENCY] searchRouter=${Date.now() - routerStart}ms decision=${webSearchDecision.enableWebSearch ? "SEARCH" : "NO-SEARCH"} intent=${webSearchDecision.intentType} confidence=${webSearchDecision.confidence}`)
 
                 // Trust the router decision. Router prompt handles stage policy rules.
                 // PASSIVE stages: router prompt says "ONLY if user EXPLICITLY requests."
