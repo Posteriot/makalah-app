@@ -24,6 +24,7 @@ export interface RetrieverChainEntry {
 }
 
 export interface WebSearchOrchestratorConfig {
+  conversationId: string // needed for RAG ingest
   retrieverChain: RetrieverChainEntry[]
   messages: Parameters<typeof import("ai").streamText>[0]["messages"]
   composeMessages: Parameters<typeof import("ai").streamText>[0]["messages"]
@@ -40,6 +41,7 @@ export interface WebSearchOrchestratorConfig {
   traceMode: string
   /** When true, pipe compose stream through pipeYamlRender and inject CHOICE_YAML_SYSTEM_PROMPT. */
   isDraftingStage?: boolean
+  tavilyApiKey?: string
   onFinish: (result: WebSearchResult) => Promise<void>
 }
 

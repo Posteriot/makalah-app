@@ -1,5 +1,5 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
-import { normalizeCitations } from "@/lib/citations/normalizer"
+import { normalizeSourcesList } from "@/lib/citations/normalizer"
 import type { NormalizedCitation } from "@/lib/citations/types"
 import type { AnyStreamTextResult, RetrieverConfig, SearchRetriever } from "../types"
 
@@ -23,7 +23,7 @@ export const perplexityRetriever: SearchRetriever = {
           setTimeout(() => reject(new Error("Perplexity sources timeout")), SOURCE_TIMEOUT_MS)
         ),
       ])
-      return normalizeCitations(rawSources, "perplexity")
+      return normalizeSourcesList(rawSources)
     } catch {
       console.warn("[perplexity] Failed to extract sources within timeout")
       return []

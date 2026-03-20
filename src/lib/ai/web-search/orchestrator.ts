@@ -9,6 +9,7 @@ import { buildSearchResultsContext } from "@/lib/ai/search-results-context"
 import { composeSkillInstructions } from "@/lib/ai/skills"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { buildUserFacingSearchPayload } from "@/lib/ai/internal-thought-separator"
+import { fetchPageContent } from "./content-fetcher"
 import {
   sanitizeMessagesForSearch,
   canonicalizeCitationUrls,
@@ -23,6 +24,8 @@ import { pipeYamlRender } from "@json-render/yaml"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
+import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
+import { ingestToRag } from "@/lib/ai/rag-ingest"
 
 /**
  * Compose Phase Directive — injected into compose context to prevent
@@ -49,11 +52,20 @@ YOUR TASK:
 - Present your analysis and findings IMMEDIATELY in this response
 - Follow the SKILL.md composition guidelines (RESPONSE COMPOSITION, REFERENCE INTEGRITY)
 
+STRICT CONTENT RULE — ZERO TOLERANCE FOR FABRICATION:
+- You may ONLY state facts that appear verbatim or near-verbatim in "Page content (verified)" sections below
+- If a source has "Page content (verified)", ONLY use information from that page content — not from your training data, not from the URL, not from the title
+- If a source has "[no page content — unverified source]", do NOT make specific factual claims (names, dates, numbers, titles, roles) from it — you may only note it exists
+- If page content from different sources describes different people/entities with the same name, present them SEPARATELY — never merge into one profile
+- When you are unsure whether a fact is in the page content, LEAVE IT OUT — omission is always better than fabrication
+- NEVER add details from your training knowledge to fill gaps. State what the sources say and stop.
+
 DO NOT:
 - Promise to search ("beri aku waktu", "saya akan mencari", "izinkan saya mencari")
 - Announce that you will perform a search
 - Ask for permission to search
 - Reference or attempt to use tools (no tools are available in this phase)
+- Add facts, claims, titles, names, or biographical details not found in verified page content
 
 OVERRIDE — the following instructions from other system messages DO NOT APPLY here:
 - Any "dialog first" / "tanya dulu sebelum generate" instructions — present results NOW
@@ -73,12 +85,14 @@ The search results below are your source material. Use them.
 `.trim()
 
 /**
- * Execute a two-pass web search flow:
- *   Phase 1: Silent search via retriever chain (runs BEFORE stream creation)
- *   Phase 2: Compose with skill instructions, stream to client
+ * Execute a three-phase web search flow:
+ *   Phase 1:   Silent search via retriever chain (runs BEFORE stream creation)
+ *   Phase 1.5: Fetch page content via FetchWeb (runs INSIDE stream execute)
+ *   Phase 2:   Compose with skill instructions, stream to client
  *
  * Phase 1 runs before stream creation so that errors propagate to route.ts
- * for retry / fallback handling.
+ * for retry / fallback handling. Phase 1.5 runs inside execute so Vercel's
+ * streaming timeout doesn't apply (first byte already sent).
  */
 export async function executeWebSearch(
   config: WebSearchOrchestratorConfig,
@@ -155,7 +169,7 @@ export async function executeWebSearch(
   }
 
   // ────────────────────────────────────────────────────────────
-  // Build compose context (BEFORE stream creation)
+  // Prepare sources and skill instructions (BEFORE stream creation)
   // ────────────────────────────────────────────────────────────
   // Strip vertex proxy URLs from searchText — real URLs are in sources array
   const cleanSearchText = searchText.replace(
@@ -167,6 +181,7 @@ export async function executeWebSearch(
     url: c.url,
     title: c.title || c.url,
     ...(typeof c.publishedAt === "number" ? { publishedAt: c.publishedAt } : {}),
+    ...(c.citedText ? { citedText: c.citedText } : {}),
   }))
   const sourceCount = scoredSources.length
 
@@ -187,58 +202,8 @@ export async function executeWebSearch(
     console.error("[Orchestrator] composeSkillInstructions failed:", skillError)
   }
 
-  let searchResultsContext: string
-  try {
-    searchResultsContext = buildSearchResultsContext(
-      scoredSources.map((s) => ({ url: s.url, title: s.title })),
-      cleanSearchText,
-    )
-  } catch (ctxError) {
-    console.error("[Orchestrator] buildSearchResultsContext failed:", ctxError)
-    searchResultsContext = "## SEARCH RESULTS\nNo sources available."
-  }
-
-  // Build compose system messages
-  // EXCLUDED from compose phase:
-  // - paperModePrompt: Contains "ASK user to confirm search" and tool usage instructions
-  //   that conflict with compose behavior. The model follows these over COMPOSE_PHASE_DIRECTIVE
-  //   because they are longer and more specific. Compose phase only needs to synthesize
-  //   search results — it does not need paper workflow instructions.
-  // - paperWorkflowReminder: Instructs "call startPaperSession IMMEDIATELY" — irrelevant
-  //   and harmful in compose phase (no tools available).
-  // COMPOSE_PHASE_DIRECTIVE goes FIRST — it defines the phase context and overrides.
-  // When placed after systemPrompt/skillInstructions, the model treats those larger
-  // blocks as primary instructions and ignores the smaller directive.
-  const composeSystemMessages: Array<{ role: "system"; content: string }> = [
-    { role: "system", content: COMPOSE_PHASE_DIRECTIVE },
-    { role: "system", content: searchResultsContext },
-    { role: "system", content: config.systemPrompt },
-    ...(skillInstructions
-      ? [{ role: "system" as const, content: skillInstructions }]
-      : []),
-    ...(config.fileContext
-      ? [{ role: "system" as const, content: `File Context:\n\n${config.fileContext}` }]
-      : []),
-    ...(config.isDraftingStage
-      ? [{ role: "system" as const, content: CHOICE_YAML_SYSTEM_PROMPT }]
-      : []),
-  ]
-
-  const composeMessages = [
-    ...composeSystemMessages,
-    ...(config.composeMessages ?? []),
-  ]
-
-
-  // Start compose stream — may throw, which propagates to route.ts for retry
-  const composeResult = streamText({
-    model: config.composeModel,
-    messages: composeMessages,
-    ...config.samplingOptions,
-  })
-
   // ────────────────────────────────────────────────────────────
-  // PHASE 2: Stream creation — emit search status, compose output, citations
+  // PHASE 1.5 + PHASE 2: Stream creation — fetch content, compose, stream
   // ────────────────────────────────────────────────────────────
   const messageId =
     globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
@@ -258,7 +223,7 @@ export async function executeWebSearch(
     execute: async ({ writer }) => {
       let composedText = ""
 
-      // Emit search status: "searching" → "composing" (Phase 1 already done)
+      // Emit search status: "searching" → "fetching-content" → "composing"
       writer.write({ type: "start", messageId })
       writer.write({
         type: "data-search",
@@ -266,7 +231,95 @@ export async function executeWebSearch(
         data: { status: "searching" },
       })
 
-      // Transition to composing (Phase 1 completed before stream)
+      // ── Phase 1.5: Fetch page content ──
+      writer.write({
+        type: "data-search",
+        id: searchStatusId,
+        data: { status: "fetching-content", sourceCount },
+      })
+
+      const urlsToFetch = scoredSources.slice(0, 7).map((s) => s.url)
+      console.log(`[Orchestrator] Phase 1.5: fetching content for ${urlsToFetch.length} URLs...`)
+      const fetchStart = Date.now()
+
+      const fetchedContent = await fetchPageContent(
+        urlsToFetch,
+        { tavilyApiKey: config.tavilyApiKey, timeoutMs: 5_000 },
+      )
+
+      console.log(`[Orchestrator] Phase 1.5 done in ${Date.now() - fetchStart}ms`)
+
+      // Enrich sources with pageContent
+      const enrichedSources = scoredSources.map((s) => {
+        const fetched = fetchedContent.find((f) => f.url === s.url)
+        return {
+          ...s,
+          ...(fetched?.pageContent ? { pageContent: fetched.pageContent } : {}),
+        }
+      })
+
+      const enrichedCount = enrichedSources.filter((s) => s.pageContent).length
+      console.log(`[Orchestrator] Enriched: ${enrichedCount}/${enrichedSources.length} sources have pageContent`)
+
+      // ── Build compose context using enrichedSources ──
+      let searchResultsContext: string
+      try {
+        searchResultsContext = buildSearchResultsContext(
+          enrichedSources.map((s) => ({
+            url: s.url,
+            title: s.title,
+            ...(s.citedText ? { citedText: s.citedText } : {}),
+            ...(s.pageContent ? { pageContent: s.pageContent } : {}),
+          })),
+          cleanSearchText,
+        )
+      } catch (ctxError) {
+        console.error("[Orchestrator] buildSearchResultsContext failed:", ctxError)
+        searchResultsContext = "## SEARCH RESULTS\nNo sources available."
+      }
+
+      // Build compose system messages
+      // EXCLUDED from compose phase:
+      // - paperModePrompt: Contains "ASK user to confirm search" and tool usage instructions
+      //   that conflict with compose behavior. The model follows these over COMPOSE_PHASE_DIRECTIVE
+      //   because they are longer and more specific. Compose phase only needs to synthesize
+      //   search results — it does not need paper workflow instructions.
+      // - paperWorkflowReminder: Instructs "call startPaperSession IMMEDIATELY" — irrelevant
+      //   and harmful in compose phase (no tools available).
+      // COMPOSE_PHASE_DIRECTIVE goes FIRST — it defines the phase context and overrides.
+      // When placed after systemPrompt/skillInstructions, the model treats those larger
+      // blocks as primary instructions and ignores the smaller directive.
+      const composeSystemMessages: Array<{ role: "system"; content: string }> = [
+        { role: "system", content: COMPOSE_PHASE_DIRECTIVE },
+        { role: "system", content: searchResultsContext },
+        { role: "system", content: config.systemPrompt },
+        ...(skillInstructions
+          ? [{ role: "system" as const, content: skillInstructions }]
+          : []),
+        ...(config.fileContext
+          ? [{ role: "system" as const, content: `File Context:\n\n${config.fileContext}` }]
+          : []),
+        ...(config.isDraftingStage
+          ? [{ role: "system" as const, content: CHOICE_YAML_SYSTEM_PROMPT }]
+          : []),
+      ]
+
+      const composeMessages = [
+        ...composeSystemMessages,
+        ...(config.composeMessages ?? []),
+      ]
+
+      // Start compose stream
+      const composeResult = streamText({
+        model: config.composeModel,
+        messages: composeMessages,
+        ...config.samplingOptions,
+        ...(config.reasoningProviderOptions
+          ? { providerOptions: config.reasoningProviderOptions as Parameters<typeof streamText>[0]["providerOptions"] }
+          : {}),
+      })
+
+      // Transition to composing
       writer.write({
         type: "data-search",
         id: searchStatusId,
@@ -301,6 +354,11 @@ export async function executeWebSearch(
         }
       }
 
+      // Reasoning accumulator: convert raw reasoning chunks to data-reasoning-thought
+      // events that the client UI expects (same pattern as non-search path in route.ts)
+      const reasoningTraceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
+      let reasoningChunkCount = 0
+
       // Stream compose output to user
       for await (const chunk of iterateStream(yamlTransformedStream)) {
         // Capture data-spec parts emitted by pipeYamlRender for DB persistence
@@ -318,12 +376,29 @@ export async function executeWebSearch(
           } catch { /* spec capture error — non-critical */ }
         }
 
-        // Skip reasoning chunks (not forwarded in web search mode)
+        // Convert reasoning chunks to data-reasoning-thought events for UI
         if (
           chunk.type === "reasoning-start" ||
           chunk.type === "reasoning-delta" ||
           chunk.type === "reasoning-end"
         ) {
+          if (!config.isTransparentReasoning) continue
+
+          if (chunk.type === "reasoning-delta") {
+            reasoningChunkCount += 1
+            const sanitized = sanitizeReasoningDelta(chunk.delta ?? "")
+            if (sanitized.trim() && (reasoningChunkCount % 3 === 0 || sanitized.length > 100)) {
+              writer.write({
+                type: "data-reasoning-thought",
+                id: `${reasoningTraceId}-thought-${reasoningChunkCount}`,
+                data: {
+                  traceId: reasoningTraceId,
+                  delta: sanitized,
+                  ts: Date.now(),
+                },
+              })
+            }
+          }
           continue
         }
 
@@ -418,6 +493,26 @@ export async function executeWebSearch(
               attemptedRetrievers,
               capturedChoiceSpec: capturedChoiceSpec && capturedChoiceSpec.root ? capturedChoiceSpec : undefined,
             })
+            // ── RAG Ingest: fire-and-forget, SEQUENTIAL to avoid rate limit ──
+            // Each source ingested one at a time to stay within embedding API quota.
+            void (async () => {
+              for (const fetched of fetchedContent) {
+                if (fetched.fullContent) {
+                  try {
+                    const source = enrichedSources.find((s) => s.url === fetched.url)
+                    await ingestToRag({
+                      conversationId: config.conversationId,
+                      sourceType: "web",
+                      sourceId: fetched.url,
+                      content: fetched.fullContent,
+                      metadata: { title: source?.title },
+                    })
+                  } catch (err) {
+                    console.error(`[Orchestrator] RAG ingest failed for ${fetched.url}:`, err)
+                  }
+                }
+              }
+            })()
           } catch (err) {
             // Citation finalize failed — ensure search status is terminal
             writer.write({
