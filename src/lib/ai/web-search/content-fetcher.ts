@@ -15,7 +15,8 @@ interface FetchOptions {
   timeoutMs?: number
 }
 
-const MAX_CONTENT_CHARS = 12000 // ~3000 tokens
+const MAX_CONTENT_CHARS = 12000 // ~3000 tokens for compose context
+const MAX_RAG_CONTENT_CHARS = 80000 // ~20K tokens — cap for RAG ingest (prevents 500K+ PDF dumps)
 const MIN_CONTENT_CHARS = 50 // Skip trivially short extractions (nav-only, login forms)
 const DEFAULT_TIMEOUT_MS = 5000
 
@@ -60,7 +61,7 @@ export async function fetchPageContent(
     if (settled.status === "fulfilled" && settled.value) {
       const { content, resolvedUrl } = settled.value
       console.log(`[⏱ LATENCY] FetchWeb PRIMARY [${i+1}/${urls.length}] ✓ ${elapsed}ms ${resolvedUrl.slice(0, 70)} (${content.length} chars)`)
-      return { url: urls[i], resolvedUrl, pageContent: truncate(content), fullContent: content, fetchMethod: "fetch" as const }
+      return { url: urls[i], resolvedUrl, pageContent: truncate(content), fullContent: truncateRag(content), fetchMethod: "fetch" as const }
     }
     const reason = settled.status === "rejected" ? settled.reason?.message : "empty/null content"
     console.log(`[⏱ LATENCY] FetchWeb PRIMARY [${i+1}/${urls.length}] ✗ ${elapsed}ms ${urls[i].slice(0, 70)} — ${reason}`)
@@ -84,7 +85,7 @@ export async function fetchPageContent(
         if (idx !== -1 && tr.content) {
           console.log(`[FetchWeb] ✓ TAVILY ok: ${tr.url} (${tr.content.length} chars)`)
           results[idx].pageContent = truncate(tr.content)
-          results[idx].fullContent = tr.content
+          results[idx].fullContent = truncateRag(tr.content)
           results[idx].fetchMethod = "tavily"
           // Tavily returns the real URL — use it as resolvedUrl
           results[idx].resolvedUrl = tr.url
@@ -250,10 +251,18 @@ function extractMetaContent(document: any, selectors: string[]): string | undefi
 
 function truncate(text: string): string {
   if (text.length <= MAX_CONTENT_CHARS) return text
-  // Truncate at last paragraph break before limit
   const truncated = text.slice(0, MAX_CONTENT_CHARS)
   const lastBreak = truncated.lastIndexOf("\n\n")
   return lastBreak > MAX_CONTENT_CHARS * 0.5
     ? truncated.slice(0, lastBreak) + "\n\n[content truncated]"
     : truncated + "\n\n[content truncated]"
+}
+
+function truncateRag(text: string): string {
+  if (text.length <= MAX_RAG_CONTENT_CHARS) return text
+  const truncated = text.slice(0, MAX_RAG_CONTENT_CHARS)
+  const lastBreak = truncated.lastIndexOf("\n\n")
+  return lastBreak > MAX_RAG_CONTENT_CHARS * 0.5
+    ? truncated.slice(0, lastBreak)
+    : truncated
 }

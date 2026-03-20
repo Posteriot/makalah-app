@@ -5,6 +5,7 @@ const EMBEDDING_MODEL = "gemini-embedding-001"
 const DIMENSIONS = 768
 const MAX_RETRIES = 3
 const BASE_DELAY_MS = 10000 // 10s — Google free tier rate limit resets per minute
+const MAX_BATCH_SIZE = 100 // Google batchEmbedContents hard limit
 
 async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -44,18 +45,39 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return []
 
   const model = google.textEmbeddingModel(EMBEDDING_MODEL)
-  const { embeddings } = await withRetry(() => embedMany({
-    model,
-    values: texts,
-    providerOptions: {
-      google: {
-        outputDimensionality: DIMENSIONS,
-        taskType: "RETRIEVAL_DOCUMENT",
-      },
-    },
-  }))
 
-  return embeddings
+  // Google batchEmbedContents has a hard limit of 100 requests per call.
+  // Split into batches if needed.
+  if (texts.length <= MAX_BATCH_SIZE) {
+    const { embeddings } = await withRetry(() => embedMany({
+      model,
+      values: texts,
+      providerOptions: {
+        google: {
+          outputDimensionality: DIMENSIONS,
+          taskType: "RETRIEVAL_DOCUMENT",
+        },
+      },
+    }))
+    return embeddings
+  }
+
+  const allEmbeddings: number[][] = []
+  for (let i = 0; i < texts.length; i += MAX_BATCH_SIZE) {
+    const batch = texts.slice(i, i + MAX_BATCH_SIZE)
+    const { embeddings } = await withRetry(() => embedMany({
+      model,
+      values: batch,
+      providerOptions: {
+        google: {
+          outputDimensionality: DIMENSIONS,
+          taskType: "RETRIEVAL_DOCUMENT",
+        },
+      },
+    }))
+    allEmbeddings.push(...embeddings)
+  }
+  return allEmbeddings
 }
 
 /**
