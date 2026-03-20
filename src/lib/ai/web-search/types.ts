@@ -43,6 +43,8 @@ export interface WebSearchOrchestratorConfig {
   isDraftingStage?: boolean
   tavilyApiKey?: string
   convexToken?: string
+  /** Max tokens for retriever Phase 1 (lower = faster search, less wasted output). Defaults to 4096. */
+  retrieverMaxTokens?: number
   onFinish: (result: WebSearchResult) => Promise<void>
 }
 

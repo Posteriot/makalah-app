@@ -1,0 +1,13 @@
+diff --git a/node_modules/@json-render/yaml/dist/index.js b/node_modules/@json-render/yaml/dist/index.js
+index bd7521c..2f4af32 100644
+--- a/node_modules/@json-render/yaml/dist/index.js
++++ b/node_modules/@json-render/yaml/dist/index.js
+@@ -335,7 +335,7 @@ function createYamlTransform(options) {
+                 emitTextDelta("\n", controller);
+               }
+             } else if (lineBuffer.length === 0 && !buffering) {
+-              if (fenceMode !== null || ch === "`") {
++              if (fenceMode !== null || (ch === "`" && lineBuffer.length === 0)) {
+                 buffering = true;
+                 lineBuffer += ch;
+               } else {

@@ -129,11 +129,17 @@ export async function executeWebSearch(
       const retrieverStart = Date.now()
       const { model, tools } = retriever.buildStreamConfig(retrieverConfig)
 
+      // Retriever uses lower maxTokens than compose — its text output gets dropped
+      // when page content is available, so generating long prose is wasted latency.
+      const retrieverSamplingOptions = {
+        ...config.samplingOptions,
+        maxTokens: config.retrieverMaxTokens ?? 4096,
+      }
       const searchResult = streamText({
         model,
         messages: searchMessages,
         ...(tools ? { tools: tools as Parameters<typeof streamText>[0]["tools"] } : {}),
-        ...config.samplingOptions,
+        ...retrieverSamplingOptions,
       })
 
       // Await full text (not streamed to user)
@@ -476,7 +482,7 @@ export async function executeWebSearch(
           } else {
             const gap = now - lastTextChunkTime
             if (gap > maxGapMs) maxGapMs = gap
-            if (gap > 500) {
+            if (gap > 200) {
               gapsOver500ms++
               console.log(`[⏱ STUTTER] gap=${gap}ms after chunk#${textChunkCount} reasoningBetween=${lastChunkWasReasoning} isDrafting=${!!config.isDraftingStage}`)
             }
@@ -575,7 +581,7 @@ export async function executeWebSearch(
 
             const composeElapsed = Date.now() - composeStartTime
             console.log(`[⏱ LATENCY] Phase2 composeTotal=${composeElapsed}ms textChunks=${textChunkCount} composedChars=${composedText.length}`)
-            console.log(`[⏱ STUTTER] summary: maxGap=${maxGapMs}ms gapsOver500ms=${gapsOver500ms} reasoningInterruptions=${reasoningBetweenTextCount} totalReasoningChunks=${reasoningChunkCount} isDrafting=${!!config.isDraftingStage}`)
+            console.log(`[⏱ STUTTER] summary: maxGap=${maxGapMs}ms gapsOver200ms=${gapsOver500ms} reasoningInterruptions=${reasoningBetweenTextCount} totalReasoningChunks=${reasoningChunkCount} isDrafting=${!!config.isDraftingStage}`)
 
             // Call onFinish with the complete result
             const onFinishStart = Date.now()

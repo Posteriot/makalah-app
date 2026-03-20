@@ -12,6 +12,7 @@
     "convex": "node --dns-result-order=ipv4first node_modules/convex/bin/main.js",
     "convex:dev": "npm run convex -- dev",
     "convex:deploy": "npm run convex -- deploy",
+    "postinstall": "patch-package",
     "convex:dashboard": "npm run convex -- dashboard",
     "lint": "eslint",
     "typegen": "node --dns-result-order=ipv4first node_modules/next/dist/bin/next typegen",

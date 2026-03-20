@@ -1890,6 +1890,11 @@ Aturan:
                 searchRequestedByPolicy = false
                 activeStageSearchReason = "force_paper_tools_mode"
                 console.log("[SearchDecision] Force paper tools: no session yet")
+            } else if (!paperModePrompt && userMessageCount <= 1 && !searchAlreadyDone) {
+                // Fast path: first message in chat mode → always search (skip 2.9s LLM router)
+                searchRequestedByPolicy = true
+                activeStageSearchReason = "first_message_chat_mode"
+                console.log("[SearchDecision] Fast path: first chat message, skip router")
             } else {
                 // --- Unified LLM router for ALL stages (ACTIVE + PASSIVE + chat) ---
                 const { incomplete, requirement } = paperSession
@@ -2186,43 +2191,44 @@ Aturan:
                             result.capturedChoiceSpec ?? undefined,
                         )
 
-                        // ──── Auto-persist search references to paper stageData ────
+                        // ──── Non-critical ops: fire-and-forget (don't block response close) ────
+
+                        // Auto-persist search references to paper stageData
                         if (paperSession && result.sources.length > 0) {
-                            try {
-                                await fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
-                                    sessionId: paperSession._id,
-                                    references: result.sources.map(s => ({
-                                        url: s.url,
-                                        title: s.title,
-                                        ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
-                                            ? { publishedAt: s.publishedAt }
-                                            : {}),
-                                    })),
-                                })
+                            void fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
+                                sessionId: paperSession._id,
+                                references: result.sources.map(s => ({
+                                    url: s.url,
+                                    title: s.title,
+                                    ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
+                                        ? { publishedAt: s.publishedAt }
+                                        : {}),
+                                })),
+                            }).then(() => {
                                 console.log(`[Paper] Auto-persisted ${result.sources.length} search refs to stageData`)
-                            } catch (err) {
+                            }).catch(err => {
                                 Sentry.captureException(err, { tags: { subsystem: "paper" } })
                                 console.error("[Paper] Failed to auto-persist search references:", err)
-                            }
+                            })
                         }
 
-                        // ──── Auto-title generation ────
+                        // Auto-title generation
                         const minPairsForFinalTitle = Number.parseInt(
                             process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
                             10
                         )
-                        await maybeUpdateTitleFromAI({
+                        void maybeUpdateTitleFromAI({
                             assistantText: result.text,
                             minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
                                 ? minPairsForFinalTitle
                                 : 3,
-                        })
+                        }).catch(err => Sentry.captureException(err, { tags: { subsystem: "title" } }))
 
-                        // ──── BILLING: Record combined search + compose tokens ────
+                        // BILLING: Record combined search + compose tokens
                         const combinedInputTokens = result.usage?.inputTokens ?? 0
                         const combinedOutputTokens = result.usage?.outputTokens ?? 0
                         if (combinedInputTokens > 0 || combinedOutputTokens > 0) {
-                            await recordUsageAfterOperation({
+                            void recordUsageAfterOperation({
                                 userId: billingContext.userId,
                                 conversationId: currentConversationId as Id<"conversations">,
                                 sessionId: paperSession?._id,
