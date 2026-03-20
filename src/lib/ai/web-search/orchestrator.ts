@@ -247,11 +247,31 @@ export async function executeWebSearch(
         data: { status: "fetching-content", sourceCount },
       })
 
-      const urlsToFetch = scoredSources.slice(0, 7).map((s) => s.url)
+      // Resolve proxy URLs for top 7 BEFORE FetchWeb (proxy URLs can't be fetched directly).
+      // This is a lightweight batch HEAD request (~1-2s for 7 URLs in parallel).
+      // Remaining 13 sources resolve in parallel with compose (Step 3 below).
+      const top7Sources = scoredSources.slice(0, 7)
+      const resolvedUrlMap = new Map<string, string>()
+
+      const top7ProxyCount = top7Sources.filter((s) => isVertexProxyUrl(s.url)).length
+      if (top7ProxyCount > 0) {
+        const resolveStart = Date.now()
+        const resolved = await resolveVertexProxyUrls(
+          top7Sources.map((s) => ({ url: s.url, title: s.title }))
+        )
+        for (let i = 0; i < top7Sources.length; i++) {
+          if (resolved[i].url !== top7Sources[i].url) {
+            resolvedUrlMap.set(top7Sources[i].url, resolved[i].url)
+          }
+        }
+        console.log(`[⏱ LATENCY] Phase1.5 proxyResolve top7=${Date.now() - resolveStart}ms proxies=${top7ProxyCount}`)
+      }
+
+      // FetchWeb uses resolved URLs (real URLs, not proxy)
+      const urlsToFetch = top7Sources.map((s) => resolvedUrlMap.get(s.url) ?? s.url)
       console.log(`[Orchestrator] Phase 1.5: fetching content for ${urlsToFetch.length} URLs...`)
       const fetchStart = Date.now()
 
-      // FetchWeb follows redirects automatically — proxy URLs resolve via response.url
       const fetchedContent = await fetchPageContent(
         urlsToFetch,
         { tavilyApiKey: config.tavilyApiKey, timeoutMs: 5_000 },
@@ -259,8 +279,7 @@ export async function executeWebSearch(
 
       console.log(`[Orchestrator] Phase 1.5 done in ${Date.now() - fetchStart}ms`)
 
-      // Resolve remaining proxy URLs (non-fetched sources) in parallel with compose context build.
-      // FetchWeb already resolved top 7 via redirect:follow; this handles the other 13.
+      // Resolve remaining proxy URLs (non-fetched sources) in parallel with compose.
       const unfetchedProxySources = scoredSources.slice(7).filter((s) => isVertexProxyUrl(s.url))
       const proxyResolvePromise = unfetchedProxySources.length > 0
         ? (async () => {
@@ -273,16 +292,16 @@ export async function executeWebSearch(
           })()
         : Promise.resolve(new Map<string, string>())
 
-      // Merge resolved URLs: top 7 from FetchWeb, rest from proxy resolve
-      const resolvedUrlMap = new Map<string, string>()
+      // Merge resolved URLs from FetchWeb (response.url) into map
       for (const f of fetchedContent) {
         if (f.resolvedUrl !== f.url) resolvedUrlMap.set(f.url, f.resolvedUrl)
       }
 
-      // Enrich sources with pageContent and resolved URLs
+      // Enrich sources with pageContent and resolved URLs.
+      // FetchWeb receives resolved URLs, so match by both original and resolved URL.
       const enrichedSources = scoredSources.map((s) => {
-        const fetched = fetchedContent.find((f) => f.url === s.url)
         const resolvedUrl = resolvedUrlMap.get(s.url) ?? s.url
+        const fetched = fetchedContent.find((f) => f.url === resolvedUrl || f.url === s.url || f.resolvedUrl === resolvedUrl)
         return {
           ...s,
           url: resolvedUrl,
@@ -397,6 +416,11 @@ export async function executeWebSearch(
       let reasoningChunkCount = 0
       let firstTokenTime = 0
       let textChunkCount = 0
+      let lastTextChunkTime = 0
+      let maxGapMs = 0
+      let gapsOver500ms = 0
+      let reasoningBetweenTextCount = 0
+      let lastChunkWasReasoning = false
 
       // Stream compose output to user
       for await (const chunk of iterateStream(yamlTransformedStream)) {
@@ -425,6 +449,7 @@ export async function executeWebSearch(
 
           if (chunk.type === "reasoning-delta") {
             reasoningChunkCount += 1
+            lastChunkWasReasoning = true
             const sanitized = sanitizeReasoningDelta(chunk.delta ?? "")
             if (sanitized.trim() && (reasoningChunkCount % 3 === 0 || sanitized.length > 100)) {
               writer.write({
@@ -442,10 +467,24 @@ export async function executeWebSearch(
         }
 
         if (chunk.type === "text-delta") {
+          const now = Date.now()
           textChunkCount++
           if (textChunkCount === 1) {
-            firstTokenTime = Date.now()
+            firstTokenTime = now
+            lastTextChunkTime = now
             console.log(`[⏱ LATENCY] Phase2 firstToken=${firstTokenTime - composeStartTime}ms (time-to-first-text from compose start)`)
+          } else {
+            const gap = now - lastTextChunkTime
+            if (gap > maxGapMs) maxGapMs = gap
+            if (gap > 500) {
+              gapsOver500ms++
+              console.log(`[⏱ STUTTER] gap=${gap}ms after chunk#${textChunkCount} reasoningBetween=${lastChunkWasReasoning} isDrafting=${!!config.isDraftingStage}`)
+            }
+            lastTextChunkTime = now
+          }
+          if (lastChunkWasReasoning) {
+            reasoningBetweenTextCount++
+            lastChunkWasReasoning = false
           }
           composedText += (chunk as { delta?: string }).delta ?? ""
         }
@@ -536,6 +575,7 @@ export async function executeWebSearch(
 
             const composeElapsed = Date.now() - composeStartTime
             console.log(`[⏱ LATENCY] Phase2 composeTotal=${composeElapsed}ms textChunks=${textChunkCount} composedChars=${composedText.length}`)
+            console.log(`[⏱ STUTTER] summary: maxGap=${maxGapMs}ms gapsOver500ms=${gapsOver500ms} reasoningInterruptions=${reasoningBetweenTextCount} totalReasoningChunks=${reasoningChunkCount} isDrafting=${!!config.isDraftingStage}`)
 
             // Call onFinish with the complete result
             const onFinishStart = Date.now()
