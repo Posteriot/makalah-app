@@ -124,8 +124,6 @@ export default defineSchema({
     role: v.string(), // "user" | "assistant" | "system"
     content: v.string(),
     createdAt: v.number(),
-    uiMessageId: v.optional(v.string()),
-    jsonRendererRecommendation: v.optional(v.string()),
     fileIds: v.optional(v.array(v.id("files"))),
     attachmentMode: v.optional(v.union(v.literal("explicit"), v.literal("inherit"))),
     metadata: v.optional(v.object({
