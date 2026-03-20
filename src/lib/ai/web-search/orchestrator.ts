@@ -540,6 +540,7 @@ export async function executeWebSearch(
                       sourceId: fetched.url,
                       content: fetched.fullContent,
                       metadata: { title: source?.title },
+                      convexToken: config.convexToken,
                     })
                     ragIdx++
                     console.log(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] ${fetched.url.slice(0, 60)}... ${Date.now() - sourceStart}ms`)

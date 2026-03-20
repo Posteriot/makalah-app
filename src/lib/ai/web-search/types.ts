@@ -42,6 +42,7 @@ export interface WebSearchOrchestratorConfig {
   /** When true, pipe compose stream through pipeYamlRender and inject CHOICE_YAML_SYSTEM_PROMPT. */
   isDraftingStage?: boolean
   tavilyApiKey?: string
+  convexToken?: string
   onFinish: (result: WebSearchResult) => Promise<void>
 }
 

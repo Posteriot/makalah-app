@@ -2158,6 +2158,7 @@ Aturan:
                     conversationId: currentConversationId as string,
                     retrieverChain,
                     tavilyApiKey: process.env.TAVILY_API_KEY,
+                    convexToken: convexToken ?? undefined,
                     messages: fullMessagesGateway,
                     composeMessages: trimmedModelMessages,
                     composeModel: model,
