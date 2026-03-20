@@ -41,7 +41,8 @@ elements:
     type: ChoiceOptionButton
     props:
       optionId: option-1
-      label: "<option label>"
+      label: "<option label — your recommended choice>"
+      recommended: true
     children: []
     on:
       press:
@@ -86,7 +87,7 @@ elements:
           customText: { "$state": "/selection/customText" }
 state:
   selection:
-    selectedOptionId: null
+    selectedOptionId: option-1
     customText: ""
 \`\`\`
 
@@ -100,6 +101,13 @@ RULES:
 - Each ChoiceOptionButton MUST have an on.press action that sets /selection/selectedOptionId.
 - The ChoiceSubmitButton MUST use $state references in its on.press params.
 - Option IDs should be kebab-case and descriptive.
+
+RECOMMENDATION (MANDATORY):
+- You MUST set recommended: true on exactly ONE ChoiceOptionButton — the option you believe is best for the user's context.
+- This reflects your role as a guide: you always have an opinion, a stance, a direction you recommend.
+- The recommended option gets a visual badge "Rekomendasi" in the UI.
+- Pre-select the recommended option in initial state: set selectedOptionId to the recommended option's ID.
+- If you genuinely have no preference (rare), you may omit recommended — but default is to always recommend.
 
 WHEN TO USE:
 - Presenting research angles, topic options, methodology choices, or any 2+ alternatives

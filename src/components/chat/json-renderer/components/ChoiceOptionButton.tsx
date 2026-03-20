@@ -1,6 +1,6 @@
 "use client"
 
-import { Check } from "iconoir-react"
+import { Check, StarSolid } from "iconoir-react"
 import { useStateValue, type BaseComponentProps } from "@json-render/react"
 import { cn } from "@/lib/utils"
 
@@ -18,6 +18,7 @@ export function ChoiceOptionButton({
 }: BaseComponentProps<ChoiceOptionButtonProps>) {
   const selectedOptionId = useStateValue<string>("/selection/selectedOptionId")
   const isSelected = selectedOptionId === props.optionId
+  const isRecommended = props.recommended === true
   const disabled = props.disabled === true
 
   return (
@@ -26,17 +27,29 @@ export function ChoiceOptionButton({
       disabled={disabled}
       onClick={() => emit("press")}
       className={cn(
-        "w-full rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-3 py-3 text-left transition-colors",
+        "w-full rounded-action border bg-[var(--chat-background)] px-3 py-3 text-left transition-colors",
         "focus-ring disabled:cursor-not-allowed disabled:opacity-60",
         isSelected
           ? "border-sky-500/70 bg-sky-500/10"
-          : "hover:bg-[var(--chat-accent)]"
+          : isRecommended
+            ? "border-sky-500/40 bg-sky-500/5"
+            : "border-[color:var(--chat-border)] hover:bg-[var(--chat-accent)]"
       )}
     >
       <div className="flex items-center justify-between gap-3">
-        <span className="min-w-0 flex-1 text-sm font-medium text-[var(--chat-foreground)]">
-          {props.label}
-        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-[var(--chat-foreground)]">
+              {props.label}
+            </span>
+            {isRecommended && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold text-sky-400">
+                <StarSolid className="h-2.5 w-2.5" />
+                Rekomendasi
+              </span>
+            )}
+          </div>
+        </div>
         <span
           className={cn(
             "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-action border",
