@@ -370,29 +370,12 @@ export async function executeWebSearch(
           : []),
       ]
 
-      // Compose reminder injected AFTER conversation history to counter
-      // the pattern where model continues the "I'll search for you" promise
-      // from prior assistant messages instead of synthesizing results.
-      const COMPOSE_REMINDER = `REMINDER: You are in COMPOSE phase. Search is DONE. The results are above. Write your synthesis NOW — do NOT promise to search or announce searching. Present findings directly.`
-
       const composeMessages = [
         ...composeSystemMessages,
         ...(config.composeMessages ?? []),
-        { role: "system" as const, content: COMPOSE_REMINDER },
       ]
 
       console.log(`[⏱ LATENCY] Phase2 contextBuild=${Date.now() - contextBuildStart}ms sysMsgCount=${composeSystemMessages.length} totalMsgCount=${composeMessages.length}`)
-
-      // Diagnostic: log compose message roles and last user/assistant content
-      if (process.env.NODE_ENV !== "production") {
-        const historyMessages = config.composeMessages ?? []
-        const roles = historyMessages.map((m: { role: string }) => m.role).join(",")
-        const lastAssistant = [...historyMessages].reverse().find((m: { role: string }) => m.role === "assistant")
-        const lastAssistantPreview = lastAssistant && "content" in lastAssistant
-          ? String(typeof lastAssistant.content === "string" ? lastAssistant.content : JSON.stringify(lastAssistant.content)).slice(0, 200)
-          : "none"
-        console.log(`[COMPOSE-DIAG] historyRoles=[${roles}] lastAssistant="${lastAssistantPreview}"`)
-      }
 
       // Start compose stream
       const composeStartTime = Date.now()
