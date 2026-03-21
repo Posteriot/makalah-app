@@ -135,6 +135,7 @@ export async function executeWebSearch(
         ...config.samplingOptions,
         ...(config.retrieverMaxTokens ? { maxTokens: config.retrieverMaxTokens } : {}),
       }
+      const RETRIEVER_TIMEOUT_MS = 60_000 // 60s hard timeout for retriever
       const searchResult = streamText({
         model,
         messages: searchMessages,
@@ -142,8 +143,13 @@ export async function executeWebSearch(
         ...retrieverSamplingOptions,
       })
 
-      // Await full text (not streamed to user)
-      searchText = await searchResult.text
+      // Await full text with timeout — prevents indefinite hang if API stops responding
+      searchText = await Promise.race([
+        searchResult.text,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`Retriever "${retriever.name}" timed out after ${RETRIEVER_TIMEOUT_MS}ms`)), RETRIEVER_TIMEOUT_MS)
+        ),
+      ])
       const textDone = Date.now()
       const usage = await searchResult.usage
       searchUsage = usage
