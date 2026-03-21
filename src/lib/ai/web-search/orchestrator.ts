@@ -129,11 +129,11 @@ export async function executeWebSearch(
       const retrieverStart = Date.now()
       const { model, tools } = retriever.buildStreamConfig(retrieverConfig)
 
-      // Retriever uses lower maxTokens than compose — its text output gets dropped
-      // when page content is available, so generating long prose is wasted latency.
+      // Retriever can use lower maxTokens than compose — its text output gets dropped
+      // when page content is available. But don't set too low or Gemini skips tool calls.
       const retrieverSamplingOptions = {
         ...config.samplingOptions,
-        maxTokens: config.retrieverMaxTokens ?? 4096,
+        ...(config.retrieverMaxTokens ? { maxTokens: config.retrieverMaxTokens } : {}),
       }
       const searchResult = streamText({
         model,
@@ -157,6 +157,13 @@ export async function executeWebSearch(
       const extractDone = Date.now()
 
       console.log(`[⏱ LATENCY] Phase1 retriever="${retriever.name}" textGen=${textDone - retrieverStart}ms extractSources=${extractDone - extractStart}ms total=${extractDone - retrieverStart}ms citations=${sources.length} text=${searchText.length}chars`)
+
+      // Treat 0 citations as a failure — model didn't call search tool.
+      // Fall through to next retriever in chain.
+      if (sources.length === 0) {
+        console.warn(`[Orchestrator] Retriever "${retriever.name}" returned 0 citations — treating as failure, trying next`)
+        continue
+      }
 
       successRetrieverName = retriever.name
       successRetrieverIndex = i
