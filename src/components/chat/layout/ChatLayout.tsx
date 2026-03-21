@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, type ReactElement, type ReactNode } from "react"
+import { useState, useCallback, useEffect, useSyncExternalStore, type ReactElement, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
@@ -14,6 +14,23 @@ import { TopBar } from "../shell/TopBar"
 import { useConversations } from "@/lib/hooks/useConversations"
 import { Id } from "../../../../convex/_generated/dataModel"
 import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
+
+// SSR-safe viewport detection — prevents dual ChatWindow mount.
+// md breakpoint = 768px (Tailwind default)
+const MD_BREAKPOINT = 768
+const mediaQuery = typeof window !== "undefined" ? window.matchMedia(`(min-width: ${MD_BREAKPOINT}px)`) : null
+
+function subscribeViewport(callback: () => void) {
+  mediaQuery?.addEventListener("change", callback)
+  return () => mediaQuery?.removeEventListener("change", callback)
+}
+function getIsDesktop() {
+  return mediaQuery?.matches ?? true // SSR: assume desktop
+}
+
+function useIsDesktop() {
+  return useSyncExternalStore(subscribeViewport, getIsDesktop, () => true)
+}
 
 interface ChatLayoutProps {
   conversationId: string | null
@@ -61,6 +78,7 @@ export function ChatLayout({
   onMobileSidebarOpenChange,
 }: ChatLayoutProps) {
   const router = useRouter()
+  const isDesktop = useIsDesktop()
   const [activePanel, setActivePanel] = useState<PanelType>("chat-history")
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
@@ -237,14 +255,21 @@ export function ChatLayout({
 
   return (
     <div className="flex h-dvh flex-col" style={CSS_VARS as React.CSSProperties}>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--chat-background)] md:hidden">
-        {children}
-      </div>
+      {/* Mobile: full-screen children, no grid chrome.
+          Conditional render (not CSS display:none) ensures ChatWindow
+          mounts ONCE — prevents dual useChat instances fighting for
+          the same stream. */}
+      {!isDesktop && (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--chat-background)]">
+          {children}
+        </div>
+      )}
 
+      {isDesktop && (
       <div
         data-testid="chat-layout"
         className={cn(
-          "hidden min-h-0 flex-1 overflow-hidden md:grid",
+          "min-h-0 flex-1 overflow-hidden grid",
           "transition-[grid-template-columns] duration-300 ease-in-out",
           isSidebarCollapsed && "sidebar-collapsed",
           !isRightPanelOpen && "panel-collapsed"
@@ -329,6 +354,7 @@ export function ChatLayout({
           {artifactPanel}
         </aside>
       </div>
+      )}
 
       <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
         <SheetContent
