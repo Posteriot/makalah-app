@@ -25,6 +25,10 @@ import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
+import {
+  createCuratedTraceController,
+  type PersistedCuratedTraceSnapshot,
+} from "@/lib/ai/curated-trace"
 import { ingestToRag } from "@/lib/ai/rag-ingest"
 import { isVertexProxyUrl, resolveVertexProxyUrls } from "./retrievers/google-grounding"
 
@@ -383,6 +387,9 @@ export async function executeWebSearch(
 
       console.log(`[⏱ LATENCY] Phase2 contextBuild=${Date.now() - contextBuildStart}ms sysMsgCount=${composeSystemMessages.length} totalMsgCount=${composeMessages.length}`)
 
+      // ── Reasoning persistence: accumulate deltas for snapshot ──
+      let reasoningBuffer = ""
+
       // Start compose stream
       const composeStartTime = Date.now()
       const composeResult = streamText({
@@ -470,6 +477,8 @@ export async function executeWebSearch(
             reasoningChunkCount += 1
             lastChunkWasReasoning = true
             const sanitized = sanitizeReasoningDelta(chunk.delta ?? "")
+            // Accumulate ALL raw deltas for persistence (not just sampled ones)
+            reasoningBuffer += chunk.delta ?? ""
             if (sanitized.trim() && (reasoningChunkCount % 3 === 0 || sanitized.length > 100)) {
               writer.write({
                 type: "data-reasoning-thought",
@@ -598,6 +607,25 @@ export async function executeWebSearch(
 
             // Call onFinish with the complete result
             const onFinishStart = Date.now()
+
+            // ── Build reasoning snapshot for persistence ──
+            let reasoningSnapshot: PersistedCuratedTraceSnapshot | undefined
+            if (config.reasoningTraceEnabled && reasoningBuffer.length > 0) {
+              const traceController = createCuratedTraceController({
+                enabled: true,
+                traceId: reasoningTraceId,
+                mode: "websearch",
+                stage: config.currentStage,
+                webSearchEnabled: true,
+              })
+              traceController.populateFromReasoning(reasoningBuffer)
+              traceController.finalize({
+                outcome: "done",
+                sourceCount,
+              })
+              reasoningSnapshot = traceController.getPersistedSnapshot()
+            }
+
             await config.onFinish({
               text: textWithInlineCitations,
               sources: cleanSources.map((s) => ({ url: s.url, title: s.title, ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}), ...(s.citedText ? { citedText: s.citedText } : {}) })),
@@ -613,6 +641,7 @@ export async function executeWebSearch(
               retrieverIndex: successRetrieverIndex,
               attemptedRetrievers,
               capturedChoiceSpec: capturedChoiceSpec && capturedChoiceSpec.root ? capturedChoiceSpec : undefined,
+              reasoningSnapshot,
             })
             console.log(`[⏱ LATENCY] onFinish(DB writes)=${Date.now() - onFinishStart}ms`)
             console.log(`[⏱ LATENCY] ORCHESTRATOR TOTAL=${Date.now() - orchestratorStart}ms (Phase1=${phase1Start ? Date.now() - phase1Start : '?'}ms includes all)`)
