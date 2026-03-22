@@ -740,6 +740,10 @@ export async function executeWebSearch(
         firstTokenTime = 0
         lastTextChunkTime = 0
         lastChunkWasReasoning = false
+        capturedChoiceSpec = null
+        maxGapMs = 0
+        gapsOver500ms = 0
+        reasoningBetweenTextCount = 0
 
         composeResult = startComposeStream(config.fallbackComposeModel)
         return true
