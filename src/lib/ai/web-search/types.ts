@@ -30,6 +30,8 @@ export interface WebSearchOrchestratorConfig {
   messages: Parameters<typeof import("ai").streamText>[0]["messages"]
   composeMessages: Parameters<typeof import("ai").streamText>[0]["messages"]
   composeModel: LanguageModel
+  /** Fallback model for compose phase. Used only when primary compose fails before first text output. */
+  fallbackComposeModel?: LanguageModel
   systemPrompt: string
   paperModePrompt?: string
   paperWorkflowReminder?: string

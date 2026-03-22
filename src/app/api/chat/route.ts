@@ -2159,6 +2159,14 @@ Aturan:
                     })
                 }
 
+                // Resolve fallback compose model (non-fatal — compose still works without inner failover)
+                let fallbackComposeModel: Awaited<ReturnType<typeof getOpenRouterModel>> | undefined
+                try {
+                    fallbackComposeModel = await getOpenRouterModel({ enableWebSearch: false })
+                } catch {
+                    // Non-fatal: websearch compose still works, just without inner failover
+                }
+
                 return await executeWebSearch({
                     conversationId: currentConversationId as string,
                     retrieverChain,
@@ -2167,6 +2175,7 @@ Aturan:
                     messages: fullMessagesGateway,
                     composeMessages: trimmedModelMessages,
                     composeModel: model,
+                    fallbackComposeModel,
                     systemPrompt,
                     paperModePrompt: paperModePrompt || undefined,
                     paperWorkflowReminder: paperWorkflowReminder || undefined,

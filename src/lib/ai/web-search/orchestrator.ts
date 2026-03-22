@@ -2,6 +2,7 @@ import {
   streamText,
   createUIMessageStream,
   createUIMessageStreamResponse,
+  type LanguageModel,
 } from "ai"
 import type { NormalizedCitation } from "@/lib/citations/types"
 import { getSearchSystemPrompt, augmentUserMessageForSearch } from "@/lib/ai/search-system-prompt"
@@ -390,16 +391,22 @@ export async function executeWebSearch(
       // ── Reasoning persistence: accumulate deltas for snapshot ──
       let reasoningBuffer = ""
 
-      // Start compose stream
-      const composeStartTime = Date.now()
-      const composeResult = streamText({
-        model: config.composeModel,
+      // ── Compose failover state ──
+      let composeFailoverUsed = false
+      let canFailover = !!config.fallbackComposeModel
+
+      const startComposeStream = (model: LanguageModel) => streamText({
+        model,
         messages: composeMessages,
         ...config.samplingOptions,
         ...(config.reasoningProviderOptions
           ? { providerOptions: config.reasoningProviderOptions as Parameters<typeof streamText>[0]["providerOptions"] }
           : {}),
       })
+
+      // Start primary compose
+      const composeStartTime = Date.now()
+      let composeResult = startComposeStream(config.composeModel)
 
       // Transition to composing
       writer.write({
@@ -410,16 +417,6 @@ export async function executeWebSearch(
           ...(sourceCount > 0 ? { sourceCount } : {}),
         },
       })
-
-      // Build UI stream, optionally piping through YAML transform
-      const uiStream = composeResult.toUIMessageStream({
-        sendStart: false,
-        generateMessageId: () => messageId,
-        sendReasoning: config.isTransparentReasoning,
-      })
-      const yamlTransformedStream = config.isDraftingStage
-        ? pipeYamlRender(uiStream)
-        : uiStream
 
       // ReadableStream from pipeYamlRender may not have [Symbol.asyncIterator]
       // in all runtimes, so use a reader-based async generator
@@ -448,8 +445,9 @@ export async function executeWebSearch(
       let reasoningBetweenTextCount = 0
       let lastChunkWasReasoning = false
 
-      // Stream compose output to user
-      for await (const chunk of iterateStream(yamlTransformedStream)) {
+      // ── Chunk processor: returns action for stream consumption loop ──
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      async function processComposeChunk(chunk: any): Promise<"continue" | "break" | "retry"> {
         // Capture data-spec parts emitted by pipeYamlRender for DB persistence
         if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
           try {
@@ -471,7 +469,7 @@ export async function executeWebSearch(
           chunk.type === "reasoning-delta" ||
           chunk.type === "reasoning-end"
         ) {
-          if (!config.isTransparentReasoning) continue
+          if (!config.isTransparentReasoning) return "continue"
 
           if (chunk.type === "reasoning-delta") {
             reasoningChunkCount += 1
@@ -491,7 +489,17 @@ export async function executeWebSearch(
               })
             }
           }
-          continue
+          return "continue"
+        }
+
+        // Handle error/abort chunks — retry if no text sent yet
+        if (chunk.type === "error" || chunk.type === "abort") {
+          if (textChunkCount === 0 && canFailover) {
+            return "retry"
+          }
+          // Text already sent — forward and break (can't retry)
+          writer.write(chunk)
+          return "break"
         }
 
         if (chunk.type === "text-delta") {
@@ -587,8 +595,7 @@ export async function executeWebSearch(
             }
 
             // Compute combined usage from search + compose
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const composeFinishUsage = (chunk as any).usage
+            const composeFinishUsage = chunk.usage
             const combinedInputTokens =
               (searchUsage?.inputTokens ?? 0) +
               (composeFinishUsage?.inputTokens ?? 0)
@@ -624,6 +631,10 @@ export async function executeWebSearch(
                 sourceCount,
               })
               reasoningSnapshot = traceController.getPersistedSnapshot()
+            }
+
+            if (composeFailoverUsed) {
+              console.warn("[Orchestrator] Compose used fallback model before first text output")
             }
 
             await config.onFinish({
@@ -694,11 +705,72 @@ export async function executeWebSearch(
 
           // Forward finish chunk to preserve SDK semantics (finishReason, metadata)
           writer.write(chunk)
-          break
+          return "break"
         }
 
         // Forward all other chunk types (text-delta, text-start, text-end, etc.)
         writer.write(chunk)
+        return "continue"
+      }
+
+      // ── Stream consumption helper ──
+      async function consumeComposeStream(stream: ReadableStream<unknown>) {
+        for await (const chunk of iterateStream(stream)) {
+          const action = await processComposeChunk(chunk)
+          if (action === "continue") continue
+          if (action === "break") break
+          if (action === "retry") return "retry"
+        }
+        return "done"
+      }
+
+      // ── One-time fallback: reset compose-local state, switch model ──
+      async function tryFallbackCompose() {
+        if (!canFailover || !config.fallbackComposeModel || textChunkCount > 0) {
+          return false
+        }
+        canFailover = false
+        composeFailoverUsed = true
+
+        // Reset compose-local state only — no user-visible text has been emitted yet
+        composedText = ""
+        reasoningBuffer = ""
+        reasoningChunkCount = 0
+        textChunkCount = 0
+        firstTokenTime = 0
+        lastTextChunkTime = 0
+        lastChunkWasReasoning = false
+
+        composeResult = startComposeStream(config.fallbackComposeModel)
+        return true
+      }
+
+      // ── Build readable stream from compose result ──
+      const buildComposeReadable = (result: ReturnType<typeof streamText>) => {
+        const uiStream = result.toUIMessageStream({
+          sendStart: false,
+          generateMessageId: () => messageId,
+          sendReasoning: config.isTransparentReasoning,
+        })
+        return config.isDraftingStage ? pipeYamlRender(uiStream) : uiStream
+      }
+
+      // ── Run compose with one-time failover ──
+      try {
+        let readable = buildComposeReadable(composeResult)
+        let outcome = await consumeComposeStream(readable)
+
+        if (outcome === "retry" && await tryFallbackCompose()) {
+          readable = buildComposeReadable(composeResult)
+          await consumeComposeStream(readable)
+        }
+      } catch (composeError) {
+        if (await tryFallbackCompose()) {
+          const readable = buildComposeReadable(composeResult)
+          await consumeComposeStream(readable)
+        } else {
+          throw composeError
+        }
       }
     },
   })
