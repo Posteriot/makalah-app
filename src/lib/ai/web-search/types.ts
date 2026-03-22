@@ -1,5 +1,6 @@
 import type { LanguageModel, streamText } from "ai"
 import type { NormalizedCitation } from "@/lib/citations/types"
+import type { PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 
 export type AnyStreamTextResult = ReturnType<typeof streamText>
 
@@ -58,6 +59,8 @@ export interface WebSearchResult {
   attemptedRetrievers: string[]
   /** Captured YAML choice spec emitted by pipeYamlRender (drafting stages only). */
   capturedChoiceSpec?: import("@json-render/core").Spec
+  /** Persisted reasoning trace snapshot from compose phase (transparent reasoning only). */
+  reasoningSnapshot?: PersistedCuratedTraceSnapshot
 }
 
 export type SearchExecutionMode =
