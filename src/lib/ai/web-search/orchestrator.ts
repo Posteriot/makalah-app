@@ -663,7 +663,9 @@ export async function executeWebSearch(
             console.error("[Orchestrator] Citation finalize failed:", err)
           }
 
-          continue
+          // Forward finish chunk to preserve SDK semantics (finishReason, metadata)
+          writer.write(chunk)
+          break
         }
 
         // Forward all other chunk types (text-delta, text-start, text-end, etc.)
