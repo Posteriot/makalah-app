@@ -1886,10 +1886,17 @@ Aturan:
             let isSaveSubmitIntent = false
 
             // --- Pre-router guardrails (deterministic, structural) ---
-            if (forcePaperToolsMode) {
+            // Detect explicit search intent in user message (e.g., "cari referensi", "search for papers")
+            const hasExplicitSearchIntent = /\b(cari\b|search\b|referensi|rujukan|sumber|literature|jurnal)/i.test(normalizedLastUserContentLower)
+
+            if (forcePaperToolsMode && !hasExplicitSearchIntent) {
                 searchRequestedByPolicy = false
                 activeStageSearchReason = "force_paper_tools_mode"
-                console.log("[SearchDecision] Force paper tools: no session yet")
+                console.log("[SearchDecision] Force paper tools: no session yet, no explicit search intent")
+            } else if (forcePaperToolsMode && hasExplicitSearchIntent) {
+                searchRequestedByPolicy = true
+                activeStageSearchReason = "force_paper_tools_mode_with_search_intent"
+                console.log("[SearchDecision] Force paper tools: no session yet, but user has explicit search intent — allowing search")
             } else if (!paperModePrompt && userMessageCount <= 1 && !searchAlreadyDone) {
                 // Fast path: first message in chat mode → always search (skip 2.9s LLM router)
                 searchRequestedByPolicy = true
