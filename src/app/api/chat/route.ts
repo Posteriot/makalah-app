@@ -2187,7 +2187,7 @@ Aturan:
                             result.text,
                             result.sources.length > 0 ? result.sources : undefined,
                             combinedModelName,
-                            undefined, // reasoningTrace — not captured in web search compose
+                            result.reasoningSnapshot,
                             result.capturedChoiceSpec ?? undefined,
                         )
 
