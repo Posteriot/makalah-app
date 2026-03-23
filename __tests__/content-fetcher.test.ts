@@ -72,6 +72,48 @@ describe("fetchPageContent", () => {
     expect(results[0].pageContent).not.toContain("Footer content")
   })
 
+  it("keeps paragraph indexing stable for nested block structures", async () => {
+    const html = `
+      <html>
+      <head>
+        <title>Nested Article | Example News</title>
+        <meta property="og:title" content="Nested Article | Example News" />
+      </head>
+      <body>
+        <article>
+          <p>Lead paragraph for the article with enough text to be readable and extracted.</p>
+          <blockquote>
+            <p>Quoted paragraph that should be counted once, not twice, even though it is nested.</p>
+          </blockquote>
+          <p>Closing paragraph that confirms the ordering remains stable.</p>
+        </article>
+      </body>
+      </html>
+    `
+    fetchSpy.mockResolvedValueOnce(
+      new Response(html, {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      }),
+    )
+
+    const results = await fetchPageContent(["https://example.com/nested"])
+
+    expect(results[0].paragraphs).toHaveLength(3)
+    expect(results[0].paragraphs?.[0]).toEqual({
+      index: 1,
+      text: expect.stringContaining("Lead paragraph"),
+    })
+    expect(results[0].paragraphs?.[1]).toEqual({
+      index: 2,
+      text: expect.stringContaining("Quoted paragraph"),
+    })
+    expect(results[0].paragraphs?.[2]).toEqual({
+      index: 3,
+      text: expect.stringContaining("Closing paragraph"),
+    })
+  })
+
   it("returns null pageContent when page has no article content (non-article page)", async () => {
     const html = `
       <html><head><title>Login Page</title></head>

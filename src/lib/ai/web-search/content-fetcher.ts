@@ -418,11 +418,11 @@ function normalizeDocumentText(text: string): string {
 
 function buildParagraphsFromArticleContent(articleContent: string | null | undefined): FetchedParagraph[] | null {
   if (!articleContent) return null
-  const { document } = parseHTML(`<body>${articleContent}</body>`)
-  const blocks = document.querySelectorAll("p, li, blockquote, pre, figcaption")
-  const paragraphs = Array.from(blocks)
-    .map((el) => normalizeParagraphText(el.textContent ?? ""))
-    .filter((text) => text.length > 0)
+  const { document } = parseHTML(`<div id="article-content-root"></div>`)
+  const root = document.getElementById("article-content-root")
+  if (!root) return null
+  root.innerHTML = articleContent
+  const paragraphs = collectReadableBlocks(root)
   if (paragraphs.length === 0) return null
   return paragraphs.map((text, index) => ({ index: index + 1, text }))
 }
@@ -448,6 +448,74 @@ function buildParagraphsFromText(text: string | null): FetchedParagraph[] | null
 
 function normalizeParagraphText(text: string): string {
   return collapseWhitespace(decodeHtmlEntities(text))
+}
+
+const READABLE_BLOCK_TAGS = new Set([
+  "p",
+  "li",
+  "blockquote",
+  "pre",
+  "figcaption",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+])
+
+const WRAPPER_TAGS = new Set([
+  "article",
+  "aside",
+  "div",
+  "figure",
+  "main",
+  "section",
+  "span",
+  "tbody",
+  "thead",
+  "tfoot",
+  "tr",
+  "td",
+  "th",
+  "table",
+  "ul",
+  "ol",
+])
+
+function collectReadableBlocks(root: ParentNode): string[] {
+  const blocks: string[] = []
+
+  const visit = (node: ChildNode) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = normalizeParagraphText(node.textContent ?? "")
+      if (text) blocks.push(text)
+      return
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) return
+
+    const element = node as Element
+    const tagName = element.tagName.toLowerCase()
+
+    if (READABLE_BLOCK_TAGS.has(tagName)) {
+      const text = normalizeParagraphText(element.textContent ?? "")
+      if (text) blocks.push(text)
+      return
+    }
+
+    if (WRAPPER_TAGS.has(tagName)) {
+      for (const child of Array.from(element.childNodes)) {
+        visit(child)
+      }
+    }
+  }
+
+  for (const child of Array.from(root.childNodes)) {
+    visit(child)
+  }
+
+  return blocks
 }
 
 function decodeHtmlEntities(input: string): string {
