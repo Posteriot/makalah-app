@@ -10,6 +10,7 @@ export interface FetchedParagraph {
 export interface FetchedContent {
   url: string                      // input URL (may be proxy)
   resolvedUrl: string              // final URL after redirect:follow
+  rawTitle: string | null
   title: string | null
   author: string | null
   publishedAt: string | null
@@ -70,11 +71,12 @@ export async function fetchPageContent(
   const results: FetchedContent[] = primaryResults.map((settled, i) => {
     const elapsed = Date.now() - urlTimers[i]
     if (settled.status === "fulfilled" && settled.value) {
-      const { content, resolvedUrl, title, author, publishedAt, siteName, paragraphs, documentText } = settled.value
+      const { content, resolvedUrl, rawTitle, title, author, publishedAt, siteName, paragraphs, documentText } = settled.value
       console.log(`[⏱ LATENCY] FetchWeb PRIMARY [${i+1}/${urls.length}] ✓ ${elapsed}ms ${resolvedUrl.slice(0, 70)} (${content.length} chars)`)
       return {
         url: urls[i],
         resolvedUrl,
+        rawTitle,
         title,
         author,
         publishedAt,
@@ -91,6 +93,7 @@ export async function fetchPageContent(
     return {
       url: urls[i],
       resolvedUrl: urls[i],
+      rawTitle: null,
       title: null,
       author: null,
       publishedAt: null,
@@ -119,16 +122,18 @@ export async function fetchPageContent(
         const idx = results.findIndex((r) => r.url === tr.url)
         if (idx !== -1 && tr.content) {
           console.log(`[FetchWeb] ✓ TAVILY ok: ${tr.url} (${tr.content.length} chars)`)
+          const metadata = await fetchExactMetadata(tr.url, timeoutMs)
           results[idx].pageContent = truncate(tr.content)
           results[idx].fullContent = truncateRag(tr.content)
           results[idx].fetchMethod = "tavily"
           // Tavily returns the real URL — use it as resolvedUrl
           results[idx].resolvedUrl = tr.url
-          results[idx].title = null
-          results[idx].author = null
-          results[idx].publishedAt = null
-          results[idx].siteName = null
-          results[idx].paragraphs = buildParagraphs(tr.content)
+          results[idx].rawTitle = metadata?.rawTitle ?? null
+          results[idx].title = metadata?.title ?? null
+          results[idx].author = metadata?.author ?? null
+          results[idx].publishedAt = metadata?.publishedAt ?? null
+          results[idx].siteName = metadata?.siteName ?? null
+          results[idx].paragraphs = buildParagraphsFromText(tr.content)
           results[idx].documentText = normalizeDocumentText(tr.content)
         } else {
           console.log(`[FetchWeb] ✗ TAVILY fail: ${tr.url}`)
@@ -148,6 +153,7 @@ export async function fetchPageContent(
 interface FetchParseResult {
   content: string
   resolvedUrl: string
+  rawTitle: string | null
   title: string | null
   author: string | null
   publishedAt: string | null
@@ -194,7 +200,7 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParse
 
       const structured = extractStructuredMetadata(article, document)
       const documentText = normalizeDocumentText(markdown)
-      const paragraphs = buildParagraphs(documentText)
+      const paragraphs = buildParagraphsFromArticleContent(article.content)
 
       // Extract metadata that readability parses but excludes from content
       const metadataBlock = buildMetadataBlock(structured)
@@ -202,6 +208,7 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParse
       return {
         content,
         resolvedUrl,
+        rawTitle: structured.rawTitle,
         title: structured.title,
         author: structured.author,
         publishedAt: structured.publishedAt,
@@ -252,6 +259,7 @@ function extractStructuredMetadata(
   document: any,
 ): {
   title: string | null
+  rawTitle: string | null
   author: string | null
   publishedAt: string | null
   siteName: string | null
@@ -299,7 +307,7 @@ function extractStructuredMetadata(
 
   const title = rawTitle ? stripSiteSuffix(rawTitle, siteName ?? "") : null
 
-  return { title, author, publishedAt, siteName }
+  return { rawTitle, title, author, publishedAt, siteName }
 }
 
 function buildMetadataBlock(
@@ -403,7 +411,18 @@ function normalizeDocumentText(text: string): string {
   return text.replace(/\r\n/g, "\n").trim()
 }
 
-function buildParagraphs(text: string | null): FetchedParagraph[] | null {
+function buildParagraphsFromArticleContent(articleContent: string | null | undefined): FetchedParagraph[] | null {
+  if (!articleContent) return null
+  const { document } = parseHTML(`<body>${articleContent}</body>`)
+  const blocks = document.querySelectorAll("p, li, blockquote, pre, figcaption")
+  const paragraphs = Array.from(blocks)
+    .map((el) => normalizeParagraphText(el.textContent ?? ""))
+    .filter((text) => text.length > 0)
+  if (paragraphs.length === 0) return null
+  return paragraphs.map((text, index) => ({ index: index + 1, text }))
+}
+
+function buildParagraphsFromText(text: string | null): FetchedParagraph[] | null {
   if (!text) return null
   const normalized = normalizeDocumentText(text)
   if (!normalized) return null
@@ -420,6 +439,49 @@ function buildParagraphs(text: string | null): FetchedParagraph[] | null {
     index: index + 1,
     text: segment,
   }))
+}
+
+async function fetchExactMetadata(url: string, timeoutMs: number): Promise<{
+  rawTitle: string | null
+  title: string | null
+  author: string | null
+  publishedAt: string | null
+  siteName: string | null
+} | null> {
+  const controller = new AbortController()
+  let timerId: ReturnType<typeof setTimeout>
+  const timeoutPromise = new Promise<null>((resolve) => {
+    timerId = setTimeout(() => {
+      controller.abort()
+      resolve(null)
+    }, timeoutMs)
+  })
+
+  const fetchPromise = (async () => {
+    try {
+      const response = await fetch(url, {
+        headers: FETCH_HEADERS,
+        signal: controller.signal,
+        redirect: "follow",
+      })
+      if (!response.ok) return null
+      const html = await response.text()
+      const { document } = parseHTML(html)
+      return extractStructuredMetadata({} as Parameters<typeof extractStructuredMetadata>[0], document)
+    } catch {
+      return null
+    }
+  })()
+
+  try {
+    return await Promise.race([fetchPromise, timeoutPromise])
+  } finally {
+    clearTimeout(timerId!)
+  }
+}
+
+function normalizeParagraphText(text: string): string {
+  return collapseWhitespace(decodeHtmlEntities(text))
 }
 
 function decodeHtmlEntities(input: string): string {
