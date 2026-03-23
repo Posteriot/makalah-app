@@ -1,9 +1,27 @@
+type ExactSourceSummaryForGuardrail = {
+  sourceId: string
+  originalUrl: string
+  resolvedUrl: string
+  title?: string
+  siteName?: string
+}
+
+export const EXACT_SOURCE_NARRATIVE_BANNED_PHRASES = [
+  "metadata sumber",
+  "data yang tersimpan",
+  "hasil pencarian sebelumnya",
+  "aku akan cek metadata",
+  "sumber yang tersimpan",
+  "saya akan cek metadata",
+]
+
 export const EXACT_SOURCE_INSPECTION_RULES = `EXACT SOURCE INSPECTION RULES:
 - For any request asking for an exact title, author, published date, paragraph number, or verbatim quote from a previously stored source, call inspectSourceDocument before answering.
 - Use quoteFromSource and searchAcrossSources only for semantic retrieval, not for exact paragraph positions or exact metadata verification.
 - If the requested exact detail is unavailable, say it cannot be verified exactly from the verified source data.
 - Do not infer article titles from URLs, slugs, or citation labels.
 - Never mention internal tools, RAG, retrieval, fetch pipelines, or available web sources to the user.
+- Do not say phrases like: ${EXACT_SOURCE_NARRATIVE_BANNED_PHRASES.join(", ")}.
 - Respond in natural narrative language.`
 
 export function buildExactSourceInspectionSystemMessage() {
@@ -26,3 +44,27 @@ asks for exact title/author/date/paragraph details from earlier results, or refe
 Only set enableWebSearch=true when the user explicitly asks for NEW/ADDITIONAL sources on a NEW topic.`
 }
 
+export function buildDeterministicExactSourceForceInspectNote(
+  source: ExactSourceSummaryForGuardrail
+) {
+  return `
+DETERMINISTIC EXACT SOURCE ROUTING:
+The source target has already been resolved uniquely.
+You must call inspectSourceDocument first using sourceId="${source.sourceId}".
+Selected source title: ${source.title ?? "(title unavailable)"}
+Selected source site: ${source.siteName ?? "(site unavailable)"}
+Selected source original URL: ${source.originalUrl}
+Selected source resolved URL: ${source.resolvedUrl}
+Do not answer from memory, prior assistant wording, semantic matches, or conversation context before the tool result returns.
+After the tool result returns, answer naturally without exposing internal mechanics.`
+}
+
+export function buildDeterministicExactSourceClarifyNote() {
+  return `
+DETERMINISTIC EXACT SOURCE ROUTING:
+The user appears to be asking for exact source verification, but the target source is not uniquely identified.
+Ask a brief clarification question to identify the exact source first.
+Do not guess.
+Do not answer from memory or semantic similarity.
+Keep the clarification natural and do not expose internal mechanics.`
+}

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildDeterministicExactSourceClarifyNote,
+  buildDeterministicExactSourceForceInspectNote,
   buildExactSourceInspectionRouterNote,
   buildExactSourceInspectionSystemMessage,
   EXACT_SOURCE_INSPECTION_RULES,
+  EXACT_SOURCE_NARRATIVE_BANNED_PHRASES,
 } from "./exact-source-guardrails"
 
 describe("chat exact source guardrails", () => {
@@ -27,5 +30,40 @@ describe("chat exact source guardrails", () => {
     expect(note).toContain("RAG SOURCE CHUNKS AVAILABLE")
     expect(note).toContain("inspectSourceDocument")
     expect(note).toContain("enableWebSearch=false")
+  })
+
+  it("builds a deterministic force-inspect note with exact source identity", () => {
+    const note = buildDeterministicExactSourceForceInspectNote({
+      sourceId: "source-1",
+      title: "Judul Artikel",
+      originalUrl: "https://example.com/original",
+      resolvedUrl: "https://example.com/resolved",
+      siteName: "Contoh Media",
+    })
+
+    expect(note).toContain("sourceId")
+    expect(note).toContain("source-1")
+    expect(note).toContain("Judul Artikel")
+    expect(note).toContain("Do not answer from memory")
+  })
+
+  it("builds a deterministic clarify note without internal jargon", () => {
+    const note = buildDeterministicExactSourceClarifyNote()
+
+    expect(note).toContain("Ask a brief clarification question")
+    expect(note).toContain("Do not guess")
+    expect(note).not.toContain("metadata sumber")
+  })
+
+  it("blocks semi-internal user-facing phrases", () => {
+    expect(EXACT_SOURCE_NARRATIVE_BANNED_PHRASES).toEqual(
+      expect.arrayContaining([
+        "metadata sumber",
+        "data yang tersimpan",
+        "hasil pencarian sebelumnya",
+        "aku akan cek metadata",
+      ])
+    )
+    expect(EXACT_SOURCE_INSPECTION_RULES).toContain("Do not say phrases like")
   })
 })
