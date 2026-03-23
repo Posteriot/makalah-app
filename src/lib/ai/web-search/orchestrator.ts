@@ -96,7 +96,7 @@ The search results below are your source material. Use them.
 const MAX_EXACT_DOCUMENT_TEXT_CHARS = 80_000
 const MAX_EXACT_PARAGRAPH_COUNT = 120
 const MAX_EXACT_PARAGRAPH_TEXT_CHARS = 24_000
-const EXACT_TRUNCATION_MARKER = "[content truncated]"
+const EXACT_TRUNCATION_MARKER = "[exact payload truncated: tail omitted]"
 
 /**
  * Execute a three-phase web search flow:
@@ -894,13 +894,17 @@ function limitExactParagraphs(
 
   const limited: Array<{ index: number; text: string }> = []
   let remainingCount = MAX_EXACT_PARAGRAPH_COUNT
-  let remainingChars = MAX_EXACT_PARAGRAPH_TEXT_CHARS
+  let remainingChars = Math.max(0, MAX_EXACT_PARAGRAPH_TEXT_CHARS - EXACT_TRUNCATION_MARKER.length)
+  let truncated = false
 
   for (const paragraph of paragraphs) {
-    if (remainingCount <= 0 || remainingChars <= 0) break
-
     const normalized = paragraph.text.replace(/\r\n/g, "\n").trim()
     if (!normalized) continue
+
+    if (remainingCount <= 0 || remainingChars <= 0) {
+      truncated = true
+      break
+    }
 
     if (normalized.length <= remainingChars) {
       limited.push({ index: paragraph.index, text: normalized })
@@ -922,7 +926,15 @@ function limitExactParagraphs(
       })
     }
 
+    truncated = true
     break
+  }
+
+  if (truncated) {
+    limited.push({
+      index: -1,
+      text: EXACT_TRUNCATION_MARKER,
+    })
   }
 
   return limited
