@@ -116,9 +116,7 @@ export const getBySource = query({
 
         const documents = await ctx.db
             .query("sourceDocuments")
-            .withIndex("by_source", (q) =>
-                q.eq("conversationId", args.conversationId).eq("sourceId", args.sourceId)
-            )
+            .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
             .collect()
 
         return selectExactSourceDocument(documents as SourceDocumentRecord[], args.sourceId)
