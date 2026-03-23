@@ -517,13 +517,8 @@ function collectReadableBlocks(root: ParentNode): string[] {
     }
 
     if (WRAPPER_TAGS.has(tagName)) {
-      const beforeCount = blocks.length
       for (const child of Array.from(element.childNodes)) {
         visit(child)
-      }
-      if (blocks.length === beforeCount) {
-        const text = normalizeParagraphText(element.textContent ?? "")
-        if (text) blocks.push(text)
       }
     }
   }

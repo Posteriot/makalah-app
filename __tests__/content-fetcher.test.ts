@@ -157,6 +157,41 @@ describe("fetchPageContent", () => {
     ])
   })
 
+  it("does not leak skipped wrapper descendants into paragraph indexing", async () => {
+    const html = `
+      <html>
+      <head>
+        <title>Wrapper Noise Article | Example News</title>
+        <meta property="og:title" content="Wrapper Noise Article | Example News" />
+      </head>
+      <body>
+        <article>
+          <div class="promo">
+            <nav>Skip this navigation noise</nav>
+            <script>window.__noise = true</script>
+            <style>.noise { display: none; }</style>
+          </div>
+          <p>Only readable paragraph that should survive extraction.</p>
+        </article>
+      </body>
+      </html>
+    `
+    fetchSpy.mockResolvedValueOnce(
+      new Response(html, {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      }),
+    )
+
+    const results = await fetchPageContent(["https://example.com/wrapper-noise"])
+
+    expect(results[0].paragraphs).toHaveLength(1)
+    expect(results[0].paragraphs?.[0]).toEqual({
+      index: 1,
+      text: expect.stringContaining("Only readable paragraph"),
+    })
+  })
+
   it("returns null pageContent when page has no article content (non-article page)", async () => {
     const html = `
       <html><head><title>Login Page</title></head>
