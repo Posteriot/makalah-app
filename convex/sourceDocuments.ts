@@ -1,11 +1,33 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import type { Id } from "./_generated/dataModel"
 import { getConversationIfOwner, requireConversationOwner } from "./authHelpers"
 
 const paragraphValidator = v.object({
     index: v.number(),
     text: v.string(),
 })
+
+type SourceDocumentRecord = {
+    _id: Id<"sourceDocuments">
+    _creationTime: number
+    conversationId: Id<"conversations">
+    sourceId: string
+    createdAt: number
+    updatedAt: number
+}
+
+function sortSourceDocumentsForDeterministicSelection(
+    documents: SourceDocumentRecord[]
+): SourceDocumentRecord[] {
+    return [...documents].sort((left, right) => {
+        if (left.createdAt !== right.createdAt) return left.createdAt - right.createdAt
+        if (left._creationTime !== right._creationTime) {
+            return left._creationTime - right._creationTime
+        }
+        return left._id.localeCompare(right._id)
+    })
+}
 
 export const upsertDocument = mutation({
     args: {
@@ -24,12 +46,17 @@ export const upsertDocument = mutation({
         const { conversation } = await requireConversationOwner(ctx, args.conversationId)
         const now = Date.now()
 
-        const existing = await ctx.db
+        const existingDocuments = await ctx.db
             .query("sourceDocuments")
             .withIndex("by_source", (q) =>
                 q.eq("conversationId", args.conversationId).eq("sourceId", args.sourceId)
             )
-            .unique()
+            .collect()
+        const sortedDocuments = sortSourceDocumentsForDeterministicSelection(
+            existingDocuments as SourceDocumentRecord[]
+        )
+        const canonicalDocument = sortedDocuments[0] ?? null
+        const duplicateDocuments = sortedDocuments.slice(1)
 
         const nextDocument = {
             conversationId: conversation._id,
@@ -45,9 +72,12 @@ export const upsertDocument = mutation({
             updatedAt: now,
         }
 
-        if (existing) {
-            await ctx.db.patch(existing._id, nextDocument)
-            return { success: true as const, inserted: false as const, id: existing._id }
+        if (canonicalDocument) {
+            await ctx.db.patch(canonicalDocument._id, nextDocument)
+            for (const duplicate of duplicateDocuments) {
+                await ctx.db.delete(duplicate._id)
+            }
+            return { success: true as const, inserted: false as const, id: canonicalDocument._id }
         }
 
         const id = await ctx.db.insert("sourceDocuments", {
@@ -66,12 +96,19 @@ export const getBySource = query({
     handler: async (ctx, args) => {
         if (!(await getConversationIfOwner(ctx, args.conversationId))) return null
 
-        return await ctx.db
+        const documents = await ctx.db
             .query("sourceDocuments")
             .withIndex("by_source", (q) =>
                 q.eq("conversationId", args.conversationId).eq("sourceId", args.sourceId)
             )
-            .unique()
+            .collect()
+
+        if (documents.length === 0) return null
+
+        const sortedDocuments = sortSourceDocumentsForDeterministicSelection(
+            documents as SourceDocumentRecord[]
+        )
+        return sortedDocuments[0]
     },
 })
 
