@@ -200,6 +200,7 @@ interface PersistedReasoningTraceStepRaw {
 interface PersistedReasoningTraceRaw {
   headline?: unknown
   steps?: unknown
+  durationSeconds?: unknown
 }
 
 function parseReasoningMeta(meta: unknown): ReasoningTraceStep["meta"] | undefined {
