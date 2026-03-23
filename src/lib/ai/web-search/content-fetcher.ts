@@ -2,9 +2,20 @@ import { Readability } from "@mozilla/readability"
 import { parseHTML } from "linkedom"
 import TurndownService from "turndown"
 
+export interface FetchedParagraph {
+  index: number
+  text: string
+}
+
 export interface FetchedContent {
   url: string                      // input URL (may be proxy)
   resolvedUrl: string              // final URL after redirect:follow
+  title: string | null
+  author: string | null
+  publishedAt: string | null
+  siteName: string | null
+  paragraphs: FetchedParagraph[] | null
+  documentText: string | null
   pageContent: string | null       // truncated for compose context
   fullContent: string | null       // full content for RAG ingest (no truncation)
   fetchMethod: "fetch" | "tavily" | null
@@ -59,13 +70,37 @@ export async function fetchPageContent(
   const results: FetchedContent[] = primaryResults.map((settled, i) => {
     const elapsed = Date.now() - urlTimers[i]
     if (settled.status === "fulfilled" && settled.value) {
-      const { content, resolvedUrl } = settled.value
+      const { content, resolvedUrl, title, author, publishedAt, siteName, paragraphs, documentText } = settled.value
       console.log(`[⏱ LATENCY] FetchWeb PRIMARY [${i+1}/${urls.length}] ✓ ${elapsed}ms ${resolvedUrl.slice(0, 70)} (${content.length} chars)`)
-      return { url: urls[i], resolvedUrl, pageContent: truncate(content), fullContent: truncateRag(content), fetchMethod: "fetch" as const }
+      return {
+        url: urls[i],
+        resolvedUrl,
+        title,
+        author,
+        publishedAt,
+        siteName,
+        paragraphs,
+        documentText,
+        pageContent: truncate(content),
+        fullContent: truncateRag(content),
+        fetchMethod: "fetch" as const,
+      }
     }
     const reason = settled.status === "rejected" ? settled.reason?.message : "empty/null content"
     console.log(`[⏱ LATENCY] FetchWeb PRIMARY [${i+1}/${urls.length}] ✗ ${elapsed}ms ${urls[i].slice(0, 70)} — ${reason}`)
-    return { url: urls[i], resolvedUrl: urls[i], pageContent: null, fullContent: null, fetchMethod: null }
+    return {
+      url: urls[i],
+      resolvedUrl: urls[i],
+      title: null,
+      author: null,
+      publishedAt: null,
+      siteName: null,
+      paragraphs: null,
+      documentText: null,
+      pageContent: null,
+      fullContent: null,
+      fetchMethod: null,
+    }
   })
   console.log(`[⏱ LATENCY] FetchWeb PRIMARY batch=${Date.now() - primaryStart}ms (parallel, slowest URL determines total)`)
 
@@ -89,6 +124,12 @@ export async function fetchPageContent(
           results[idx].fetchMethod = "tavily"
           // Tavily returns the real URL — use it as resolvedUrl
           results[idx].resolvedUrl = tr.url
+          results[idx].title = null
+          results[idx].author = null
+          results[idx].publishedAt = null
+          results[idx].siteName = null
+          results[idx].paragraphs = buildParagraphs(tr.content)
+          results[idx].documentText = normalizeDocumentText(tr.content)
         } else {
           console.log(`[FetchWeb] ✗ TAVILY fail: ${tr.url}`)
         }
@@ -107,6 +148,12 @@ export async function fetchPageContent(
 interface FetchParseResult {
   content: string
   resolvedUrl: string
+  title: string | null
+  author: string | null
+  publishedAt: string | null
+  siteName: string | null
+  paragraphs: FetchedParagraph[] | null
+  documentText: string | null
 }
 
 async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParseResult | null> {
@@ -145,10 +192,23 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParse
       // Skip trivially short extractions (login forms, nav-only pages)
       if (markdown.trim().length < MIN_CONTENT_CHARS) return null
 
+      const structured = extractStructuredMetadata(article, document)
+      const documentText = normalizeDocumentText(markdown)
+      const paragraphs = buildParagraphs(documentText)
+
       // Extract metadata that readability parses but excludes from content
-      const metadataBlock = buildMetadataBlock(article, document)
+      const metadataBlock = buildMetadataBlock(structured)
       const content = metadataBlock ? `${metadataBlock}\n\n${markdown}` : markdown
-      return { content, resolvedUrl }
+      return {
+        content,
+        resolvedUrl,
+        title: structured.title,
+        author: structured.author,
+        publishedAt: structured.publishedAt,
+        siteName: structured.siteName,
+        paragraphs,
+        documentText,
+      }
     } catch {
       return null
     }
@@ -186,49 +246,75 @@ async function fetchViaTavily(
  * Extract author, date, and site metadata from readability article and HTML meta tags.
  * Returns a markdown metadata block to prepend to content, or empty string if no metadata found.
  */
-function buildMetadataBlock(
-  article: { byline?: string | null; publishedTime?: string | null; siteName?: string | null; excerpt?: string | null },
+function extractStructuredMetadata(
+  article: { title?: string | null; byline?: string | null; publishedTime?: string | null; siteName?: string | null; excerpt?: string | null },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   document: any,
-): string {
-  const lines: string[] = []
+): {
+  title: string | null
+  author: string | null
+  publishedAt: string | null
+  siteName: string | null
+} {
+  const rawTitle = (() => {
+    const articleTitle = normalizeMetadataValue(article.title)
+    if (articleTitle) return articleTitle
+    return normalizeMetadataValue(extractMetaContent(document, [
+      'meta[property="og:title"]',
+      'meta[name="twitter:title"]',
+      "title",
+    ]))
+  })()
 
-  // 1. Author — from readability byline or HTML meta tags
-  let author = article.byline?.trim()
+  let author = normalizeMetadataValue(article.byline)
   if (!author) {
-    author = extractMetaContent(document, [
+    author = normalizeMetadataValue(extractMetaContent(document, [
       'meta[name="author"]',
       'meta[name="citation_author"]',
       'meta[property="article:author"]',
       'meta[property="og:author"]',
       'meta[name="dcterms.creator"]',
-    ])
+    ]))
   }
-  if (author) lines.push(`**Author:** ${author}`)
 
-  // 2. Published date — from readability or meta tags
-  let date = article.publishedTime?.trim()
-  if (!date) {
-    date = extractMetaContent(document, [
+  let publishedAt = normalizeMetadataValue(article.publishedTime)
+  if (!publishedAt) {
+    publishedAt = normalizeMetadataValue(extractMetaContent(document, [
       'meta[name="citation_date"]',
       'meta[name="citation_publication_date"]',
       'meta[property="article:published_time"]',
       'meta[name="dcterms.date"]',
       'meta[name="date"]',
       'time[datetime]',
-    ])
+    ]))
   }
-  if (date) lines.push(`**Published:** ${date}`)
 
-  // 3. Site name — from readability or meta
-  let site = article.siteName?.trim()
-  if (!site) {
-    site = extractMetaContent(document, [
+  let siteName = normalizeMetadataValue(article.siteName)
+  if (!siteName) {
+    siteName = normalizeMetadataValue(extractMetaContent(document, [
       'meta[property="og:site_name"]',
       'meta[name="application-name"]',
-    ])
+    ]))
   }
-  if (site) lines.push(`**Source:** ${site}`)
+
+  const title = rawTitle ? stripSiteSuffix(rawTitle, siteName ?? "") : null
+
+  return { title, author, publishedAt, siteName }
+}
+
+function buildMetadataBlock(
+  metadata: { author: string | null; publishedAt: string | null; siteName: string | null },
+): string {
+  const lines: string[] = []
+
+  // 1. Author — from readability byline or HTML meta tags
+  if (metadata.author) lines.push(`**Author:** ${metadata.author}`)
+
+  // 2. Published date — from readability or meta tags
+  if (metadata.publishedAt) lines.push(`**Published:** ${metadata.publishedAt}`)
+
+  // 3. Site name — from readability or meta
+  if (metadata.siteName) lines.push(`**Source:** ${metadata.siteName}`)
 
   return lines.length > 0 ? lines.join("\n") : ""
 }
@@ -239,6 +325,11 @@ function extractMetaContent(document: any, selectors: string[]): string | undefi
     try {
       const el = document.querySelector(selector)
       if (!el) continue
+      if (selector === "title") {
+        const text = el.textContent?.trim()
+        if (text) return text
+        continue
+      }
       // For <time datetime="...">
       const value = el.getAttribute("content") ?? el.getAttribute("datetime")
       if (value?.trim()) return value.trim()
@@ -265,4 +356,88 @@ function truncateRag(text: string): string {
   return lastBreak > MAX_RAG_CONTENT_CHARS * 0.5
     ? truncated.slice(0, lastBreak)
     : truncated
+}
+
+function normalizeMetadataValue(value: string | null | undefined): string | null {
+  const normalized = collapseWhitespace(decodeHtmlEntities(value ?? ""))
+  return normalized.length > 0 ? normalized : null
+}
+
+function stripSiteSuffix(title: string, siteName: string): string {
+  const cleanedTitle = title.trim()
+  const cleanedSite = siteName.trim()
+  if (!cleanedTitle || !cleanedSite) return cleanedTitle
+  if (cleanedSite.toLowerCase() === "situs web") return cleanedTitle
+
+  const normalizeKey = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "")
+
+  const siteKey = normalizeKey(cleanedSite)
+  const matchesSite = (value: string) => {
+    const key = normalizeKey(value)
+    if (!key) return false
+    if (siteKey && key === siteKey) return true
+    return false
+  }
+
+  const separators = [" | ", " - ", " — ", " – ", " • "]
+  for (const sep of separators) {
+    const parts = cleanedTitle.split(sep).map((part) => part.trim()).filter(Boolean)
+    if (parts.length < 2) continue
+    const first = parts[0]
+    const last = parts[parts.length - 1]
+    if (!first || !last) continue
+
+    if (matchesSite(last)) return parts.slice(0, -1).join(sep).trim()
+    if (matchesSite(first)) return parts.slice(1).join(sep).trim()
+  }
+
+  return cleanedTitle
+}
+
+function normalizeDocumentText(text: string): string {
+  return text.replace(/\r\n/g, "\n").trim()
+}
+
+function buildParagraphs(text: string | null): FetchedParagraph[] | null {
+  if (!text) return null
+  const normalized = normalizeDocumentText(text)
+  if (!normalized) return null
+
+  const segments = normalized
+    .replace(/\n{3,}/g, "\n\n")
+    .split(/\n{2,}/)
+    .map((segment) => segment.replace(/[ \t]+\n/g, "\n").trim())
+    .filter((segment) => segment.length > 0)
+
+  if (segments.length === 0) return null
+
+  return segments.map((segment, index) => ({
+    index: index + 1,
+    text: segment,
+  }))
+}
+
+function decodeHtmlEntities(input: string): string {
+  return input
+    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(Number(num)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16)))
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;/gi, "'")
+    .replace(/&raquo;/gi, "»")
+    .replace(/&laquo;/gi, "«")
+    .replace(/&ndash;/gi, "–")
+    .replace(/&mdash;/gi, "—")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+}
+
+function collapseWhitespace(input: string): string {
+  return input.replace(/\s+/g, " ").trim()
 }

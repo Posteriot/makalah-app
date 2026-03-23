@@ -15,7 +15,14 @@ describe("fetchPageContent", () => {
 
   it("extracts markdown content from a simple HTML page", async () => {
     const html = `
-      <html><head><title>Test Article</title></head>
+      <html>
+      <head>
+        <title>Test Article | Example News</title>
+        <meta property="og:title" content="Test Article | Example News" />
+        <meta property="og:site_name" content="Example News" />
+        <meta name="author" content="Jane Doe" />
+        <meta property="article:published_time" content="2026-03-23T10:00:00Z" />
+      </head>
       <body>
         <nav>Navigation</nav>
         <article>
@@ -37,6 +44,22 @@ describe("fetchPageContent", () => {
 
     expect(results).toHaveLength(1)
     expect(results[0].url).toBe("https://example.com/article")
+    expect(results[0].title).toBe("Test Article")
+    expect(results[0].author).toBe("Jane Doe")
+    expect(results[0].publishedAt).toBe("2026-03-23T10:00:00Z")
+    expect(results[0].siteName).toBe("Example News")
+    expect(results[0].documentText).toBeTruthy()
+    expect(results[0].documentText).toContain("main content")
+    expect(results[0].documentText).not.toContain("Author:")
+    expect(results[0].paragraphs).toHaveLength(2)
+    expect(results[0].paragraphs?.[0]).toEqual({
+      index: 1,
+      text: expect.stringContaining("main content"),
+    })
+    expect(results[0].paragraphs?.[1]).toEqual({
+      index: 2,
+      text: expect.stringContaining("second paragraph"),
+    })
     expect(results[0].pageContent).toBeTruthy()
     expect(results[0].pageContent).toContain("main content")
     expect(results[0].fullContent).toBeTruthy()
