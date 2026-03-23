@@ -4,6 +4,9 @@ import {
   createUIMessageStreamResponse,
   type LanguageModel,
 } from "ai"
+import { fetchMutation } from "convex/nextjs"
+import { api } from "@convex/_generated/api"
+import type { Id } from "@convex/_generated/dataModel"
 import type { NormalizedCitation } from "@/lib/citations/types"
 import { getSearchSystemPrompt, augmentUserMessageForSearch } from "@/lib/ai/search-system-prompt"
 import { buildSearchResultsContext } from "@/lib/ai/search-results-context"
@@ -693,14 +696,51 @@ export async function executeWebSearch(
             console.log(`[⏱ LATENCY] onFinish(DB writes)=${Date.now() - onFinishStart}ms`)
             console.log(`[⏱ LATENCY] ORCHESTRATOR TOTAL=${Date.now() - orchestratorStart}ms (Phase1=${phase1Start ? Date.now() - phase1Start : '?'}ms includes all)`)
 
-            // ── RAG Ingest: fire-and-forget, SEQUENTIAL to avoid rate limit ──
-            // Each source ingested one at a time to stay within embedding API quota.
+            const convexOptions = config.convexToken ? { token: config.convexToken } : undefined
+
+            // ── Exact document persist + RAG ingest: fire-and-forget, SEQUENTIAL ──
+            // Keep the existing RAG path intact and persist exact source documents
+            // alongside it so exact-inspection queries can read structured metadata.
             const ragSourceCount = fetchedContent.filter((f) => f.fullContent).length
+            const exactSourceCount = fetchedContent.filter((f) => f.fullContent && f.documentText).length
+            if (exactSourceCount > 0) {
+              console.log(`[⏱ LATENCY] Exact source persist starting (fire-and-forget): ${exactSourceCount} sources`)
+            }
             if (ragSourceCount > 0) {
               console.log(`[⏱ LATENCY] RAG ingest starting (fire-and-forget): ${ragSourceCount} sources`)
             }
             void (async () => {
               const ragStart = Date.now()
+
+              let exactIdx = 0
+              for (const fetched of fetchedContent) {
+                if (!fetched.fullContent || !fetched.documentText) continue
+                try {
+                  const sourceStart = Date.now()
+                  await fetchMutation(
+                    api.sourceDocuments.upsertDocument,
+                    {
+                      conversationId: config.conversationId as Id<"conversations">,
+                      sourceId: fetched.resolvedUrl,
+                      originalUrl: fetched.url,
+                      resolvedUrl: fetched.resolvedUrl,
+                      ...(typeof fetched.title === "string" ? { title: fetched.title } : {}),
+                      ...(typeof fetched.author === "string" ? { author: fetched.author } : {}),
+                      ...(typeof fetched.publishedAt === "string" ? { publishedAt: fetched.publishedAt } : {}),
+                      ...(typeof fetched.siteName === "string" ? { siteName: fetched.siteName } : {}),
+                      paragraphs: fetched.paragraphs ?? [],
+                      documentText: fetched.documentText,
+                    },
+                    convexOptions,
+                  )
+                  exactIdx++
+                  console.log(`[⏱ LATENCY] Exact source persist [${exactIdx}/${exactSourceCount}] ${fetched.resolvedUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms`)
+                } catch (err) {
+                  exactIdx++
+                  console.error(`[⏱ LATENCY] Exact source persist [${exactIdx}/${exactSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`, err)
+                }
+              }
+
               let ragIdx = 0
               for (const fetched of fetchedContent) {
                 if (fetched.fullContent) {
@@ -724,6 +764,9 @@ export async function executeWebSearch(
                     console.error(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`, err)
                   }
                 }
+              }
+              if (exactSourceCount > 0) {
+                console.log(`[⏱ LATENCY] Exact source persist ALL DONE total=${Date.now() - ragStart}ms sources=${exactSourceCount}`)
               }
               if (ragSourceCount > 0) {
                 console.log(`[⏱ LATENCY] RAG ingest ALL DONE total=${Date.now() - ragStart}ms sources=${ragSourceCount}`)
