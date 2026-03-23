@@ -336,6 +336,36 @@ function extractLiveThought(uiMessage: UIMessage): string | null {
   return lastThought
 }
 
+export function extractReasoningDurationSeconds(uiMessage: UIMessage): number | undefined {
+  for (const part of uiMessage.parts ?? []) {
+    if (!part || typeof part !== "object") continue
+    const dataPart = part as { type?: unknown; data?: unknown }
+    if (dataPart.type !== "data-reasoning-duration") continue
+    if (!dataPart.data || typeof dataPart.data !== "object") continue
+
+    const data = dataPart.data as { seconds?: unknown }
+    if (typeof data.seconds === "number" && Number.isFinite(data.seconds)) {
+      return data.seconds
+    }
+  }
+
+  const persistedTrace = (uiMessage as unknown as { reasoningTrace?: { durationSeconds?: number } }).reasoningTrace
+  return typeof persistedTrace?.durationSeconds === "number" && Number.isFinite(persistedTrace.durationSeconds)
+    ? persistedTrace.durationSeconds
+    : undefined
+}
+
+export function resolveProcessElapsedSeconds(
+  liveElapsedSeconds: number,
+  persistedDurationSeconds?: number
+): number {
+  if (typeof persistedDurationSeconds === "number" && Number.isFinite(persistedDurationSeconds)) {
+    return persistedDurationSeconds
+  }
+
+  return liveElapsedSeconds
+}
+
 const TEMPLATE_LABELS = new Set([
   "Memahami kebutuhan user",
   "Memeriksa konteks paper aktif",
@@ -963,9 +993,6 @@ export function ChatWindow({
     const requestStartedAt = Date.now()
     pendingRequestStartedAtRef.current = requestStartedAt
     body.requestStartedAt = requestStartedAt
-    console.log(
-      `[PROCESS-DIAG] submit: conversationId=${conversationId ?? "new"} requestStartedAt=${requestStartedAt} mode=${mode} files=${filesForContext.length} images=${imageFileParts.length}`
-    )
 
     if (mode === "clear") {
       body.attachmentMode = "inherit"
@@ -1009,7 +1036,7 @@ export function ChatWindow({
     if (mode === "inherit") {
       annotateLatestUserMessage({ attachmentMode: "inherit" })
     }
-  }, [annotateLatestUserMessage, conversationId, sendMessage])
+  }, [annotateLatestUserMessage, sendMessage])
 
   const sendMessageWithPendingIndicator = useCallback((text: string) => {
     const composerIntent = resolveComposerAttachmentIntent()
@@ -1114,16 +1141,6 @@ export function ChatWindow({
       composerIntent.mode === "replace"
         ? buildImageFileParts(composerIntent.files)
         : []
-
-    if (process.env.NODE_ENV !== "production") {
-      console.info("[ATTACH-DIAG][starter] sending", {
-        attachedCount: composerIntent.files.length,
-        fileIds: composerIntent.files.map((file) => file.fileId),
-        mode: composerIntent.mode,
-        imageCount: imageFileParts.length,
-        docCount: composerIntent.files.filter((file) => !file.type.startsWith("image/")).length,
-      })
-    }
 
     sendUserMessageWithContext({
       text: pendingPrompt,
@@ -1324,9 +1341,6 @@ export function ChatWindow({
         }
 
         changed = true
-        console.log(
-          `[PROCESS-DIAG] live-sync: messageId=${message.id} persistedDurationSeconds=${persistedDurationSeconds}`
-        )
         return {
           ...message,
           reasoningTrace: {
@@ -1391,13 +1405,7 @@ export function ChatWindow({
       const liveThought = extractLiveThought(assistant)
       const headline = liveThought || extractReasoningHeadline(assistant, steps)
       if (steps.length > 0 || headline) {
-        const persistedTrace = (assistant as unknown as { reasoningTrace?: { durationSeconds?: number } }).reasoningTrace
-        const persistedDurationSeconds = typeof persistedTrace?.durationSeconds === "number" && Number.isFinite(persistedTrace.durationSeconds)
-          ? persistedTrace.durationSeconds
-          : undefined
-        console.log(
-          `[PROCESS-DIAG] rehydrate: messageId=${assistant.id} persistedDurationSeconds=${persistedDurationSeconds ?? "none"} headline="${headline ?? ""}"`
-        )
+        const persistedDurationSeconds = extractReasoningDurationSeconds(assistant)
         return {
           steps,
           headline,
@@ -1474,6 +1482,33 @@ export function ChatWindow({
   }, [])
 
   useEffect(() => {
+    const persistedDurationSeconds = activeReasoningState.persistedDurationSeconds
+    if (typeof persistedDurationSeconds !== "number" || !Number.isFinite(persistedDurationSeconds)) return
+
+    clearProcessTimers()
+    processStartedAtRef.current = null
+
+    setProcessUi((prev) => {
+      const elapsedSeconds = resolveProcessElapsedSeconds(prev.elapsedSeconds, persistedDurationSeconds)
+      if (
+        prev.elapsedSeconds === elapsedSeconds &&
+        prev.progress === 100 &&
+        (prev.status === "ready" || prev.status === "stopped")
+      ) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        visible: true,
+        status: prev.status === "stopped" ? "stopped" : "ready",
+        progress: 100,
+        elapsedSeconds,
+      }
+    })
+  }, [activeReasoningState.persistedDurationSeconds, clearProcessTimers])
+
+  useEffect(() => {
     if (status === "submitted" || status === "streaming") {
       setIsAwaitingAssistantStart(false)
       return
@@ -1529,10 +1564,8 @@ export function ChatWindow({
       const elapsedMs = processStartedAtRef.current
         ? Date.now() - processStartedAtRef.current
         : 0
-      const elapsed = elapsedMs > 0 ? elapsedMs / 1000 : 1
-      console.log(
-        `[PROCESS-DIAG] ready: conversationId=${conversationId ?? "new"} elapsedMs=${elapsedMs} elapsedSec=${elapsed.toFixed(1)} startedAt=${processStartedAtRef.current}`
-      )
+      const liveElapsed = elapsedMs > 0 ? elapsedMs / 1000 : 1
+      const elapsed = resolveProcessElapsedSeconds(liveElapsed, activeReasoningState.persistedDurationSeconds)
       setProcessUi({
         visible: true,
         status: wasStoppedManually ? "stopped" : "ready",
@@ -1563,7 +1596,7 @@ export function ChatWindow({
     }
 
     previousStatusRef.current = status
-  }, [status, clearProcessTimers, conversationId])
+  }, [status, clearProcessTimers, conversationId, activeReasoningState.persistedDurationSeconds])
 
   useEffect(() => {
     return () => clearProcessTimers()
@@ -1870,16 +1903,6 @@ export function ChatWindow({
       composerIntent.mode === "replace"
         ? buildImageFileParts(composerIntent.files)
         : []
-
-    if (process.env.NODE_ENV !== "production") {
-      console.info("[ATTACH-DIAG][submit] sending", {
-        attachedCount: composerIntent.files.length,
-        fileIds: composerIntent.files.map((file) => file.fileId),
-        mode: composerIntent.mode,
-        imageCount: imageFileParts.length,
-        docCount: composerIntent.files.filter((file) => !file.type.startsWith("image/")).length,
-      })
-    }
 
     sendUserMessageWithContext({
       text: input,

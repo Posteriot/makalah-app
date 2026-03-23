@@ -61,8 +61,6 @@ export function ChatProcessStatusBar({
 
   // Don't show duration at all if we have no data yet (prevents 0.1s flash)
   const showDuration = durationSeconds !== null
-  console.log(`[STATUSBAR-DIAG] elapsedSeconds=${elapsedSeconds} persistedDurationSeconds=${persistedDurationSeconds} durationSeconds=${durationSeconds} status=${status} visible=${visible}`)
-
   // Headline naratif dari reasoning trace (isi pikiran model)
   const narrativeHeadline = useMemo(() => {
     // Priority 1: raw model thinking from live stream

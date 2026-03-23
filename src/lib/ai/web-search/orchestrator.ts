@@ -417,8 +417,6 @@ export async function executeWebSearch(
         emitTrace(reasoningTrace.markSourceDetected())
       }
 
-      console.log(`[REASONING-DIAG] compose start: reasoningTraceEnabled=${config.reasoningTraceEnabled} isTransparentReasoning=${config.isTransparentReasoning} hasReasoningProviderOptions=${!!config.reasoningProviderOptions} traceControllerEnabled=${reasoningTrace.enabled}`)
-
       // ── Compose failover state ──
       let composeFailoverUsed = false
       let canFailover = !!config.fallbackComposeModel
@@ -505,9 +503,6 @@ export async function executeWebSearch(
             const sanitized = sanitizeReasoningDelta(chunk.delta ?? "")
             // Accumulate ALL raw deltas for persistence (not just sampled ones)
             reasoningBuffer += chunk.delta ?? ""
-            if (reasoningChunkCount === 1) {
-              console.log(`[REASONING-DIAG] first reasoning-delta received, accumulating for persistence`)
-            }
             if (sanitized.trim() && (reasoningChunkCount === 1 || reasoningChunkCount % 3 === 0 || sanitized.length > 100)) {
               writer.write({
                 type: "data-reasoning-thought",
@@ -649,7 +644,6 @@ export async function executeWebSearch(
             const onFinishStart = Date.now()
 
             // ── Finalize reasoning trace: emit final step events + build persistence snapshot ──
-            console.log(`[REASONING-DIAG] finish: reasoningBuffer=${reasoningBuffer.length}chars reasoningChunks=${reasoningChunkCount} textChunks=${textChunkCount}`)
             let reasoningSnapshot: PersistedCuratedTraceSnapshot | undefined
             if (reasoningTrace.enabled) {
               // Populate step labels from reasoning buffer (transparent mode) —
@@ -663,9 +657,16 @@ export async function executeWebSearch(
                 sourceCount,
               }))
               reasoningSnapshot = reasoningTrace.getPersistedSnapshot()
-              console.log(`[REASONING-DIAG] snapshot built: steps=${reasoningSnapshot.steps.length} headline="${reasoningSnapshot.headline.slice(0, 60)}" traceMode=${reasoningSnapshot.traceMode} hasRawReasoning=${!!reasoningSnapshot.rawReasoning}`)
-            } else {
-              console.log(`[REASONING-DIAG] no snapshot: reasoningTraceEnabled=${config.reasoningTraceEnabled} bufferLength=${reasoningBuffer.length}`)
+              if (typeof reasoningSnapshot.durationSeconds === "number" && Number.isFinite(reasoningSnapshot.durationSeconds)) {
+                writer.write({
+                  type: "data-reasoning-duration",
+                  id: `${reasoningTraceId}-duration`,
+                  data: {
+                    traceId: reasoningTraceId,
+                    seconds: reasoningSnapshot.durationSeconds,
+                  },
+                })
+              }
             }
 
             if (composeFailoverUsed) {

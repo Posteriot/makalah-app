@@ -128,27 +128,6 @@ export async function POST(req: Request) {
             console.info(`[CHOICE-CARD][event-received] type=${choiceInteractionEvent.type} stage=${choiceInteractionEvent.stage} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
         }
         const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-        if (process.env.NODE_ENV !== "production") {
-            console.info("[ATTACH-DIAG][route] request body", {
-                requestId,
-                conversationId,
-                fileIdsIsArray: Array.isArray(requestFileIds),
-                fileIdsLength: Array.isArray(requestFileIds) ? requestFileIds.length : null,
-                fileIdsPreview: Array.isArray(requestFileIds) ? requestFileIds.slice(0, 5) : null,
-                requestedAttachmentMode,
-                replaceAttachmentContext: replaceAttachmentContext === true,
-                inheritAttachmentContext: inheritAttachmentContext !== false,
-                clearAttachmentContext: clearAttachmentContext === true,
-                requestStartedAt,
-                messageCount: Array.isArray(messages) ? messages.length : null,
-            })
-        }
-        console.info("[PROCESS-DIAG][route] request received", {
-            requestId,
-            conversationId,
-            requestStartedAt: requestStartedAt ?? null,
-            receivedAt: Date.now(),
-        })
 
         // 3. Get Convex User ID
         const userId = await fetchQueryWithToken(api.chatHelpers.getMyUserId, {})
@@ -257,17 +236,6 @@ export async function POST(req: Request) {
                 }),
                 "conversationAttachmentContexts.upsertByConversation"
             )
-        }
-
-        if (process.env.NODE_ENV !== "production") {
-            console.info("[ATTACH-DIAG][route] effective fileIds", {
-                reason: attachmentResolution.reason,
-                requestFileIdsLength: Array.isArray(requestFileIds) ? requestFileIds.length : null,
-                contextFileIdsLength: attachmentContext?.activeFileIds?.length ?? 0,
-                effectiveFileIdsLength: effectiveFileIds.length,
-                effectiveFileIdsPreview: effectiveFileIds.slice(0, 5),
-                replaceAttachmentContext: replaceAttachmentContext === true,
-            })
         }
 
         // Background Title Generation (Fire and Forget)
@@ -447,15 +415,6 @@ export async function POST(req: Request) {
         const attachmentFirstResponseInstruction = shouldForceAttachmentFirstResponse
             ? "Pengguna baru saja melampirkan file secara eksplisit. Jawaban pertama WAJIB langsung mengulas isi file terlampir. DILARANG membuka dengan perkenalan umum, profil asisten, atau daftar kemampuan. Kalimat pertama harus langsung menjelaskan inti isi dokumen yang dilampirkan."
             : ""
-        if (process.env.NODE_ENV !== "production") {
-            console.info("[ATTACH-DIAG][route] attachment-first-response", {
-                shouldForceAttachmentFirstResponse,
-                requestedAttachmentMode,
-                userMessageCount,
-                normalizedLastUserContent,
-            })
-        }
-
         const getStageSearchPolicy = (stage: PaperStageId | "completed" | undefined | null) => {
             if (!stage || stage === "completed") return "none"
             if (ACTIVE_SEARCH_STAGES.includes(stage)) return "active"
@@ -556,14 +515,6 @@ export async function POST(req: Request) {
                 }
             }
         }
-        if (process.env.NODE_ENV !== "production") {
-            console.info("[ATTACH-DIAG][route] context result", {
-                fileIdsLength: effectiveFileIds.length,
-                fileContextLength: fileContext.length,
-                fileContextPreview: fileContext.slice(0, 180),
-            })
-        }
-
         if (hasAttachmentSignal) {
             const health = classifyAttachmentHealth({
                 effectiveFileIdsLength: effectiveFileIds.length,
@@ -1345,19 +1296,6 @@ JSON schema:
                         : {}),
                 }))
                 .filter((source) => source.url && source.title)
-            console.info("[PROCESS-DIAG][route] saveAssistantMessage", {
-                requestId,
-                conversationId: currentConversationId,
-                usedModel: usedModel ?? modelNames.primary.model,
-                requestStartedAt: requestStartedAt ?? null,
-                savingAt: Date.now(),
-                contentLength: content.length,
-                reasoningDurationSeconds: sanitizedReasoningTrace?.durationSeconds ?? null,
-                reasoningCompletedAt: sanitizedReasoningTrace?.completedAt ?? null,
-                reasoningTraceMode: sanitizedReasoningTrace?.traceMode ?? null,
-                reasoningSteps: sanitizedReasoningTrace?.steps.length ?? 0,
-                uiMessageId: uiMessageId ?? null,
-            })
             await retryMutation(
                 () => fetchMutationWithToken(api.messages.createMessage, {
                     conversationId: currentConversationId as Id<"conversations">,
@@ -2233,7 +2171,6 @@ Aturan:
                         const combinedModelName = `${retrieverModelName}+${modelNames.primary.model}`
 
                         // ──── Save assistant message ────
-                        console.log(`[REASONING-DIAG][route] websearch onFinish: requestId=${requestId} hasReasoningSnapshot=${!!result.reasoningSnapshot} snapshotSteps=${result.reasoningSnapshot?.steps?.length ?? 0} durationSeconds=${result.reasoningSnapshot?.durationSeconds ?? "none"} textLength=${result.text.length} sourcesCount=${result.sources.length}`)
                         await saveAssistantMessage(
                             result.text,
                             result.sources.length > 0 ? result.sources : undefined,
@@ -2488,6 +2425,21 @@ Aturan:
                             }
                         }
 
+                        const emitDurationPart = () => {
+                            if (!reasoningTrace.enabled) return
+                            const snapshot = reasoningTrace.getPersistedSnapshot()
+                            if (typeof snapshot.durationSeconds !== "number" || !Number.isFinite(snapshot.durationSeconds)) return
+                            ensureStart()
+                            writer.write({
+                                type: "data-reasoning-duration",
+                                id: `${traceId}-duration`,
+                                data: {
+                                    traceId,
+                                    seconds: snapshot.durationSeconds,
+                                },
+                            })
+                        }
+
                         const reasoningAccumulator = createReasoningAccumulator({
                             traceId,
                             writer,
@@ -2577,6 +2529,7 @@ Aturan:
                                     outcome: "done",
                                     sourceCount,
                                 }))
+                                emitDurationPart()
                                 writer.write(chunk)
                                 break
                             }
@@ -2587,6 +2540,7 @@ Aturan:
                                     sourceCount,
                                     errorNote: "primary-stream-error",
                                 }))
+                                emitDurationPart()
                                 writer.write(chunk)
                                 break
                             }
@@ -2596,6 +2550,7 @@ Aturan:
                                     outcome: "stopped",
                                     sourceCount,
                                 }))
+                                emitDurationPart()
                                 writer.write(chunk)
                                 break
                             }
@@ -2822,6 +2777,21 @@ Aturan:
                             }
                         }
 
+                        const emitDurationPart = () => {
+                            if (!reasoningTrace.enabled) return
+                            const snapshot = reasoningTrace.getPersistedSnapshot()
+                            if (typeof snapshot.durationSeconds !== "number" || !Number.isFinite(snapshot.durationSeconds)) return
+                            ensureStart()
+                            writer.write({
+                                type: "data-reasoning-duration",
+                                id: `${traceId}-duration`,
+                                data: {
+                                    traceId,
+                                    seconds: snapshot.durationSeconds,
+                                },
+                            })
+                        }
+
                         const fallbackTransparent = isTransparentReasoning && reasoningSettings.fallback.supported
                         const reasoningAccumulator = createReasoningAccumulator({
                             traceId,
@@ -2909,6 +2879,7 @@ Aturan:
                                     outcome: "done",
                                     sourceCount,
                                 }))
+                                emitDurationPart()
                                 writer.write(chunk)
                                 break
                             }
@@ -2919,6 +2890,7 @@ Aturan:
                                     sourceCount,
                                     errorNote: "fallback-stream-error",
                                 }))
+                                emitDurationPart()
                                 writer.write(chunk)
                                 break
                             }
@@ -2928,6 +2900,7 @@ Aturan:
                                     outcome: "stopped",
                                     sourceCount,
                                 }))
+                                emitDurationPart()
                                 writer.write(chunk)
                                 break
                             }
