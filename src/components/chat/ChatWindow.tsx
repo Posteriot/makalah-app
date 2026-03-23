@@ -9,6 +9,7 @@ import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 import { SourcesPanel } from "./SourcesPanel"
 import type { ReasoningTraceStep, ReasoningTraceStatus } from "./ReasoningTracePanel"
+import { stripMarkdown } from "@/lib/ai/reasoning-sanitizer"
 import { useMessages } from "@/lib/hooks/useMessages"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
@@ -1243,7 +1244,7 @@ export function ChatWindow({
               ? [{
                   type: "data-reasoning-thought" as const,
                   id: `${traceId}-raw-thought`,
-                  data: { delta: (reasoningTrace as { rawReasoning?: string }).rawReasoning!, traceId, ts: Date.now() },
+                  data: { delta: stripMarkdown((reasoningTrace as { rawReasoning?: string }).rawReasoning!), traceId, ts: Date.now() },
                 }]
               : []),
           ],
