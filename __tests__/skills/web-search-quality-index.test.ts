@@ -85,7 +85,9 @@ describe("web-search-quality skill", () => {
     expect(result).not.toBeNull()
     expect(result).toContain("VERBATIM QUOTING TOOLS")
     expect(result).toContain("inspectSourceDocument")
+    expect(result).toContain("quoteFromSource")
     expect(result).toContain("exact title, exact author, exact published date, exact paragraph number, verbatim quote from a known source")
+    expect(result).toContain("does NOT require exact paragraph numbering or exact metadata")
     expect(result).toContain("Never mention internal tools, RAG, retrieval, fetch pipelines, available web sources, or search tool names to the user")
   })
 
