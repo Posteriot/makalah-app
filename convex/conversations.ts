@@ -111,6 +111,15 @@ async function deleteConversationCascade(ctx: MutationCtx, conversationId: Id<"c
         await ctx.db.delete(chunk._id)
     }
 
+    // Delete exact source documents used for exact-source inspection
+    const sourceDocuments = await ctx.db
+        .query("sourceDocuments")
+        .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+        .collect()
+    for (const doc of sourceDocuments) {
+        await ctx.db.delete(doc._id)
+    }
+
     const artifacts = await ctx.db
         .query("artifacts")
         .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
