@@ -47,19 +47,11 @@ export function ChatProcessStatusBar({
   const isProcessing = status === "submitted" || status === "streaming"
   const isError = status === "error"
 
-  const traceDurationSec = useMemo(() => {
-    const timestamps = reasoningSteps
-      .map((step) => step.ts)
-      .filter((ts): ts is number => typeof ts === "number" && Number.isFinite(ts))
-      .sort((a, b) => a - b)
-
-    if (timestamps.length < 2) return null
-    return Math.max(1, Math.round((timestamps[timestamps.length - 1] - timestamps[0]) / 1000))
-  }, [reasoningSteps])
-
-  const durationSeconds = isProcessing
-    ? Math.max(1, elapsedSeconds)
-    : traceDurationSec ?? Math.max(1, elapsedSeconds || Math.round((safeProgress / 100) * 90))
+  // Use elapsedSeconds as the single source of truth for duration.
+  // traceDurationSec (from step timestamps) was unreliable: steps emitted in
+  // bursts gave near-zero duration, and search/fetch phases before compose
+  // were not captured in step timestamps at all.
+  const durationSeconds = Math.max(1, elapsedSeconds)
 
   // Headline naratif dari reasoning trace (isi pikiran model)
   const narrativeHeadline = useMemo(() => {
