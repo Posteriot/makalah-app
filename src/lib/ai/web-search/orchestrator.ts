@@ -94,6 +94,9 @@ The search results below are your source material. Use them.
 `.trim()
 
 const MAX_EXACT_DOCUMENT_TEXT_CHARS = 80_000
+const MAX_EXACT_PARAGRAPH_COUNT = 120
+const MAX_EXACT_PARAGRAPH_TEXT_CHARS = 24_000
+const EXACT_TRUNCATION_MARKER = "[content truncated]"
 
 /**
  * Execute a three-phase web search flow:
@@ -720,6 +723,7 @@ export async function executeWebSearch(
                 try {
                   const sourceStart = Date.now()
                   const exactDocumentText = limitExactDocumentText(fetched.documentText)
+                  const exactParagraphs = limitExactParagraphs(fetched.paragraphs ?? [])
                   await fetchMutation(
                     api.sourceDocuments.upsertDocument,
                     {
@@ -731,13 +735,14 @@ export async function executeWebSearch(
                       ...(typeof fetched.author === "string" ? { author: fetched.author } : {}),
                       ...(typeof fetched.publishedAt === "string" ? { publishedAt: fetched.publishedAt } : {}),
                       ...(typeof fetched.siteName === "string" ? { siteName: fetched.siteName } : {}),
-                      paragraphs: fetched.paragraphs ?? [],
+                      paragraphs: exactParagraphs,
                       documentText: exactDocumentText,
                     },
                     convexOptions,
                   )
                   exactIdx++
-                  console.log(`[⏱ LATENCY] Exact source persist [${exactIdx}/${exactSourceCount}] ${fetched.resolvedUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms${exactDocumentText.length < fetched.documentText.length ? ` capped=${exactDocumentText.length}` : ""}`)
+                  const paragraphWasCapped = exactParagraphs.length < (fetched.paragraphs?.length ?? 0)
+                  console.log(`[⏱ LATENCY] Exact source persist [${exactIdx}/${exactSourceCount}] ${fetched.resolvedUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms${exactDocumentText.length < fetched.documentText.length ? ` cappedText=${exactDocumentText.length}` : ""}${paragraphWasCapped ? ` cappedParagraphs=${exactParagraphs.length}/${fetched.paragraphs?.length ?? 0}` : ""}`)
                 } catch (err) {
                   exactIdx++
                   console.error(`[⏱ LATENCY] Exact source persist [${exactIdx}/${exactSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`, err)
@@ -873,9 +878,52 @@ function limitExactDocumentText(text: string): string {
   const normalized = text.replace(/\r\n/g, "\n").trim()
   if (normalized.length <= MAX_EXACT_DOCUMENT_TEXT_CHARS) return normalized
 
-  const truncated = normalized.slice(0, MAX_EXACT_DOCUMENT_TEXT_CHARS)
+  const reserved = EXACT_TRUNCATION_MARKER.length + 2
+  const maxBodyChars = Math.max(0, MAX_EXACT_DOCUMENT_TEXT_CHARS - reserved)
+  const truncated = normalized.slice(0, maxBodyChars)
   const lastBreak = truncated.lastIndexOf("\n\n")
   return lastBreak > MAX_EXACT_DOCUMENT_TEXT_CHARS * 0.5
-    ? `${truncated.slice(0, lastBreak)}\n\n[content truncated]`
-    : `${truncated}\n\n[content truncated]`
+    ? `${truncated.slice(0, lastBreak)}\n\n${EXACT_TRUNCATION_MARKER}`
+    : `${truncated}\n\n${EXACT_TRUNCATION_MARKER}`
+}
+
+function limitExactParagraphs(
+  paragraphs: Array<{ index: number; text: string }>,
+): Array<{ index: number; text: string }> {
+  if (paragraphs.length === 0) return []
+
+  const limited: Array<{ index: number; text: string }> = []
+  let remainingCount = MAX_EXACT_PARAGRAPH_COUNT
+  let remainingChars = MAX_EXACT_PARAGRAPH_TEXT_CHARS
+
+  for (const paragraph of paragraphs) {
+    if (remainingCount <= 0 || remainingChars <= 0) break
+
+    const normalized = paragraph.text.replace(/\r\n/g, "\n").trim()
+    if (!normalized) continue
+
+    if (normalized.length <= remainingChars) {
+      limited.push({ index: paragraph.index, text: normalized })
+      remainingCount -= 1
+      remainingChars -= normalized.length
+      continue
+    }
+
+    if (remainingChars > EXACT_TRUNCATION_MARKER.length) {
+      const bodyChars = remainingChars - EXACT_TRUNCATION_MARKER.length
+      limited.push({
+        index: paragraph.index,
+        text: `${normalized.slice(0, bodyChars)}${EXACT_TRUNCATION_MARKER}`,
+      })
+    } else {
+      limited.push({
+        index: paragraph.index,
+        text: normalized.slice(0, remainingChars),
+      })
+    }
+
+    break
+  }
+
+  return limited
 }
