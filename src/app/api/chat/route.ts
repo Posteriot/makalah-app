@@ -2191,7 +2191,13 @@ Aturan:
                     samplingOptions,
                     reasoningTraceEnabled,
                     isTransparentReasoning,
-                    reasoningProviderOptions: primaryReasoningProviderOptions ?? undefined,
+                    // Compose phase has no tools — use narrative profile for full thinking budget
+                    // (primaryReasoningProviderOptions uses tool-heavy with 96-token cap)
+                    reasoningProviderOptions: buildReasoningProviderOptions({
+                        settings: reasoningSettings,
+                        target: "primary",
+                        profile: "narrative",
+                    }) ?? undefined,
                     traceMode: getTraceModeLabel(!!paperModePrompt, true),
                     isDraftingStage,
                     onFinish: async (result) => {
