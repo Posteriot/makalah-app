@@ -52,10 +52,13 @@ export function ChatProcessStatusBar({
   const isError = status === "error"
 
   // Live: elapsedSeconds from processStartedAtRef timer.
-  // Rehydrate: persistedDurationSeconds from DB (elapsedSeconds is 0 after reload).
+  // Rehydrate: persistedDurationSeconds from _creationTime diff (elapsedSeconds is 0 after reload).
   const durationSeconds = elapsedSeconds > 0.5
     ? elapsedSeconds
-    : persistedDurationSeconds ?? Math.max(0.1, elapsedSeconds)
+    : persistedDurationSeconds ?? null
+
+  // Don't show duration at all if we have no data yet (prevents 0.1s flash)
+  const showDuration = durationSeconds !== null
   console.log(`[STATUSBAR-DIAG] elapsedSeconds=${elapsedSeconds} persistedDurationSeconds=${persistedDurationSeconds} durationSeconds=${durationSeconds} status=${status} visible=${visible}`)
 
   // Headline naratif dari reasoning trace (isi pikiran model)
@@ -163,7 +166,7 @@ export function ChatProcessStatusBar({
                   ? "text-[var(--chat-destructive)]"
                   : "text-[var(--chat-muted-foreground)] opacity-60"
               )}>
-                {formatDuration(durationSeconds)}
+                {showDuration ? formatDuration(durationSeconds) : ""}
               </span>
               {(narrativeHeadline || hasSteps) && (
                 <NavArrowRight className={cn(
