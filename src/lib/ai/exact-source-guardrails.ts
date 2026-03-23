@@ -6,6 +6,16 @@ type ExactSourceSummaryForGuardrail = {
   siteName?: string
 }
 
+type DeterministicExactSourceResolution =
+  | { mode: "none"; reason: string }
+  | { mode: "clarify"; reason: string }
+  | { mode: "force-inspect"; reason: string; matchedSource: ExactSourceSummaryForGuardrail }
+
+type SimpleChatMessage = {
+  role: "system" | "user" | "assistant"
+  content: string
+}
+
 export const EXACT_SOURCE_NARRATIVE_BANNED_PHRASES = [
   "metadata sumber",
   "data yang tersimpan",
@@ -67,4 +77,61 @@ Ask a brief clarification question to identify the exact source first.
 Do not guess.
 Do not answer from memory or semantic similarity.
 Keep the clarification natural and do not expose internal mechanics.`
+}
+
+function injectSystemNote(
+  messages: SimpleChatMessage[],
+  note: string
+): SimpleChatMessage[] {
+  if (!note.trim()) return messages
+
+  if (messages.length === 0) {
+    return [{ role: "system", content: note.trim() }]
+  }
+
+  return [messages[0], { role: "system", content: note.trim() }, ...messages.slice(1)]
+}
+
+export function buildDeterministicExactSourcePrepareStep(options: {
+  messages: SimpleChatMessage[]
+  resolution: DeterministicExactSourceResolution
+}) {
+  if (options.resolution.mode === "force-inspect") {
+    const note = buildDeterministicExactSourceForceInspectNote(options.resolution.matchedSource)
+    return {
+      messages: injectSystemNote(options.messages, note),
+      prepareStep: ({ stepNumber }: { stepNumber: number }) => {
+        if (stepNumber === 0) {
+          return {
+            toolChoice: { type: "tool", toolName: "inspectSourceDocument" } as const,
+            activeTools: ["inspectSourceDocument"] as string[],
+          }
+        }
+
+        if (stepNumber === 1) {
+          return {
+            toolChoice: "none" as const,
+            activeTools: [] as string[],
+          }
+        }
+
+        return undefined
+      },
+      maxToolSteps: 2,
+    }
+  }
+
+  if (options.resolution.mode === "clarify") {
+    return {
+      messages: injectSystemNote(options.messages, buildDeterministicExactSourceClarifyNote()),
+      prepareStep: undefined,
+      maxToolSteps: undefined,
+    }
+  }
+
+  return {
+    messages: options.messages,
+    prepareStep: undefined,
+    maxToolSteps: undefined,
+  }
 }

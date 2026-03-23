@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildDeterministicExactSourcePrepareStep,
   buildDeterministicExactSourceClarifyNote,
   buildDeterministicExactSourceForceInspectNote,
   buildExactSourceInspectionRouterNote,
@@ -65,5 +66,72 @@ describe("chat exact source guardrails", () => {
       ])
     )
     expect(EXACT_SOURCE_INSPECTION_RULES).toContain("Do not say phrases like")
+  })
+
+  it("builds prepareStep wiring for deterministic exact-source force-inspect mode", () => {
+    const routePlan = buildDeterministicExactSourcePrepareStep({
+      messages: [
+        { role: "system", content: "base-system" },
+        { role: "user", content: "siapa penulisnya?" },
+      ],
+      resolution: {
+        mode: "force-inspect",
+        reason: "unique-source-match",
+        matchedSource: {
+          sourceId: "source-1",
+          title: "Judul Artikel",
+          originalUrl: "https://example.com/original",
+          resolvedUrl: "https://example.com/resolved",
+          siteName: "Contoh Media",
+        },
+      },
+    })
+
+    expect(routePlan.messages[1]?.content).toContain("sourceId=\"source-1\"")
+    expect(routePlan.maxToolSteps).toBe(2)
+    expect(routePlan.prepareStep?.({ stepNumber: 0 })).toEqual({
+      toolChoice: { type: "tool", toolName: "inspectSourceDocument" },
+      activeTools: ["inspectSourceDocument"],
+    })
+    expect(routePlan.prepareStep?.({ stepNumber: 1 })).toEqual({
+      toolChoice: "none",
+      activeTools: [],
+    })
+  })
+
+  it("injects only a clarify note when exact-source target is ambiguous", () => {
+    const routePlan = buildDeterministicExactSourcePrepareStep({
+      messages: [
+        { role: "system", content: "base-system" },
+        { role: "user", content: "judul lengkapnya?" },
+      ],
+      resolution: {
+        mode: "clarify",
+        reason: "ambiguous-source-match",
+      },
+    })
+
+    expect(routePlan.messages[1]?.content).toContain("Ask a brief clarification question")
+    expect(routePlan.prepareStep).toBeUndefined()
+    expect(routePlan.maxToolSteps).toBeUndefined()
+  })
+
+  it("keeps legacy flow untouched for non exact follow-up", () => {
+    const baseMessages = [
+      { role: "system" as const, content: "base-system" },
+      { role: "user" as const, content: "ringkas sumber tadi" },
+    ]
+
+    const routePlan = buildDeterministicExactSourcePrepareStep({
+      messages: baseMessages,
+      resolution: {
+        mode: "none",
+        reason: "not-an-exact-source-request",
+      },
+    })
+
+    expect(routePlan.messages).toEqual(baseMessages)
+    expect(routePlan.prepareStep).toBeUndefined()
+    expect(routePlan.maxToolSteps).toBeUndefined()
   })
 })

@@ -66,9 +66,11 @@ import {
     type SearchExecutionMode,
 } from "@/lib/ai/web-search"
 import {
+    buildDeterministicExactSourcePrepareStep,
     buildExactSourceInspectionRouterNote,
     buildExactSourceInspectionSystemMessage,
 } from "@/lib/ai/exact-source-guardrails"
+import { resolveExactSourceFollowup, type ExactSourceConversationMessage } from "@/lib/ai/exact-source-followup"
 
 export async function POST(req: Request) {
     try {
@@ -389,6 +391,27 @@ export async function POST(req: Request) {
         const normalizedLastUserContent =
             typeof lastUserContent === "string" ? lastUserContent.trim() : ""
         const normalizedLastUserContentLower = normalizedLastUserContent.toLowerCase()
+        const recentConversationMessagesForExactSource: ExactSourceConversationMessage[] = messages
+            .slice(0, -1)
+            .map((message: {
+                role?: string
+                content?: string
+                parts?: Array<{ type?: string; text?: string }>
+            }) => {
+                const extractedContent = typeof message?.content === "string"
+                    ? message.content
+                    : message?.parts?.find((part) => part.type === "text")?.text
+
+                if ((message?.role !== "user" && message?.role !== "assistant") || !extractedContent?.trim()) {
+                    return null
+                }
+
+                return {
+                    role: message.role,
+                    content: extractedContent.trim(),
+                }
+            })
+            .filter((message): message is ExactSourceConversationMessage => message !== null)
 
         let paperWorkflowReminder = ""
         if (!paperModePrompt && lastUserContent && hasPaperWritingIntent(lastUserContent)) {
@@ -644,6 +667,15 @@ export async function POST(req: Request) {
         let sourcesContext = ""
         let hasRecentSourcesInDb = false
         let recentSourcesList: Array<{ url: string; title: string; publishedAt?: number }> = []
+        let availableExactSources: Array<{
+            sourceId: string
+            originalUrl: string
+            resolvedUrl: string
+            title?: string
+            siteName?: string
+            author?: string
+            publishedAt?: string
+        }> = []
         try {
             const recentSources = await fetchQueryWithToken(api.messages.getRecentSources, {
                 conversationId: currentConversationId as Id<"conversations">,
@@ -661,6 +693,26 @@ ${sourcesJson}`
             console.error("[route] Failed to fetch recent sources:", sourcesError)
             // Non-blocking - continue without sources context
         }
+
+        try {
+            const exactSources = await fetchQueryWithToken(
+                api.sourceDocuments.listSourceSummariesByConversation,
+                {
+                    conversationId: currentConversationId as Id<"conversations">,
+                }
+            )
+
+            if (Array.isArray(exactSources) && exactSources.length > 0) {
+                availableExactSources = exactSources
+            }
+        } catch (exactSourcesError) {
+            console.error("[route] Failed to fetch exact source summaries:", exactSourcesError)
+        }
+        const exactSourceResolution = resolveExactSourceFollowup({
+            lastUserMessage: normalizedLastUserContent,
+            recentMessages: recentConversationMessagesForExactSource,
+            availableExactSources,
+        })
 
         // Task 6.4: Inject file context BEFORE user messages
         // Task Group 3: Inject paper mode prompt if paper session exists
@@ -2114,6 +2166,21 @@ Aturan:
                     return undefined
                 }
                 : undefined
+            const shouldApplyDeterministicExactSourceRouting =
+                !enableWebSearch &&
+                !shouldForceGetCurrentPaperState &&
+                !shouldForceSubmitValidation &&
+                availableExactSources.length > 0
+            const primaryExactSourceRoutePlan = shouldApplyDeterministicExactSourceRouting
+                ? buildDeterministicExactSourcePrepareStep({
+                    messages: fullMessagesGateway as Array<{ role: "system" | "user" | "assistant"; content: string }>,
+                    resolution: exactSourceResolution,
+                })
+                : {
+                    messages: fullMessagesGateway,
+                    prepareStep: undefined,
+                    maxToolSteps: undefined as number | undefined,
+                }
             let primaryReasoningTraceController: ReturnType<typeof createCuratedTraceController> | null = null
             let primaryReasoningTraceSnapshot: PersistedCuratedTraceSnapshot | undefined
             let primaryReasoningSourceCount = 0
@@ -2267,13 +2334,13 @@ Aturan:
 
             const result = streamText({
                 model,
-                messages: fullMessagesGateway,
+                messages: primaryExactSourceRoutePlan.messages,
                 tools,
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
                 toolChoice: forcedToolChoice,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                prepareStep: deterministicSyncPrepareStep as any,
-                stopWhen: stepCountIs(maxToolSteps),
+                prepareStep: (primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
+                stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
                 onFinish: async ({ text, providerMetadata, usage }) => {
                         let sources: { url: string; title: string; publishedAt?: number | null }[] | undefined
@@ -2642,22 +2709,33 @@ Aturan:
                     }
                     : undefined
                 const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                const fallbackBaseMessages = missingArtifactNote
+                    ? [
+                        fullMessagesBase[0],
+                        { role: "system" as const, content: missingArtifactNote },
+                        ...fullMessagesBase.slice(1),
+                    ]
+                    : fullMessagesBase
+                const fallbackExactSourceRoutePlan = shouldApplyDeterministicExactSourceRouting
+                    ? buildDeterministicExactSourcePrepareStep({
+                        messages: fallbackBaseMessages as Array<{ role: "system" | "user" | "assistant"; content: string }>,
+                        resolution: exactSourceResolution,
+                    })
+                    : {
+                        messages: fallbackBaseMessages,
+                        prepareStep: undefined,
+                        maxToolSteps: undefined as number | undefined,
+                    }
 
                 const result = streamText({
                     model: fallbackModel,
-                    messages: missingArtifactNote
-                        ? [
-                            fullMessagesBase[0],
-                            { role: "system" as const, content: missingArtifactNote },
-                            ...fullMessagesBase.slice(1),
-                        ]
-                        : fullMessagesBase,
+                    messages: fallbackExactSourceRoutePlan.messages,
                     tools,
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    prepareStep: fallbackDeterministicSyncPrepareStep as any,
-                    stopWhen: stepCountIs(fallbackMaxToolSteps),
+                    prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
+                    stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {
                         const rawText = typeof text === "string" ? text.trim() : ""
