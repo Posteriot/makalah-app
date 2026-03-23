@@ -1247,7 +1247,15 @@ export function ChatWindow({
             : undefined,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           sources: (msg as any).sources,
-          ...(reasoningTrace ? { reasoningTrace } : {}),
+          ...(reasoningTrace ? {
+            reasoningTrace: {
+              ...reasoningTrace,
+              // Ensure durationSeconds survives from DB through to UIMessage
+              ...(typeof (rawReasoningTrace as { durationSeconds?: unknown })?.durationSeconds === "number"
+                ? { durationSeconds: (rawReasoningTrace as { durationSeconds?: number }).durationSeconds }
+                : {}),
+            },
+          } : {}),
         }
       }) as unknown as UIMessage[]
 
@@ -1321,7 +1329,8 @@ export function ChatWindow({
       const headline = liveThought || extractReasoningHeadline(assistant, steps)
       if (steps.length > 0 || headline) {
         // Extract persisted duration from reasoningTrace (for rehydrate after reload)
-        const persistedTrace = (assistant as unknown as { reasoningTrace?: { durationSeconds?: number } }).reasoningTrace
+        const persistedTrace = (assistant as unknown as { reasoningTrace?: { durationSeconds?: unknown } }).reasoningTrace
+        console.log(`[DURATION-DIAG] activeReasoning: hasReasoningTrace=${!!persistedTrace} durationSeconds=${persistedTrace?.durationSeconds} type=${typeof persistedTrace?.durationSeconds} keys=${persistedTrace ? Object.keys(persistedTrace).join(",") : "none"}`)
         const persistedDurationSeconds = typeof persistedTrace?.durationSeconds === "number" && Number.isFinite(persistedTrace.durationSeconds)
           ? persistedTrace.durationSeconds
           : undefined
