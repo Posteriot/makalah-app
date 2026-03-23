@@ -173,6 +173,15 @@ export function ChatProcessStatusBar({
                 <p className="font-mono text-[11px] leading-relaxed text-[var(--chat-muted-foreground)] opacity-60">
                   {narrativeHeadline}
                 </p>
+                {hasSteps && (
+                  <button
+                    type="button"
+                    onClick={openPanel}
+                    className="mt-1 font-mono text-[10px] text-[var(--chat-muted-foreground)] opacity-40 transition-opacity hover:opacity-80"
+                  >
+                    Detail &rarr;
+                  </button>
+                )}
               </div>
             )}
           </div>
