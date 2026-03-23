@@ -110,6 +110,52 @@ describe("createPaperTools.inspectSourceDocument", () => {
     expect(result.title).toBe("Judul Artikel")
   })
 
+  it("gagal kalau source document tidak ditemukan", async () => {
+    const fetchQueryMock = vi.mocked(fetchQuery)
+    fetchQueryMock.mockResolvedValue(null)
+
+    const result = await getInspectToolExecute()({
+      sourceId: "https://example.com/article",
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain("Source document not found")
+  })
+
+  it("mengizinkan metadata dan paragraf sengaja dihilangkan", async () => {
+    const fetchQueryMock = vi.mocked(fetchQuery)
+    fetchQueryMock.mockResolvedValue({
+      title: "Judul Artikel",
+      author: "Penulis",
+      publishedAt: "2026-03-23",
+      siteName: "Contoh Media",
+      paragraphs: [
+        { index: 1, text: "Paragraf pertama" },
+        { index: 2, text: "Paragraf kedua" },
+      ],
+    })
+
+    const result = await getInspectToolExecute()({
+      sourceId: "https://example.com/article",
+      includeMetadata: false,
+      includeParagraphs: false,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.title).toBeUndefined()
+    expect(result.author).toBeUndefined()
+    expect(result.publishedAt).toBeUndefined()
+    expect(result.siteName).toBeUndefined()
+    expect(result.paragraphs).toBeUndefined()
+    expect(result.exactAvailable).toMatchObject({
+      title: true,
+      author: true,
+      publishedAt: true,
+      siteName: true,
+      paragraphs: true,
+    })
+  })
+
   it("gagal kalau paragraphIndex di luar jangkauan", async () => {
     const fetchQueryMock = vi.mocked(fetchQuery)
     fetchQueryMock.mockResolvedValue({

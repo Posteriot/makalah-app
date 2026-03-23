@@ -13,6 +13,8 @@ type SourceDocumentRecord = {
     _creationTime: number
     conversationId: Id<"conversations">
     sourceId: string
+    originalUrl: string
+    resolvedUrl: string
     createdAt: number
     updatedAt: number
 }
@@ -27,6 +29,22 @@ function sortSourceDocumentsForDeterministicSelection(
         }
         return left._id.localeCompare(right._id)
     })
+}
+
+export function selectExactSourceDocument(
+    documents: SourceDocumentRecord[],
+    sourceId: string
+): SourceDocumentRecord | null {
+    const matchingDocuments = documents.filter(
+        (document) =>
+            document.sourceId === sourceId ||
+            document.originalUrl === sourceId ||
+            document.resolvedUrl === sourceId
+    )
+
+    if (matchingDocuments.length === 0) return null
+
+    return sortSourceDocumentsForDeterministicSelection(matchingDocuments)[0] ?? null
 }
 
 export const upsertDocument = mutation({
@@ -103,12 +121,7 @@ export const getBySource = query({
             )
             .collect()
 
-        if (documents.length === 0) return null
-
-        const sortedDocuments = sortSourceDocumentsForDeterministicSelection(
-            documents as SourceDocumentRecord[]
-        )
-        return sortedDocuments[0]
+        return selectExactSourceDocument(documents as SourceDocumentRecord[], args.sourceId)
     },
 })
 
