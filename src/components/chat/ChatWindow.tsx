@@ -1181,25 +1181,28 @@ export function ChatWindow({
       const mappedMessages = historyMessages.map((msg, msgIdx) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rawReasoningTrace = (msg as any).reasoningTrace as PersistedReasoningTraceRaw | undefined
-        const reasoningTrace =
-          rawReasoningTrace &&
+        const hasValidTrace = rawReasoningTrace &&
           typeof rawReasoningTrace === "object" &&
           Array.isArray(rawReasoningTrace.steps)
-            ? rawReasoningTrace
-            : undefined
 
-        // Compute duration from _creationTime diff (user → assistant) and attach to reasoningTrace
-        if (reasoningTrace && msg.role === "assistant") {
-          const precedingUser = msgIdx > 0
-            ? [...historyMessages].slice(0, msgIdx).reverse().find((m) => m.role === "user")
-            : undefined
-          if (precedingUser) {
-            const userTs = precedingUser._creationTime
-            const assistantTs = msg._creationTime
-            if (typeof userTs === "number" && typeof assistantTs === "number" && assistantTs > userTs) {
-              (reasoningTrace as { durationSeconds?: number }).durationSeconds = (assistantTs - userTs) / 1000
+        // Compute duration from _creationTime diff (user → assistant)
+        // Create new object — Convex query results may be frozen/immutable
+        let reasoningTrace: PersistedReasoningTraceRaw | undefined
+        if (hasValidTrace) {
+          let computedDuration: number | undefined
+          if (msg.role === "assistant") {
+            const precedingUser = msgIdx > 0
+              ? [...historyMessages].slice(0, msgIdx).reverse().find((m) => m.role === "user")
+              : undefined
+            if (precedingUser) {
+              const userTs = precedingUser._creationTime
+              const assistantTs = msg._creationTime
+              if (typeof userTs === "number" && typeof assistantTs === "number" && assistantTs > userTs) {
+                computedDuration = (assistantTs - userTs) / 1000
+              }
             }
           }
+          reasoningTrace = { ...rawReasoningTrace, ...(computedDuration !== undefined ? { durationSeconds: computedDuration } : {}) }
         }
 
         const traceId = `persisted-${msg._id}`
