@@ -42,6 +42,7 @@ export interface WebSearchOrchestratorConfig {
   isTransparentReasoning: boolean
   reasoningProviderOptions?: Record<string, unknown>
   traceMode: string
+  requestStartedAt?: number
   /** When true, pipe compose stream through pipeYamlRender and inject CHOICE_YAML_SYSTEM_PROMPT. */
   isDraftingStage?: boolean
   tavilyApiKey?: string

@@ -7,6 +7,7 @@ import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react"
 import { ThemeProvider } from "next-themes"
 import { ThemeEnforcer } from "@/components/theme/ThemeEnforcer"
 import { authClient, useSession } from "@/lib/auth-client"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
 
@@ -165,25 +166,27 @@ function CrossTabSessionSync() {
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="dark"
-      enableSystem={false}
-      disableTransitionOnChange
-    >
-      <ThemeEnforcer />
-      {convexClient ? (
-        <ConvexBetterAuthProvider
-          client={convexClient}
-          authClient={authClient}
-        >
-          <SessionCookieSync />
-          <CrossTabSessionSync />
-          {children}
-        </ConvexBetterAuthProvider>
-      ) : (
-        children
-      )}
-    </ThemeProvider>
+    <TooltipProvider delayDuration={0}>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="dark"
+        enableSystem={false}
+        disableTransitionOnChange
+      >
+        <ThemeEnforcer />
+        {convexClient ? (
+          <ConvexBetterAuthProvider
+            client={convexClient}
+            authClient={authClient}
+          >
+            <SessionCookieSync />
+            <CrossTabSessionSync />
+            {children}
+          </ConvexBetterAuthProvider>
+        ) : (
+          children
+        )}
+      </ThemeProvider>
+    </TooltipProvider>
   )
 }

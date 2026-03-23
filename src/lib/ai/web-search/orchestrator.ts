@@ -400,6 +400,7 @@ export async function executeWebSearch(
         mode: "websearch",
         stage: config.currentStage,
         webSearchEnabled: true,
+        startedAt: config.requestStartedAt,
       })
 
       const emitTrace = (events: ReturnType<typeof reasoningTrace.markSourceDetected>) => {
@@ -796,7 +797,7 @@ export async function executeWebSearch(
       // ── Run compose with one-time failover ──
       try {
         let readable = buildComposeReadable(composeResult)
-        let outcome = await consumeComposeStream(readable)
+        const outcome = await consumeComposeStream(readable)
 
         if (outcome === "retry" && await tryFallbackCompose()) {
           readable = buildComposeReadable(composeResult)

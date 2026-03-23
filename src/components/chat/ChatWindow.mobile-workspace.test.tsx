@@ -7,6 +7,8 @@ const mockReplace = vi.fn()
 const mockSetTheme = vi.fn()
 const mockUseQuery = vi.fn()
 const mockUseMutation = vi.fn()
+const mockSetMessages = vi.fn()
+const mockUseMessages = vi.fn()
 const conversationId = "a".repeat(32)
 
 vi.mock("next/navigation", () => ({
@@ -21,7 +23,7 @@ vi.mock("@ai-sdk/react", () => ({
     messages: [],
     sendMessage: vi.fn(),
     status: "ready",
-    setMessages: vi.fn(),
+    setMessages: mockSetMessages,
     regenerate: vi.fn(),
     stop: vi.fn(),
     error: null,
@@ -64,10 +66,7 @@ vi.mock("../../../convex/_generated/api", () => ({
 }))
 
 vi.mock("@/lib/hooks/useMessages", () => ({
-  useMessages: () => ({
-    messages: [],
-    isLoading: false,
-  }),
+  useMessages: (...args: unknown[]) => mockUseMessages(...args),
 }))
 
 vi.mock("@/lib/hooks/useCurrentUser", () => ({
@@ -196,9 +195,28 @@ vi.mock("sonner", () => ({
 
 describe("ChatWindow mobile workspace alignment", () => {
   beforeEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    })
     mockPush.mockReset()
     mockReplace.mockReset()
     mockSetTheme.mockReset()
+    mockSetMessages.mockReset()
+    mockUseMessages.mockReset()
+    mockUseMessages.mockReturnValue({
+      messages: [],
+      isLoading: false,
+    })
     mockUseMutation.mockReset()
     mockUseMutation.mockReturnValue(vi.fn(async () => null))
     mockUseQuery.mockReset()
@@ -237,5 +255,66 @@ describe("ChatWindow mobile workspace alignment", () => {
     expect(screen.getByRole("button", { name: /chat baru/i })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: /paper sessions/i })).not.toBeInTheDocument()
     expect(screen.queryByTestId("mobile-progress-bar")).not.toBeInTheDocument()
+  })
+
+  it("tetap merehydrate semua history messages saat ada reasoning trace tersimpan", () => {
+    const persistedReasoningTrace = Object.freeze({
+      headline: "Menelusuri sumber",
+      steps: [
+        {
+          stepKey: "search-decision",
+          label: "Menentukan kebutuhan web search",
+          status: "done",
+          progress: 100,
+          ts: 1710000000000,
+        },
+      ],
+      rawReasoning: "Butuh web search buat verifikasi referensi.",
+    })
+
+    mockUseMessages.mockReturnValue({
+      messages: [
+        {
+          _id: "msg-user-1",
+          _creationTime: 1710000000000,
+          role: "user",
+          content: "Cari jurnal terbaru",
+          fileIds: [],
+          attachmentMode: "none",
+        },
+        {
+          _id: "msg-assistant-1",
+          _creationTime: 1710000005000,
+          role: "assistant",
+          content: "Ini hasil pencariannya.",
+          fileIds: [],
+          attachmentMode: "none",
+          reasoningTrace: persistedReasoningTrace,
+        },
+      ],
+      isLoading: false,
+    })
+
+    render(
+      <ChatWindow
+        conversationId={conversationId}
+        onMobileMenuClick={vi.fn()}
+      />
+    )
+
+    expect(mockSetMessages).toHaveBeenCalledTimes(1)
+    const [mappedMessages] = mockSetMessages.mock.calls[0]
+    expect(mappedMessages).toHaveLength(2)
+    expect(mappedMessages[0]).toMatchObject({
+      id: "msg-user-1",
+      role: "user",
+      content: "Cari jurnal terbaru",
+    })
+    expect(mappedMessages[1]).toMatchObject({
+      id: "msg-assistant-1",
+      role: "assistant",
+      content: "Ini hasil pencariannya.",
+      reasoningTrace: persistedReasoningTrace,
+    })
   })
 })

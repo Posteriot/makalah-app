@@ -53,9 +53,11 @@ export function ChatProcessStatusBar({
 
   // Live: elapsedSeconds from processStartedAtRef timer.
   // Rehydrate: persistedDurationSeconds from _creationTime diff (elapsedSeconds is 0 after reload).
-  const durationSeconds = elapsedSeconds > 0.5
-    ? elapsedSeconds
-    : persistedDurationSeconds ?? null
+  const durationSeconds = persistedDurationSeconds ?? (
+    elapsedSeconds > 0.5
+      ? elapsedSeconds
+      : null
+  )
 
   // Don't show duration at all if we have no data yet (prevents 0.1s flash)
   const showDuration = durationSeconds !== null
@@ -221,11 +223,6 @@ function ThinkingDots() {
       ))}
     </span>
   )
-}
-
-function lowerFirst(input: string) {
-  if (!input) return input
-  return input.charAt(0).toLowerCase() + input.slice(1)
 }
 
 function formatDuration(totalSeconds: number): string {

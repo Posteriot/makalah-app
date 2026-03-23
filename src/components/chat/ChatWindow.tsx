@@ -397,12 +397,6 @@ function extractReasoningHeadline(uiMessage: UIMessage, steps: ReasoningTraceSte
 
   return null
 }
-
-function lowerFirst(input: string) {
-  if (!input) return input
-  return input.charAt(0).toLowerCase() + input.slice(1)
-}
-
 function PendingAssistantLaneIndicator() {
   return (
     <div
@@ -481,6 +475,7 @@ export function ChatWindow({
   const processIntervalRef = useRef<number | null>(null)
   const processHideTimeoutRef = useRef<number | null>(null)
   const processStartedAtRef = useRef<number | null>(null)
+  const pendingRequestStartedAtRef = useRef<number | null>(null)
   const sourceFocusTimeoutRef = useRef<number | null>(null)
   const previousStatusRef = useRef<string>("ready")
   const stoppedManuallyRef = useRef(false)
@@ -963,7 +958,14 @@ export function ChatWindow({
       replaceAttachmentContext?: boolean
       inheritAttachmentContext?: boolean
       clearAttachmentContext?: boolean
+      requestStartedAt?: number
     } = {}
+    const requestStartedAt = Date.now()
+    pendingRequestStartedAtRef.current = requestStartedAt
+    body.requestStartedAt = requestStartedAt
+    console.log(
+      `[PROCESS-DIAG] submit: conversationId=${conversationId ?? "new"} requestStartedAt=${requestStartedAt} mode=${mode} files=${filesForContext.length} images=${imageFileParts.length}`
+    )
 
     if (mode === "clear") {
       body.attachmentMode = "inherit"
@@ -1007,7 +1009,7 @@ export function ChatWindow({
     if (mode === "inherit") {
       annotateLatestUserMessage({ attachmentMode: "inherit" })
     }
-  }, [annotateLatestUserMessage, sendMessage])
+  }, [annotateLatestUserMessage, conversationId, sendMessage])
 
   const sendMessageWithPendingIndicator = useCallback((text: string) => {
     const composerIntent = resolveComposerAttachmentIntent()
@@ -1078,7 +1080,6 @@ export function ChatWindow({
     if (readPendingStarterPrompt(conversationId)) {
       setIsAwaitingAssistantStart(true)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId])
 
   // Auto-send pending starter prompt after redirect from landing state.
@@ -1178,32 +1179,15 @@ export function ChatWindow({
         return
       }
 
-      const mappedMessages = historyMessages.map((msg, msgIdx) => {
+      const mappedMessages = historyMessages.map((msg) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rawReasoningTrace = (msg as any).reasoningTrace as PersistedReasoningTraceRaw | undefined
-        const hasValidTrace = rawReasoningTrace &&
+        const reasoningTrace =
+          rawReasoningTrace &&
           typeof rawReasoningTrace === "object" &&
           Array.isArray(rawReasoningTrace.steps)
-
-        // Compute duration from _creationTime diff (user → assistant)
-        // Create new object — Convex query results may be frozen/immutable
-        let reasoningTrace: PersistedReasoningTraceRaw | undefined
-        if (hasValidTrace) {
-          let computedDuration: number | undefined
-          if (msg.role === "assistant") {
-            const precedingUser = msgIdx > 0
-              ? [...historyMessages].slice(0, msgIdx).reverse().find((m) => m.role === "user")
-              : undefined
-            if (precedingUser) {
-              const userTs = precedingUser._creationTime
-              const assistantTs = msg._creationTime
-              if (typeof userTs === "number" && typeof assistantTs === "number" && assistantTs > userTs) {
-                computedDuration = (assistantTs - userTs) / 1000
-              }
-            }
-          }
-          reasoningTrace = { ...rawReasoningTrace, ...(computedDuration !== undefined ? { durationSeconds: computedDuration } : {}) }
-        }
+            ? rawReasoningTrace
+            : undefined
 
         const traceId = `persisted-${msg._id}`
         const persistedTraceParts = reasoningTrace
@@ -1278,15 +1262,7 @@ export function ChatWindow({
             : undefined,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           sources: (msg as any).sources,
-          ...(reasoningTrace ? {
-            reasoningTrace: {
-              ...reasoningTrace,
-              // Ensure durationSeconds survives from DB through to UIMessage
-              ...(typeof (rawReasoningTrace as { durationSeconds?: unknown })?.durationSeconds === "number"
-                ? { durationSeconds: (rawReasoningTrace as { durationSeconds?: number }).durationSeconds }
-                : {}),
-            },
-          } : {}),
+          ...(reasoningTrace ? { reasoningTrace } : {}),
         }
       }) as unknown as UIMessage[]
 
@@ -1307,6 +1283,62 @@ export function ChatWindow({
       starterPromptPendingHistorySyncRef.current = null
     }
   }, [conversationId, historyMessages, isHistoryLoading, setMessages, fileMetaMap])
+
+  useEffect(() => {
+    if (!historyMessages || historyMessages.length === 0) return
+
+    const persistedDurationByUiMessageId = new Map<string, number>()
+    for (const historyMessage of historyMessages) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rawReasoningTrace = (historyMessage as any).reasoningTrace as PersistedReasoningTraceRaw | undefined
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const uiMessageId = (historyMessage as any).uiMessageId as string | undefined
+      if (!uiMessageId) continue
+      const durationSeconds =
+        rawReasoningTrace &&
+        typeof rawReasoningTrace === "object" &&
+        typeof rawReasoningTrace.durationSeconds === "number" &&
+        Number.isFinite(rawReasoningTrace.durationSeconds)
+          ? rawReasoningTrace.durationSeconds
+          : undefined
+      if (durationSeconds === undefined) continue
+      persistedDurationByUiMessageId.set(uiMessageId, durationSeconds)
+    }
+
+    if (persistedDurationByUiMessageId.size === 0) return
+
+    setMessages((prev) => {
+      let changed = false
+      const next = prev.map((message) => {
+        const persistedDurationSeconds = persistedDurationByUiMessageId.get(message.id)
+        if (persistedDurationSeconds === undefined) return message
+
+        const existingReasoningTrace = (message as unknown as { reasoningTrace?: PersistedReasoningTraceRaw }).reasoningTrace
+        if (
+          existingReasoningTrace &&
+          typeof existingReasoningTrace.durationSeconds === "number" &&
+          Number.isFinite(existingReasoningTrace.durationSeconds) &&
+          existingReasoningTrace.durationSeconds === persistedDurationSeconds
+        ) {
+          return message
+        }
+
+        changed = true
+        console.log(
+          `[PROCESS-DIAG] live-sync: messageId=${message.id} persistedDurationSeconds=${persistedDurationSeconds}`
+        )
+        return {
+          ...message,
+          reasoningTrace: {
+            ...(existingReasoningTrace ?? {}),
+            durationSeconds: persistedDurationSeconds,
+          },
+        }
+      })
+
+      return changed ? next : prev
+    })
+  }, [historyMessages, setMessages])
 
   // Rehydrate submitted choice keys from history — mark choices that already have a follow-up user message
   useEffect(() => {
@@ -1359,11 +1391,13 @@ export function ChatWindow({
       const liveThought = extractLiveThought(assistant)
       const headline = liveThought || extractReasoningHeadline(assistant, steps)
       if (steps.length > 0 || headline) {
-        // Read duration from reasoningTrace (computed during rehydrate from _creationTime diff)
         const persistedTrace = (assistant as unknown as { reasoningTrace?: { durationSeconds?: number } }).reasoningTrace
         const persistedDurationSeconds = typeof persistedTrace?.durationSeconds === "number" && Number.isFinite(persistedTrace.durationSeconds)
           ? persistedTrace.durationSeconds
           : undefined
+        console.log(
+          `[PROCESS-DIAG] rehydrate: messageId=${assistant.id} persistedDurationSeconds=${persistedDurationSeconds ?? "none"} headline="${headline ?? ""}"`
+        )
         return {
           steps,
           headline,
@@ -1460,7 +1494,7 @@ export function ChatWindow({
     if (status === "submitted") {
       clearProcessTimers()
       stoppedManuallyRef.current = false
-      processStartedAtRef.current = Date.now()
+      processStartedAtRef.current = pendingRequestStartedAtRef.current ?? Date.now()
       setProcessUi({
         visible: true,
         status: "submitted",
@@ -1470,7 +1504,7 @@ export function ChatWindow({
     } else if (status === "streaming") {
       clearProcessTimers()
       if (processStartedAtRef.current === null) {
-        processStartedAtRef.current = Date.now()
+        processStartedAtRef.current = pendingRequestStartedAtRef.current ?? Date.now()
       }
       setProcessUi((prev) => ({
         visible: true,
@@ -1496,7 +1530,9 @@ export function ChatWindow({
         ? Date.now() - processStartedAtRef.current
         : 0
       const elapsed = elapsedMs > 0 ? elapsedMs / 1000 : 1
-      console.log(`[PROCESS-DIAG] ready: elapsedMs=${elapsedMs} elapsedSec=${elapsed.toFixed(1)} startedAt=${processStartedAtRef.current}`)
+      console.log(
+        `[PROCESS-DIAG] ready: conversationId=${conversationId ?? "new"} elapsedMs=${elapsedMs} elapsedSec=${elapsed.toFixed(1)} startedAt=${processStartedAtRef.current}`
+      )
       setProcessUi({
         visible: true,
         status: wasStoppedManually ? "stopped" : "ready",
@@ -1505,6 +1541,7 @@ export function ChatWindow({
       })
       stoppedManuallyRef.current = false
       processStartedAtRef.current = null
+      pendingRequestStartedAtRef.current = null
     } else if (status === "error" && hadGeneratingStatus) {
       clearProcessTimers()
       const elapsedMs = processStartedAtRef.current
@@ -1522,10 +1559,11 @@ export function ChatWindow({
       }, 1500)
       stoppedManuallyRef.current = false
       processStartedAtRef.current = null
+      pendingRequestStartedAtRef.current = null
     }
 
     previousStatusRef.current = status
-  }, [status, clearProcessTimers])
+  }, [status, clearProcessTimers, conversationId])
 
   useEffect(() => {
     return () => clearProcessTimers()

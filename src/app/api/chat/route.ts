@@ -115,7 +115,14 @@ export async function POST(req: Request) {
             replaceAttachmentContext,
             inheritAttachmentContext,
             clearAttachmentContext,
+            requestStartedAt: rawRequestStartedAt,
         } = body
+        const requestStartedAt =
+            typeof rawRequestStartedAt === "number" &&
+            Number.isFinite(rawRequestStartedAt) &&
+            rawRequestStartedAt > 0
+                ? rawRequestStartedAt
+                : undefined
         const choiceInteractionEvent = parseOptionalChoiceInteractionEvent(body)
         if (choiceInteractionEvent) {
             console.info(`[CHOICE-CARD][event-received] type=${choiceInteractionEvent.type} stage=${choiceInteractionEvent.stage} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
@@ -123,6 +130,7 @@ export async function POST(req: Request) {
         const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
         if (process.env.NODE_ENV !== "production") {
             console.info("[ATTACH-DIAG][route] request body", {
+                requestId,
                 conversationId,
                 fileIdsIsArray: Array.isArray(requestFileIds),
                 fileIdsLength: Array.isArray(requestFileIds) ? requestFileIds.length : null,
@@ -131,9 +139,16 @@ export async function POST(req: Request) {
                 replaceAttachmentContext: replaceAttachmentContext === true,
                 inheritAttachmentContext: inheritAttachmentContext !== false,
                 clearAttachmentContext: clearAttachmentContext === true,
+                requestStartedAt,
                 messageCount: Array.isArray(messages) ? messages.length : null,
             })
         }
+        console.info("[PROCESS-DIAG][route] request received", {
+            requestId,
+            conversationId,
+            requestStartedAt: requestStartedAt ?? null,
+            receivedAt: Date.now(),
+        })
 
         // 3. Get Convex User ID
         const userId = await fetchQueryWithToken(api.chatHelpers.getMyUserId, {})
@@ -1320,6 +1335,7 @@ JSON schema:
             jsonRendererChoice?: JsonRendererChoicePayload | Spec,
             uiMessageId?: string
         ) => {
+            const sanitizedReasoningTrace = sanitizeReasoningTraceForPersistence(reasoningTrace)
             const normalizedSources = sources
                 ?.map((source) => ({
                     url: source.url,
@@ -1329,6 +1345,19 @@ JSON schema:
                         : {}),
                 }))
                 .filter((source) => source.url && source.title)
+            console.info("[PROCESS-DIAG][route] saveAssistantMessage", {
+                requestId,
+                conversationId: currentConversationId,
+                usedModel: usedModel ?? modelNames.primary.model,
+                requestStartedAt: requestStartedAt ?? null,
+                savingAt: Date.now(),
+                contentLength: content.length,
+                reasoningDurationSeconds: sanitizedReasoningTrace?.durationSeconds ?? null,
+                reasoningCompletedAt: sanitizedReasoningTrace?.completedAt ?? null,
+                reasoningTraceMode: sanitizedReasoningTrace?.traceMode ?? null,
+                reasoningSteps: sanitizedReasoningTrace?.steps.length ?? 0,
+                uiMessageId: uiMessageId ?? null,
+            })
             await retryMutation(
                 () => fetchMutationWithToken(api.messages.createMessage, {
                     conversationId: currentConversationId as Id<"conversations">,
@@ -1339,7 +1368,7 @@ JSON schema:
                         ...(uiMessageId ? { uiMessageId } : {}),
                     },
                     sources: normalizedSources && normalizedSources.length > 0 ? normalizedSources : undefined,
-                    reasoningTrace: sanitizeReasoningTraceForPersistence(reasoningTrace),
+                    reasoningTrace: sanitizedReasoningTrace,
                     ...(jsonRendererChoice
                         ? { jsonRendererChoice: JSON.stringify(jsonRendererChoice) }
                         : {}),
@@ -2197,13 +2226,14 @@ Aturan:
                     isTransparentReasoning,
                     reasoningProviderOptions: primaryReasoningProviderOptions ?? undefined,
                     traceMode: getTraceModeLabel(!!paperModePrompt, true),
+                    requestStartedAt,
                     isDraftingStage,
                     onFinish: async (result) => {
                         const retrieverModelName = result.retrieverName || "unknown"
                         const combinedModelName = `${retrieverModelName}+${modelNames.primary.model}`
 
                         // ──── Save assistant message ────
-                        console.log(`[REASONING-DIAG][route] websearch onFinish: hasReasoningSnapshot=${!!result.reasoningSnapshot} snapshotSteps=${result.reasoningSnapshot?.steps?.length ?? 0} textLength=${result.text.length} sourcesCount=${result.sources.length}`)
+                        console.log(`[REASONING-DIAG][route] websearch onFinish: requestId=${requestId} hasReasoningSnapshot=${!!result.reasoningSnapshot} snapshotSteps=${result.reasoningSnapshot?.steps?.length ?? 0} durationSeconds=${result.reasoningSnapshot?.durationSeconds ?? "none"} textLength=${result.text.length} sourcesCount=${result.sources.length}`)
                         await saveAssistantMessage(
                             result.text,
                             result.sources.length > 0 ? result.sources : undefined,
@@ -2351,12 +2381,13 @@ Aturan:
                         if (persistedContent.length > 0) {
                             const persistedReasoningTrace = (() => {
                                 if (!reasoningTraceEnabled) return undefined
-                                if (primaryReasoningTraceSnapshot) return primaryReasoningTraceSnapshot
                                 if (!primaryReasoningTraceController?.enabled) return undefined
-                                primaryReasoningTraceController.finalize({
-                                    outcome: "done",
-                                    sourceCount: primaryReasoningSourceCount,
-                                })
+                                if (!primaryReasoningTraceSnapshot) {
+                                    primaryReasoningTraceController.finalize({
+                                        outcome: "done",
+                                        sourceCount: primaryReasoningSourceCount,
+                                    })
+                                }
                                 capturePrimaryReasoningSnapshot()
                                 return primaryReasoningTraceSnapshot
                             })()
@@ -2432,6 +2463,7 @@ Aturan:
                     mode: getTraceModeLabel(!!paperModePrompt, false),
                     stage: currentStage && currentStage !== "completed" ? currentStage : undefined,
                     webSearchEnabled: false,
+                    startedAt: requestStartedAt,
                 })
                 primaryReasoningTraceController = reasoningTrace
 
@@ -2686,12 +2718,13 @@ Aturan:
                         if (persistedContent.length > 0) {
                             const persistedReasoningTrace = (() => {
                                 if (!reasoningTraceEnabled) return undefined
-                                if (fallbackReasoningTraceSnapshot) return fallbackReasoningTraceSnapshot
                                 if (!fallbackReasoningTraceController?.enabled) return undefined
-                                fallbackReasoningTraceController.finalize({
-                                    outcome: "done",
-                                    sourceCount: fallbackReasoningSourceCount,
-                                })
+                                if (!fallbackReasoningTraceSnapshot) {
+                                    fallbackReasoningTraceController.finalize({
+                                        outcome: "done",
+                                        sourceCount: fallbackReasoningSourceCount,
+                                    })
+                                }
                                 captureFallbackReasoningSnapshot()
                                 return fallbackReasoningTraceSnapshot
                             })()
@@ -2764,6 +2797,7 @@ Aturan:
                         ? paperSession.currentStage
                         : undefined,
                     webSearchEnabled: false,
+                    startedAt: requestStartedAt,
                 })
                 fallbackReasoningTraceController = reasoningTrace
 

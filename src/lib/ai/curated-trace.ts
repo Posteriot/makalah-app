@@ -143,7 +143,7 @@ export interface ReasoningSegmentation {
 
 export function segmentReasoning(
   rawReasoning: string,
-  fallbackMode: "normal" | "paper" | "websearch" = "normal"
+  _fallbackMode: "normal" | "paper" | "websearch" = "normal"
 ): ReasoningSegmentation {
   const sentences = splitIntoSentences(rawReasoning)
   const buckets: Record<CuratedTraceStepKey, string[]> = {
@@ -195,11 +195,6 @@ function nowTs() {
   return Date.now()
 }
 
-function lowerFirst(input: string) {
-  if (!input) return input
-  return input.charAt(0).toLowerCase() + input.slice(1)
-}
-
 function buildHeadlineFromSteps(steps: Record<CuratedTraceStepKey, InternalStep>): string {
   const allSteps = Object.values(steps)
 
@@ -248,6 +243,7 @@ function buildPersistedSnapshot(
   steps: Record<CuratedTraceStepKey, InternalStep>,
   traceMode: "curated" | "transparent" = "curated",
   rawReasoning?: string,
+  durationSeconds?: number,
 ): PersistedCuratedTraceSnapshot {
   const hasThoughts = traceMode === "transparent"
   return {
@@ -255,6 +251,9 @@ function buildPersistedSnapshot(
     headline: buildHeadlineFromSteps(steps),
     traceMode,
     completedAt: nowTs(),
+    ...(typeof durationSeconds === "number" && Number.isFinite(durationSeconds)
+      ? { durationSeconds }
+      : {}),
     ...(rawReasoning ? { rawReasoning } : {}),
     steps: STEP_ORDER.map((key) => {
       const step = steps[key]
@@ -389,6 +388,7 @@ export function createCuratedTraceController(options: {
   mode: "normal" | "paper" | "websearch"
   stage?: string
   webSearchEnabled: boolean
+  startedAt?: number
 }): CuratedTraceController {
   if (!options.enabled) {
     return {
@@ -410,8 +410,13 @@ export function createCuratedTraceController(options: {
   }
 
   const steps = createSteps(options)
+  const startedAt =
+    typeof options.startedAt === "number" && Number.isFinite(options.startedAt)
+      ? options.startedAt
+      : nowTs()
   let sourceSeenCount = 0
   let capturedRawReasoning = ""
+  let finalizedAt: number | null = null
 
   const initialEvents = STEP_ORDER.map((key) => buildEvent(options.traceId, steps[key]))
 
@@ -469,6 +474,7 @@ export function createCuratedTraceController(options: {
       return events
     },
     finalize: ({ outcome, sourceCount, errorNote }) => {
+      finalizedAt = nowTs()
       const events: CuratedTraceDataPart[] = []
 
       if (options.webSearchEnabled) {
@@ -550,7 +556,14 @@ export function createCuratedTraceController(options: {
     },
     getPersistedSnapshot: () => {
       const isTransparent = STEP_ORDER.some((key) => steps[key].label !== STEP_LABELS[key])
-      return buildPersistedSnapshot(steps, isTransparent ? "transparent" : "curated", capturedRawReasoning || undefined)
+      const completedAt = finalizedAt ?? nowTs()
+      const durationSeconds = Math.max(0, (completedAt - startedAt) / 1000)
+      return buildPersistedSnapshot(
+        steps,
+        isTransparent ? "transparent" : "curated",
+        capturedRawReasoning || undefined,
+        durationSeconds
+      )
     },
   }
 }
