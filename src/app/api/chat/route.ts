@@ -1297,11 +1297,14 @@ JSON schema:
             return {
                 version: trace.version === 2 ? 2 : 1,
                 headline: sanitizeReasoningText(
-                    trace.headline || "Agen lagi memproses jawaban...",
-                    "Agen lagi memproses jawaban."
+                    trace.headline || "",
+                    ""
                 ),
                 traceMode: trace.traceMode === "transparent" ? "transparent" : "curated",
                 completedAt: Number.isFinite(trace.completedAt) ? trace.completedAt : Date.now(),
+                ...(typeof trace.durationSeconds === "number" && Number.isFinite(trace.durationSeconds)
+                    ? { durationSeconds: trace.durationSeconds }
+                    : {}),
                 steps,
             }
         }
