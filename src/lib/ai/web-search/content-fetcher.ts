@@ -483,6 +483,12 @@ const WRAPPER_TAGS = new Set([
 ])
 
 const SKIP_TAGS = new Set([
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
   "nav",
   "footer",
   "header",
@@ -495,11 +501,19 @@ const SKIP_TAGS = new Set([
 
 function collectReadableBlocks(root: ParentNode): string[] {
   const blocks: string[] = []
+  const inlineParts: string[] = []
+
+  const flushInlineParts = () => {
+    if (inlineParts.length === 0) return
+    const text = normalizeParagraphText(inlineParts.join(""))
+    inlineParts.length = 0
+    if (text) blocks.push(text)
+  }
 
   const visit = (node: ChildNode) => {
     if (node.nodeType === 3) {
-      const text = normalizeParagraphText(node.textContent ?? "")
-      if (text) blocks.push(text)
+      const text = node.textContent ?? ""
+      if (text) inlineParts.push(text)
       return
     }
 
@@ -511,21 +525,35 @@ function collectReadableBlocks(root: ParentNode): string[] {
     if (SKIP_TAGS.has(tagName)) return
 
     if (READABLE_BLOCK_TAGS.has(tagName)) {
+      flushInlineParts()
       const text = normalizeParagraphText(element.textContent ?? "")
       if (text) blocks.push(text)
       return
     }
 
-    if (WRAPPER_TAGS.has(tagName)) {
-      for (const child of Array.from(element.childNodes)) {
-        visit(child)
+    if (!WRAPPER_TAGS.has(tagName)) {
+      const childBlocks = collectReadableBlocks(element)
+      if (childBlocks.length === 1) {
+        inlineParts.push(childBlocks[0])
+      } else if (childBlocks.length > 1) {
+        flushInlineParts()
+        blocks.push(...childBlocks)
       }
+      return
+    }
+
+    const childBlocks = collectReadableBlocks(element)
+    if (childBlocks.length > 0) {
+      flushInlineParts()
+      blocks.push(...childBlocks)
     }
   }
 
   for (const child of Array.from(root.childNodes)) {
     visit(child)
   }
+
+  flushInlineParts()
 
   return blocks
 }

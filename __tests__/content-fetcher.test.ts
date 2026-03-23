@@ -192,6 +192,43 @@ describe("fetchPageContent", () => {
     })
   })
 
+  it("preserves inline descendant text inside generic wrappers as one block", async () => {
+    const html = `
+      <html>
+      <head>
+        <title>Inline Wrapper Article | Example News</title>
+        <meta property="og:title" content="Inline Wrapper Article | Example News" />
+      </head>
+      <body>
+        <article>
+          <div class="intro">
+            Intro with <a href="#">inline link</a>, <strong>strong text</strong>, <em>emphasis</em>, and <code>code</code>.
+          </div>
+          <p>Second readable paragraph.</p>
+        </article>
+      </body>
+      </html>
+    `
+    fetchSpy.mockResolvedValueOnce(
+      new Response(html, {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      }),
+    )
+
+    const results = await fetchPageContent(["https://example.com/inline-wrapper"])
+
+    expect(results[0].paragraphs).toHaveLength(2)
+    expect(results[0].paragraphs?.[0]).toEqual({
+      index: 1,
+      text: expect.stringContaining("Intro with inline link, strong text, emphasis, and code."),
+    })
+    expect(results[0].paragraphs?.[1]).toEqual({
+      index: 2,
+      text: expect.stringContaining("Second readable paragraph"),
+    })
+  })
+
   it("returns null pageContent when page has no article content (non-article page)", async () => {
     const html = `
       <html><head><title>Login Page</title></head>
