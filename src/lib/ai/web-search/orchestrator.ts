@@ -651,9 +651,9 @@ export async function executeWebSearch(
             console.log(`[REASONING-DIAG] finish: reasoningBuffer=${reasoningBuffer.length}chars reasoningChunks=${reasoningChunkCount} textChunks=${textChunkCount}`)
             let reasoningSnapshot: PersistedCuratedTraceSnapshot | undefined
             if (reasoningTrace.enabled) {
-              if (reasoningBuffer.length > 0) {
-                emitTrace(reasoningTrace.populateFromReasoning(reasoningBuffer))
-              }
+              // Do NOT call populateFromReasoning — websearch compose reasoning
+              // contains model thinking about the conversation, not structured process
+              // steps. Curated step labels are correct as-is for websearch flow.
               emitTrace(reasoningTrace.finalize({
                 outcome: "done",
                 sourceCount,
