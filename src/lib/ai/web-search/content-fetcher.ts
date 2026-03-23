@@ -204,7 +204,7 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParse
 
       const structured = extractStructuredMetadata(article, document)
       const documentText = normalizeDocumentText(markdown)
-      const paragraphs = buildParagraphsFromArticleContent(article.content)
+      const paragraphs = buildParagraphsFromSourceDocument(document)
 
       // Extract metadata that readability parses but excludes from content
       const metadataBlock = buildMetadataBlock(structured)
@@ -416,12 +416,17 @@ function normalizeDocumentText(text: string): string {
   return text.replace(/\r\n/g, "\n").trim()
 }
 
-function buildParagraphsFromArticleContent(articleContent: string | null | undefined): FetchedParagraph[] | null {
-  if (!articleContent) return null
-  const { document } = parseHTML(`<div id="article-content-root"></div>`)
-  const root = document.getElementById("article-content-root")
+function buildParagraphsFromSourceDocument(
+  document: Document,
+): FetchedParagraph[] | null {
+  const root =
+    document.querySelector("article")
+    ?? document.querySelector("main")
+    ?? document.body
+    ?? document.documentElement
+
   if (!root) return null
-  root.innerHTML = articleContent
+
   const paragraphs = collectReadableBlocks(root)
   if (paragraphs.length === 0) return null
   return paragraphs.map((text, index) => ({ index: index + 1, text }))
@@ -452,22 +457,15 @@ function normalizeParagraphText(text: string): string {
 
 const READABLE_BLOCK_TAGS = new Set([
   "p",
-  "li",
-  "blockquote",
   "pre",
   "figcaption",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "h5",
-  "h6",
 ])
 
 const WRAPPER_TAGS = new Set([
   "article",
   "aside",
   "div",
+  "blockquote",
   "figure",
   "main",
   "section",
@@ -481,6 +479,18 @@ const WRAPPER_TAGS = new Set([
   "table",
   "ul",
   "ol",
+  "li",
+])
+
+const SKIP_TAGS = new Set([
+  "nav",
+  "footer",
+  "header",
+  "form",
+  "script",
+  "style",
+  "noscript",
+  "template",
 ])
 
 function collectReadableBlocks(root: ParentNode): string[] {
@@ -498,6 +508,8 @@ function collectReadableBlocks(root: ParentNode): string[] {
     const element = node as Element
     const tagName = element.tagName.toLowerCase()
 
+    if (SKIP_TAGS.has(tagName)) return
+
     if (READABLE_BLOCK_TAGS.has(tagName)) {
       const text = normalizeParagraphText(element.textContent ?? "")
       if (text) blocks.push(text)
@@ -505,8 +517,13 @@ function collectReadableBlocks(root: ParentNode): string[] {
     }
 
     if (WRAPPER_TAGS.has(tagName)) {
+      const beforeCount = blocks.length
       for (const child of Array.from(element.childNodes)) {
         visit(child)
+      }
+      if (blocks.length === beforeCount) {
+        const text = normalizeParagraphText(element.textContent ?? "")
+        if (text) blocks.push(text)
       }
     }
   }

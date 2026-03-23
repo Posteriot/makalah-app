@@ -114,6 +114,49 @@ describe("fetchPageContent", () => {
     })
   })
 
+  it("preserves granularity inside complex readable blocks", async () => {
+    const html = `
+      <html>
+      <head>
+        <title>Complex Block Article | Example News</title>
+        <meta property="og:title" content="Complex Block Article | Example News" />
+      </head>
+      <body>
+        <article>
+          <p>Opening paragraph that introduces the discussion.</p>
+          <blockquote>
+            <p>First quoted paragraph inside the blockquote.</p>
+            <p>Second quoted paragraph inside the same blockquote.</p>
+          </blockquote>
+          <ul>
+            <li>First list item with important detail.</li>
+            <li>Second list item with another detail.</li>
+          </ul>
+          <p>Final paragraph that closes the section.</p>
+        </article>
+      </body>
+      </html>
+    `
+    fetchSpy.mockResolvedValueOnce(
+      new Response(html, {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      }),
+    )
+
+    const results = await fetchPageContent(["https://example.com/complex-block"])
+
+    expect(results[0].paragraphs).toHaveLength(6)
+    expect(results[0].paragraphs?.map((paragraph) => paragraph.text)).toEqual([
+      expect.stringContaining("Opening paragraph"),
+      expect.stringContaining("First quoted paragraph"),
+      expect.stringContaining("Second quoted paragraph"),
+      expect.stringContaining("First list item"),
+      expect.stringContaining("Second list item"),
+      expect.stringContaining("Final paragraph"),
+    ])
+  })
+
   it("returns null pageContent when page has no article content (non-article page)", async () => {
     const html = `
       <html><head><title>Login Page</title></head>
