@@ -113,7 +113,7 @@ describe("ChatInput mobile layout", () => {
 
   it("tidak bolak-balik collapse saat stacked membuat textarea sedikit lebih pendek", async () => {
     let mobileMeasureCount = 0
-    vi.spyOn(HTMLTextAreaElement.prototype, "scrollHeight", "get").mockImplementation(function () {
+    vi.spyOn(HTMLTextAreaElement.prototype, "scrollHeight", "get").mockImplementation(function (this: HTMLTextAreaElement) {
       if (this.dataset.testid === "desktop-chat-input-textarea") {
         return 32
       }
@@ -156,7 +156,7 @@ describe("ChatInput mobile layout", () => {
   })
 
   it("tetap dua baris stabil meski textarea masih satu line", () => {
-    vi.spyOn(HTMLTextAreaElement.prototype, "scrollHeight", "get").mockImplementation(function () {
+    vi.spyOn(HTMLTextAreaElement.prototype, "scrollHeight", "get").mockImplementation(function (this: HTMLTextAreaElement) {
       if (this.dataset.testid === "desktop-chat-input-textarea") {
         return 32
       }

@@ -20,6 +20,37 @@ type MockRecord = {
 }
 
 type EqFilter = Array<{ field: string; value: unknown }>
+type MockDb = ReturnType<typeof createMockDb>["db"]
+
+type HandlerFn<TArgs, TResult> = {
+  _handler: (ctx: { db: MockDb }, args: TArgs) => Promise<TResult>
+}
+
+type SourceDocumentLookupResult = {
+  sourceId: string
+  originalUrl: string
+  resolvedUrl: string
+} | null
+
+type SourceDocumentSummaryResult = Array<{
+  sourceId: string
+  originalUrl: string
+  resolvedUrl: string
+  title?: string
+  author?: string
+  publishedAt?: string
+  siteName?: string
+}>
+
+type UpsertDocumentResult = {
+  success: true
+  inserted: boolean
+  id: string
+}
+
+type DeleteByConversationResult = {
+  deleted: number
+}
 
 function createMockDb() {
   const tables = new Map<string, MockRecord[]>()
@@ -117,13 +148,8 @@ function createMockDb() {
 }
 
 async function callQuery<TArgs, TResult>(
-  fn: {
-    _handler: (
-      ctx: { db: ReturnType<typeof createMockDb>["db"] },
-      args: TArgs
-    ) => Promise<TResult>
-  },
-  db: ReturnType<typeof createMockDb>["db"],
+  fn: HandlerFn<TArgs, TResult>,
+  db: MockDb,
   args: TArgs
 ) {
   return fn._handler({ db }, args)
@@ -200,7 +226,10 @@ describe("sourceDocuments lookup", () => {
     })
 
     const result = await callQuery(
-      getBySource as never,
+      getBySource as unknown as HandlerFn<
+        { conversationId: string; sourceId: string },
+        SourceDocumentLookupResult
+      >,
       db,
       {
         conversationId: "conv_1",
@@ -227,7 +256,10 @@ describe("sourceDocuments lookup", () => {
     })
 
     const result = await callQuery(
-      getBySource as never,
+      getBySource as unknown as HandlerFn<
+        { conversationId: string; sourceId: string },
+        SourceDocumentLookupResult
+      >,
       db,
       {
         conversationId: "conv_1",
@@ -303,7 +335,10 @@ describe("sourceDocuments lookup", () => {
     })
 
     const results = await callQuery(
-      listSourceSummariesByConversation as never,
+      listSourceSummariesByConversation as unknown as HandlerFn<
+        { conversationId: string },
+        SourceDocumentSummaryResult
+      >,
       db,
       { conversationId: "conv_1" }
     )
@@ -342,7 +377,23 @@ describe("sourceDocuments lookup", () => {
   it("upsertDocument menyisipkan dokumen baru saat belum ada record exact", async () => {
     const { db } = createMockDb()
 
-    const result = await (upsertDocument as never)._handler(
+    const result = await (
+      upsertDocument as unknown as HandlerFn<
+        {
+          conversationId: string
+          sourceId: string
+          originalUrl: string
+          resolvedUrl: string
+          title?: string
+          author?: string
+          publishedAt?: string
+          siteName?: string
+          paragraphs: Array<{ index: number; text: string }>
+          documentText: string
+        },
+        UpsertDocumentResult
+      >
+    )._handler(
       { db },
       {
         conversationId: "conv_1",
@@ -404,7 +455,21 @@ describe("sourceDocuments lookup", () => {
       updatedAt: 11,
     })
 
-    const result = await (upsertDocument as never)._handler(
+    const result = await (
+      upsertDocument as unknown as HandlerFn<
+        {
+          conversationId: string
+          sourceId: string
+          originalUrl: string
+          resolvedUrl: string
+          title?: string
+          author?: string
+          paragraphs: Array<{ index: number; text: string }>
+          documentText: string
+        },
+        UpsertDocumentResult
+      >
+    )._handler(
       { db },
       {
         conversationId: "conv_1",
@@ -469,7 +534,12 @@ describe("sourceDocuments lookup", () => {
       updatedAt: 12,
     })
 
-    const result = await (deleteByConversation as never)._handler(
+    const result = await (
+      deleteByConversation as unknown as HandlerFn<
+        { conversationId: string },
+        DeleteByConversationResult
+      >
+    )._handler(
       { db },
       { conversationId: "conv_1" }
     )

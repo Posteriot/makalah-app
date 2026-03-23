@@ -411,7 +411,11 @@ export async function POST(req: Request) {
                     content: extractedContent.trim(),
                 }
             })
-            .filter((message): message is ExactSourceConversationMessage => message !== null)
+            .filter(
+                (
+                    message: ExactSourceConversationMessage | null
+                ): message is ExactSourceConversationMessage => message !== null
+            )
 
         let paperWorkflowReminder = ""
         if (!paperModePrompt && lastUserContent && hasPaperWritingIntent(lastUserContent)) {
@@ -2708,6 +2712,11 @@ Aturan:
                         return undefined
                     }
                     : undefined
+                const shouldApplyFallbackDeterministicExactSourceRouting =
+                    !enableWebSearch &&
+                    !shouldForceGetCurrentPaperState &&
+                    !shouldForceSubmitValidation &&
+                    availableExactSources.length > 0
                 const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
                 const fallbackBaseMessages = missingArtifactNote
                     ? [
@@ -2716,7 +2725,7 @@ Aturan:
                         ...fullMessagesBase.slice(1),
                     ]
                     : fullMessagesBase
-                const fallbackExactSourceRoutePlan = shouldApplyDeterministicExactSourceRouting
+                const fallbackExactSourceRoutePlan = shouldApplyFallbackDeterministicExactSourceRouting
                     ? buildDeterministicExactSourcePrepareStep({
                         messages: fallbackBaseMessages as Array<{ role: "system" | "user" | "assistant"; content: string }>,
                         resolution: exactSourceResolution,

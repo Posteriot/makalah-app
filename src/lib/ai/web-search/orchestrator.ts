@@ -14,6 +14,7 @@ import { composeSkillInstructions } from "@/lib/ai/skills"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { buildUserFacingSearchPayload } from "@/lib/ai/internal-thought-separator"
 import { fetchPageContent } from "./content-fetcher"
+import type { FetchedContent } from "./content-fetcher"
 import {
   sanitizeMessagesForSearch,
   canonicalizeCitationUrls,
@@ -98,6 +99,71 @@ const MAX_EXACT_PARAGRAPH_COUNT = 120
 const MAX_EXACT_PARAGRAPH_TEXT_CHARS = 24_000
 const EXACT_TRUNCATION_MARKER = "[exact payload truncated: tail omitted]"
 const EXACT_PARAGRAPH_TAIL_MARKER = "[truncated]"
+
+export async function persistExactSourceDocuments(params: {
+  fetchedContent: FetchedContent[]
+  conversationId: Id<"conversations">
+  convexOptions?: { token: string }
+}): Promise<void> {
+  const exactSourceCount = params.fetchedContent.filter(
+    (fetched) => fetched.fullContent && fetched.documentText
+  ).length
+
+  if (exactSourceCount > 0) {
+    console.log(
+      `[⏱ LATENCY] Exact source persist starting (awaited): ${exactSourceCount} sources`
+    )
+  }
+
+  const exactStart = Date.now()
+  let exactIdx = 0
+
+  for (const fetched of params.fetchedContent) {
+    if (!fetched.fullContent || !fetched.documentText) continue
+
+    try {
+      const sourceStart = Date.now()
+      const exactDocumentText = limitExactDocumentText(fetched.documentText)
+      const exactParagraphs = limitExactParagraphs(fetched.paragraphs ?? [])
+      await fetchMutation(
+        api.sourceDocuments.upsertDocument,
+        {
+          conversationId: params.conversationId,
+          sourceId: fetched.resolvedUrl,
+          originalUrl: fetched.url,
+          resolvedUrl: fetched.resolvedUrl,
+          ...(typeof fetched.title === "string" ? { title: fetched.title } : {}),
+          ...(typeof fetched.author === "string" ? { author: fetched.author } : {}),
+          ...(typeof fetched.publishedAt === "string"
+            ? { publishedAt: fetched.publishedAt }
+            : {}),
+          ...(typeof fetched.siteName === "string" ? { siteName: fetched.siteName } : {}),
+          paragraphs: exactParagraphs,
+          documentText: exactDocumentText,
+        },
+        params.convexOptions
+      )
+      exactIdx++
+      const paragraphWasCapped =
+        exactParagraphs.length < (fetched.paragraphs?.length ?? 0)
+      console.log(
+        `[⏱ LATENCY] Exact source persist [${exactIdx}/${exactSourceCount}] ${fetched.resolvedUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms${exactDocumentText.length < fetched.documentText.length ? ` cappedText=${exactDocumentText.length}` : ""}${paragraphWasCapped ? ` cappedParagraphs=${exactParagraphs.length}/${fetched.paragraphs?.length ?? 0}` : ""}`
+      )
+    } catch (err) {
+      exactIdx++
+      console.error(
+        `[⏱ LATENCY] Exact source persist [${exactIdx}/${exactSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`,
+        err
+      )
+    }
+  }
+
+  if (exactSourceCount > 0) {
+    console.log(
+      `[⏱ LATENCY] Exact source persist ALL DONE total=${Date.now() - exactStart}ms sources=${exactSourceCount}`
+    )
+  }
+}
 
 /**
  * Execute a three-phase web search flow:
@@ -708,52 +774,14 @@ export async function executeWebSearch(
             // Keep the existing RAG path intact and persist exact source documents
             // alongside it so exact-inspection queries can read structured metadata.
             const ragSourceCount = fetchedContent.filter((f) => f.fullContent).length
-            const exactSourceCount = fetchedContent.filter((f) => f.fullContent && f.documentText).length
-            if (exactSourceCount > 0) {
-              console.log(`[⏱ LATENCY] Exact source persist starting (fire-and-forget): ${exactSourceCount} sources`)
-            }
             if (ragSourceCount > 0) {
               console.log(`[⏱ LATENCY] RAG ingest starting (fire-and-forget): ${ragSourceCount} sources`)
             }
-            void (async () => {
-              const exactStart = Date.now()
-              let exactIdx = 0
-
-              for (const fetched of fetchedContent) {
-                if (!fetched.fullContent || !fetched.documentText) continue
-                try {
-                  const sourceStart = Date.now()
-                  const exactDocumentText = limitExactDocumentText(fetched.documentText)
-                  const exactParagraphs = limitExactParagraphs(fetched.paragraphs ?? [])
-                  await fetchMutation(
-                    api.sourceDocuments.upsertDocument,
-                    {
-                      conversationId: config.conversationId as Id<"conversations">,
-                      sourceId: fetched.resolvedUrl,
-                      originalUrl: fetched.url,
-                      resolvedUrl: fetched.resolvedUrl,
-                      ...(typeof fetched.title === "string" ? { title: fetched.title } : {}),
-                      ...(typeof fetched.author === "string" ? { author: fetched.author } : {}),
-                      ...(typeof fetched.publishedAt === "string" ? { publishedAt: fetched.publishedAt } : {}),
-                      ...(typeof fetched.siteName === "string" ? { siteName: fetched.siteName } : {}),
-                      paragraphs: exactParagraphs,
-                      documentText: exactDocumentText,
-                    },
-                    convexOptions,
-                  )
-                  exactIdx++
-                  const paragraphWasCapped = exactParagraphs.length < (fetched.paragraphs?.length ?? 0)
-                  console.log(`[⏱ LATENCY] Exact source persist [${exactIdx}/${exactSourceCount}] ${fetched.resolvedUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms${exactDocumentText.length < fetched.documentText.length ? ` cappedText=${exactDocumentText.length}` : ""}${paragraphWasCapped ? ` cappedParagraphs=${exactParagraphs.length}/${fetched.paragraphs?.length ?? 0}` : ""}`)
-                } catch (err) {
-                  exactIdx++
-                  console.error(`[⏱ LATENCY] Exact source persist [${exactIdx}/${exactSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`, err)
-                }
-              }
-
-              if (exactSourceCount > 0) {
-                console.log(`[⏱ LATENCY] Exact source persist ALL DONE total=${Date.now() - exactStart}ms sources=${exactSourceCount}`)
-              }
-            })()
+            await persistExactSourceDocuments({
+              fetchedContent,
+              conversationId: config.conversationId as Id<"conversations">,
+              convexOptions,
+            })
 
             void (async () => {
               const ragStart = Date.now()

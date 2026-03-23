@@ -14,6 +14,9 @@ type MockRecord = {
 }
 
 type EqFilter = Array<{ field: string; value: unknown }>
+type SourceChunksMutationHandler<TArgs, TResult> = {
+  _handler: (ctx: unknown, args: TArgs) => Promise<TResult>
+}
 
 function createMockDb() {
   const tables = new Map<string, MockRecord[]>()
@@ -74,7 +77,22 @@ describe("sourceChunks auth guard", () => {
   it("verifies conversation ownership before ingesting chunks", async () => {
     const db = createMockDb()
 
-    await ingestChunks._handler(
+    await (
+      ingestChunks as unknown as SourceChunksMutationHandler<
+        {
+          conversationId: string
+          sourceType: "web" | "upload"
+          sourceId: string
+          chunks: Array<{
+            chunkIndex: number
+            content: string
+            embedding: number[]
+            metadata: Record<string, unknown>
+          }>
+        },
+        unknown
+      >
+    )._handler(
       { db } as never,
       {
         conversationId: "conversation_1" as never,
@@ -100,7 +118,12 @@ describe("sourceChunks auth guard", () => {
   it("verifies conversation ownership before checking source existence", async () => {
     const db = createMockDb()
 
-    await hasSource._handler(
+    await (
+      hasSource as unknown as SourceChunksMutationHandler<
+        { conversationId: string; sourceId: string },
+        unknown
+      >
+    )._handler(
       { db } as never,
       {
         conversationId: "conversation_1" as never,
@@ -118,7 +141,12 @@ describe("sourceChunks auth guard", () => {
     const vectorSearch = vi.fn()
 
     await expect(
-      searchByEmbedding._handler(
+      (
+        searchByEmbedding as unknown as SourceChunksMutationHandler<
+          { conversationId: string; embedding: number[] },
+          unknown
+        >
+      )._handler(
         {
           auth: {
             getUserIdentity: vi.fn().mockResolvedValue({ subject: "ba_user_1" }),

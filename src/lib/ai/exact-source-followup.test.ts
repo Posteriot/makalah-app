@@ -43,7 +43,10 @@ describe("resolveExactSourceFollowup", () => {
     })
 
     expect(result.mode).toBe("force-inspect")
-    expect(result.matchedSource?.sourceId).toBe("source-berita-magelang")
+    if (result.mode !== "force-inspect") {
+      throw new Error(`expected force-inspect, got ${result.mode}`)
+    }
+    expect(result.matchedSource.sourceId).toBe("source-berita-magelang")
   })
 
   it("returns force-inspect when site/domain mention matches one source uniquely", () => {
@@ -56,7 +59,10 @@ describe("resolveExactSourceFollowup", () => {
     })
 
     expect(result.mode).toBe("force-inspect")
-    expect(result.matchedSource?.sourceId).toBe("source-detik")
+    if (result.mode !== "force-inspect") {
+      throw new Error(`expected force-inspect, got ${result.mode}`)
+    }
+    expect(result.matchedSource.sourceId).toBe("source-detik")
   })
 
   it("uses prior exact-source context for short continuation prompts", () => {
@@ -76,7 +82,10 @@ describe("resolveExactSourceFollowup", () => {
     })
 
     expect(result.mode).toBe("force-inspect")
-    expect(result.matchedSource?.sourceId).toBe("source-berita-magelang")
+    if (result.mode !== "force-inspect") {
+      throw new Error(`expected force-inspect, got ${result.mode}`)
+    }
+    expect(result.matchedSource.sourceId).toBe("source-berita-magelang")
   })
 
   it("uses prior exact-source context for natural continuation phrasing", () => {
@@ -96,7 +105,10 @@ describe("resolveExactSourceFollowup", () => {
     })
 
     expect(result.mode).toBe("force-inspect")
-    expect(result.matchedSource?.sourceId).toBe("source-berita-magelang")
+    if (result.mode !== "force-inspect") {
+      throw new Error(`expected force-inspect, got ${result.mode}`)
+    }
+    expect(result.matchedSource.sourceId).toBe("source-berita-magelang")
   })
 
   it("returns clarify when exact intent is present but source match is ambiguous", () => {
@@ -107,7 +119,9 @@ describe("resolveExactSourceFollowup", () => {
     })
 
     expect(result.mode).toBe("clarify")
-    expect(result.matchedSource).toBeUndefined()
+    if (result.mode !== "clarify") {
+      throw new Error(`expected clarify, got ${result.mode}`)
+    }
   })
 
   it("returns none for non exact follow-up prompts", () => {
