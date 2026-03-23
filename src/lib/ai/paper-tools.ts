@@ -6,6 +6,27 @@ import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { retryMutation, retryQuery } from "../convex/retry"
 
+type ExactSourceParagraph = {
+    index: number
+    text: string
+}
+
+type ExactSourceDocument = {
+    title?: string
+    author?: string
+    publishedAt?: string
+    siteName?: string
+    paragraphs?: ExactSourceParagraph[]
+}
+
+const buildExactAvailability = (document: ExactSourceDocument | null) => ({
+    title: typeof document?.title === "string" && document.title.trim().length > 0,
+    author: typeof document?.author === "string" && document.author.trim().length > 0,
+    publishedAt: typeof document?.publishedAt === "string" && document.publishedAt.trim().length > 0,
+    siteName: typeof document?.siteName === "string" && document.siteName.trim().length > 0,
+    paragraphs: Array.isArray(document?.paragraphs) && document.paragraphs.length > 0,
+})
+
 /**
  * Factory for creating AI tools specific to the paper writing workflow.
  */
@@ -390,9 +411,95 @@ The tool will:
             },
         }),
 
+        inspectSourceDocument: tool({
+            description:
+                "Inspect an exact source document that was previously stored for this conversation. Use for title, author, publishedAt, siteName, or exact paragraph lookup. Do not use this tool for semantic search or relevance matching.",
+            inputSchema: z.object({
+                sourceId: z
+                    .string()
+                    .describe("The source identifier to inspect (web source URL or uploaded file ID)."),
+                paragraphIndex: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Optional one-based paragraph index to retrieve exactly."),
+                includeParagraphs: z
+                    .boolean()
+                    .optional()
+                    .describe("Include all stored paragraphs in the response when no paragraphIndex is requested."),
+                includeMetadata: z
+                    .boolean()
+                    .optional()
+                    .describe("Include exact metadata fields in the response."),
+            }),
+            execute: async ({ sourceId, paragraphIndex, includeParagraphs, includeMetadata }) => {
+                try {
+                    const document = await retryQuery(
+                        () => fetchQuery(api.sourceDocuments.getBySource, {
+                            conversationId: context.conversationId,
+                            sourceId,
+                        }, convexOptions),
+                        "sourceDocuments.getBySource"
+                    ) as ExactSourceDocument | null
+
+                    if (!document) {
+                        return { success: false, error: "Source document not found for this conversation." }
+                    }
+
+                    const exactAvailable = buildExactAvailability(document)
+                    const response: {
+                        success: boolean
+                        sourceId: string
+                        exactAvailable: ReturnType<typeof buildExactAvailability>
+                        title?: string
+                        author?: string
+                        publishedAt?: string
+                        siteName?: string
+                        requestedParagraph?: ExactSourceParagraph
+                        paragraphs?: ExactSourceParagraph[]
+                    } = {
+                        success: true,
+                        sourceId,
+                        exactAvailable,
+                    }
+
+                    if (includeMetadata !== false) {
+                        if (exactAvailable.title) response.title = document.title
+                        if (exactAvailable.author) response.author = document.author
+                        if (exactAvailable.publishedAt) response.publishedAt = document.publishedAt
+                        if (exactAvailable.siteName) response.siteName = document.siteName
+                    }
+
+                    if (typeof paragraphIndex === "number") {
+                        const requestedParagraph = document.paragraphs?.find((paragraph) => paragraph.index === paragraphIndex) ?? null
+                        if (!requestedParagraph) {
+                            return {
+                                success: false,
+                                sourceId,
+                                exactAvailable,
+                                error: `Paragraph index ${paragraphIndex} not found in source document.`,
+                            }
+                        }
+
+                        response.requestedParagraph = requestedParagraph
+                        return response
+                    }
+
+                    if (includeParagraphs) {
+                        response.paragraphs = document.paragraphs ?? []
+                    }
+
+                    return response
+                } catch (_error) {
+                    return { success: false, error: "Failed to inspect source document." }
+                }
+            },
+        }),
+
         quoteFromSource: tool({
             description:
-                "Retrieve exact text chunks from a previously searched web source or uploaded file. Use when the user asks for a direct quote, verbatim citation, or the exact text from a specific source.",
+                "Search semantic chunks within a previously searched web source or uploaded file. Use when the user asks for a relevant passage, quote candidate, or broader match within a source. Do not use this tool to verify exact paragraph positions or exact titles.",
             inputSchema: z.object({
                 sourceId: z
                     .string()
