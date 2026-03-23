@@ -662,12 +662,7 @@ export async function executeWebSearch(
                 sourceCount,
               }))
               reasoningSnapshot = reasoningTrace.getPersistedSnapshot()
-              reasoningSnapshot.durationSeconds = (Date.now() - orchestratorStart) / 1000
-              // Persist raw reasoning text for consistent rehydrate
-              if (reasoningBuffer.length > 0) {
-                reasoningSnapshot.rawReasoning = reasoningBuffer
-              }
-              console.log(`[REASONING-DIAG] snapshot built: steps=${reasoningSnapshot.steps.length} headline="${reasoningSnapshot.headline.slice(0, 60)}" traceMode=${reasoningSnapshot.traceMode} duration=${reasoningSnapshot.durationSeconds.toFixed(1)}s`)
+              console.log(`[REASONING-DIAG] snapshot built: steps=${reasoningSnapshot.steps.length} headline="${reasoningSnapshot.headline.slice(0, 60)}" traceMode=${reasoningSnapshot.traceMode} hasRawReasoning=${!!reasoningSnapshot.rawReasoning}`)
             } else {
               console.log(`[REASONING-DIAG] no snapshot: reasoningTraceEnabled=${config.reasoningTraceEnabled} bufferLength=${reasoningBuffer.length}`)
             }

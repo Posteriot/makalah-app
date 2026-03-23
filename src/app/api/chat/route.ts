@@ -2361,10 +2361,7 @@ Aturan:
                                 return primaryReasoningTraceSnapshot
                             })()
 
-                            // Attach total request duration for rehydrate after reload
-                            if (persistedReasoningTrace) {
-                                persistedReasoningTrace.durationSeconds = (Date.now() - telemetryStartTime) / 1000
-                            }
+
 
                             await saveAssistantMessage(
                                 persistedContent,

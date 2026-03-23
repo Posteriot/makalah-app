@@ -1342,11 +1342,15 @@ export function ChatWindow({
       const liveThought = extractLiveThought(assistant)
       const headline = liveThought || extractReasoningHeadline(assistant, steps)
       if (steps.length > 0 || headline) {
-        // Extract persisted duration from reasoningTrace (for rehydrate after reload)
-        const persistedTrace = (assistant as unknown as { reasoningTrace?: { durationSeconds?: unknown } }).reasoningTrace
-        console.log(`[DURATION-DIAG] activeReasoning: hasReasoningTrace=${!!persistedTrace} durationSeconds=${persistedTrace?.durationSeconds} type=${typeof persistedTrace?.durationSeconds} keys=${persistedTrace ? Object.keys(persistedTrace).join(",") : "none"}`)
-        const persistedDurationSeconds = typeof persistedTrace?.durationSeconds === "number" && Number.isFinite(persistedTrace.durationSeconds)
-          ? persistedTrace.durationSeconds
+        // Compute duration from message timestamps (consistent for live and rehydrate)
+        const assistantIdx = messages.indexOf(assistant)
+        const precedingUser = assistantIdx > 0
+          ? [...messages].slice(0, assistantIdx).reverse().find((m) => m.role === "user")
+          : undefined
+        const userTs = (precedingUser as unknown as { _creationTime?: number })?._creationTime
+        const assistantTs = (assistant as unknown as { _creationTime?: number })?._creationTime
+        const persistedDurationSeconds = typeof userTs === "number" && typeof assistantTs === "number" && assistantTs > userTs
+          ? (assistantTs - userTs) / 1000
           : undefined
         return {
           steps,
