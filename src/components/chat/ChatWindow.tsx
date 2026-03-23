@@ -1178,7 +1178,7 @@ export function ChatWindow({
         return
       }
 
-      const mappedMessages = historyMessages.map((msg) => {
+      const mappedMessages = historyMessages.map((msg, msgIdx) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rawReasoningTrace = (msg as any).reasoningTrace as PersistedReasoningTraceRaw | undefined
         const reasoningTrace =
@@ -1187,6 +1187,20 @@ export function ChatWindow({
           Array.isArray(rawReasoningTrace.steps)
             ? rawReasoningTrace
             : undefined
+
+        // Compute duration from _creationTime diff (user → assistant) and attach to reasoningTrace
+        if (reasoningTrace && msg.role === "assistant") {
+          const precedingUser = msgIdx > 0
+            ? [...historyMessages].slice(0, msgIdx).reverse().find((m) => m.role === "user")
+            : undefined
+          if (precedingUser) {
+            const userTs = precedingUser._creationTime
+            const assistantTs = msg._creationTime
+            if (typeof userTs === "number" && typeof assistantTs === "number" && assistantTs > userTs) {
+              (reasoningTrace as { durationSeconds?: number }).durationSeconds = (assistantTs - userTs) / 1000
+            }
+          }
+        }
 
         const traceId = `persisted-${msg._id}`
         const persistedTraceParts = reasoningTrace
@@ -1231,7 +1245,6 @@ export function ChatWindow({
 
         return {
           id: msg._id,
-          _creationTime: msg._creationTime,
           role: msg.role as "user" | "assistant" | "system" | "data",
           content: msg.content,
           fileIds: msg.fileIds,
@@ -1343,16 +1356,10 @@ export function ChatWindow({
       const liveThought = extractLiveThought(assistant)
       const headline = liveThought || extractReasoningHeadline(assistant, steps)
       if (steps.length > 0 || headline) {
-        // Compute duration from message timestamps (consistent for live and rehydrate)
-        const assistantIdx = messages.indexOf(assistant)
-        const precedingUser = assistantIdx > 0
-          ? [...messages].slice(0, assistantIdx).reverse().find((m) => m.role === "user")
-          : undefined
-        const userTs = (precedingUser as unknown as { _creationTime?: number })?._creationTime
-        const assistantTs = (assistant as unknown as { _creationTime?: number })?._creationTime
-        console.log(`[DURATION-DIAG] userTs=${userTs} assistantTs=${assistantTs} userKeys=${precedingUser ? Object.keys(precedingUser as object).join(",") : "none"} assistantKeys=${Object.keys(assistant as object).join(",")}`)
-        const persistedDurationSeconds = typeof userTs === "number" && typeof assistantTs === "number" && assistantTs > userTs
-          ? (assistantTs - userTs) / 1000
+        // Read duration from reasoningTrace (computed during rehydrate from _creationTime diff)
+        const persistedTrace = (assistant as unknown as { reasoningTrace?: { durationSeconds?: number } }).reasoningTrace
+        const persistedDurationSeconds = typeof persistedTrace?.durationSeconds === "number" && Number.isFinite(persistedTrace.durationSeconds)
+          ? persistedTrace.durationSeconds
           : undefined
         return {
           steps,
