@@ -201,6 +201,7 @@ interface PersistedReasoningTraceRaw {
   headline?: unknown
   steps?: unknown
   durationSeconds?: unknown
+  rawReasoning?: unknown
 }
 
 function parseReasoningMeta(meta: unknown): ReasoningTraceStep["meta"] | undefined {
@@ -1233,7 +1234,19 @@ export function ChatWindow({
           content: msg.content,
           fileIds: msg.fileIds,
           attachmentMode: msg.attachmentMode,
-          parts: [{ type: "text", text: msg.content } as const, ...persistedTraceParts, ...persistedChoiceParts],
+          parts: [
+            { type: "text", text: msg.content } as const,
+            ...persistedTraceParts,
+            ...persistedChoiceParts,
+            // Inject raw reasoning as data-reasoning-thought for consistent headline after reload
+            ...(reasoningTrace && typeof (reasoningTrace as { rawReasoning?: unknown }).rawReasoning === "string" && (reasoningTrace as { rawReasoning?: string }).rawReasoning!.trim()
+              ? [{
+                  type: "data-reasoning-thought" as const,
+                  id: `${traceId}-raw-thought`,
+                  data: { delta: (reasoningTrace as { rawReasoning?: string }).rawReasoning!, traceId, ts: Date.now() },
+                }]
+              : []),
+          ],
           annotations: msg.fileIds
             ? [
                 {

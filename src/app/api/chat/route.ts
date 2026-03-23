@@ -1305,6 +1305,9 @@ JSON schema:
                 ...(typeof trace.durationSeconds === "number" && Number.isFinite(trace.durationSeconds)
                     ? { durationSeconds: trace.durationSeconds }
                     : {}),
+                ...(typeof trace.rawReasoning === "string" && trace.rawReasoning.trim()
+                    ? { rawReasoning: trace.rawReasoning }
+                    : {}),
                 steps,
             }
         }

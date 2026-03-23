@@ -40,6 +40,8 @@ export interface PersistedCuratedTraceSnapshot {
   completedAt: number
   /** Total request duration in seconds (for rehydrate after reload). */
   durationSeconds?: number
+  /** Raw reasoning text from model (for consistent rehydrate — same text before and after reload). */
+  rawReasoning?: string
   steps: Array<{
     stepKey: CuratedTraceStepKey
     label: string
@@ -244,7 +246,8 @@ function normalizeErrorNote(errorNote?: string) {
 
 function buildPersistedSnapshot(
   steps: Record<CuratedTraceStepKey, InternalStep>,
-  traceMode: "curated" | "transparent" = "curated"
+  traceMode: "curated" | "transparent" = "curated",
+  rawReasoning?: string,
 ): PersistedCuratedTraceSnapshot {
   const hasThoughts = traceMode === "transparent"
   return {
@@ -252,6 +255,7 @@ function buildPersistedSnapshot(
     headline: buildHeadlineFromSteps(steps),
     traceMode,
     completedAt: nowTs(),
+    ...(rawReasoning ? { rawReasoning } : {}),
     steps: STEP_ORDER.map((key) => {
       const step = steps[key]
       return {
@@ -407,6 +411,7 @@ export function createCuratedTraceController(options: {
 
   const steps = createSteps(options)
   let sourceSeenCount = 0
+  let capturedRawReasoning = ""
 
   const initialEvents = STEP_ORDER.map((key) => buildEvent(options.traceId, steps[key]))
 
@@ -435,6 +440,7 @@ export function createCuratedTraceController(options: {
     },
     populateFromReasoning: (rawReasoning: string) => {
       if (!rawReasoning || rawReasoning.trim().length === 0) return []
+      capturedRawReasoning = rawReasoning
 
       const segmentation = segmentReasoning(rawReasoning, options.mode)
       const events: CuratedTraceDataPart[] = []
@@ -544,7 +550,7 @@ export function createCuratedTraceController(options: {
     },
     getPersistedSnapshot: () => {
       const isTransparent = STEP_ORDER.some((key) => steps[key].label !== STEP_LABELS[key])
-      return buildPersistedSnapshot(steps, isTransparent ? "transparent" : "curated")
+      return buildPersistedSnapshot(steps, isTransparent ? "transparent" : "curated", capturedRawReasoning || undefined)
     },
   }
 }
