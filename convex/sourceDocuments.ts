@@ -19,6 +19,23 @@ type SourceDocumentRecord = {
     updatedAt: number
 }
 
+type SourceDocumentSummaryRecord = SourceDocumentRecord & {
+    title?: string
+    author?: string
+    publishedAt?: string
+    siteName?: string
+}
+
+type SourceDocumentSummary = {
+    sourceId: string
+    originalUrl: string
+    resolvedUrl: string
+    title?: string
+    author?: string
+    publishedAt?: string
+    siteName?: string
+}
+
 function sortSourceDocumentsForDeterministicSelection(
     documents: SourceDocumentRecord[]
 ): SourceDocumentRecord[] {
@@ -45,6 +62,18 @@ export function selectExactSourceDocument(
     if (matchingDocuments.length === 0) return null
 
     return sortSourceDocumentsForDeterministicSelection(matchingDocuments)[0] ?? null
+}
+
+function toSourceDocumentSummary(document: SourceDocumentSummaryRecord): SourceDocumentSummary {
+    return {
+        sourceId: document.sourceId,
+        originalUrl: document.originalUrl,
+        resolvedUrl: document.resolvedUrl,
+        ...(typeof document.title === "string" ? { title: document.title } : {}),
+        ...(typeof document.author === "string" ? { author: document.author } : {}),
+        ...(typeof document.publishedAt === "string" ? { publishedAt: document.publishedAt } : {}),
+        ...(typeof document.siteName === "string" ? { siteName: document.siteName } : {}),
+    }
 }
 
 export const upsertDocument = mutation({
@@ -120,6 +149,24 @@ export const getBySource = query({
             .collect()
 
         return selectExactSourceDocument(documents as SourceDocumentRecord[], args.sourceId)
+    },
+})
+
+export const listSourceSummariesByConversation = query({
+    args: {
+        conversationId: v.id("conversations"),
+    },
+    handler: async (ctx, args) => {
+        if (!(await getConversationIfOwner(ctx, args.conversationId))) return []
+
+        const documents = await ctx.db
+            .query("sourceDocuments")
+            .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
+            .collect()
+
+        return sortSourceDocumentsForDeterministicSelection(
+            documents as SourceDocumentSummaryRecord[]
+        ).map(toSourceDocumentSummary)
     },
 })
 

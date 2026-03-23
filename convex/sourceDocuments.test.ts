@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { deleteByConversation, getBySource, selectExactSourceDocument, upsertDocument } from "./sourceDocuments"
+import {
+  deleteByConversation,
+  getBySource,
+  listSourceSummariesByConversation,
+  selectExactSourceDocument,
+  upsertDocument,
+} from "./sourceDocuments"
 import { getConversationIfOwner, requireConversationOwner } from "./authHelpers"
 
 vi.mock("./authHelpers", () => ({
@@ -230,6 +236,107 @@ describe("sourceDocuments lookup", () => {
     )
 
     expect(result).toBeNull()
+  })
+
+  it("listSourceSummariesByConversation mengembalikan ringkasan exact source per conversation secara deterministik", async () => {
+    const { db } = createMockDb()
+    await db.insert("sourceDocuments", {
+      conversationId: "conv_1",
+      sourceId: "source-a",
+      originalUrl: "https://example.com/a-original",
+      resolvedUrl: "https://example.com/a-resolved",
+      title: "Judul A",
+      author: "Penulis A",
+      publishedAt: "2026-03-21",
+      siteName: "Media A",
+      paragraphs: [{ index: 1, text: "A" }],
+      documentText: "A",
+      createdAt: 20,
+      updatedAt: 20,
+    })
+    await db.insert("sourceDocuments", {
+      conversationId: "conv_2",
+      sourceId: "source-x",
+      originalUrl: "https://example.com/x-original",
+      resolvedUrl: "https://example.com/x-resolved",
+      title: "Judul X",
+      author: "Penulis X",
+      publishedAt: "2026-03-20",
+      siteName: "Media X",
+      paragraphs: [{ index: 1, text: "X" }],
+      documentText: "X",
+      createdAt: 5,
+      updatedAt: 5,
+    })
+    await db.insert("sourceDocuments", {
+      conversationId: "conv_1",
+      sourceId: "source-b",
+      originalUrl: "https://example.com/b-original",
+      resolvedUrl: "https://example.com/b-resolved",
+      title: "Judul B",
+      author: "Penulis B",
+      publishedAt: "2026-03-22",
+      siteName: "Media B",
+      paragraphs: [{ index: 1, text: "B" }],
+      documentText: "B",
+      createdAt: 10,
+      updatedAt: 10,
+    })
+    await db.insert("sourceDocuments", {
+      conversationId: "conv_1",
+      sourceId: "source-c",
+      originalUrl: "https://example.com/c-original",
+      resolvedUrl: "https://example.com/c-resolved",
+      title: "Judul C",
+      author: "Penulis C",
+      publishedAt: "2026-03-23",
+      siteName: "Media C",
+      paragraphs: [{ index: 1, text: "C" }],
+      documentText: "C",
+      createdAt: 20,
+      updatedAt: 20,
+    })
+
+    vi.mocked(getConversationIfOwner).mockResolvedValueOnce({
+      authUser: { _id: "user_1" } as never,
+      conversation: { _id: "conv_1", userId: "user_1" } as never,
+    })
+
+    const results = await callQuery(
+      listSourceSummariesByConversation as never,
+      db,
+      { conversationId: "conv_1" }
+    )
+
+    expect(results).toEqual([
+      {
+        sourceId: "source-b",
+        originalUrl: "https://example.com/b-original",
+        resolvedUrl: "https://example.com/b-resolved",
+        title: "Judul B",
+        author: "Penulis B",
+        publishedAt: "2026-03-22",
+        siteName: "Media B",
+      },
+      {
+        sourceId: "source-a",
+        originalUrl: "https://example.com/a-original",
+        resolvedUrl: "https://example.com/a-resolved",
+        title: "Judul A",
+        author: "Penulis A",
+        publishedAt: "2026-03-21",
+        siteName: "Media A",
+      },
+      {
+        sourceId: "source-c",
+        originalUrl: "https://example.com/c-original",
+        resolvedUrl: "https://example.com/c-resolved",
+        title: "Judul C",
+        author: "Penulis C",
+        publishedAt: "2026-03-23",
+        siteName: "Media C",
+      },
+    ])
   })
 
   it("upsertDocument menyisipkan dokumen baru saat belum ada record exact", async () => {
