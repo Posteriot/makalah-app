@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { getBySource, selectExactSourceDocument } from "./sourceDocuments"
-import { getConversationIfOwner } from "./authHelpers"
+import { deleteByConversation, getBySource, selectExactSourceDocument, upsertDocument } from "./sourceDocuments"
+import { getConversationIfOwner, requireConversationOwner } from "./authHelpers"
 
 vi.mock("./authHelpers", () => ({
   getConversationIfOwner: vi.fn(),
@@ -42,6 +42,27 @@ function createMockDb() {
     },
     async get(id: string) {
       return byId.get(id)?.record ?? null
+    },
+    async patch(id: string, changes: Record<string, unknown>) {
+      const target = byId.get(id)
+      if (!target) return
+      const nextRecord = { ...target.record, ...changes }
+      target.record = nextRecord
+      const rows = ensureTable(target.table)
+      const index = rows.findIndex((row) => row._id === id)
+      if (index !== -1) {
+        rows[index] = nextRecord
+      }
+      byId.set(id, { table: target.table, record: nextRecord })
+    },
+    async delete(id: string) {
+      const target = byId.get(id)
+      if (!target) return
+      tables.set(
+        target.table,
+        ensureTable(target.table).filter((record) => record._id !== id)
+      )
+      byId.delete(id)
     },
     query(table: string) {
       const filters: EqFilter = []
@@ -106,6 +127,10 @@ describe("sourceDocuments lookup", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(getConversationIfOwner).mockResolvedValue({
+      authUser: { _id: "user_1" } as never,
+      conversation: { _id: "conv_1", userId: "user_1" } as never,
+    })
+    vi.mocked(requireConversationOwner).mockResolvedValue({
       authUser: { _id: "user_1" } as never,
       conversation: { _id: "conv_1", userId: "user_1" } as never,
     })
@@ -205,6 +230,146 @@ describe("sourceDocuments lookup", () => {
     )
 
     expect(result).toBeNull()
+  })
+
+  it("upsertDocument menyisipkan dokumen baru saat belum ada record exact", async () => {
+    const { db } = createMockDb()
+
+    const result = await (upsertDocument as never)._handler(
+      { db },
+      {
+        conversationId: "conv_1",
+        sourceId: "https://resolved.example.com/article",
+        originalUrl: "https://original.example.com/article",
+        resolvedUrl: "https://resolved.example.com/article",
+        title: "Judul Artikel",
+        author: "Penulis",
+        publishedAt: "2026-03-23",
+        siteName: "Contoh Media",
+        paragraphs: [{ index: 1, text: "Paragraf pertama" }],
+        documentText: "Paragraf pertama",
+      }
+    )
+
+    expect(result).toMatchObject({
+      success: true,
+      inserted: true,
+    })
+
+    const inserted = await db.query("sourceDocuments").collect()
+    expect(inserted).toHaveLength(1)
+    expect(inserted[0]).toMatchObject({
+      conversationId: "conv_1",
+      sourceId: "https://resolved.example.com/article",
+      originalUrl: "https://original.example.com/article",
+      resolvedUrl: "https://resolved.example.com/article",
+      title: "Judul Artikel",
+      author: "Penulis",
+      publishedAt: "2026-03-23",
+      siteName: "Contoh Media",
+      paragraphs: [{ index: 1, text: "Paragraf pertama" }],
+      documentText: "Paragraf pertama",
+    })
+  })
+
+  it("upsertDocument memperbarui canonical record dan membersihkan duplikat", async () => {
+    const { db } = createMockDb()
+    const canonicalId = await db.insert("sourceDocuments", {
+      conversationId: "conv_1",
+      sourceId: "https://resolved.example.com/article",
+      originalUrl: "https://original.example.com/article",
+      resolvedUrl: "https://resolved.example.com/article",
+      title: "Lama",
+      paragraphs: [{ index: 1, text: "Lama" }],
+      documentText: "Lama",
+      createdAt: 10,
+      updatedAt: 10,
+    })
+    const duplicateId = await db.insert("sourceDocuments", {
+      conversationId: "conv_1",
+      sourceId: "https://resolved.example.com/article",
+      originalUrl: "https://original.example.com/article",
+      resolvedUrl: "https://resolved.example.com/article",
+      title: "Duplikat",
+      paragraphs: [{ index: 1, text: "Duplikat" }],
+      documentText: "Duplikat",
+      createdAt: 11,
+      updatedAt: 11,
+    })
+
+    const result = await (upsertDocument as never)._handler(
+      { db },
+      {
+        conversationId: "conv_1",
+        sourceId: "https://resolved.example.com/article",
+        originalUrl: "https://original.example.com/article",
+        resolvedUrl: "https://resolved.example.com/article",
+        title: "Baru",
+        author: "Penulis",
+        paragraphs: [{ index: 1, text: "Baru" }],
+        documentText: "Baru",
+      }
+    )
+
+    expect(result).toMatchObject({
+      success: true,
+      inserted: false,
+      id: canonicalId,
+    })
+
+    const stored = await db.query("sourceDocuments").collect()
+    expect(stored).toHaveLength(1)
+    expect(stored[0]?._id).toBe(canonicalId)
+    expect(stored[0]).toMatchObject({
+      title: "Baru",
+      author: "Penulis",
+      paragraphs: [{ index: 1, text: "Baru" }],
+      documentText: "Baru",
+    })
+    expect(stored.find((doc) => doc._id === duplicateId)).toBeUndefined()
+  })
+
+  it("deleteByConversation menghapus semua sourceDocuments milik conversation aktif", async () => {
+    const { db } = createMockDb()
+    await db.insert("sourceDocuments", {
+      conversationId: "conv_1",
+      sourceId: "https://resolved.example.com/article-1",
+      originalUrl: "https://original.example.com/article-1",
+      resolvedUrl: "https://resolved.example.com/article-1",
+      paragraphs: [{ index: 1, text: "A" }],
+      documentText: "A",
+      createdAt: 10,
+      updatedAt: 10,
+    })
+    await db.insert("sourceDocuments", {
+      conversationId: "conv_1",
+      sourceId: "https://resolved.example.com/article-2",
+      originalUrl: "https://original.example.com/article-2",
+      resolvedUrl: "https://resolved.example.com/article-2",
+      paragraphs: [{ index: 1, text: "B" }],
+      documentText: "B",
+      createdAt: 11,
+      updatedAt: 11,
+    })
+    await db.insert("sourceDocuments", {
+      conversationId: "conv_2",
+      sourceId: "https://resolved.example.com/other",
+      originalUrl: "https://original.example.com/other",
+      resolvedUrl: "https://resolved.example.com/other",
+      paragraphs: [{ index: 1, text: "C" }],
+      documentText: "C",
+      createdAt: 12,
+      updatedAt: 12,
+    })
+
+    const result = await (deleteByConversation as never)._handler(
+      { db },
+      { conversationId: "conv_1" }
+    )
+
+    expect(result).toEqual({ deleted: 2 })
+    expect(await db.query("sourceDocuments").withIndex("by_conversation", (q) => q.eq("conversationId", "conv_1")).collect()).toHaveLength(0)
+    expect(await db.query("sourceDocuments").withIndex("by_conversation", (q) => q.eq("conversationId", "conv_2")).collect()).toHaveLength(1)
   })
 
   it("mengembalikan null jika tidak ada kecocokan pada helper", () => {

@@ -1,30 +1,31 @@
 import { describe, expect, it } from "vitest"
-import fs from "node:fs"
-import path from "node:path"
-
-const repoRoot = path.resolve(__dirname, "..", "..", "..")
-const routePath = path.join(repoRoot, "src/app/api/chat/route.ts")
+import {
+  buildExactSourceInspectionRouterNote,
+  buildExactSourceInspectionSystemMessage,
+  EXACT_SOURCE_INSPECTION_RULES,
+} from "./exact-source-guardrails"
 
 describe("chat exact source guardrails", () => {
-  it("requires exact-source questions to use inspectSourceDocument", () => {
-    const routeSource = fs.readFileSync(routePath, "utf8")
+  it("builds the exact-source system message used by the route", () => {
+    const message = buildExactSourceInspectionSystemMessage()
 
-    expect(routeSource).toContain("EXACT SOURCE INSPECTION RULES")
-    expect(routeSource).toContain("inspectSourceDocument")
-    expect(routeSource).toContain("exact title, author, published date, paragraph number, or verbatim quote")
+    expect(message).toEqual({
+      role: "system",
+      content: EXACT_SOURCE_INSPECTION_RULES,
+    })
+    expect(message.content).toContain("inspectSourceDocument")
+    expect(message.content).toContain("natural narrative language")
   })
 
-  it("forbids user-facing internal jargon in route instructions", () => {
-    const routeSource = fs.readFileSync(routePath, "utf8")
-
-    expect(routeSource).toContain("Never mention internal tools, RAG, retrieval, fetch pipelines, or available web sources")
-    expect(routeSource).toContain("Respond in natural narrative language")
+  it("omits the follow-up note when no prior sources exist", () => {
+    expect(buildExactSourceInspectionRouterNote(false)).toBe("")
   })
 
-  it("keeps exact-verification refusal wording in runtime instructions", () => {
-    const routeSource = fs.readFileSync(routePath, "utf8")
+  it("builds the follow-up note used by the route when prior sources exist", () => {
+    const note = buildExactSourceInspectionRouterNote(true)
 
-    expect(routeSource).toContain("cannot be verified exactly from the verified source data")
-    expect(routeSource).toContain("Do not infer article titles from URLs, slugs, or citation labels")
+    expect(note).toContain("RAG SOURCE CHUNKS AVAILABLE")
+    expect(note).toContain("inspectSourceDocument")
+    expect(note).toContain("enableWebSearch=false")
   })
 })

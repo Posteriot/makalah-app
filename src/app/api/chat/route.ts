@@ -65,14 +65,10 @@ import {
     resolveSearchExecutionMode,
     type SearchExecutionMode,
 } from "@/lib/ai/web-search"
-
-const EXACT_SOURCE_INSPECTION_RULES = `EXACT SOURCE INSPECTION RULES:
-- For any request asking for an exact title, author, published date, paragraph number, or verbatim quote from a previously stored source, call inspectSourceDocument before answering.
-- Use quoteFromSource and searchAcrossSources only for semantic retrieval, not for exact paragraph positions or exact metadata verification.
-- If the requested exact detail is unavailable, say it cannot be verified exactly from the verified source data.
-- Do not infer article titles from URLs, slugs, or citation labels.
-- Never mention internal tools, RAG, retrieval, fetch pipelines, or available web sources.
-- Respond in natural narrative language.`
+import {
+    buildExactSourceInspectionRouterNote,
+    buildExactSourceInspectionSystemMessage,
+} from "@/lib/ai/exact-source-guardrails"
 
 export async function POST(req: Request) {
     try {
@@ -686,7 +682,7 @@ ${sourcesJson}`
             ...(sourcesContext
                 ? [{ role: "system" as const, content: sourcesContext }]
                 : []),
-            { role: "system" as const, content: EXACT_SOURCE_INSPECTION_RULES },
+            buildExactSourceInspectionSystemMessage(),
             ...(() => {
                 if (!hasRecentSourcesInDb) return []
                 const instr = composeSkillInstructions(buildSkillContext({
@@ -999,11 +995,7 @@ Stage policy rules (MUST follow):
 ${options.ragChunksAvailable ? `
 RAG SOURCE CHUNKS AVAILABLE:
 Stored source content from previous searches is available for follow-up inspection without a new web search.
-Use inspectSourceDocument for exact title, author, published date, paragraph number, or verbatim quote requests about existing sources.
-Use quoteFromSource and searchAcrossSources only when the user needs relevant passages or semantic matches within existing sources.
-Set enableWebSearch=false when the user asks about previously cited sources, requests quotes,
-asks for exact title/author/date/paragraph details from earlier results, or references information from prior search responses.
-Only set enableWebSearch=true when the user explicitly asks for NEW/ADDITIONAL sources on a NEW topic.` : ""}`
+${buildExactSourceInspectionRouterNote(options.ragChunksAvailable).trimStart()}` : ""}`
                 : ""
 
             const routerPrompt = `You are a "router" that decides whether the response to the user MUST use web search.
