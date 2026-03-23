@@ -129,51 +129,21 @@ function getTone(status: ReasoningTraceStatus) {
 }
 
 function getDetail(step: ReasoningTraceStep): string | null {
+  // Priority: thought (raw model thinking) > note (raw meta) > other meta fields
   if (step.thought) {
     return step.thought
   }
 
-  if (step.meta?.sourceCount && step.meta.sourceCount > 0) {
-    return `${step.meta.sourceCount} sumber tervalidasi`
-  }
-
-  if (step.meta?.toolName) {
-    return `Tool aktif: ${step.meta.toolName}`
-  }
-
-  if (step.meta?.stage) {
-    return `Tahap aktif: ${step.meta.stage}`
-  }
-
-  if (step.meta?.mode) {
-    if (step.meta.mode === "paper") return "Mode paper workflow aktif"
-    if (step.meta.mode === "websearch") return "Mode pencarian web aktif"
-    return "Mode chat normal aktif"
-  }
-
   if (step.meta?.note) {
-    return humanizeNote(step.meta.note)
+    return step.meta.note
   }
 
-  return null
-}
+  // Raw meta fields — no wrapping, no translation
+  const parts: string[] = []
+  if (step.meta?.mode) parts.push(step.meta.mode)
+  if (step.meta?.stage) parts.push(step.meta.stage)
+  if (step.meta?.toolName) parts.push(step.meta.toolName)
+  if (step.meta?.sourceCount && step.meta.sourceCount > 0) parts.push(`${step.meta.sourceCount} sources`)
 
-function humanizeNote(note: string): string {
-  const normalized = note.trim().toLowerCase()
-  if (!normalized) return note
-
-  if (normalized === "web-search-enabled") return "Pencarian web diaktifkan"
-  if (normalized === "web-search-disabled") return "Pencarian web tidak diaktifkan"
-  if (normalized === "no-web-search") return "Tidak butuh pencarian web di langkah ini"
-  if (normalized === "source-detected") return "Sumber baru terdeteksi dan sedang dicek"
-  if (normalized === "sources-validated") return "Sumber sudah diverifikasi"
-  if (normalized === "no-sources-returned") return "Belum ada sumber valid yang bisa dipakai"
-  if (normalized === "tool-running") return "Tool sedang dijalankan"
-  if (normalized === "tool-done") return "Eksekusi tool selesai"
-  if (normalized === "no-tool-detected-yet" || normalized === "no-tool-call") return "Belum ada tool yang perlu dipanggil"
-  if (normalized === "tool-completed") return "Tool yang dipakai sudah selesai"
-  if (normalized === "stopped-by-user-or-stream-abort") return "Proses dihentikan sebelum selesai"
-  if (normalized === "stream-error") return "Terjadi kendala saat streaming jawaban"
-
-  return note.replace(/-/g, " ")
+  return parts.length > 0 ? parts.join(" · ") : null
 }
