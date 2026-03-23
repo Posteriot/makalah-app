@@ -145,6 +145,7 @@ export default defineSchema({
       headline: v.string(),
       traceMode: v.union(v.literal("curated"), v.literal("transparent")),
       completedAt: v.number(),
+      durationSeconds: v.optional(v.number()),
       steps: v.array(v.object({
         stepKey: v.string(),
         label: v.string(),
