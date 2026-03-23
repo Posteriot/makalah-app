@@ -44,6 +44,7 @@ describe("fetchPageContent", () => {
 
     expect(results).toHaveLength(1)
     expect(results[0].url).toBe("https://example.com/article")
+    expect(results[0].exactMetadataAvailable).toBe(true)
     expect(results[0].rawTitle).toBe("Test Article | Example News")
     expect(results[0].title).toBe("Test Article")
     expect(results[0].author).toBe("Jane Doe")
@@ -195,22 +196,6 @@ describe("fetchPageContent — Tavily fallback", () => {
   it("falls back to Tavily when primary fetch fails", async () => {
     // Primary fetch fails
     fetchSpy.mockResolvedValueOnce(new Response("Blocked", { status: 403 }))
-    fetchSpy.mockResolvedValueOnce(
-      new Response(
-        `
-        <html>
-          <head>
-            <title>Blocked Page | Example Source</title>
-            <meta property="og:title" content="Blocked Page | Example Source" />
-            <meta property="og:site_name" content="Example Source" />
-            <meta name="author" content="Tavily Author" />
-            <meta property="article:published_time" content="2026-03-23T12:00:00Z" />
-          </head>
-        </html>
-        `,
-        { status: 200, headers: { "content-type": "text/html" } },
-      ),
-    )
 
     // Mock Tavily SDK
     vi.doMock("@tavily/core", () => ({
@@ -230,11 +215,12 @@ describe("fetchPageContent — Tavily fallback", () => {
       { tavilyApiKey: "tvly-test-key" },
     )
 
-    expect(results[0].rawTitle).toBe("Blocked Page | Example Source")
-    expect(results[0].title).toBe("Blocked Page")
-    expect(results[0].author).toBe("Tavily Author")
-    expect(results[0].publishedAt).toBe("2026-03-23T12:00:00Z")
-    expect(results[0].siteName).toBe("Example Source")
+    expect(results[0].exactMetadataAvailable).toBe(false)
+    expect(results[0].rawTitle).toBeNull()
+    expect(results[0].title).toBeNull()
+    expect(results[0].author).toBeNull()
+    expect(results[0].publishedAt).toBeNull()
+    expect(results[0].siteName).toBeNull()
     expect(results[0].pageContent).toContain("Extracted Content")
     expect(results[0].fullContent).toContain("Extracted Content")
     expect(results[0].fetchMethod).toBe("tavily")

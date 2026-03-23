@@ -15,6 +15,7 @@ export interface FetchedContent {
   author: string | null
   publishedAt: string | null
   siteName: string | null
+  exactMetadataAvailable: boolean
   paragraphs: FetchedParagraph[] | null
   documentText: string | null
   pageContent: string | null       // truncated for compose context
@@ -71,7 +72,7 @@ export async function fetchPageContent(
   const results: FetchedContent[] = primaryResults.map((settled, i) => {
     const elapsed = Date.now() - urlTimers[i]
     if (settled.status === "fulfilled" && settled.value) {
-      const { content, resolvedUrl, rawTitle, title, author, publishedAt, siteName, paragraphs, documentText } = settled.value
+      const { content, resolvedUrl, rawTitle, title, author, publishedAt, siteName, exactMetadataAvailable, paragraphs, documentText } = settled.value
       console.log(`[⏱ LATENCY] FetchWeb PRIMARY [${i+1}/${urls.length}] ✓ ${elapsed}ms ${resolvedUrl.slice(0, 70)} (${content.length} chars)`)
       return {
         url: urls[i],
@@ -81,6 +82,7 @@ export async function fetchPageContent(
         author,
         publishedAt,
         siteName,
+        exactMetadataAvailable,
         paragraphs,
         documentText,
         pageContent: truncate(content),
@@ -98,6 +100,7 @@ export async function fetchPageContent(
       author: null,
       publishedAt: null,
       siteName: null,
+      exactMetadataAvailable: false,
       paragraphs: null,
       documentText: null,
       pageContent: null,
@@ -122,17 +125,17 @@ export async function fetchPageContent(
         const idx = results.findIndex((r) => r.url === tr.url)
         if (idx !== -1 && tr.content) {
           console.log(`[FetchWeb] ✓ TAVILY ok: ${tr.url} (${tr.content.length} chars)`)
-          const metadata = await fetchExactMetadata(tr.url, timeoutMs)
           results[idx].pageContent = truncate(tr.content)
           results[idx].fullContent = truncateRag(tr.content)
           results[idx].fetchMethod = "tavily"
           // Tavily returns the real URL — use it as resolvedUrl
           results[idx].resolvedUrl = tr.url
-          results[idx].rawTitle = metadata?.rawTitle ?? null
-          results[idx].title = metadata?.title ?? null
-          results[idx].author = metadata?.author ?? null
-          results[idx].publishedAt = metadata?.publishedAt ?? null
-          results[idx].siteName = metadata?.siteName ?? null
+          results[idx].rawTitle = null
+          results[idx].title = null
+          results[idx].author = null
+          results[idx].publishedAt = null
+          results[idx].siteName = null
+          results[idx].exactMetadataAvailable = false
           results[idx].paragraphs = buildParagraphsFromText(tr.content)
           results[idx].documentText = normalizeDocumentText(tr.content)
         } else {
@@ -158,6 +161,7 @@ interface FetchParseResult {
   author: string | null
   publishedAt: string | null
   siteName: string | null
+  exactMetadataAvailable: boolean
   paragraphs: FetchedParagraph[] | null
   documentText: string | null
 }
@@ -213,6 +217,7 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParse
         author: structured.author,
         publishedAt: structured.publishedAt,
         siteName: structured.siteName,
+        exactMetadataAvailable: true,
         paragraphs,
         documentText,
       }
@@ -439,45 +444,6 @@ function buildParagraphsFromText(text: string | null): FetchedParagraph[] | null
     index: index + 1,
     text: segment,
   }))
-}
-
-async function fetchExactMetadata(url: string, timeoutMs: number): Promise<{
-  rawTitle: string | null
-  title: string | null
-  author: string | null
-  publishedAt: string | null
-  siteName: string | null
-} | null> {
-  const controller = new AbortController()
-  let timerId: ReturnType<typeof setTimeout>
-  const timeoutPromise = new Promise<null>((resolve) => {
-    timerId = setTimeout(() => {
-      controller.abort()
-      resolve(null)
-    }, timeoutMs)
-  })
-
-  const fetchPromise = (async () => {
-    try {
-      const response = await fetch(url, {
-        headers: FETCH_HEADERS,
-        signal: controller.signal,
-        redirect: "follow",
-      })
-      if (!response.ok) return null
-      const html = await response.text()
-      const { document } = parseHTML(html)
-      return extractStructuredMetadata({} as Parameters<typeof extractStructuredMetadata>[0], document)
-    } catch {
-      return null
-    }
-  })()
-
-  try {
-    return await Promise.race([fetchPromise, timeoutPromise])
-  } finally {
-    clearTimeout(timerId!)
-  }
 }
 
 function normalizeParagraphText(text: string): string {
