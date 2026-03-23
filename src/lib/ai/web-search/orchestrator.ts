@@ -388,11 +388,35 @@ export async function executeWebSearch(
 
       console.log(`[⏱ LATENCY] Phase2 contextBuild=${Date.now() - contextBuildStart}ms sysMsgCount=${composeSystemMessages.length} totalMsgCount=${composeMessages.length}`)
 
-      // ── Reasoning persistence: accumulate deltas for snapshot ──
-      // Bar is driven by data-reasoning-thought (transparent mode) — no CuratedTraceController for live emission.
-      // Snapshot is built at finish time only for DB persistence.
+      // ── Reasoning trace: live step emission (bar + panel) + persistence ──
+      // Headline driven by data-reasoning-thought (transparent thinking text).
+      // Step events driven by CuratedTraceController → data-reasoning-trace (timeline panel).
+      // Same controller used for DB persistence snapshot at finish.
       let reasoningBuffer = ""
-      console.log(`[REASONING-DIAG] compose start: reasoningTraceEnabled=${config.reasoningTraceEnabled} isTransparentReasoning=${config.isTransparentReasoning} hasReasoningProviderOptions=${!!config.reasoningProviderOptions}`)
+
+      const reasoningTrace = createCuratedTraceController({
+        enabled: config.reasoningTraceEnabled,
+        traceId: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-ws-trace`,
+        mode: "websearch",
+        stage: config.currentStage,
+        webSearchEnabled: true,
+      })
+
+      const emitTrace = (events: ReturnType<typeof reasoningTrace.markSourceDetected>) => {
+        if (!reasoningTrace.enabled || events.length === 0) return
+        for (const event of events) {
+          writer.write(event)
+        }
+      }
+
+      // Emit initial steps — bar gets steps immediately, panel can show timeline
+      emitTrace(reasoningTrace.initialEvents)
+      // Mark sources already found from Phase 1
+      if (sourceCount > 0) {
+        emitTrace(reasoningTrace.markSourceDetected())
+      }
+
+      console.log(`[REASONING-DIAG] compose start: reasoningTraceEnabled=${config.reasoningTraceEnabled} isTransparentReasoning=${config.isTransparentReasoning} hasReasoningProviderOptions=${!!config.reasoningProviderOptions} traceControllerEnabled=${reasoningTrace.enabled}`)
 
       // ── Compose failover state ──
       let composeFailoverUsed = false
@@ -623,23 +647,18 @@ export async function executeWebSearch(
             // Call onFinish with the complete result
             const onFinishStart = Date.now()
 
-            // ── Build reasoning snapshot for DB persistence only ──
+            // ── Finalize reasoning trace: emit final step events + build persistence snapshot ──
             console.log(`[REASONING-DIAG] finish: reasoningBuffer=${reasoningBuffer.length}chars reasoningChunks=${reasoningChunkCount} textChunks=${textChunkCount}`)
             let reasoningSnapshot: PersistedCuratedTraceSnapshot | undefined
-            if (config.reasoningTraceEnabled && reasoningBuffer.length > 0) {
-              const traceController = createCuratedTraceController({
-                enabled: true,
-                traceId: reasoningTraceId,
-                mode: "websearch",
-                stage: config.currentStage,
-                webSearchEnabled: true,
-              })
-              traceController.populateFromReasoning(reasoningBuffer)
-              traceController.finalize({
+            if (reasoningTrace.enabled) {
+              if (reasoningBuffer.length > 0) {
+                emitTrace(reasoningTrace.populateFromReasoning(reasoningBuffer))
+              }
+              emitTrace(reasoningTrace.finalize({
                 outcome: "done",
                 sourceCount,
-              })
-              reasoningSnapshot = traceController.getPersistedSnapshot()
+              }))
+              reasoningSnapshot = reasoningTrace.getPersistedSnapshot()
               console.log(`[REASONING-DIAG] snapshot built: steps=${reasoningSnapshot.steps.length} headline="${reasoningSnapshot.headline.slice(0, 60)}" traceMode=${reasoningSnapshot.traceMode}`)
             } else {
               console.log(`[REASONING-DIAG] no snapshot: reasoningTraceEnabled=${config.reasoningTraceEnabled} bufferLength=${reasoningBuffer.length}`)
