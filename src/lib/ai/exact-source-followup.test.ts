@@ -124,6 +124,21 @@ describe("resolveExactSourceFollowup", () => {
     }
   })
 
+  it("returns clarify when requested title does not match any verified exact source", () => {
+    const result = resolveExactSourceFollowup({
+      lastUserMessage:
+        'Sebutkan verbatim paragraf kedua dari artikel: "ChatGPT sebagai Asisten Belajar Siswa SD: Peluang, Tantangan, dan Dampaknya terhadap Literasi Digital"',
+      recentMessages: [],
+      availableExactSources,
+    })
+
+    expect(result.mode).toBe("clarify")
+    if (result.mode !== "clarify") {
+      throw new Error(`expected clarify, got ${result.mode}`)
+    }
+    expect(result.reason).toBe("exact-intent-without-unique-source")
+  })
+
   it("returns none for non exact follow-up prompts", () => {
     const result = resolveExactSourceFollowup({
       lastUserMessage: "Coba ringkas isi sumber tadi.",
