@@ -1349,6 +1349,7 @@ export function ChatWindow({
           : undefined
         const userTs = (precedingUser as unknown as { _creationTime?: number })?._creationTime
         const assistantTs = (assistant as unknown as { _creationTime?: number })?._creationTime
+        console.log(`[DURATION-DIAG] userTs=${userTs} assistantTs=${assistantTs} userKeys=${precedingUser ? Object.keys(precedingUser as object).join(",") : "none"} assistantKeys=${Object.keys(assistant as object).join(",")}`)
         const persistedDurationSeconds = typeof userTs === "number" && typeof assistantTs === "number" && assistantTs > userTs
           ? (assistantTs - userTs) / 1000
           : undefined
