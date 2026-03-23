@@ -104,7 +104,7 @@ export function ChatProcessStatusBar({
       <div className="pb-2" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
         {isProcessing ? (
           /* ── Processing mode: headline naratif + progress bar ── */
-          <div role="status" aria-live="polite" aria-label={narrativeHeadline ?? "Memproses..."}>
+          <div role="status" aria-live="polite" aria-label={narrativeHeadline ?? undefined}>
             <button
               type="button"
               onClick={openPanel}
@@ -118,7 +118,7 @@ export function ChatProcessStatusBar({
                 className="flex min-w-0 items-baseline gap-1 truncate font-mono text-[11px] leading-snug text-[var(--chat-foreground)]"
                 style={{ opacity: 0.92 }}
               >
-                <span className="truncate">{narrativeHeadline ?? "Memproses"}</span>
+                {narrativeHeadline && <span className="truncate">{narrativeHeadline}</span>}
                 <ThinkingDots />
               </span>
               <span
@@ -153,7 +153,7 @@ export function ChatProcessStatusBar({
             )}
             role="status"
             aria-live="polite"
-            aria-label={hasSteps ? "Buka aktivitas berpikir Agen" : "Aktivitas Agen"}
+            aria-label={narrativeHeadline ?? undefined}
             disabled={!hasSteps}
           >
             <span className={cn(
@@ -162,9 +162,9 @@ export function ChatProcessStatusBar({
                 ? "text-[var(--chat-destructive)]"
                 : "text-[var(--chat-muted-foreground)] opacity-60"
             )}>
-              {isError
-                ? `Ada kendala setelah ${formatDuration(durationSeconds)}`
-                : `Memproses ${formatDuration(durationSeconds)}`}
+              {narrativeHeadline
+                ? `${narrativeHeadline} · ${formatDuration(durationSeconds)}`
+                : formatDuration(durationSeconds)}
             </span>
             {hasSteps && (
               <NavArrowRight className="ml-1 h-3 w-3 text-[var(--chat-muted-foreground)] opacity-60 transition-colors group-hover:text-[var(--chat-foreground)] group-hover:opacity-100" />
