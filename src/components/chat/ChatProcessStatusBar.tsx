@@ -51,7 +51,7 @@ export function ChatProcessStatusBar({
   // traceDurationSec (from step timestamps) was unreliable: steps emitted in
   // bursts gave near-zero duration, and search/fetch phases before compose
   // were not captured in step timestamps at all.
-  const durationSeconds = Math.max(1, elapsedSeconds)
+  const durationSeconds = Math.max(0.1, elapsedSeconds)
 
   // Headline naratif dari reasoning trace (isi pikiran model)
   const narrativeHeadline = useMemo(() => {
@@ -199,8 +199,12 @@ function lowerFirst(input: string) {
 }
 
 function formatDuration(totalSeconds: number): string {
-  const safeSeconds = Math.max(0, Math.round(totalSeconds))
-  const minutes = Math.floor(safeSeconds / 60)
-  const seconds = safeSeconds % 60
-  return `${minutes}m ${seconds}d`
+  const safe = Math.max(0, totalSeconds)
+  if (safe < 60) {
+    // Under 1 minute: show seconds with 1 decimal
+    return `${safe.toFixed(1)}s`
+  }
+  const minutes = Math.floor(safe / 60)
+  const seconds = safe - minutes * 60
+  return `${minutes}m ${seconds.toFixed(0)}s`
 }

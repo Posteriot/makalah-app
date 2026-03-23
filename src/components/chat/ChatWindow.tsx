@@ -1435,18 +1435,21 @@ export function ChatWindow({
         setProcessUi((prev) => {
           if (!prev.visible) return prev
           const nextProgress = Math.min(prev.progress + (prev.progress < 70 ? 4 : 2), 92)
-          const elapsed = processStartedAtRef.current
-            ? Math.max(1, Math.round((Date.now() - processStartedAtRef.current) / 1000))
-            : Math.max(prev.elapsedSeconds, 1)
+          const elapsedMs = processStartedAtRef.current
+            ? Date.now() - processStartedAtRef.current
+            : 0
+          const elapsed = elapsedMs > 0 ? elapsedMs / 1000 : Math.max(prev.elapsedSeconds, 1)
           return { ...prev, progress: nextProgress, elapsedSeconds: elapsed }
         })
       }, 220)
     } else if (status === "ready" && hadGeneratingStatus) {
       clearProcessTimers()
       const wasStoppedManually = stoppedManuallyRef.current
-      const elapsed = processStartedAtRef.current
-        ? Math.max(1, Math.round((Date.now() - processStartedAtRef.current) / 1000))
-        : 1
+      const elapsedMs = processStartedAtRef.current
+        ? Date.now() - processStartedAtRef.current
+        : 0
+      const elapsed = elapsedMs > 0 ? elapsedMs / 1000 : 1
+      console.log(`[PROCESS-DIAG] ready: elapsedMs=${elapsedMs} elapsedSec=${elapsed.toFixed(1)} startedAt=${processStartedAtRef.current}`)
       setProcessUi({
         visible: true,
         status: wasStoppedManually ? "stopped" : "ready",
@@ -1457,9 +1460,10 @@ export function ChatWindow({
       processStartedAtRef.current = null
     } else if (status === "error" && hadGeneratingStatus) {
       clearProcessTimers()
-      const elapsed = processStartedAtRef.current
-        ? Math.max(1, Math.round((Date.now() - processStartedAtRef.current) / 1000))
-        : 1
+      const elapsedMs = processStartedAtRef.current
+        ? Date.now() - processStartedAtRef.current
+        : 0
+      const elapsed = elapsedMs > 0 ? elapsedMs / 1000 : 1
       setProcessUi({
         visible: true,
         status: "error",
