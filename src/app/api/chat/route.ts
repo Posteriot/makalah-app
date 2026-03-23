@@ -2199,6 +2199,7 @@ Aturan:
                         const combinedModelName = `${retrieverModelName}+${modelNames.primary.model}`
 
                         // ──── Save assistant message ────
+                        console.log(`[REASONING-DIAG][route] websearch onFinish: hasReasoningSnapshot=${!!result.reasoningSnapshot} snapshotSteps=${result.reasoningSnapshot?.steps?.length ?? 0} textLength=${result.text.length} sourcesCount=${result.sources.length}`)
                         await saveAssistantMessage(
                             result.text,
                             result.sources.length > 0 ? result.sources : undefined,

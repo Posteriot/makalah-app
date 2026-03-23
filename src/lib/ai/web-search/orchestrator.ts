@@ -392,6 +392,7 @@ export async function executeWebSearch(
       // Bar is driven by data-reasoning-thought (transparent mode) — no CuratedTraceController for live emission.
       // Snapshot is built at finish time only for DB persistence.
       let reasoningBuffer = ""
+      console.log(`[REASONING-DIAG] compose start: reasoningTraceEnabled=${config.reasoningTraceEnabled} isTransparentReasoning=${config.isTransparentReasoning} hasReasoningProviderOptions=${!!config.reasoningProviderOptions}`)
 
       // ── Compose failover state ──
       let composeFailoverUsed = false
@@ -479,6 +480,9 @@ export async function executeWebSearch(
             const sanitized = sanitizeReasoningDelta(chunk.delta ?? "")
             // Accumulate ALL raw deltas for persistence (not just sampled ones)
             reasoningBuffer += chunk.delta ?? ""
+            if (reasoningChunkCount === 1) {
+              console.log(`[REASONING-DIAG] first reasoning-delta received, accumulating for persistence`)
+            }
             if (sanitized.trim() && (reasoningChunkCount % 3 === 0 || sanitized.length > 100)) {
               writer.write({
                 type: "data-reasoning-thought",
@@ -496,7 +500,9 @@ export async function executeWebSearch(
 
         // Handle error/abort chunks — retry if no text sent yet
         if (chunk.type === "error" || chunk.type === "abort") {
+          console.warn(`[COMPOSE-DIAG] ${chunk.type} chunk received, textChunkCount=${textChunkCount} canFailover=${canFailover}`)
           if (textChunkCount === 0 && canFailover) {
+            console.warn(`[COMPOSE-DIAG] returning retry — will attempt fallback compose`)
             return "retry"
           }
           // Text already sent — forward and break (can't retry)
@@ -618,6 +624,7 @@ export async function executeWebSearch(
             const onFinishStart = Date.now()
 
             // ── Build reasoning snapshot for DB persistence only ──
+            console.log(`[REASONING-DIAG] finish: reasoningBuffer=${reasoningBuffer.length}chars reasoningChunks=${reasoningChunkCount} textChunks=${textChunkCount}`)
             let reasoningSnapshot: PersistedCuratedTraceSnapshot | undefined
             if (config.reasoningTraceEnabled && reasoningBuffer.length > 0) {
               const traceController = createCuratedTraceController({
@@ -633,6 +640,9 @@ export async function executeWebSearch(
                 sourceCount,
               })
               reasoningSnapshot = traceController.getPersistedSnapshot()
+              console.log(`[REASONING-DIAG] snapshot built: steps=${reasoningSnapshot.steps.length} headline="${reasoningSnapshot.headline.slice(0, 60)}" traceMode=${reasoningSnapshot.traceMode}`)
+            } else {
+              console.log(`[REASONING-DIAG] no snapshot: reasoningTraceEnabled=${config.reasoningTraceEnabled} bufferLength=${reasoningBuffer.length}`)
             }
 
             if (composeFailoverUsed) {
