@@ -231,6 +231,26 @@ export default defineSchema({
       filterFields: ["conversationId", "sourceType", "sourceId"],
     }),
 
+  sourceDocuments: defineTable({
+    conversationId: v.id("conversations"),
+    sourceId: v.string(),
+    originalUrl: v.string(),
+    resolvedUrl: v.string(),
+    title: v.optional(v.string()),
+    author: v.optional(v.string()),
+    publishedAt: v.optional(v.string()),
+    siteName: v.optional(v.string()),
+    paragraphs: v.array(v.object({
+      index: v.number(),
+      text: v.string(),
+    })),
+    documentText: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_conversation", ["conversationId", "createdAt"])
+    .index("by_source", ["conversationId", "sourceId"]),
+
   // Style Constitutions for Refrasa tool (admin-managed)
   // Two-layer architecture: Layer 1 (Naturalness) and Layer 2 (Style) both editable via this table
   // Hardcoded Layer 1 serves as fallback when no active naturalness constitution exists
