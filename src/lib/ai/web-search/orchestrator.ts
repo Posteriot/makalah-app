@@ -507,7 +507,7 @@ export async function executeWebSearch(
             if (reasoningChunkCount === 1) {
               console.log(`[REASONING-DIAG] first reasoning-delta received, accumulating for persistence`)
             }
-            if (sanitized.trim() && (reasoningChunkCount % 3 === 0 || sanitized.length > 100)) {
+            if (sanitized.trim() && (reasoningChunkCount === 1 || reasoningChunkCount % 3 === 0 || sanitized.length > 100)) {
               writer.write({
                 type: "data-reasoning-thought",
                 id: `${reasoningTraceId}-thought-${reasoningChunkCount}`,
