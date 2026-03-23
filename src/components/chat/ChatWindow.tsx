@@ -1319,9 +1319,15 @@ export function ChatWindow({
       const liveThought = extractLiveThought(assistant)
       const headline = liveThought || extractReasoningHeadline(assistant, steps)
       if (steps.length > 0 || headline) {
+        // Extract persisted duration from reasoningTrace (for rehydrate after reload)
+        const persistedTrace = (assistant as unknown as { reasoningTrace?: { durationSeconds?: number } }).reasoningTrace
+        const persistedDurationSeconds = typeof persistedTrace?.durationSeconds === "number" && Number.isFinite(persistedTrace.durationSeconds)
+          ? persistedTrace.durationSeconds
+          : undefined
         return {
           steps,
           headline,
+          persistedDurationSeconds,
         }
       }
     }
@@ -1329,6 +1335,7 @@ export function ChatWindow({
     return {
       steps: [] as ReasoningTraceStep[],
       headline: null as string | null,
+      persistedDurationSeconds: undefined as number | undefined,
     }
   }, [messages])
 
@@ -2350,6 +2357,7 @@ export function ChatWindow({
           status={processUi.status}
           progress={processUi.progress}
           elapsedSeconds={processUi.elapsedSeconds}
+          persistedDurationSeconds={activeReasoningState.persistedDurationSeconds}
           reasoningSteps={activeReasoningState.steps}
           reasoningHeadline={activeReasoningState.headline}
           isPanelOpen={activeSheet === "proses"}

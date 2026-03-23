@@ -22,6 +22,8 @@ interface ChatProcessStatusBarProps {
   status: ChatProcessStatus
   progress: number
   elapsedSeconds: number
+  /** Duration from persisted trace (for rehydrate after reload). */
+  persistedDurationSeconds?: number
   reasoningSteps?: ReasoningTraceStep[]
   reasoningHeadline?: string | null
   /** External control for the reasoning panel open state */
@@ -34,6 +36,7 @@ export function ChatProcessStatusBar({
   status,
   progress,
   elapsedSeconds,
+  persistedDurationSeconds,
   reasoningSteps = [],
   reasoningHeadline,
   isPanelOpen,
@@ -48,11 +51,11 @@ export function ChatProcessStatusBar({
   const isProcessing = status === "submitted" || status === "streaming"
   const isError = status === "error"
 
-  // Use elapsedSeconds as the single source of truth for duration.
-  // traceDurationSec (from step timestamps) was unreliable: steps emitted in
-  // bursts gave near-zero duration, and search/fetch phases before compose
-  // were not captured in step timestamps at all.
-  const durationSeconds = Math.max(0.1, elapsedSeconds)
+  // Live: elapsedSeconds from processStartedAtRef timer.
+  // Rehydrate: persistedDurationSeconds from DB (elapsedSeconds is 0 after reload).
+  const durationSeconds = elapsedSeconds > 0.5
+    ? elapsedSeconds
+    : persistedDurationSeconds ?? Math.max(0.1, elapsedSeconds)
 
   // Headline naratif dari reasoning trace (isi pikiran model)
   const narrativeHeadline = useMemo(() => {

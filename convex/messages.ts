@@ -31,6 +31,7 @@ const reasoningTraceValidator = v.object({
     headline: v.string(),
     traceMode: v.union(v.literal("curated"), v.literal("transparent")),
     completedAt: v.number(),
+    durationSeconds: v.optional(v.number()),
     steps: v.array(reasoningTraceStepValidator),
 })
 

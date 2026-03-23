@@ -38,6 +38,8 @@ export interface PersistedCuratedTraceSnapshot {
   headline: string
   traceMode: "curated" | "transparent"
   completedAt: number
+  /** Total request duration in seconds (for rehydrate after reload). */
+  durationSeconds?: number
   steps: Array<{
     stepKey: CuratedTraceStepKey
     label: string
