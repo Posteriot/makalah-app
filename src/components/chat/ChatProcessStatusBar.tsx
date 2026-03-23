@@ -8,6 +8,15 @@ import { type ReasoningTraceStep } from "./ReasoningTracePanel"
 
 type ChatProcessStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
 
+const TEMPLATE_LABELS = new Set([
+  "Memahami kebutuhan user",
+  "Memeriksa konteks paper aktif",
+  "Menentukan kebutuhan pencarian web",
+  "Memvalidasi sumber referensi",
+  "Menyusun jawaban final",
+  "Menjalankan aksi pendukung",
+])
+
 interface ChatProcessStatusBarProps {
   visible: boolean
   status: ChatProcessStatus
@@ -54,17 +63,34 @@ export function ChatProcessStatusBar({
 
   // Headline naratif dari reasoning trace (isi pikiran model)
   const narrativeHeadline = useMemo(() => {
+    // Priority 1: raw model thinking from live stream
     if (reasoningHeadline && reasoningHeadline.trim()) return reasoningHeadline
+
     if (reasoningSteps.length === 0) return null
 
+    // Priority 2: non-template step labels (transparent/raw)
     const running = reasoningSteps.find((step) => step.status === "running")
-    if (running) return running.label
+    if (running) {
+      if (!TEMPLATE_LABELS.has(running.label)) return running.label
+      if (running.thought) return running.thought.trim()
+    }
 
     const errored = reasoningSteps.find((step) => step.status === "error")
-    if (errored) return `Terjadi kendala saat ${lowerFirst(errored.label)}.`
+    if (errored) {
+      if (!TEMPLATE_LABELS.has(errored.label)) return errored.label
+      if (errored.thought) return errored.thought.trim()
+    }
 
-    const lastStep = reasoningSteps[reasoningSteps.length - 1]
-    return lastStep?.label ?? null
+    // Priority 3: any step with raw content
+    const withContent = [...reasoningSteps].reverse().find((s) =>
+      !TEMPLATE_LABELS.has(s.label) || (s.thought && s.thought.trim())
+    )
+    if (withContent) {
+      if (!TEMPLATE_LABELS.has(withContent.label)) return withContent.label
+      if (withContent.thought) return withContent.thought.trim()
+    }
+
+    return null
   }, [reasoningHeadline, reasoningSteps])
 
   const shouldShow = Boolean(narrativeHeadline) || (visible && reasoningSteps.length > 0)

@@ -366,16 +366,33 @@ function extractReasoningHeadline(uiMessage: UIMessage, steps: ReasoningTraceSte
 
   if (steps.length === 0) return null
 
+  // Prefer non-template labels (raw model thinking) over hardcoded text
   const running = steps.find((step) => step.status === "running")
   if (running) {
-    if (isTemplateLabel(running.label)) return "Berpikir..."
-    return running.label
+    if (!isTemplateLabel(running.label)) return running.label
+    // Template label — check if any step has a thought we can use
+    const withThought = steps.find((s) => s.thought && s.thought.trim())
+    if (withThought?.thought) return withThought.thought.trim()
+    return null // let caller fall back to liveThought or other sources
   }
 
   const errored = steps.find((step) => step.status === "error")
-  if (errored) return `Terjadi kendala saat ${lowerFirst(errored.label)}.`
+  if (errored) {
+    if (!isTemplateLabel(errored.label)) return errored.label
+    if (errored.thought) return errored.thought.trim()
+    return null
+  }
 
-  return "Selesai menyusun jawaban."
+  // Completed — use last non-template label or thought
+  const lastWithContent = [...steps].reverse().find((s) =>
+    !isTemplateLabel(s.label) || (s.thought && s.thought.trim())
+  )
+  if (lastWithContent) {
+    if (!isTemplateLabel(lastWithContent.label)) return lastWithContent.label
+    if (lastWithContent.thought) return lastWithContent.thought.trim()
+  }
+
+  return null
 }
 
 function lowerFirst(input: string) {

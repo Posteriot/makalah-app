@@ -182,7 +182,7 @@ export function segmentReasoning(
 
   const headline = sentences.length > 0
     ? sentences[sentences.length - 1].slice(0, 120)
-    : `Proses ${fallbackMode === "paper" ? "paper" : fallbackMode === "websearch" ? "pencarian" : "chat"} selesai.`
+    : ""
 
   return { stepThoughts, stepLabels, headline }
 }
@@ -198,22 +198,36 @@ function lowerFirst(input: string) {
 
 function buildHeadlineFromSteps(steps: Record<CuratedTraceStepKey, InternalStep>): string {
   const allSteps = Object.values(steps)
+
+  // Prefer raw model thinking (non-template labels or thoughts) over hardcoded text
+  const findRawContent = (step: InternalStep): string | null => {
+    if (step.label !== STEP_LABELS[step.key]) return step.label
+    if (step.meta?.note && step.meta.note !== STEP_LABELS[step.key]) return step.meta.note
+    return null
+  }
+
   const running = allSteps.find((step) => step.status === "running")
-  if (running) return `Agen lagi ${lowerFirst(running.label)}...`
+  if (running) {
+    const raw = findRawContent(running)
+    if (raw) return raw
+  }
 
   const errored = allSteps.find((step) => step.status === "error")
-  if (errored) return `Agen ketemu kendala saat ${lowerFirst(errored.label)}.`
+  if (errored) {
+    const raw = findRawContent(errored)
+    if (raw) return raw
+  }
 
-  const composeStep = steps["response-compose"]
-  if (composeStep.status === "done") return "Agen sudah selesai nyusun jawaban."
-  if (composeStep.status === "skipped") return "Proses penyusunan jawaban dihentikan."
-
+  // Use last completed step's raw content
   const completedByProgress = allSteps
     .filter((step) => step.status === "done")
-    .sort((a, b) => b.progress - a.progress)[0]
+    .sort((a, b) => b.progress - a.progress)
+  for (const step of completedByProgress) {
+    const raw = findRawContent(step)
+    if (raw) return raw
+  }
 
-  if (completedByProgress) return `${completedByProgress.label} selesai.`
-  return "Agen lagi nyusun jawaban..."
+  return ""
 }
 
 function normalizeErrorNote(errorNote?: string) {
