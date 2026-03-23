@@ -93,6 +93,8 @@ The search results below are your source material. Use them.
 ═══════════════════════════════════════════════════════════════════
 `.trim()
 
+const MAX_EXACT_DOCUMENT_TEXT_CHARS = 80_000
+
 /**
  * Execute a three-phase web search flow:
  *   Phase 1:   Silent search via retriever chain (runs BEFORE stream creation)
@@ -698,7 +700,7 @@ export async function executeWebSearch(
 
             const convexOptions = config.convexToken ? { token: config.convexToken } : undefined
 
-            // ── Exact document persist + RAG ingest: fire-and-forget, SEQUENTIAL ──
+            // ── Exact document persist + RAG ingest: fire-and-forget, isolated ──
             // Keep the existing RAG path intact and persist exact source documents
             // alongside it so exact-inspection queries can read structured metadata.
             const ragSourceCount = fetchedContent.filter((f) => f.fullContent).length
@@ -710,13 +712,14 @@ export async function executeWebSearch(
               console.log(`[⏱ LATENCY] RAG ingest starting (fire-and-forget): ${ragSourceCount} sources`)
             }
             void (async () => {
-              const ragStart = Date.now()
-
+              const exactStart = Date.now()
               let exactIdx = 0
+
               for (const fetched of fetchedContent) {
                 if (!fetched.fullContent || !fetched.documentText) continue
                 try {
                   const sourceStart = Date.now()
+                  const exactDocumentText = limitExactDocumentText(fetched.documentText)
                   await fetchMutation(
                     api.sourceDocuments.upsertDocument,
                     {
@@ -729,45 +732,50 @@ export async function executeWebSearch(
                       ...(typeof fetched.publishedAt === "string" ? { publishedAt: fetched.publishedAt } : {}),
                       ...(typeof fetched.siteName === "string" ? { siteName: fetched.siteName } : {}),
                       paragraphs: fetched.paragraphs ?? [],
-                      documentText: fetched.documentText,
+                      documentText: exactDocumentText,
                     },
                     convexOptions,
                   )
                   exactIdx++
-                  console.log(`[⏱ LATENCY] Exact source persist [${exactIdx}/${exactSourceCount}] ${fetched.resolvedUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms`)
+                  console.log(`[⏱ LATENCY] Exact source persist [${exactIdx}/${exactSourceCount}] ${fetched.resolvedUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms${exactDocumentText.length < fetched.documentText.length ? ` capped=${exactDocumentText.length}` : ""}`)
                 } catch (err) {
                   exactIdx++
                   console.error(`[⏱ LATENCY] Exact source persist [${exactIdx}/${exactSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`, err)
                 }
               }
 
+              if (exactSourceCount > 0) {
+                console.log(`[⏱ LATENCY] Exact source persist ALL DONE total=${Date.now() - exactStart}ms sources=${exactSourceCount}`)
+              }
+            })()
+
+            void (async () => {
+              const ragStart = Date.now()
               let ragIdx = 0
+
               for (const fetched of fetchedContent) {
-                if (fetched.fullContent) {
-                  try {
-                    const sourceStart = Date.now()
-                    // Use resolvedUrl for RAG sourceId (real URL, not proxy)
-                    const realUrl = fetched.resolvedUrl
-                    const source = enrichedSources.find((s) => s.url === realUrl || s.url === fetched.url)
-                    await ingestToRag({
-                      conversationId: config.conversationId,
-                      sourceType: "web",
-                      sourceId: realUrl,
-                      content: fetched.fullContent,
-                      metadata: { title: source?.title },
-                      convexToken: config.convexToken,
-                    })
-                    ragIdx++
-                    console.log(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] ${realUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms`)
-                  } catch (err) {
-                    ragIdx++
-                    console.error(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`, err)
-                  }
+                if (!fetched.fullContent) continue
+                try {
+                  const sourceStart = Date.now()
+                  // Use resolvedUrl for RAG sourceId (real URL, not proxy)
+                  const realUrl = fetched.resolvedUrl
+                  const source = enrichedSources.find((s) => s.url === realUrl || s.url === fetched.url)
+                  await ingestToRag({
+                    conversationId: config.conversationId,
+                    sourceType: "web",
+                    sourceId: realUrl,
+                    content: fetched.fullContent,
+                    metadata: { title: source?.title },
+                    convexToken: config.convexToken,
+                  })
+                  ragIdx++
+                  console.log(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] ${realUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms`)
+                } catch (err) {
+                  ragIdx++
+                  console.error(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`, err)
                 }
               }
-              if (exactSourceCount > 0) {
-                console.log(`[⏱ LATENCY] Exact source persist ALL DONE total=${Date.now() - ragStart}ms sources=${exactSourceCount}`)
-              }
+
               if (ragSourceCount > 0) {
                 console.log(`[⏱ LATENCY] RAG ingest ALL DONE total=${Date.now() - ragStart}ms sources=${ragSourceCount}`)
               }
@@ -859,4 +867,15 @@ export async function executeWebSearch(
   })
 
   return createUIMessageStreamResponse({ stream })
+}
+
+function limitExactDocumentText(text: string): string {
+  const normalized = text.replace(/\r\n/g, "\n").trim()
+  if (normalized.length <= MAX_EXACT_DOCUMENT_TEXT_CHARS) return normalized
+
+  const truncated = normalized.slice(0, MAX_EXACT_DOCUMENT_TEXT_CHARS)
+  const lastBreak = truncated.lastIndexOf("\n\n")
+  return lastBreak > MAX_EXACT_DOCUMENT_TEXT_CHARS * 0.5
+    ? `${truncated.slice(0, lastBreak)}\n\n[content truncated]`
+    : `${truncated}\n\n[content truncated]`
 }
