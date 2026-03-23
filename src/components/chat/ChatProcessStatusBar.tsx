@@ -56,6 +56,7 @@ export function ChatProcessStatusBar({
   const durationSeconds = elapsedSeconds > 0.5
     ? elapsedSeconds
     : persistedDurationSeconds ?? Math.max(0.1, elapsedSeconds)
+  console.log(`[STATUSBAR-DIAG] elapsedSeconds=${elapsedSeconds} persistedDurationSeconds=${persistedDurationSeconds} durationSeconds=${durationSeconds} status=${status} visible=${visible}`)
 
   // Headline naratif dari reasoning trace (isi pikiran model)
   const narrativeHeadline = useMemo(() => {
