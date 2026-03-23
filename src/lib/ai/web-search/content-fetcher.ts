@@ -487,13 +487,13 @@ function collectReadableBlocks(root: ParentNode): string[] {
   const blocks: string[] = []
 
   const visit = (node: ChildNode) => {
-    if (node.nodeType === Node.TEXT_NODE) {
+    if (node.nodeType === 3) {
       const text = normalizeParagraphText(node.textContent ?? "")
       if (text) blocks.push(text)
       return
     }
 
-    if (node.nodeType !== Node.ELEMENT_NODE) return
+    if (node.nodeType !== 1) return
 
     const element = node as Element
     const tagName = element.tagName.toLowerCase()
