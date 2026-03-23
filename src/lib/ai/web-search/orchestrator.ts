@@ -97,6 +97,7 @@ const MAX_EXACT_DOCUMENT_TEXT_CHARS = 80_000
 const MAX_EXACT_PARAGRAPH_COUNT = 120
 const MAX_EXACT_PARAGRAPH_TEXT_CHARS = 24_000
 const EXACT_TRUNCATION_MARKER = "[exact payload truncated: tail omitted]"
+const EXACT_PARAGRAPH_TAIL_MARKER = "[truncated]"
 
 /**
  * Execute a three-phase web search flow:
@@ -894,7 +895,7 @@ function limitExactParagraphs(
 
   const limited: Array<{ index: number; text: string }> = []
   let remainingCount = MAX_EXACT_PARAGRAPH_COUNT
-  let remainingChars = Math.max(0, MAX_EXACT_PARAGRAPH_TEXT_CHARS - EXACT_TRUNCATION_MARKER.length)
+  let remainingChars = Math.max(0, MAX_EXACT_PARAGRAPH_TEXT_CHARS - EXACT_PARAGRAPH_TAIL_MARKER.length)
   let truncated = false
 
   for (const paragraph of paragraphs) {
@@ -913,13 +914,7 @@ function limitExactParagraphs(
       continue
     }
 
-    if (remainingChars > EXACT_TRUNCATION_MARKER.length) {
-      const bodyChars = remainingChars - EXACT_TRUNCATION_MARKER.length
-      limited.push({
-        index: paragraph.index,
-        text: `${normalized.slice(0, bodyChars)}${EXACT_TRUNCATION_MARKER}`,
-      })
-    } else {
+    if (remainingChars > 0) {
       limited.push({
         index: paragraph.index,
         text: normalized.slice(0, remainingChars),
@@ -933,7 +928,7 @@ function limitExactParagraphs(
   if (truncated) {
     limited.push({
       index: -1,
-      text: EXACT_TRUNCATION_MARKER,
+      text: EXACT_PARAGRAPH_TAIL_MARKER,
     })
   }
 
