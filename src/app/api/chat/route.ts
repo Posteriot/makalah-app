@@ -2088,9 +2088,7 @@ Aturan:
             const primaryReasoningProviderOptions = buildReasoningProviderOptions({
                 settings: reasoningSettings,
                 target: "primary",
-                profile: enableWebSearch || shouldForceSubmitValidation || shouldForceGetCurrentPaperState
-                    ? "tool-heavy"
-                    : "narrative",
+                profile: "narrative",
             })
 
             const fullMessagesGateway = enableWebSearch
@@ -2191,13 +2189,7 @@ Aturan:
                     samplingOptions,
                     reasoningTraceEnabled,
                     isTransparentReasoning,
-                    // Compose phase has no tools — use narrative profile for full thinking budget
-                    // (primaryReasoningProviderOptions uses tool-heavy with 96-token cap)
-                    reasoningProviderOptions: buildReasoningProviderOptions({
-                        settings: reasoningSettings,
-                        target: "primary",
-                        profile: "narrative",
-                    }) ?? undefined,
+                    reasoningProviderOptions: primaryReasoningProviderOptions ?? undefined,
                     traceMode: getTraceModeLabel(!!paperModePrompt, true),
                     isDraftingStage,
                     onFinish: async (result) => {
