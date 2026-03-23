@@ -1231,6 +1231,7 @@ export function ChatWindow({
 
         return {
           id: msg._id,
+          _creationTime: msg._creationTime,
           role: msg.role as "user" | "assistant" | "system" | "data",
           content: msg.content,
           fileIds: msg.fileIds,
