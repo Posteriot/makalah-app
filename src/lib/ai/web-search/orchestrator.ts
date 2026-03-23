@@ -138,6 +138,7 @@ export async function persistExactSourceDocuments(params: {
             ? { publishedAt: fetched.publishedAt }
             : {}),
           ...(typeof fetched.siteName === "string" ? { siteName: fetched.siteName } : {}),
+          documentKind: fetched.documentKind,
           paragraphs: exactParagraphs,
           documentText: exactDocumentText,
         },

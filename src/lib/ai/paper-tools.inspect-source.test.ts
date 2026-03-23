@@ -52,6 +52,7 @@ describe("createPaperTools.inspectSourceDocument", () => {
       author: "Penulis",
       publishedAt: "2026-03-23",
       siteName: "Contoh Media",
+      documentKind: "html",
       paragraphs: [
         { index: 1, text: "Paragraf pertama" },
         { index: 2, text: "Paragraf kedua" },
@@ -70,11 +71,13 @@ describe("createPaperTools.inspectSourceDocument", () => {
     expect(result.author).toBe("Penulis")
     expect(result.publishedAt).toBe("2026-03-23")
     expect(result.siteName).toBe("Contoh Media")
+    expect(result.documentKind).toBe("html")
     expect(result.exactAvailable).toMatchObject({
       title: true,
       author: true,
       publishedAt: true,
       siteName: true,
+      documentKind: true,
       paragraphs: true,
     })
     expect(result.paragraphs).toEqual([
@@ -93,6 +96,7 @@ describe("createPaperTools.inspectSourceDocument", () => {
     const fetchQueryMock = vi.mocked(fetchQuery)
     fetchQueryMock.mockResolvedValue({
       title: "Judul Artikel",
+      documentKind: "html",
       paragraphs: [
         { index: 1, text: "Paragraf pertama" },
         { index: 2, text: "Paragraf kedua" },
@@ -108,6 +112,7 @@ describe("createPaperTools.inspectSourceDocument", () => {
     expect(result.requestedParagraph).toEqual({ index: 2, text: "Paragraf kedua" })
     expect(result.paragraphs).toBeUndefined()
     expect(result.title).toBe("Judul Artikel")
+    expect(result.documentKind).toBe("html")
   })
 
   it("gagal kalau source document tidak ditemukan", async () => {
@@ -129,6 +134,7 @@ describe("createPaperTools.inspectSourceDocument", () => {
       author: "Penulis",
       publishedAt: "2026-03-23",
       siteName: "Contoh Media",
+      documentKind: "html",
       paragraphs: [
         { index: 1, text: "Paragraf pertama" },
         { index: 2, text: "Paragraf kedua" },
@@ -146,12 +152,14 @@ describe("createPaperTools.inspectSourceDocument", () => {
     expect(result.author).toBeUndefined()
     expect(result.publishedAt).toBeUndefined()
     expect(result.siteName).toBeUndefined()
+    expect(result.documentKind).toBeUndefined()
     expect(result.paragraphs).toBeUndefined()
     expect(result.exactAvailable).toMatchObject({
       title: true,
       author: true,
       publishedAt: true,
       siteName: true,
+      documentKind: true,
       paragraphs: true,
     })
   })

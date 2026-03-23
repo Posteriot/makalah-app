@@ -50,6 +50,7 @@ describe("fetchPageContent", () => {
     expect(results[0].author).toBe("Jane Doe")
     expect(results[0].publishedAt).toBe("2026-03-23T10:00:00Z")
     expect(results[0].siteName).toBe("Example News")
+    expect(results[0].documentKind).toBe("html")
     expect(results[0].documentText).toBeTruthy()
     expect(results[0].documentText).toContain("main content")
     expect(results[0].documentText).not.toContain("Author:")
@@ -246,6 +247,7 @@ describe("fetchPageContent", () => {
     expect(results[0].pageContent).toBeNull()
     expect(results[0].fullContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
+    expect(results[0].documentKind).toBe("unknown")
   })
 
   it("returns null pageContent when fetch returns non-200", async () => {
@@ -259,6 +261,7 @@ describe("fetchPageContent", () => {
     expect(results[0].pageContent).toBeNull()
     expect(results[0].fullContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
+    expect(results[0].documentKind).toBe("unknown")
   })
 
   it("returns null pageContent when fetch throws (network error)", async () => {
@@ -270,6 +273,7 @@ describe("fetchPageContent", () => {
     expect(results[0].pageContent).toBeNull()
     expect(results[0].fullContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
+    expect(results[0].documentKind).toBe("unknown")
   })
 
   it("handles multiple URLs in parallel", async () => {
@@ -378,6 +382,7 @@ describe("fetchPageContent — Tavily fallback", () => {
     expect(results[0].author).toBeNull()
     expect(results[0].publishedAt).toBeNull()
     expect(results[0].siteName).toBeNull()
+    expect(results[0].documentKind).toBe("unknown")
     expect(results[0].pageContent).toContain("Extracted Content")
     expect(results[0].fullContent).toContain("Extracted Content")
     expect(results[0].fetchMethod).toBe("tavily")

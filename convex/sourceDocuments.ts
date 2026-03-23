@@ -15,6 +15,7 @@ type SourceDocumentRecord = {
     sourceId: string
     originalUrl: string
     resolvedUrl: string
+    documentKind?: "html" | "pdf" | "unknown"
     createdAt: number
     updatedAt: number
 }
@@ -24,6 +25,7 @@ type SourceDocumentSummaryRecord = SourceDocumentRecord & {
     author?: string
     publishedAt?: string
     siteName?: string
+    documentKind?: "html" | "pdf" | "unknown"
 }
 
 type SourceDocumentSummary = {
@@ -34,6 +36,7 @@ type SourceDocumentSummary = {
     author?: string
     publishedAt?: string
     siteName?: string
+    documentKind?: "html" | "pdf" | "unknown"
 }
 
 function sortSourceDocumentsForDeterministicSelection(
@@ -73,6 +76,9 @@ function toSourceDocumentSummary(document: SourceDocumentSummaryRecord): SourceD
         ...(typeof document.author === "string" ? { author: document.author } : {}),
         ...(typeof document.publishedAt === "string" ? { publishedAt: document.publishedAt } : {}),
         ...(typeof document.siteName === "string" ? { siteName: document.siteName } : {}),
+        ...(typeof document.documentKind === "string"
+            ? { documentKind: document.documentKind }
+            : {}),
     }
 }
 
@@ -86,6 +92,11 @@ export const upsertDocument = mutation({
         author: v.optional(v.string()),
         publishedAt: v.optional(v.string()),
         siteName: v.optional(v.string()),
+        documentKind: v.optional(v.union(
+            v.literal("html"),
+            v.literal("pdf"),
+            v.literal("unknown"),
+        )),
         paragraphs: v.array(paragraphValidator),
         documentText: v.string(),
     },
@@ -114,6 +125,7 @@ export const upsertDocument = mutation({
             ...(typeof args.author === "string" ? { author: args.author } : {}),
             ...(typeof args.publishedAt === "string" ? { publishedAt: args.publishedAt } : {}),
             ...(typeof args.siteName === "string" ? { siteName: args.siteName } : {}),
+            ...(typeof args.documentKind === "string" ? { documentKind: args.documentKind } : {}),
             paragraphs: args.paragraphs,
             documentText: args.documentText,
             updatedAt: now,

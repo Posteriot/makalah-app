@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildSourceInventoryContext,
+  buildSourceProvenanceSystemMessage,
   buildDeterministicExactSourcePrepareStep,
   buildDeterministicExactSourceClarifyNote,
   buildDeterministicExactSourceForceInspectNote,
   buildExactSourceInspectionRouterNote,
   buildExactSourceInspectionSystemMessage,
+  shouldIncludeRawSourcesContextForExactFollowup,
   EXACT_SOURCE_INSPECTION_RULES,
   EXACT_SOURCE_NARRATIVE_BANNED_PHRASES,
 } from "./exact-source-guardrails"
@@ -53,6 +56,7 @@ describe("chat exact source guardrails", () => {
 
     expect(note).toContain("Ask a brief clarification question")
     expect(note).toContain("Do not guess")
+    expect(note).toContain("Do not introduce a different source")
     expect(note).not.toContain("metadata sumber")
   })
 
@@ -66,6 +70,16 @@ describe("chat exact source guardrails", () => {
       ])
     )
     expect(EXACT_SOURCE_INSPECTION_RULES).toContain("Do not say phrases like")
+  })
+
+  it("builds provenance rules that forbid pdf and read-status guessing", () => {
+    const message = buildSourceProvenanceSystemMessage()
+
+    expect(message.content).toContain("Do not infer PDF")
+    expect(message.content).toContain("Do not claim you have read")
+    expect(message.content).toContain("SOURCE INVENTORY")
+    expect(message.content).toContain('documentKind="html"')
+    expect(message.content).toContain("separate them explicitly")
   })
 
   it("builds prepareStep wiring for deterministic exact-source force-inspect mode", () => {
@@ -136,5 +150,69 @@ describe("chat exact source guardrails", () => {
     expect(routePlan.messages).toEqual(baseMessages)
     expect(routePlan.prepareStep).toBeUndefined()
     expect(routePlan.maxToolSteps).toBeUndefined()
+  })
+
+  it("disables raw web-source context injection for clarify and force-inspect follow-ups", () => {
+    expect(
+      shouldIncludeRawSourcesContextForExactFollowup({
+        mode: "force-inspect",
+        reason: "unique-source-match",
+        matchedSource: {
+          sourceId: "source-1",
+          originalUrl: "https://example.com/original",
+          resolvedUrl: "https://example.com/resolved",
+        },
+      })
+    ).toBe(false)
+
+    expect(
+      shouldIncludeRawSourcesContextForExactFollowup({
+        mode: "clarify",
+        reason: "exact-intent-without-unique-source",
+      })
+    ).toBe(false)
+
+    expect(
+      shouldIncludeRawSourcesContextForExactFollowup({
+        mode: "none",
+        reason: "not-an-exact-source-request",
+      })
+    ).toBe(true)
+  })
+
+  it("builds source inventory context with verified and cited-only status", () => {
+    const context = buildSourceInventoryContext({
+      recentSources: [
+        {
+          url: "https://example.com/verified",
+          title: "Verified Source",
+          publishedAt: 1710000000000,
+        },
+        {
+          url: "https://example.com/cited-only",
+          title: "Cited Only Source",
+        },
+      ],
+      exactSources: [
+        {
+          sourceId: "source-verified",
+          originalUrl: "https://example.com/verified",
+          resolvedUrl: "https://example.com/verified-final",
+          title: "Verified Source",
+          siteName: "Example",
+          documentKind: "html",
+        },
+      ],
+    })
+
+    expect(context).toContain("SOURCE INVENTORY")
+    expect(context).toContain('"verificationStatus": "verified-exact"')
+    expect(context).toContain('"fetchedContentAvailable": true')
+    expect(context).toContain('"documentKind": "html"')
+    expect(context).toContain('"formatVerifiable": true')
+    expect(context).toContain('"verificationStatus": "cited-only"')
+    expect(context).toContain('"fetchedContentAvailable": false')
+    expect(context).toContain('"documentKind": "unknown"')
+    expect(context).toContain('"formatVerifiable": false')
   })
 })

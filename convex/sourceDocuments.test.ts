@@ -40,6 +40,7 @@ type SourceDocumentSummaryResult = Array<{
   author?: string
   publishedAt?: string
   siteName?: string
+  documentKind?: "html" | "pdf" | "unknown"
 }>
 
 type UpsertDocumentResult = {
@@ -281,6 +282,7 @@ describe("sourceDocuments lookup", () => {
       author: "Penulis A",
       publishedAt: "2026-03-21",
       siteName: "Media A",
+      documentKind: "html",
       paragraphs: [{ index: 1, text: "A" }],
       documentText: "A",
       createdAt: 20,
@@ -295,6 +297,7 @@ describe("sourceDocuments lookup", () => {
       author: "Penulis X",
       publishedAt: "2026-03-20",
       siteName: "Media X",
+      documentKind: "pdf",
       paragraphs: [{ index: 1, text: "X" }],
       documentText: "X",
       createdAt: 5,
@@ -309,6 +312,7 @@ describe("sourceDocuments lookup", () => {
       author: "Penulis B",
       publishedAt: "2026-03-22",
       siteName: "Media B",
+      documentKind: "unknown",
       paragraphs: [{ index: 1, text: "B" }],
       documentText: "B",
       createdAt: 10,
@@ -323,6 +327,7 @@ describe("sourceDocuments lookup", () => {
       author: "Penulis C",
       publishedAt: "2026-03-23",
       siteName: "Media C",
+      documentKind: "html",
       paragraphs: [{ index: 1, text: "C" }],
       documentText: "C",
       createdAt: 20,
@@ -352,6 +357,7 @@ describe("sourceDocuments lookup", () => {
         author: "Penulis B",
         publishedAt: "2026-03-22",
         siteName: "Media B",
+        documentKind: "unknown",
       },
       {
         sourceId: "source-a",
@@ -361,6 +367,7 @@ describe("sourceDocuments lookup", () => {
         author: "Penulis A",
         publishedAt: "2026-03-21",
         siteName: "Media A",
+        documentKind: "html",
       },
       {
         sourceId: "source-c",
@@ -370,6 +377,7 @@ describe("sourceDocuments lookup", () => {
         author: "Penulis C",
         publishedAt: "2026-03-23",
         siteName: "Media C",
+        documentKind: "html",
       },
     ])
   })
@@ -388,6 +396,7 @@ describe("sourceDocuments lookup", () => {
           author?: string
           publishedAt?: string
           siteName?: string
+          documentKind?: "html" | "pdf" | "unknown"
           paragraphs: Array<{ index: number; text: string }>
           documentText: string
         },
@@ -404,6 +413,7 @@ describe("sourceDocuments lookup", () => {
         author: "Penulis",
         publishedAt: "2026-03-23",
         siteName: "Contoh Media",
+        documentKind: "html",
         paragraphs: [{ index: 1, text: "Paragraf pertama" }],
         documentText: "Paragraf pertama",
       }
@@ -425,6 +435,7 @@ describe("sourceDocuments lookup", () => {
       author: "Penulis",
       publishedAt: "2026-03-23",
       siteName: "Contoh Media",
+      documentKind: "html",
       paragraphs: [{ index: 1, text: "Paragraf pertama" }],
       documentText: "Paragraf pertama",
     })
@@ -464,6 +475,7 @@ describe("sourceDocuments lookup", () => {
           resolvedUrl: string
           title?: string
           author?: string
+          documentKind?: "html" | "pdf" | "unknown"
           paragraphs: Array<{ index: number; text: string }>
           documentText: string
         },
@@ -478,6 +490,7 @@ describe("sourceDocuments lookup", () => {
         resolvedUrl: "https://resolved.example.com/article",
         title: "Baru",
         author: "Penulis",
+        documentKind: "html",
         paragraphs: [{ index: 1, text: "Baru" }],
         documentText: "Baru",
       }
@@ -495,6 +508,7 @@ describe("sourceDocuments lookup", () => {
     expect(stored[0]).toMatchObject({
       title: "Baru",
       author: "Penulis",
+      documentKind: "html",
       paragraphs: [{ index: 1, text: "Baru" }],
       documentText: "Baru",
     })

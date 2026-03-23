@@ -240,6 +240,11 @@ export default defineSchema({
     author: v.optional(v.string()),
     publishedAt: v.optional(v.string()),
     siteName: v.optional(v.string()),
+    documentKind: v.optional(v.union(
+      v.literal("html"),
+      v.literal("pdf"),
+      v.literal("unknown"),
+    )),
     paragraphs: v.array(v.object({
       index: v.number(),
       text: v.string(),

@@ -15,6 +15,7 @@ export interface FetchedContent {
   author: string | null
   publishedAt: string | null
   siteName: string | null
+  documentKind: "html" | "pdf" | "unknown"
   exactMetadataAvailable: boolean
   paragraphs: FetchedParagraph[] | null
   documentText: string | null
@@ -72,7 +73,19 @@ export async function fetchPageContent(
   const results: FetchedContent[] = primaryResults.map((settled, i) => {
     const elapsed = Date.now() - urlTimers[i]
     if (settled.status === "fulfilled" && settled.value) {
-      const { content, resolvedUrl, rawTitle, title, author, publishedAt, siteName, exactMetadataAvailable, paragraphs, documentText } = settled.value
+      const {
+        content,
+        resolvedUrl,
+        rawTitle,
+        title,
+        author,
+        publishedAt,
+        siteName,
+        documentKind,
+        exactMetadataAvailable,
+        paragraphs,
+        documentText,
+      } = settled.value
       console.log(`[⏱ LATENCY] FetchWeb PRIMARY [${i+1}/${urls.length}] ✓ ${elapsed}ms ${resolvedUrl.slice(0, 70)} (${content.length} chars)`)
       return {
         url: urls[i],
@@ -82,6 +95,7 @@ export async function fetchPageContent(
         author,
         publishedAt,
         siteName,
+        documentKind,
         exactMetadataAvailable,
         paragraphs,
         documentText,
@@ -100,6 +114,7 @@ export async function fetchPageContent(
       author: null,
       publishedAt: null,
       siteName: null,
+      documentKind: "unknown",
       exactMetadataAvailable: false,
       paragraphs: null,
       documentText: null,
@@ -135,6 +150,7 @@ export async function fetchPageContent(
           results[idx].author = null
           results[idx].publishedAt = null
           results[idx].siteName = null
+          results[idx].documentKind = "unknown"
           results[idx].exactMetadataAvailable = false
           results[idx].paragraphs = buildParagraphsFromText(tr.content)
           results[idx].documentText = normalizeDocumentText(tr.content)
@@ -161,6 +177,7 @@ interface FetchParseResult {
   author: string | null
   publishedAt: string | null
   siteName: string | null
+  documentKind: "html" | "pdf" | "unknown"
   exactMetadataAvailable: boolean
   paragraphs: FetchedParagraph[] | null
   documentText: string | null
@@ -189,6 +206,7 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParse
 
       // response.url is the final URL after following all redirects
       const resolvedUrl = response.url || url
+      const documentKind = detectDocumentKind(response.headers.get("content-type"))
 
       const html = await response.text()
       const { document } = parseHTML(html)
@@ -217,6 +235,7 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParse
         author: structured.author,
         publishedAt: structured.publishedAt,
         siteName: structured.siteName,
+        documentKind,
         exactMetadataAvailable: true,
         paragraphs,
         documentText,
@@ -414,6 +433,20 @@ function stripSiteSuffix(title: string, siteName: string): string {
 
 function normalizeDocumentText(text: string): string {
   return text.replace(/\r\n/g, "\n").trim()
+}
+
+function detectDocumentKind(contentType: string | null): "html" | "pdf" | "unknown" {
+  const normalized = (contentType ?? "").toLowerCase()
+
+  if (normalized.includes("application/pdf")) return "pdf"
+  if (
+    normalized.includes("text/html")
+    || normalized.includes("application/xhtml+xml")
+  ) {
+    return "html"
+  }
+
+  return "unknown"
 }
 
 function buildParagraphsFromSourceDocument(

@@ -18,6 +18,7 @@ function createFetchedContent(
     author: "Penulis",
     publishedAt: "2026-03-24",
     siteName: "Contoh Media",
+    documentKind: "html",
     exactMetadataAvailable: true,
     paragraphs: [{ index: 1, text: "Paragraf pertama" }],
     documentText: "Paragraf pertama",
@@ -78,5 +79,22 @@ describe("persistExactSourceDocuments", () => {
 
     expect(fetchMutation).toHaveBeenCalledTimes(2)
     expect(settled).toBe(true)
+  })
+
+  it("persists documentKind into sourceDocuments inventory", async () => {
+    vi.mocked(fetchMutation).mockResolvedValue(null as never)
+
+    await persistExactSourceDocuments({
+      fetchedContent: [createFetchedContent({ documentKind: "html" })],
+      conversationId: "conv_1" as never,
+    })
+
+    expect(fetchMutation).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        documentKind: "html",
+      }),
+      undefined
+    )
   })
 })

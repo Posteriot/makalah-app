@@ -4,6 +4,7 @@ type ExactSourceSummaryForGuardrail = {
   resolvedUrl: string
   title?: string
   siteName?: string
+  documentKind?: "html" | "pdf" | "unknown"
 }
 
 type DeterministicExactSourceResolution =
@@ -14,6 +15,12 @@ type DeterministicExactSourceResolution =
 type SimpleChatMessage = {
   role: "system" | "user" | "assistant"
   content: string
+}
+
+type RecentSourceForInventory = {
+  url: string
+  title: string
+  publishedAt?: number
 }
 
 export const EXACT_SOURCE_NARRATIVE_BANNED_PHRASES = [
@@ -39,6 +46,81 @@ export function buildExactSourceInspectionSystemMessage() {
     role: "system" as const,
     content: EXACT_SOURCE_INSPECTION_RULES,
   }
+}
+
+const SOURCE_PROVENANCE_RULES = `SOURCE INVENTORY AND PROVENANCE RULES:
+- Use SOURCE INVENTORY to answer questions about whether a cited source was actually fetched, verified, or inspected.
+- Do not infer PDF, journal, article type, or file format from URL, domain, title, or citation label alone.
+- If SOURCE INVENTORY says formatVerifiable=false or documentKind="unknown", say the format cannot be verified from the current inventory.
+- If SOURCE INVENTORY says documentKind="html", you may say the verified source is a web HTML page and not a PDF.
+- If SOURCE INVENTORY says documentKind="pdf", you may say the verified source is a PDF.
+- If SOURCE INVENTORY contains a mix of verified-exact sources and cited-only sources, separate them explicitly in your answer instead of collapsing them into one blanket claim.
+- Example framing: "Dari sumber yang berhasil diverifikasi, semuanya HTML; ada juga sumber yang hanya tercantum sebagai sitasi dan formatnya belum bisa diverifikasi."
+- Do not claim you have read, inspected, fetched, or accessed a source's contents unless SOURCE INVENTORY explicitly says fetchedContentAvailable=true and verificationStatus="verified-exact".
+- If a source is only listed as cited-only, say it was cited in prior results but its contents were not verified in the current inventory.
+- Respond in natural narrative language without exposing internal mechanics.`
+
+export function buildSourceProvenanceSystemMessage() {
+  return {
+    role: "system" as const,
+    content: SOURCE_PROVENANCE_RULES,
+  }
+}
+
+function matchesExactSourceByUrl(
+  recentSource: RecentSourceForInventory,
+  exactSource: ExactSourceSummaryForGuardrail
+) {
+  return (
+    recentSource.url === exactSource.sourceId ||
+    recentSource.url === exactSource.originalUrl ||
+    recentSource.url === exactSource.resolvedUrl
+  )
+}
+
+export function buildSourceInventoryContext(params: {
+  recentSources: RecentSourceForInventory[]
+  exactSources: ExactSourceSummaryForGuardrail[]
+}) {
+  const exactByAnyUrl = new Map<string, ExactSourceSummaryForGuardrail>()
+  for (const exactSource of params.exactSources) {
+    exactByAnyUrl.set(exactSource.sourceId, exactSource)
+    exactByAnyUrl.set(exactSource.originalUrl, exactSource)
+    exactByAnyUrl.set(exactSource.resolvedUrl, exactSource)
+  }
+
+  const inventory = params.recentSources.map((recentSource) => {
+    const exactSource =
+      exactByAnyUrl.get(recentSource.url) ??
+      params.exactSources.find((candidate) =>
+        matchesExactSourceByUrl(recentSource, candidate)
+      )
+
+    return {
+      url: recentSource.url,
+      title: recentSource.title,
+      ...(typeof recentSource.publishedAt === "number"
+        ? { publishedAt: recentSource.publishedAt }
+        : {}),
+      verificationStatus: exactSource ? "verified-exact" : "cited-only",
+      fetchedContentAvailable: !!exactSource,
+      documentKind: exactSource?.documentKind ?? "unknown",
+      formatVerifiable:
+        exactSource?.documentKind === "html"
+        || exactSource?.documentKind === "pdf",
+    }
+  })
+
+  if (inventory.length === 0) return ""
+
+  return `SOURCE INVENTORY (verified provenance for previously cited sources):
+${JSON.stringify(inventory, null, 2)}`
+}
+
+export function shouldIncludeRawSourcesContextForExactFollowup(
+  resolution: DeterministicExactSourceResolution
+) {
+  return resolution.mode === "none"
 }
 
 export function buildExactSourceInspectionRouterNote(hasRecentSources: boolean) {
@@ -76,6 +158,8 @@ The user appears to be asking for exact source verification, but the target sour
 Ask a brief clarification question to identify the exact source first.
 Do not guess.
 Do not answer from memory or semantic similarity.
+Do not introduce a different source, title, or domain than the one the user asked about.
+If the requested title or source label does not match the verified exact sources you have, say that you cannot verify the requested source yet and ask the user to identify the exact source.
 Keep the clarification natural and do not expose internal mechanics.`
 }
 

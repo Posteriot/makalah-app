@@ -16,6 +16,7 @@ type ExactSourceDocument = {
     author?: string
     publishedAt?: string
     siteName?: string
+    documentKind?: "html" | "pdf" | "unknown"
     paragraphs?: ExactSourceParagraph[]
 }
 
@@ -24,6 +25,7 @@ const buildExactAvailability = (document: ExactSourceDocument | null) => ({
     author: typeof document?.author === "string" && document.author.trim().length > 0,
     publishedAt: typeof document?.publishedAt === "string" && document.publishedAt.trim().length > 0,
     siteName: typeof document?.siteName === "string" && document.siteName.trim().length > 0,
+    documentKind: typeof document?.documentKind === "string" && document.documentKind.trim().length > 0,
     paragraphs: Array.isArray(document?.paragraphs) && document.paragraphs.length > 0,
 })
 
@@ -456,6 +458,7 @@ The tool will:
                         author?: string
                         publishedAt?: string
                         siteName?: string
+                        documentKind?: "html" | "pdf" | "unknown"
                         requestedParagraph?: ExactSourceParagraph
                         paragraphs?: ExactSourceParagraph[]
                     } = {
@@ -469,6 +472,7 @@ The tool will:
                         if (exactAvailable.author) response.author = document.author
                         if (exactAvailable.publishedAt) response.publishedAt = document.publishedAt
                         if (exactAvailable.siteName) response.siteName = document.siteName
+                        if (exactAvailable.documentKind) response.documentKind = document.documentKind
                     }
 
                     if (typeof paragraphIndex === "number") {

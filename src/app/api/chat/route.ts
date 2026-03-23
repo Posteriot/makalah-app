@@ -69,6 +69,9 @@ import {
     buildDeterministicExactSourcePrepareStep,
     buildExactSourceInspectionRouterNote,
     buildExactSourceInspectionSystemMessage,
+    buildSourceInventoryContext,
+    buildSourceProvenanceSystemMessage,
+    shouldIncludeRawSourcesContextForExactFollowup,
 } from "@/lib/ai/exact-source-guardrails"
 import { resolveExactSourceFollowup, type ExactSourceConversationMessage } from "@/lib/ai/exact-source-followup"
 
@@ -669,6 +672,7 @@ export async function POST(req: Request) {
         // This enables AI to pass sources to createArtifact tool
         // ════════════════════════════════════════════════════════════════
         let sourcesContext = ""
+        let sourceInventoryContext = ""
         let hasRecentSourcesInDb = false
         let recentSourcesList: Array<{ url: string; title: string; publishedAt?: number }> = []
         let availableExactSources: Array<{
@@ -679,6 +683,7 @@ export async function POST(req: Request) {
             siteName?: string
             author?: string
             publishedAt?: string
+            documentKind?: "html" | "pdf" | "unknown"
         }> = []
         try {
             const recentSources = await fetchQueryWithToken(api.messages.getRecentSources, {
@@ -717,6 +722,16 @@ ${sourcesJson}`
             recentMessages: recentConversationMessagesForExactSource,
             availableExactSources,
         })
+        const shouldIncludeRawSourcesContext =
+            shouldIncludeRawSourcesContextForExactFollowup(exactSourceResolution)
+        const shouldIncludeExactInspectionSystemMessage =
+            exactSourceResolution.mode !== "clarify"
+        const shouldIncludeRecentSourceSkillInstructions =
+            hasRecentSourcesInDb && shouldIncludeRawSourcesContext
+        sourceInventoryContext = buildSourceInventoryContext({
+            recentSources: recentSourcesList,
+            exactSources: availableExactSources,
+        })
 
         // Task 6.4: Inject file context BEFORE user messages
         // Task Group 3: Inject paper mode prompt if paper session exists
@@ -735,12 +750,18 @@ ${sourcesJson}`
             ...(attachmentFirstResponseInstruction
                 ? [{ role: "system" as const, content: attachmentFirstResponseInstruction }]
                 : []),
-            ...(sourcesContext
+            ...(sourcesContext && shouldIncludeRawSourcesContext
                 ? [{ role: "system" as const, content: sourcesContext }]
                 : []),
-            buildExactSourceInspectionSystemMessage(),
+            ...(sourceInventoryContext
+                ? [{ role: "system" as const, content: sourceInventoryContext }]
+                : []),
+            ...(shouldIncludeExactInspectionSystemMessage
+                ? [buildExactSourceInspectionSystemMessage()]
+                : []),
+            buildSourceProvenanceSystemMessage(),
             ...(() => {
-                if (!hasRecentSourcesInDb) return []
+                if (!shouldIncludeRecentSourceSkillInstructions) return []
                 const instr = composeSkillInstructions(buildSkillContext({
                     hasRecentSources: true,
                     availableSources: recentSourcesList,
