@@ -42,6 +42,7 @@ export function ChatProcessStatusBar({
   const [internalPanelOpen, setInternalPanelOpen] = useState(false)
   const isPanelOpenValue = isPanelOpen ?? internalPanelOpen
   const setPanelOpen = onPanelOpenChange ?? setInternalPanelOpen
+  const [completedExpanded, setCompletedExpanded] = useState(false)
 
   const safeProgress = Math.max(0, Math.min(100, Math.round(progress)))
   const isProcessing = status === "submitted" || status === "streaming"
@@ -135,33 +136,46 @@ export function ChatProcessStatusBar({
             </div>
           </div>
         ) : (
-          /* ── Completed mode: "Memproses Xm Yd >" ChatGPT style ── */
-          <button
-            type="button"
-            onClick={openPanel}
-            className={cn(
-              "group flex items-center py-1 text-left transition-opacity",
-              hasSteps ? "cursor-pointer hover:opacity-80" : "cursor-default"
+          /* ── Completed mode: collapsed=duration only, expanded=full reasoning ── */
+          <div role="status" aria-live="polite">
+            <button
+              type="button"
+              onClick={() => {
+                if (narrativeHeadline) {
+                  setCompletedExpanded((prev) => !prev)
+                } else if (hasSteps) {
+                  openPanel()
+                }
+              }}
+              className={cn(
+                "group flex items-center py-1 text-left transition-opacity",
+                (narrativeHeadline || hasSteps) ? "cursor-pointer hover:opacity-80" : "cursor-default"
+              )}
+              disabled={!narrativeHeadline && !hasSteps}
+            >
+              <span className={cn(
+                "font-mono text-[11px] leading-snug",
+                isError
+                  ? "text-[var(--chat-destructive)]"
+                  : "text-[var(--chat-muted-foreground)] opacity-60"
+              )}>
+                {formatDuration(durationSeconds)}
+              </span>
+              {(narrativeHeadline || hasSteps) && (
+                <NavArrowRight className={cn(
+                  "ml-1 h-3 w-3 text-[var(--chat-muted-foreground)] opacity-60 transition-all group-hover:text-[var(--chat-foreground)] group-hover:opacity-100",
+                  completedExpanded && "rotate-90"
+                )} />
+              )}
+            </button>
+            {completedExpanded && narrativeHeadline && (
+              <div className="pb-1">
+                <p className="font-mono text-[11px] leading-relaxed text-[var(--chat-muted-foreground)] opacity-60">
+                  {narrativeHeadline}
+                </p>
+              </div>
             )}
-            role="status"
-            aria-live="polite"
-            aria-label={narrativeHeadline ?? undefined}
-            disabled={!hasSteps}
-          >
-            <span className={cn(
-              "font-mono text-[11px] leading-snug",
-              isError
-                ? "text-[var(--chat-destructive)]"
-                : "text-[var(--chat-muted-foreground)] opacity-60"
-            )}>
-              {narrativeHeadline
-                ? `${narrativeHeadline} · ${formatDuration(durationSeconds)}`
-                : formatDuration(durationSeconds)}
-            </span>
-            {hasSteps && (
-              <NavArrowRight className="ml-1 h-3 w-3 text-[var(--chat-muted-foreground)] opacity-60 transition-colors group-hover:text-[var(--chat-foreground)] group-hover:opacity-100" />
-            )}
-          </button>
+          </div>
         )}
       </div>
 
