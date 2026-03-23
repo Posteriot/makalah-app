@@ -58,6 +58,17 @@ const CONTINUATION_PATTERNS = [
   /^itu tadi\??$/,
 ]
 
+const CONTINUATION_CUES = [
+  "lengkapnya",
+  "judul lengkapnya",
+  "yang itu",
+  "yang itu tadi",
+  "yang tadi",
+  "itu tadi",
+  "tidak lengkap",
+  "belum lengkap",
+]
+
 function normalizeText(value: string | undefined): string {
   if (!value) return ""
   return value
@@ -97,7 +108,10 @@ function isNonExactSummaryRequest(text: string): boolean {
 
 function isContinuationPrompt(text: string): boolean {
   if (!text) return false
-  return CONTINUATION_PATTERNS.some((pattern) => pattern.test(text))
+  if (CONTINUATION_PATTERNS.some((pattern) => pattern.test(text))) return true
+  if (text.length > 80) return false
+
+  return CONTINUATION_CUES.some((cue) => text.includes(cue))
 }
 
 function buildSourceCandidates(source: ExactSourceSummary): string[] {

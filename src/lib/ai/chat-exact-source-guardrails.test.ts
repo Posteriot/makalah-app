@@ -112,8 +112,11 @@ describe("chat exact source guardrails", () => {
     })
 
     expect(routePlan.messages[1]?.content).toContain("Ask a brief clarification question")
-    expect(routePlan.prepareStep).toBeUndefined()
-    expect(routePlan.maxToolSteps).toBeUndefined()
+    expect(routePlan.maxToolSteps).toBe(1)
+    expect(routePlan.prepareStep?.({ stepNumber: 0 })).toEqual({
+      toolChoice: "none",
+      activeTools: [],
+    })
   })
 
   it("keeps legacy flow untouched for non exact follow-up", () => {

@@ -124,8 +124,17 @@ export function buildDeterministicExactSourcePrepareStep(options: {
   if (options.resolution.mode === "clarify") {
     return {
       messages: injectSystemNote(options.messages, buildDeterministicExactSourceClarifyNote()),
-      prepareStep: undefined,
-      maxToolSteps: undefined,
+      prepareStep: ({ stepNumber }: { stepNumber: number }) => {
+        if (stepNumber === 0) {
+          return {
+            toolChoice: "none" as const,
+            activeTools: [] as string[],
+          }
+        }
+
+        return undefined
+      },
+      maxToolSteps: 1,
     }
   }
 

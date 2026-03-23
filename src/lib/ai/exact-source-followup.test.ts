@@ -79,6 +79,26 @@ describe("resolveExactSourceFollowup", () => {
     expect(result.matchedSource?.sourceId).toBe("source-berita-magelang")
   })
 
+  it("uses prior exact-source context for natural continuation phrasing", () => {
+    const result = resolveExactSourceFollowup({
+      lastUserMessage: "Itu tidak lengkap. Lengkapnya?",
+      recentMessages: [
+        {
+          role: "user",
+          content: "Apa judul artikel Ketergantungan Pelajar dan Mahasiswa terhadap ChatGPT?",
+        },
+        {
+          role: "assistant",
+          content: "Judulnya belum lengkap.",
+        },
+      ],
+      availableExactSources,
+    })
+
+    expect(result.mode).toBe("force-inspect")
+    expect(result.matchedSource?.sourceId).toBe("source-berita-magelang")
+  })
+
   it("returns clarify when exact intent is present but source match is ambiguous", () => {
     const result = resolveExactSourceFollowup({
       lastUserMessage: "Apa judul lengkap artikel Berita Magelang itu?",
