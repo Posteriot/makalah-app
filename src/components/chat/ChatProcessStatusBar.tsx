@@ -93,7 +93,7 @@ export function ChatProcessStatusBar({
     return null
   }, [reasoningHeadline, reasoningSteps])
 
-  const shouldShow = Boolean(narrativeHeadline) || (visible && reasoningSteps.length > 0)
+  const shouldShow = Boolean(narrativeHeadline) || (visible && reasoningSteps.length > 0) || isPanelOpenValue
   if (!shouldShow) return null
 
   const hasSteps = reasoningSteps.length > 0

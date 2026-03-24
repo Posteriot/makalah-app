@@ -1500,7 +1500,7 @@ export function ChatWindow({
 
       return {
         ...prev,
-        visible: true,
+        visible: false,
         status: prev.status === "stopped" ? "stopped" : "ready",
         progress: 100,
         elapsedSeconds,
@@ -2248,10 +2248,11 @@ export function ChatWindow({
             }
             return null
           })()}
-          {(isHistoryLoading || isConversationLoading || isAwaitingAssistantStart) && messages.length === 0 ? (
+          {((isHistoryLoading || isConversationLoading || isAwaitingAssistantStart) && messages.length === 0) ||
+          (Boolean(conversationId) && messages.length === 0) ? (
             // Loading skeleton - keep horizontal boundary in sync with ChatInput
-            // Also shown when starter prompt is pending (isAwaitingAssistantStart)
-            // to prevent TemplateGrid flash before first message appears
+            // Also shown for conversation routes with zero hydrated messages yet,
+            // so TemplateGrid never leaks into an existing conversation view.
             <div className="space-y-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
               <div className="flex justify-start">
                 <Skeleton className="h-12 w-[60%] rounded-action" />
