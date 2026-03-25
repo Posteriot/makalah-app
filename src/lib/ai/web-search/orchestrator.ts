@@ -223,10 +223,47 @@ export async function executeWebSearch(
         ...(tools ? { tools: tools as Parameters<typeof streamText>[0]["tools"] } : {}),
         ...retrieverSamplingOptions,
       })
+      const resultCreatedAt = Date.now()
+      console.log(`[⏱ RETRIEVER] result_created name=${retriever.name} t=${resultCreatedAt - retrieverStart}ms`)
+
+      // ── Retriever timeline probes: measure when each promise resolves ──
+      // These run concurrently with the text await below. The timestamps
+      // reveal whether sources/metadata are available earlier than text.
+      let sourcesReadyAt: number | null = null
+      let metadataReadyAt: number | null = null
+
+      // Wrap PromiseLike in Promise.resolve() — PromiseLike only has .then(), not .catch()
+      const sourcesProbe = Promise.resolve(searchResult.sources)
+        .then((value) => {
+          sourcesReadyAt = Date.now() - retrieverStart
+          console.log(`[⏱ RETRIEVER] sources_ready name=${retriever.name} t=${sourcesReadyAt}ms count=${Array.isArray(value) ? value.length : 0}`)
+          return value
+        })
+        .catch((err: unknown) => {
+          sourcesReadyAt = Date.now() - retrieverStart
+          console.log(`[⏱ RETRIEVER] sources_failed name=${retriever.name} t=${sourcesReadyAt}ms error=${err instanceof Error ? err.message : String(err)}`)
+          throw err
+        })
+
+      const metadataProbe = Promise.resolve(searchResult.providerMetadata)
+        .then((value) => {
+          metadataReadyAt = Date.now() - retrieverStart
+          const keys = value && typeof value === "object" ? Object.keys(value).join(",") : "none"
+          console.log(`[⏱ RETRIEVER] metadata_ready name=${retriever.name} t=${metadataReadyAt}ms keys=${keys}`)
+          return value
+        })
+        .catch((err: unknown) => {
+          metadataReadyAt = Date.now() - retrieverStart
+          console.log(`[⏱ RETRIEVER] metadata_failed name=${retriever.name} t=${metadataReadyAt}ms error=${err instanceof Error ? err.message : String(err)}`)
+          throw err
+        })
 
       // Await full text with timeout — prevents indefinite hang if API stops responding
       searchText = await Promise.race([
-        searchResult.text,
+        searchResult.text.then((text) => {
+          console.log(`[⏱ RETRIEVER] text_ready name=${retriever.name} t=${Date.now() - retrieverStart}ms chars=${text.length}`)
+          return text
+        }),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error(`Retriever "${retriever.name}" timed out after ${RETRIEVER_TIMEOUT_MS}ms`)), RETRIEVER_TIMEOUT_MS)
         ),
@@ -239,10 +276,25 @@ export async function executeWebSearch(
 
       // Extract and canonicalize sources
       const extractStart = Date.now()
+      console.log(`[⏱ RETRIEVER] extract_start name=${retriever.name} t=${extractStart - retrieverStart}ms`)
       const rawCitations = await retriever.extractSources(searchResult)
       sources = canonicalizeCitationUrls(rawCitations)
       const extractDone = Date.now()
+      console.log(`[⏱ RETRIEVER] extract_done name=${retriever.name} t=${extractDone - retrieverStart}ms citations=${sources.length}`)
 
+      // Wait for probes to settle (they should already be resolved by now)
+      await Promise.allSettled([sourcesProbe, metadataProbe])
+
+      console.log(
+        `[⏱ RETRIEVER] summary name=${retriever.name} ` +
+        `created=${resultCreatedAt - retrieverStart}ms ` +
+        `text=${textDone - retrieverStart}ms ` +
+        `sources=${sourcesReadyAt ?? -1}ms ` +
+        `metadata=${metadataReadyAt ?? -1}ms ` +
+        `extract=${extractDone - extractStart}ms ` +
+        `total=${extractDone - retrieverStart}ms ` +
+        `citations=${sources.length}`
+      )
       console.log(`[⏱ LATENCY] Phase1 retriever="${retriever.name}" textGen=${textDone - retrieverStart}ms extractSources=${extractDone - extractStart}ms total=${extractDone - retrieverStart}ms citations=${sources.length} text=${searchText.length}chars`)
 
       // Treat 0 citations as a failure — model didn't call search tool.
