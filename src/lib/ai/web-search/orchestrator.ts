@@ -547,6 +547,11 @@ export async function executeWebSearch(
       let reasoningBetweenTextCount = 0
       let lastChunkWasReasoning = false
 
+      // Deferred persistence payload — set inside finish handler, consumed after compose loop
+      let postFinishWork: {
+        fetchedContent: FetchedContent[]
+      } | null = null
+
       // ── Chunk processor: returns action for stream consumption loop ──
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       async function processComposeChunk(chunk: any): Promise<"continue" | "break" | "retry"> {
@@ -768,56 +773,11 @@ export async function executeWebSearch(
               reasoningSnapshot,
             })
             console.log(`[⏱ LATENCY] onFinish(DB writes)=${Date.now() - onFinishStart}ms`)
-            console.log(`[⏱ LIFECYCLE] finish-handler: onFinish done, starting exact-source persist`)
+            console.log(`[⏱ LIFECYCLE] finish-handler: onFinish done, writing finish event`)
             console.log(`[⏱ LATENCY] ORCHESTRATOR TOTAL=${Date.now() - orchestratorStart}ms (Phase1=${phase1Start ? Date.now() - phase1Start : '?'}ms includes all)`)
 
-            const convexOptions = config.convexToken ? { token: config.convexToken } : undefined
-
-            // ── Exact document persist (awaited) + RAG ingest (fire-and-forget) ──
-            // persistExactSourceDocuments is awaited to ensure documents are stored
-            // before stream closes. RAG ingest runs in background (void async).
-            const ragSourceCount = fetchedContent.filter((f) => f.fullContent).length
-            if (ragSourceCount > 0) {
-              console.log(`[⏱ LATENCY] RAG ingest starting (fire-and-forget): ${ragSourceCount} sources`)
-            }
-            await persistExactSourceDocuments({
-              fetchedContent,
-              conversationId: config.conversationId as Id<"conversations">,
-              convexOptions,
-            })
-            console.log(`[⏱ LIFECYCLE] finish-handler: exact-source persist done, writing finish event`)
-
-            void (async () => {
-              const ragStart = Date.now()
-              let ragIdx = 0
-
-              for (const fetched of fetchedContent) {
-                if (!fetched.fullContent) continue
-                try {
-                  const sourceStart = Date.now()
-                  // Use resolvedUrl for RAG sourceId (real URL, not proxy)
-                  const realUrl = fetched.resolvedUrl
-                  const source = enrichedSources.find((s) => s.url === realUrl || s.url === fetched.url)
-                  await ingestToRag({
-                    conversationId: config.conversationId,
-                    sourceType: "web",
-                    sourceId: realUrl,
-                    content: fetched.fullContent,
-                    metadata: { title: source?.title },
-                    convexToken: config.convexToken,
-                  })
-                  ragIdx++
-                  console.log(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] ${realUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms`)
-                } catch (err) {
-                  ragIdx++
-                  console.error(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`, err)
-                }
-              }
-
-              if (ragSourceCount > 0) {
-                console.log(`[⏱ LATENCY] RAG ingest ALL DONE total=${Date.now() - ragStart}ms sources=${ragSourceCount}`)
-              }
-            })()
+            // Capture payload for detached persistence — runs after compose loop settles
+            postFinishWork = { fetchedContent }
           } catch (err) {
             // Citation finalize failed — ensure search status is terminal
             writer.write({
@@ -901,6 +861,58 @@ export async function executeWebSearch(
         } else {
           throw composeError
         }
+      }
+
+      // ── Post-finish persistence: detached so execute can settle and stream can close ──
+      if (postFinishWork !== null) {
+        const pf = postFinishWork as { fetchedContent: FetchedContent[] }
+        void (async () => {
+          try {
+            console.log(`[⏱ LIFECYCLE] post-finish: starting detached exact-source persistence`)
+
+            const convexOptions = config.convexToken ? { token: config.convexToken } : undefined
+            await persistExactSourceDocuments({
+              fetchedContent: pf.fetchedContent,
+              conversationId: config.conversationId as Id<"conversations">,
+              convexOptions,
+            })
+
+            const ragSourceCount = pf.fetchedContent.filter((f: FetchedContent) => f.fullContent).length
+            if (ragSourceCount > 0) {
+              console.log(`[⏱ LATENCY] RAG ingest starting (fire-and-forget): ${ragSourceCount} sources`)
+            }
+
+            const ragStart = Date.now()
+            let ragIdx = 0
+            for (const fetched of pf.fetchedContent) {
+              if (!fetched.fullContent) continue
+              try {
+                const sourceStart = Date.now()
+                const realUrl = fetched.resolvedUrl
+                const source = enrichedSources.find((s) => s.url === realUrl || s.url === fetched.url)
+                await ingestToRag({
+                  conversationId: config.conversationId,
+                  sourceType: "web",
+                  sourceId: realUrl,
+                  content: fetched.fullContent,
+                  metadata: { title: source?.title },
+                  convexToken: config.convexToken,
+                })
+                ragIdx++
+                console.log(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] ${realUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms`)
+              } catch (err) {
+                ragIdx++
+                console.error(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`, err)
+              }
+            }
+
+            if (ragSourceCount > 0) {
+              console.log(`[⏱ LATENCY] RAG ingest ALL DONE total=${Date.now() - ragStart}ms sources=${ragSourceCount}`)
+            }
+          } catch (err) {
+            console.error("[Orchestrator] Detached post-finish persistence failed:", err)
+          }
+        })()
       }
     },
   })
