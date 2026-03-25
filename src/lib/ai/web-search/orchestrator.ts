@@ -771,9 +771,9 @@ export async function executeWebSearch(
 
             const convexOptions = config.convexToken ? { token: config.convexToken } : undefined
 
-            // ── Exact document persist + RAG ingest: fire-and-forget, isolated ──
-            // Keep the existing RAG path intact and persist exact source documents
-            // alongside it so exact-inspection queries can read structured metadata.
+            // ── Exact document persist (awaited) + RAG ingest (fire-and-forget) ──
+            // persistExactSourceDocuments is awaited to ensure documents are stored
+            // before stream closes. RAG ingest runs in background (void async).
             const ragSourceCount = fetchedContent.filter((f) => f.fullContent).length
             if (ragSourceCount > 0) {
               console.log(`[⏱ LATENCY] RAG ingest starting (fire-and-forget): ${ragSourceCount} sources`)
