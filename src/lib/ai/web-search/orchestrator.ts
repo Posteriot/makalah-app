@@ -774,7 +774,7 @@ export async function executeWebSearch(
             })
             console.log(`[⏱ LATENCY] onFinish(DB writes)=${Date.now() - onFinishStart}ms`)
             console.log(`[⏱ LIFECYCLE] finish-handler: onFinish done, writing finish event`)
-            console.log(`[⏱ LATENCY] ORCHESTRATOR TOTAL=${Date.now() - orchestratorStart}ms (Phase1=${phase1Start ? Date.now() - phase1Start : '?'}ms includes all)`)
+            console.log(`[⏱ LATENCY] ORCHESTRATOR MAIN=${Date.now() - orchestratorStart}ms (Phase1=${phase1Start ? Date.now() - phase1Start : '?'}ms includes all)`)
 
             // Capture payload for detached persistence — runs after compose loop settles
             postFinishWork = { fetchedContent }
@@ -863,6 +863,9 @@ export async function executeWebSearch(
         }
       }
 
+      // Extract lightweight title map to avoid retaining enrichedSources (with pageContent) in detached closure
+      const sourceTitleMap = new Map(enrichedSources.map((s) => [s.url, s.title]))
+
       // ── Post-finish persistence: detached so execute can settle and stream can close ──
       if (postFinishWork !== null) {
         const pf = postFinishWork as { fetchedContent: FetchedContent[] }
@@ -889,13 +892,13 @@ export async function executeWebSearch(
               try {
                 const sourceStart = Date.now()
                 const realUrl = fetched.resolvedUrl
-                const source = enrichedSources.find((s) => s.url === realUrl || s.url === fetched.url)
+                const sourceTitle = sourceTitleMap.get(realUrl) ?? sourceTitleMap.get(fetched.url)
                 await ingestToRag({
                   conversationId: config.conversationId,
                   sourceType: "web",
                   sourceId: realUrl,
                   content: fetched.fullContent,
-                  metadata: { title: source?.title },
+                  metadata: { title: sourceTitle },
                   convexToken: config.convexToken,
                 })
                 ragIdx++
