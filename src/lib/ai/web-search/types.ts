@@ -1,6 +1,10 @@
 import type { LanguageModel, streamText } from "ai"
 import type { NormalizedCitation } from "@/lib/citations/types"
 import type { PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
+import type {
+  ReferencePresentationSource,
+  SearchResponseMode,
+} from "./reference-presentation"
 export type {
   ReferencePresentationSource,
   ReferenceVerificationStatus,
@@ -61,6 +65,10 @@ export interface WebSearchOrchestratorConfig {
 export interface WebSearchResult {
   text: string
   sources: NormalizedCitation[]
+  referencePresentation?: {
+    responseMode: SearchResponseMode
+    sources: ReferencePresentationSource[]
+  }
   usage?: { inputTokens: number; outputTokens: number }
   searchUsage?: { inputTokens: number; outputTokens: number }
   retrieverName: string

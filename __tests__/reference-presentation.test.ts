@@ -4,6 +4,7 @@ import {
   inferSearchResponseMode,
   type ReferencePresentationSource,
 } from "@/lib/ai/web-search/reference-presentation"
+import type { WebSearchResult } from "@/lib/ai/web-search/types"
 
 describe("reference presentation contract", () => {
   it("marks verified sources as claimable", () => {
@@ -55,5 +56,22 @@ describe("reference presentation contract", () => {
     })
 
     expect(mode).toBe("reference_inventory")
+  })
+
+  it("exposes a shared reference presentation slot on WebSearchResult", () => {
+    const result: WebSearchResult = {
+      text: "",
+      sources: [],
+      referencePresentation: {
+        responseMode: "reference_inventory",
+        sources: [],
+      },
+      retrieverName: "demo",
+      retrieverIndex: 0,
+      attemptedRetrievers: [],
+    }
+
+    expect(result.referencePresentation?.responseMode).toBe("reference_inventory")
+    expect(result.referencePresentation?.sources).toHaveLength(0)
   })
 })
