@@ -7,7 +7,7 @@ describe("classifyFetchRoute", () => {
 
     expect(classifyFetchRoute("https://example.com/files/paper.pdf")).toBe("pdf_or_download")
     expect(classifyFetchRoute("https://arxiv.org/pdf/2507.00181")).toBe("pdf_or_download")
-    expect(classifyFetchRoute("https://onlinelibrary.wiley.com/doi/10.1111/jcal.70096")).toBe("academic_wall_risk")
+    expect(classifyFetchRoute("https://onlinelibrary.wiley.com/doi/pdf/10.1111/jcal.70096")).toBe("pdf_or_download")
     expect(classifyFetchRoute("https://www.researchgate.net/publication/393260682_ChatGPT_produces_mo")).toBe("academic_wall_risk")
     expect(classifyFetchRoute("https://doi.org/10.1234/example")).toBe("proxy_or_redirect_like")
     expect(classifyFetchRoute("https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG")).toBe("proxy_or_redirect_like")
@@ -292,6 +292,36 @@ describe("fetchPageContent", () => {
     expect(results[0].documentKind).toBe("unknown")
   })
 
+  it("returns pdf_unsupported for PDF/download URLs", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response("%PDF-1.7", { status: 200, headers: { "content-type": "application/pdf" } }),
+    )
+
+    const results = await fetchPageContent(["https://example.com/files/paper.pdf"])
+
+    expect(results[0].pageContent).toBeNull()
+    expect(results[0].fetchMethod).toBeNull()
+    expect((results[0] as any).routeKind).toBe("pdf_or_download")
+    expect((results[0] as any).failureReason).toBe("pdf_unsupported")
+    expect((results[0] as any).contentType).toBe("application/pdf")
+  })
+
+  it("returns proxy_unresolved for proxy-like URLs that stay on the proxy host", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response("<html><body>Proxy shell</body></html>", {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      }),
+    )
+
+    const results = await fetchPageContent(["https://doi.org/10.1234/example"])
+
+    expect(results[0].pageContent).toBeNull()
+    expect(results[0].fetchMethod).toBeNull()
+    expect((results[0] as any).routeKind).toBe("proxy_or_redirect_like")
+    expect((results[0] as any).failureReason).toBe("proxy_unresolved")
+  })
+
   it("handles multiple URLs in parallel", async () => {
     const makeHtml = (title: string) => `
       <html><head><title>${title}</title></head>
@@ -403,6 +433,9 @@ describe("fetchPageContent — Tavily fallback", () => {
     expect(results[0].pageContent).toContain("Extracted Content")
     expect(results[0].fullContent).toContain("Extracted Content")
     expect(results[0].fetchMethod).toBe("tavily")
+    expect(results[0].failureReason).toBeUndefined()
+    expect(results[0].statusCode).toBeUndefined()
+    expect(results[0].contentType).toBeUndefined()
   })
 
   it("skips Tavily when no API key provided", async () => {

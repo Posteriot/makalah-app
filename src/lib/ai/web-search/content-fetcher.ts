@@ -72,8 +72,8 @@ export function classifyFetchRoute(url: string): FetchRouteKind {
   const pathname = parsed?.pathname.toLowerCase() ?? url.toLowerCase()
 
   if (isProxyLikeHost(hostname)) return "proxy_or_redirect_like"
-  if (isAcademicWallHost(hostname)) return "academic_wall_risk"
   if (isPdfOrDownloadPath(pathname)) return "pdf_or_download"
+  if (isAcademicWallHost(hostname)) return "academic_wall_risk"
 
   return "html_standard"
 }
@@ -219,6 +219,9 @@ export async function fetchPageContent(
           results[idx].pageContent = truncate(tr.content)
           results[idx].fullContent = truncateRag(tr.content)
           results[idx].fetchMethod = "tavily"
+          results[idx].failureReason = undefined
+          results[idx].statusCode = undefined
+          results[idx].contentType = undefined
           // Tavily returns the real URL — use it as resolvedUrl
           results[idx].resolvedUrl = tr.url
           results[idx].rawTitle = null
