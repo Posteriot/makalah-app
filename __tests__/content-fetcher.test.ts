@@ -1,6 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { fetchPageContent } from "@/lib/ai/web-search/content-fetcher"
 
+describe("classifyFetchRoute", () => {
+  it("classifies PDF, academic-wall, and proxy-like URLs", async () => {
+    const { classifyFetchRoute } = await import("@/lib/ai/web-search/content-fetcher") as any
+
+    expect(classifyFetchRoute("https://example.com/files/paper.pdf")).toBe("pdf_or_download")
+    expect(classifyFetchRoute("https://arxiv.org/pdf/2507.00181")).toBe("pdf_or_download")
+    expect(classifyFetchRoute("https://onlinelibrary.wiley.com/doi/10.1111/jcal.70096")).toBe("academic_wall_risk")
+    expect(classifyFetchRoute("https://www.researchgate.net/publication/393260682_ChatGPT_produces_mo")).toBe("academic_wall_risk")
+    expect(classifyFetchRoute("https://doi.org/10.1234/example")).toBe("proxy_or_redirect_like")
+    expect(classifyFetchRoute("https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG")).toBe("proxy_or_redirect_like")
+    expect(classifyFetchRoute("https://example.com/article")).toBe("html_standard")
+  })
+})
+
 describe("fetchPageContent", () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>
 
@@ -247,7 +261,7 @@ describe("fetchPageContent", () => {
     expect(results[0].pageContent).toBeNull()
     expect(results[0].fullContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
-    expect(results[0].documentKind).toBe("unknown")
+    expect(results[0].documentKind).toBe("html")
   })
 
   it("returns null pageContent when fetch returns non-200", async () => {
@@ -262,6 +276,8 @@ describe("fetchPageContent", () => {
     expect(results[0].fullContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
     expect(results[0].documentKind).toBe("unknown")
+    expect((results[0] as any).failureReason).toBe("http_non_ok")
+    expect((results[0] as any).statusCode).toBe(404)
   })
 
   it("returns null pageContent when fetch throws (network error)", async () => {
@@ -337,6 +353,7 @@ describe("fetchPageContent", () => {
     expect(results[0].pageContent).toBeNull()
     expect(results[0].fullContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
+    expect((results[0] as any).failureReason).toBe("timeout")
   })
 })
 

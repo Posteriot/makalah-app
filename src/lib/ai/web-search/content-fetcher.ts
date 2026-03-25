@@ -7,15 +7,34 @@ export interface FetchedParagraph {
   text: string
 }
 
+export type FetchRouteKind =
+  | "html_standard"
+  | "pdf_or_download"
+  | "academic_wall_risk"
+  | "proxy_or_redirect_like"
+
+export type FetchFailureReason =
+  | "timeout"
+  | "fetch_error"
+  | "http_non_ok"
+  | "pdf_unsupported"
+  | "readability_empty"
+  | "content_too_short"
+  | "proxy_unresolved"
+
 export interface FetchedContent {
   url: string                      // input URL (may be proxy)
   resolvedUrl: string              // final URL after redirect:follow
+  routeKind?: FetchRouteKind
   rawTitle: string | null
   title: string | null
   author: string | null
   publishedAt: string | null
   siteName: string | null
   documentKind: "html" | "pdf" | "unknown"
+  failureReason?: FetchFailureReason
+  statusCode?: number
+  contentType?: string | null
   exactMetadataAvailable: boolean
   paragraphs: FetchedParagraph[] | null
   documentText: string | null
@@ -47,6 +66,18 @@ const turndown = new TurndownService({
   codeBlockStyle: "fenced",
 })
 
+export function classifyFetchRoute(url: string): FetchRouteKind {
+  const parsed = safeParseUrl(url)
+  const hostname = parsed?.hostname.toLowerCase() ?? ""
+  const pathname = parsed?.pathname.toLowerCase() ?? url.toLowerCase()
+
+  if (isProxyLikeHost(hostname)) return "proxy_or_redirect_like"
+  if (isAcademicWallHost(hostname)) return "academic_wall_risk"
+  if (isPdfOrDownloadPath(pathname)) return "pdf_or_download"
+
+  return "html_standard"
+}
+
 /**
  * Fetch actual page content from URLs. Two-tier: fetch+readability primary,
  * Tavily fallback for failures. Returns markdown content per URL.
@@ -74,49 +105,92 @@ export async function fetchPageContent(
 
   const results: FetchedContent[] = primaryResults.map((settled, i) => {
     const elapsed = Date.now() - urlTimers[i]
-    if (settled.status === "fulfilled" && settled.value) {
-      const {
-        content,
-        resolvedUrl,
-        rawTitle,
-        title,
-        author,
-        publishedAt,
-        siteName,
-        documentKind,
-        exactMetadataAvailable,
-        paragraphs,
-        documentText,
-      } = settled.value
-      console.log(`[⏱ LATENCY] ${reqTag}FetchWeb PRIMARY [${i+1}/${urls.length}] ✓ ${elapsed}ms ${resolvedUrl.slice(0, 70)} (${content.length} chars)`)
+    if (settled.status === "fulfilled") {
+      const result = settled.value
+      if (result.ok) {
+        const {
+          content,
+          resolvedUrl,
+          routeKind,
+          rawTitle,
+          title,
+          author,
+          publishedAt,
+          siteName,
+          documentKind,
+          exactMetadataAvailable,
+          paragraphs,
+          documentText,
+          contentType,
+        } = result
+        console.log(`[⏱ LATENCY] ${reqTag}FetchWeb PRIMARY [${i+1}/${urls.length}] ✓ ${elapsed}ms ${resolvedUrl.slice(0, 70)} (${content.length} chars)`)
+        return {
+          url: urls[i],
+          resolvedUrl,
+          routeKind,
+          rawTitle,
+          title,
+          author,
+          publishedAt,
+          siteName,
+          documentKind,
+          failureReason: undefined,
+          statusCode: undefined,
+          contentType: contentType ?? null,
+          exactMetadataAvailable,
+          paragraphs,
+          documentText,
+          pageContent: truncate(content),
+          fullContent: truncateRag(content),
+          fetchMethod: "fetch" as const,
+        }
+      }
+
+      const failure = result
+      const { failureReason, routeKind, statusCode, contentType, resolvedUrl, documentKind } = failure
+      const statusBits = [
+        `route=${routeKind}`,
+        `reason=${failureReason}`,
+        statusCode ? `status=${statusCode}` : null,
+        contentType ? `contentType=${contentType}` : null,
+      ].filter(Boolean).join(" ")
+      console.log(`[⏱ LATENCY] ${reqTag}FetchWeb PRIMARY [${i+1}/${urls.length}] ✗ ${elapsed}ms ${statusBits} ${urls[i].slice(0, 70)}`)
       return {
         url: urls[i],
         resolvedUrl,
-        rawTitle,
-        title,
-        author,
-        publishedAt,
-        siteName,
-        documentKind,
-        exactMetadataAvailable,
-        paragraphs,
-        documentText,
-        pageContent: truncate(content),
-        fullContent: truncateRag(content),
-        fetchMethod: "fetch" as const,
+        routeKind,
+        rawTitle: null,
+        title: null,
+        author: null,
+        publishedAt: null,
+        siteName: null,
+        documentKind: documentKind ?? inferDocumentKindFromRouteKind(routeKind),
+        failureReason,
+        statusCode,
+        contentType,
+        exactMetadataAvailable: false,
+        paragraphs: null,
+        documentText: null,
+        pageContent: null,
+        fullContent: null,
+        fetchMethod: null,
       }
     }
-    const reason = settled.status === "rejected" ? settled.reason?.message : "empty/null content"
-    console.log(`[⏱ LATENCY] ${reqTag}FetchWeb PRIMARY [${i+1}/${urls.length}] ✗ ${elapsed}ms ${urls[i].slice(0, 70)} — ${reason}`)
+
+    const routeKind = classifyFetchRoute(urls[i])
+    const failureReason: FetchFailureReason = "fetch_error"
+    console.log(`[⏱ LATENCY] ${reqTag}FetchWeb PRIMARY [${i+1}/${urls.length}] ✗ ${elapsed}ms route=${routeKind} reason=${failureReason} ${urls[i].slice(0, 70)}`)
     return {
       url: urls[i],
       resolvedUrl: urls[i],
+      routeKind,
       rawTitle: null,
       title: null,
       author: null,
       publishedAt: null,
       siteName: null,
-      documentKind: "unknown",
+      documentKind: inferDocumentKindFromRouteKind(routeKind),
+      failureReason,
       exactMetadataAvailable: false,
       paragraphs: null,
       documentText: null,
@@ -172,31 +246,67 @@ export async function fetchPageContent(
 }
 
 interface FetchParseResult {
+  ok: true
   content: string
   resolvedUrl: string
+  routeKind: FetchRouteKind
   rawTitle: string | null
   title: string | null
   author: string | null
   publishedAt: string | null
   siteName: string | null
   documentKind: "html" | "pdf" | "unknown"
+  contentType: string | null
   exactMetadataAvailable: boolean
   paragraphs: FetchedParagraph[] | null
   documentText: string | null
 }
 
-async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParseResult | null> {
+interface FetchParseFailureResult {
+  ok: false
+  resolvedUrl: string
+  routeKind: FetchRouteKind
+  documentKind: "html" | "pdf" | "unknown"
+  failureReason: FetchFailureReason
+  statusCode?: number
+  contentType?: string | null
+}
+
+function makeFetchFailure(
+  url: string,
+  routeKind: FetchRouteKind,
+  failureReason: FetchFailureReason,
+  overrides: {
+    resolvedUrl?: string
+    documentKind?: "html" | "pdf" | "unknown"
+    statusCode?: number
+    contentType?: string | null
+  } = {},
+): FetchParseFailureResult {
+  return {
+    ok: false,
+    resolvedUrl: overrides.resolvedUrl ?? url,
+    routeKind,
+    documentKind: overrides.documentKind ?? inferDocumentKindFromRouteKind(routeKind),
+    failureReason,
+    statusCode: overrides.statusCode,
+    contentType: overrides.contentType ?? null,
+  }
+}
+
+async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParseResult | FetchParseFailureResult> {
+  const routeKind = classifyFetchRoute(url)
   const controller = new AbortController()
 
   let timerId: ReturnType<typeof setTimeout>
-  const timeoutPromise = new Promise<null>((resolve) => {
+  const timeoutPromise = new Promise<FetchParseResult | FetchParseFailureResult>((resolve) => {
     timerId = setTimeout(() => {
       controller.abort()
-      resolve(null)
+      resolve(makeFetchFailure(url, routeKind, "timeout"))
     }, timeoutMs)
   })
 
-  const fetchPromise = (async (): Promise<FetchParseResult | null> => {
+  const fetchPromise = (async (): Promise<FetchParseResult | FetchParseFailureResult> => {
     try {
       const response = await fetch(url, {
         headers: FETCH_HEADERS,
@@ -204,11 +314,37 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParse
         redirect: "follow",
       })
 
-      if (!response.ok) return null
-
       // response.url is the final URL after following all redirects
       const resolvedUrl = response.url || url
-      const documentKind = detectDocumentKind(response.headers.get("content-type"))
+      const contentType = response.headers.get("content-type")
+      const documentKind = detectDocumentKind(contentType)
+
+      if (!response.ok) {
+        return makeFetchFailure(url, routeKind, "http_non_ok", {
+          resolvedUrl,
+          documentKind,
+          statusCode: response.status,
+          contentType,
+        })
+      }
+
+      if (documentKind === "pdf") {
+        return makeFetchFailure(url, routeKind, "pdf_unsupported", {
+          resolvedUrl,
+          documentKind,
+          statusCode: response.status,
+          contentType,
+        })
+      }
+
+      if (routeKind === "proxy_or_redirect_like" && isProxyLikeUrl(resolvedUrl)) {
+        return makeFetchFailure(url, routeKind, "proxy_unresolved", {
+          resolvedUrl,
+          documentKind,
+          statusCode: response.status,
+          contentType,
+        })
+      }
 
       const html = await response.text()
       const { document } = parseHTML(html)
@@ -216,11 +352,25 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParse
       const reader = new Readability(document as unknown as Document)
       const article = reader.parse()
 
-      if (!article?.content) return null
+      if (!article?.content) {
+        return makeFetchFailure(url, routeKind, "readability_empty", {
+          resolvedUrl,
+          documentKind,
+          statusCode: response.status,
+          contentType,
+        })
+      }
 
       const markdown = turndown.turndown(article.content)
       // Skip trivially short extractions (login forms, nav-only pages)
-      if (markdown.trim().length < MIN_CONTENT_CHARS) return null
+      if (markdown.trim().length < MIN_CONTENT_CHARS) {
+        return makeFetchFailure(url, routeKind, "content_too_short", {
+          resolvedUrl,
+          documentKind,
+          statusCode: response.status,
+          contentType,
+        })
+      }
 
       const structured = extractStructuredMetadata(article, document)
       const documentText = normalizeDocumentText(markdown)
@@ -230,20 +380,29 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParse
       const metadataBlock = buildMetadataBlock(structured)
       const content = metadataBlock ? `${metadataBlock}\n\n${markdown}` : markdown
       return {
+        ok: true,
         content,
         resolvedUrl,
+        routeKind,
         rawTitle: structured.rawTitle,
         title: structured.title,
         author: structured.author,
         publishedAt: structured.publishedAt,
         siteName: structured.siteName,
         documentKind,
+        contentType,
         exactMetadataAvailable: true,
         paragraphs,
         documentText,
       }
-    } catch {
-      return null
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return makeFetchFailure(url, routeKind, "timeout")
+      }
+
+      return makeFetchFailure(url, routeKind, "fetch_error", {
+        documentKind: inferDocumentKindFromRouteKind(routeKind),
+      })
     }
   })()
 
@@ -449,6 +608,47 @@ function detectDocumentKind(contentType: string | null): "html" | "pdf" | "unkno
   }
 
   return "unknown"
+}
+
+function inferDocumentKindFromRouteKind(routeKind: FetchRouteKind): "html" | "pdf" | "unknown" {
+  if (routeKind === "pdf_or_download") return "pdf"
+  return "unknown"
+}
+
+function isProxyLikeUrl(url: string): boolean {
+  const hostname = safeParseUrl(url)?.hostname.toLowerCase() ?? url.toLowerCase()
+  return isProxyLikeHost(hostname)
+}
+
+function isProxyLikeHost(hostname: string): boolean {
+  return [
+    "doi.org",
+    "dx.doi.org",
+    "vertexaisearch.cloud.google.com",
+  ].some((proxyHost) => hostname === proxyHost || hostname.endsWith(`.${proxyHost}`))
+}
+
+function isAcademicWallHost(hostname: string): boolean {
+  return [
+    "onlinelibrary.wiley.com",
+    "www.researchgate.net",
+    "researchgate.net",
+  ].some((academicHost) => hostname === academicHost || hostname.endsWith(`.${academicHost}`))
+}
+
+function isPdfOrDownloadPath(pathname: string): boolean {
+  return pathname.endsWith(".pdf")
+    || pathname.includes("/pdf/")
+    || pathname.includes("/article/download/")
+    || pathname.includes("/download/")
+}
+
+function safeParseUrl(url: string): URL | null {
+  try {
+    return new URL(url)
+  } catch {
+    return null
+  }
 }
 
 function buildParagraphsFromSourceDocument(
