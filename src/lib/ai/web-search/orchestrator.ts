@@ -180,6 +180,7 @@ export async function executeWebSearch(
   config: WebSearchOrchestratorConfig,
 ): Promise<Response> {
   const orchestratorStart = Date.now()
+  const reqId = `ws-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
   const attemptedRetrievers: string[] = []
 
   // ────────────────────────────────────────────────────────────
@@ -224,7 +225,7 @@ export async function executeWebSearch(
         ...retrieverSamplingOptions,
       })
       const resultCreatedAt = Date.now()
-      console.log(`[⏱ RETRIEVER] result_created name=${retriever.name} t=${resultCreatedAt - retrieverStart}ms`)
+      console.log(`[⏱ RETRIEVER][${reqId}] result_created name=${retriever.name} t=${resultCreatedAt - retrieverStart}ms`)
 
       // ── Retriever timeline probes: measure when each promise resolves ──
       // These run concurrently with the text await below. The timestamps
@@ -236,12 +237,12 @@ export async function executeWebSearch(
       const sourcesProbe = Promise.resolve(searchResult.sources)
         .then((value) => {
           sourcesReadyAt = Date.now() - retrieverStart
-          console.log(`[⏱ RETRIEVER] sources_ready name=${retriever.name} t=${sourcesReadyAt}ms count=${Array.isArray(value) ? value.length : 0}`)
+          console.log(`[⏱ RETRIEVER][${reqId}] sources_ready name=${retriever.name} t=${sourcesReadyAt}ms count=${Array.isArray(value) ? value.length : 0}`)
           return value
         })
         .catch((err: unknown) => {
           sourcesReadyAt = Date.now() - retrieverStart
-          console.log(`[⏱ RETRIEVER] sources_failed name=${retriever.name} t=${sourcesReadyAt}ms error=${err instanceof Error ? err.message : String(err)}`)
+          console.log(`[⏱ RETRIEVER][${reqId}] sources_failed name=${retriever.name} t=${sourcesReadyAt}ms error=${err instanceof Error ? err.message : String(err)}`)
           throw err
         })
 
@@ -249,19 +250,19 @@ export async function executeWebSearch(
         .then((value) => {
           metadataReadyAt = Date.now() - retrieverStart
           const keys = value && typeof value === "object" ? Object.keys(value).join(",") : "none"
-          console.log(`[⏱ RETRIEVER] metadata_ready name=${retriever.name} t=${metadataReadyAt}ms keys=${keys}`)
+          console.log(`[⏱ RETRIEVER][${reqId}] metadata_ready name=${retriever.name} t=${metadataReadyAt}ms keys=${keys}`)
           return value
         })
         .catch((err: unknown) => {
           metadataReadyAt = Date.now() - retrieverStart
-          console.log(`[⏱ RETRIEVER] metadata_failed name=${retriever.name} t=${metadataReadyAt}ms error=${err instanceof Error ? err.message : String(err)}`)
+          console.log(`[⏱ RETRIEVER][${reqId}] metadata_failed name=${retriever.name} t=${metadataReadyAt}ms error=${err instanceof Error ? err.message : String(err)}`)
           throw err
         })
 
       // Await full text with timeout — prevents indefinite hang if API stops responding
       searchText = await Promise.race([
         searchResult.text.then((text) => {
-          console.log(`[⏱ RETRIEVER] text_ready name=${retriever.name} t=${Date.now() - retrieverStart}ms chars=${text.length}`)
+          console.log(`[⏱ RETRIEVER][${reqId}] text_ready name=${retriever.name} t=${Date.now() - retrieverStart}ms chars=${text.length}`)
           return text
         }),
         new Promise<never>((_, reject) =>
@@ -276,11 +277,11 @@ export async function executeWebSearch(
 
       // Extract and canonicalize sources
       const extractStart = Date.now()
-      console.log(`[⏱ RETRIEVER] extract_start name=${retriever.name} t=${extractStart - retrieverStart}ms`)
+      console.log(`[⏱ RETRIEVER][${reqId}] extract_start name=${retriever.name} t=${extractStart - retrieverStart}ms`)
       const rawCitations = await retriever.extractSources(searchResult)
       sources = canonicalizeCitationUrls(rawCitations)
       const extractDone = Date.now()
-      console.log(`[⏱ RETRIEVER] extract_done name=${retriever.name} t=${extractDone - retrieverStart}ms citations=${sources.length}`)
+      console.log(`[⏱ RETRIEVER][${reqId}] extract_done name=${retriever.name} t=${extractDone - retrieverStart}ms citations=${sources.length}`)
 
       // Wait for probes to settle (they should already be resolved by now)
       await Promise.allSettled([sourcesProbe, metadataProbe])
@@ -295,12 +296,12 @@ export async function executeWebSearch(
         `total=${extractDone - retrieverStart}ms ` +
         `citations=${sources.length}`
       )
-      console.log(`[⏱ LATENCY] Phase1 retriever="${retriever.name}" textGen=${textDone - retrieverStart}ms extractSources=${extractDone - extractStart}ms total=${extractDone - retrieverStart}ms citations=${sources.length} text=${searchText.length}chars`)
+      console.log(`[⏱ LATENCY][${reqId}] Phase1 retriever="${retriever.name}" textGen=${textDone - retrieverStart}ms extractSources=${extractDone - extractStart}ms total=${extractDone - retrieverStart}ms citations=${sources.length} text=${searchText.length}chars`)
 
       // Treat 0 citations as a failure — model didn't call search tool.
       // Fall through to next retriever in chain.
       if (sources.length === 0) {
-        console.warn(`[Orchestrator] Retriever "${retriever.name}" returned 0 citations — treating as failure, trying next`)
+        console.warn(`[Orchestrator][${reqId}] Retriever "${retriever.name}" returned 0 citations — treating as failure, trying next`)
         continue
       }
 
@@ -316,7 +317,7 @@ export async function executeWebSearch(
     }
   }
 
-  console.log(`[⏱ LATENCY] Phase1 TOTAL=${Date.now() - phase1Start}ms tried=${attemptedRetrievers.join(",")} winner=${successRetrieverName || "NONE"}`)
+  console.log(`[⏱ LATENCY][${reqId}] Phase1 TOTAL=${Date.now() - phase1Start}ms tried=${attemptedRetrievers.join(",")} winner=${successRetrieverName || "NONE"}`)
 
   // All retrievers failed → return error response
   if (successRetrieverIndex === -1) {
@@ -360,7 +361,7 @@ export async function executeWebSearch(
     }
     skillInstructions = composeSkillInstructions(skillContext)
   } catch (skillError) {
-    console.error("[Orchestrator] composeSkillInstructions failed:", skillError)
+    console.error(`[Orchestrator][${reqId}] composeSkillInstructions failed:`, skillError)
   }
 
   // ────────────────────────────────────────────────────────────
@@ -416,12 +417,12 @@ export async function executeWebSearch(
             resolvedUrlMap.set(top7Sources[i].url, resolved[i].url)
           }
         }
-        console.log(`[⏱ LATENCY] Phase1.5 proxyResolve top7=${Date.now() - resolveStart}ms proxies=${top7ProxyCount}`)
+        console.log(`[⏱ LATENCY][${reqId}] Phase1.5 proxyResolve top7=${Date.now() - resolveStart}ms proxies=${top7ProxyCount}`)
       }
 
       // FetchWeb uses resolved URLs (real URLs, not proxy)
       const urlsToFetch = top7Sources.map((s) => resolvedUrlMap.get(s.url) ?? s.url)
-      console.log(`[Orchestrator] Phase 1.5: fetching content for ${urlsToFetch.length} URLs...`)
+      console.log(`[Orchestrator][${reqId}] Phase 1.5: fetching content for ${urlsToFetch.length} URLs...`)
       const fetchStart = Date.now()
 
       const fetchedContent = await fetchPageContent(
@@ -429,7 +430,7 @@ export async function executeWebSearch(
         { tavilyApiKey: config.tavilyApiKey, timeoutMs: 5_000 },
       )
 
-      console.log(`[Orchestrator] Phase 1.5 done in ${Date.now() - fetchStart}ms`)
+      console.log(`[Orchestrator][${reqId}] Phase 1.5 done in ${Date.now() - fetchStart}ms`)
 
       // Resolve remaining proxy URLs (non-fetched sources) in parallel with compose.
       const unfetchedProxySources = scoredSources.slice(7).filter((s) => isVertexProxyUrl(s.url))
@@ -439,7 +440,7 @@ export async function executeWebSearch(
             const resolved = await resolveVertexProxyUrls(
               unfetchedProxySources.map((s) => ({ url: s.url, title: s.title }))
             )
-            console.log(`[⏱ LATENCY] proxyResolve (parallel) ${Date.now() - resolveStart}ms for ${unfetchedProxySources.length} URLs`)
+            console.log(`[⏱ LATENCY][${reqId}] proxyResolve (parallel) ${Date.now() - resolveStart}ms for ${unfetchedProxySources.length} URLs`)
             return new Map(unfetchedProxySources.map((s, i) => [s.url, resolved[i].url]))
           })()
         : Promise.resolve(new Map<string, string>())
@@ -463,7 +464,7 @@ export async function executeWebSearch(
 
       const enrichedCount = enrichedSources.filter((s) => s.pageContent).length
       const fetchElapsed = Date.now() - fetchStart
-      console.log(`[⏱ LATENCY] Phase1.5 FetchWeb total=${fetchElapsed}ms enriched=${enrichedCount}/${enrichedSources.length} urls=${urlsToFetch.length}`)
+      console.log(`[⏱ LATENCY][${reqId}] Phase1.5 FetchWeb total=${fetchElapsed}ms enriched=${enrichedCount}/${enrichedSources.length} urls=${urlsToFetch.length}`)
 
       // ── Build compose context using enrichedSources (top 7 have real URLs) ──
       const contextBuildStart = Date.now()
@@ -479,7 +480,7 @@ export async function executeWebSearch(
           cleanSearchText,
         )
       } catch (ctxError) {
-        console.error("[Orchestrator] buildSearchResultsContext failed:", ctxError)
+        console.error(`[Orchestrator][${reqId}] buildSearchResultsContext failed:`, ctxError)
         searchResultsContext = "## SEARCH RESULTS\nNo sources available."
       }
 
@@ -514,7 +515,7 @@ export async function executeWebSearch(
         ...(config.composeMessages ?? []),
       ]
 
-      console.log(`[⏱ LATENCY] Phase2 contextBuild=${Date.now() - contextBuildStart}ms sysMsgCount=${composeSystemMessages.length} totalMsgCount=${composeMessages.length}`)
+      console.log(`[⏱ LATENCY][${reqId}] Phase2 contextBuild=${Date.now() - contextBuildStart}ms sysMsgCount=${composeSystemMessages.length} totalMsgCount=${composeMessages.length}`)
 
       // ── Reasoning trace: live step emission (bar + panel) + persistence ──
       // Headline driven by data-reasoning-thought (transparent thinking text).
@@ -653,9 +654,9 @@ export async function executeWebSearch(
 
         // Handle error/abort chunks — retry if no text sent yet
         if (chunk.type === "error" || chunk.type === "abort") {
-          console.warn(`[COMPOSE-DIAG] ${chunk.type} chunk received, textChunkCount=${textChunkCount} canFailover=${canFailover}`)
+          console.warn(`[COMPOSE-DIAG][${reqId}] ${chunk.type} chunk received, textChunkCount=${textChunkCount} canFailover=${canFailover}`)
           if (textChunkCount === 0 && canFailover) {
-            console.warn(`[COMPOSE-DIAG] returning retry — will attempt fallback compose`)
+            console.warn(`[COMPOSE-DIAG][${reqId}] returning retry — will attempt fallback compose`)
             return "retry"
           }
           // Text already sent — forward and break (can't retry)
@@ -669,13 +670,13 @@ export async function executeWebSearch(
           if (textChunkCount === 1) {
             firstTokenTime = now
             lastTextChunkTime = now
-            console.log(`[⏱ LATENCY] Phase2 firstToken=${firstTokenTime - composeStartTime}ms (time-to-first-text from compose start)`)
+            console.log(`[⏱ LATENCY][${reqId}] Phase2 firstToken=${firstTokenTime - composeStartTime}ms (time-to-first-text from compose start)`)
           } else {
             const gap = now - lastTextChunkTime
             if (gap > maxGapMs) maxGapMs = gap
             if (gap > 200) {
               gapsOver500ms++
-              console.log(`[⏱ STUTTER] gap=${gap}ms after chunk#${textChunkCount} reasoningBetween=${lastChunkWasReasoning} isDrafting=${!!config.isDraftingStage}`)
+              console.log(`[⏱ STUTTER][${reqId}] gap=${gap}ms after chunk#${textChunkCount} reasoningBetween=${lastChunkWasReasoning} isDrafting=${!!config.isDraftingStage}`)
             }
             lastTextChunkTime = now
           }
@@ -770,9 +771,9 @@ export async function executeWebSearch(
             }
 
             const composeElapsed = Date.now() - composeStartTime
-            console.log(`[⏱ LATENCY] Phase2 composeTotal=${composeElapsed}ms textChunks=${textChunkCount} composedChars=${composedText.length}`)
-            console.log(`[⏱ STUTTER] summary: maxGap=${maxGapMs}ms gapsOver200ms=${gapsOver500ms} reasoningInterruptions=${reasoningBetweenTextCount} totalReasoningChunks=${reasoningChunkCount} isDrafting=${!!config.isDraftingStage}`)
-            console.log(`[⏱ LIFECYCLE] finish-handler: citations+reasoning written, starting persistence`)
+            console.log(`[⏱ LATENCY][${reqId}] Phase2 composeTotal=${composeElapsed}ms textChunks=${textChunkCount} composedChars=${composedText.length}`)
+            console.log(`[⏱ STUTTER][${reqId}] summary: maxGap=${maxGapMs}ms gapsOver200ms=${gapsOver500ms} reasoningInterruptions=${reasoningBetweenTextCount} totalReasoningChunks=${reasoningChunkCount} isDrafting=${!!config.isDraftingStage}`)
+            console.log(`[⏱ LIFECYCLE][${reqId}] finish-handler: citations+reasoning written, starting persistence`)
 
             // Call onFinish with the complete result
             const onFinishStart = Date.now()
@@ -804,7 +805,7 @@ export async function executeWebSearch(
             }
 
             if (composeFailoverUsed) {
-              console.warn("[Orchestrator] Compose used fallback model before first text output")
+              console.warn(`[Orchestrator][${reqId}] Compose used fallback model before first text output`)
             }
 
             await config.onFinish({
@@ -824,9 +825,9 @@ export async function executeWebSearch(
               capturedChoiceSpec: capturedChoiceSpec && capturedChoiceSpec.root ? capturedChoiceSpec : undefined,
               reasoningSnapshot,
             })
-            console.log(`[⏱ LATENCY] onFinish(DB writes)=${Date.now() - onFinishStart}ms`)
-            console.log(`[⏱ LIFECYCLE] finish-handler: onFinish done, writing finish event`)
-            console.log(`[⏱ LATENCY] ORCHESTRATOR MAIN=${Date.now() - orchestratorStart}ms (Phase1=${phase1Start ? Date.now() - phase1Start : '?'}ms includes all)`)
+            console.log(`[⏱ LATENCY][${reqId}] onFinish(DB writes)=${Date.now() - onFinishStart}ms`)
+            console.log(`[⏱ LIFECYCLE][${reqId}] finish-handler: onFinish done, writing finish event`)
+            console.log(`[⏱ LATENCY][${reqId}] ORCHESTRATOR MAIN=${Date.now() - orchestratorStart}ms (Phase1=${phase1Start ? Date.now() - phase1Start : '?'}ms includes all)`)
 
             // Capture payload for detached persistence — runs after compose loop settles
             postFinishWork = { fetchedContent }
@@ -837,12 +838,12 @@ export async function executeWebSearch(
               id: searchStatusId,
               data: { status: sourceCount > 0 ? "done" : "off" },
             })
-            console.error("[Orchestrator] Citation finalize failed:", err)
+            console.error(`[Orchestrator][${reqId}] Citation finalize failed:`, err)
           }
 
           // Forward finish chunk to preserve SDK semantics (finishReason, metadata)
           writer.write(chunk)
-          console.log(`[⏱ LIFECYCLE] finish-handler: finish event written, stream closing`)
+          console.log(`[⏱ LIFECYCLE][${reqId}] finish-handler: finish event written, stream closing`)
           return "break"
         }
 
@@ -931,7 +932,7 @@ export async function executeWebSearch(
         const pf = postFinishWork as { fetchedContent: FetchedContent[] }
         void (async () => {
           try {
-            console.log(`[⏱ LIFECYCLE] post-finish: starting detached exact-source persistence`)
+            console.log(`[⏱ LIFECYCLE][${reqId}] post-finish: starting detached exact-source persistence`)
 
             const convexOptions = config.convexToken ? { token: config.convexToken } : undefined
             await persistExactSourceDocuments({
@@ -942,7 +943,7 @@ export async function executeWebSearch(
 
             const ragSourceCount = pf.fetchedContent.filter((f: FetchedContent) => f.fullContent).length
             if (ragSourceCount > 0) {
-              console.log(`[⏱ LATENCY] RAG ingest starting (fire-and-forget): ${ragSourceCount} sources`)
+              console.log(`[⏱ LATENCY][${reqId}] RAG ingest starting (fire-and-forget): ${ragSourceCount} sources`)
             }
 
             const ragStart = Date.now()
@@ -962,25 +963,25 @@ export async function executeWebSearch(
                   convexToken: config.convexToken,
                 })
                 ragIdx++
-                console.log(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] ${realUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms`)
+                console.log(`[⏱ LATENCY][${reqId}] RAG ingest [${ragIdx}/${ragSourceCount}] ${realUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms`)
               } catch (err) {
                 ragIdx++
-                console.error(`[⏱ LATENCY] RAG ingest [${ragIdx}/${ragSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`, err)
+                console.error(`[⏱ LATENCY][${reqId}] RAG ingest [${ragIdx}/${ragSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`, err)
               }
             }
 
             if (ragSourceCount > 0) {
-              console.log(`[⏱ LATENCY] RAG ingest ALL DONE total=${Date.now() - ragStart}ms sources=${ragSourceCount}`)
+              console.log(`[⏱ LATENCY][${reqId}] RAG ingest ALL DONE total=${Date.now() - ragStart}ms sources=${ragSourceCount}`)
             }
           } catch (err) {
-            console.error("[Orchestrator] Detached post-finish persistence failed:", err)
+            console.error(`[Orchestrator][${reqId}] Detached post-finish persistence failed:`, err)
           }
-          console.log(`[⏱ LATENCY] DETACHED ALL DONE total=${Date.now() - orchestratorStart}ms (from request start, includes persist+RAG)`)
+          console.log(`[⏱ LATENCY][${reqId}] DETACHED ALL DONE total=${Date.now() - orchestratorStart}ms (from request start, includes persist+RAG)`)
         })()
       }
 
       // ── Execute settle point: stream can close after this line ──
-      console.log(`[⏱ LATENCY] EXECUTE SETTLE=${Date.now() - orchestratorStart}ms (stream will close, client transitions to ready)`)
+      console.log(`[⏱ LATENCY][${reqId}] EXECUTE SETTLE=${Date.now() - orchestratorStart}ms (stream will close, client transitions to ready)`)
     },
   })
 
