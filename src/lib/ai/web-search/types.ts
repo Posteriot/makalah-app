@@ -3,6 +3,7 @@ import type { NormalizedCitation } from "@/lib/citations/types"
 import type { PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import type {
   ReferencePresentationSource,
+  ReferenceVerificationStatus,
   SearchResponseMode,
 } from "./reference-presentation"
 export type {
@@ -12,6 +13,14 @@ export type {
 } from "./reference-presentation"
 
 export type AnyStreamTextResult = ReturnType<typeof streamText>
+
+export interface ReferenceInventoryItem {
+  sourceId?: string
+  title: string
+  url: string | null
+  verificationStatus: ReferenceVerificationStatus | "unavailable"
+  note?: string
+}
 
 export interface RetrieverConfig {
   apiKey: string

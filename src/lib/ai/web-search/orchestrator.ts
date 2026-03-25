@@ -13,6 +13,10 @@ import { buildSearchResultsContext } from "@/lib/ai/search-results-context"
 import { composeSkillInstructions } from "@/lib/ai/skills"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { buildUserFacingSearchPayload } from "@/lib/ai/internal-thought-separator"
+import {
+  buildReferencePresentationSources,
+  inferSearchResponseMode,
+} from "./reference-presentation"
 import { fetchPageContent } from "./content-fetcher"
 import type { FetchedContent } from "./content-fetcher"
 import {
@@ -21,6 +25,8 @@ import {
   createSearchUnavailableResponse,
 } from "./utils"
 import type {
+  ReferenceInventoryItem,
+  ReferencePresentationSource,
   WebSearchOrchestratorConfig,
   RetrieverChainEntry,
 } from "./types"
@@ -99,6 +105,42 @@ const MAX_EXACT_PARAGRAPH_COUNT = 120
 const MAX_EXACT_PARAGRAPH_TEXT_CHARS = 24_000
 const EXACT_TRUNCATION_MARKER = "[exact payload truncated: tail omitted]"
 const EXACT_PARAGRAPH_TAIL_MARKER = "[truncated]"
+
+function extractLastUserMessageText(
+  messages: WebSearchOrchestratorConfig["messages"],
+): string {
+  if (!Array.isArray(messages) || messages.length === 0) return ""
+
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i] as {
+      role?: string
+      content?: unknown
+      parts?: Array<{ type?: string; text?: string }>
+    }
+    if (message?.role !== "user") continue
+
+    const content =
+      typeof message.content === "string"
+        ? message.content
+        : message.parts?.find((part) => part.type === "text")?.text ?? ""
+
+    const normalized = typeof content === "string" ? content.trim() : ""
+    if (normalized) return normalized
+  }
+
+  return ""
+}
+
+function buildReferenceInventoryItems(
+  sources: ReferencePresentationSource[],
+): ReferenceInventoryItem[] {
+  return sources.map((source) => ({
+    sourceId: source.id,
+    title: source.title,
+    url: source.url,
+    verificationStatus: source.verificationStatus,
+  }))
+}
 
 export async function persistExactSourceDocuments(params: {
   fetchedContent: FetchedContent[]
@@ -190,6 +232,8 @@ export async function executeWebSearch(
   // ────────────────────────────────────────────────────────────
   const phase1Start = Date.now()
   const rawMessages = config.messages ?? []
+  const lastUserMessage = extractLastUserMessageText(rawMessages)
+  const responseMode = inferSearchResponseMode({ lastUserMessage })
   const sanitizedMessages = sanitizeMessagesForSearch(rawMessages)
   const searchMessages = augmentUserMessageForSearch([
     { role: "system" as const, content: getSearchSystemPrompt() },
@@ -377,6 +421,8 @@ export async function executeWebSearch(
     globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-text`
   const citedSourcesId =
     globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-sources`
+  const referenceInventoryId =
+    globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-reference-inventory`
   const internalThoughtId =
     globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-internal-thought`
 
@@ -480,6 +526,7 @@ export async function executeWebSearch(
             ...(s.pageContent ? { pageContent: s.pageContent } : {}),
           })),
           cleanSearchText,
+          { responseMode },
         )
       } catch (ctxError) {
         console.error(`[Orchestrator][${reqId}] buildSearchResultsContext failed:`, ctxError)
@@ -703,6 +750,13 @@ export async function executeWebSearch(
             }))
             // Filter out any remaining unresolved proxy URLs
             const cleanSources = finalSources.filter((s) => !isVertexProxyUrl(s.url))
+            const referencePresentationSources = buildReferencePresentationSources({
+              citations: cleanSources,
+              fetchedContent,
+            })
+            const referenceInventoryItems = buildReferenceInventoryItems(
+              referencePresentationSources,
+            )
 
             const persistedSources =
               cleanSources.length > 0 ? cleanSources : undefined
@@ -718,7 +772,11 @@ export async function executeWebSearch(
               anchors: citationAnchors,
             })
             const userFacingPayload =
-              buildUserFacingSearchPayload(textWithInlineCitations)
+              buildUserFacingSearchPayload({
+                text: textWithInlineCitations,
+                responseMode,
+                referenceItems: referenceInventoryItems,
+              })
 
             // Close search status as done
             writer.write({
@@ -731,6 +789,17 @@ export async function executeWebSearch(
                     : "off",
               },
             })
+
+            if (userFacingPayload.referenceInventory) {
+              writer.write({
+                type: "data-reference-inventory",
+                id: referenceInventoryId,
+                data: {
+                  responseMode: userFacingPayload.responseMode,
+                  items: userFacingPayload.referenceInventory.items,
+                },
+              })
+            }
 
             // Emit cited text
             writer.write({
@@ -812,6 +881,10 @@ export async function executeWebSearch(
             await config.onFinish({
               text: textWithInlineCitations,
               sources: cleanSources.map((s) => ({ url: s.url, title: s.title, ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}), ...(s.citedText ? { citedText: s.citedText } : {}) })),
+              referencePresentation: {
+                responseMode,
+                sources: referencePresentationSources,
+              },
               usage:
                 combinedInputTokens > 0 || combinedOutputTokens > 0
                   ? {
