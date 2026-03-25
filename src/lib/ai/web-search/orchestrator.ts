@@ -866,7 +866,15 @@ export async function executeWebSearch(
       // Extract lightweight title map to avoid retaining enrichedSources (with pageContent) in detached closure
       const sourceTitleMap = new Map(enrichedSources.map((s) => [s.url, s.title]))
 
-      // ── Post-finish persistence: detached so execute can settle and stream can close ──
+      // ── Post-finish persistence ──────────────────────────────────────────
+      // finish event is already delivered to the client and execute is allowed
+      // to settle. Only exact-source persistence and RAG ingest run in this
+      // detached task, so stream close no longer waits on source-document writes.
+      //
+      // Assistant message persistence stays awaited in onFinish because it also
+      // updates conversation freshness metadata. Detaching that path would be an
+      // explicit durability tradeoff and is intentionally NOT part of this task.
+      // ─────────────────────────────────────────────────────────────────────
       if (postFinishWork !== null) {
         const pf = postFinishWork as { fetchedContent: FetchedContent[] }
         void (async () => {
