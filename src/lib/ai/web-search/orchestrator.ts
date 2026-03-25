@@ -715,6 +715,7 @@ export async function executeWebSearch(
             const composeElapsed = Date.now() - composeStartTime
             console.log(`[⏱ LATENCY] Phase2 composeTotal=${composeElapsed}ms textChunks=${textChunkCount} composedChars=${composedText.length}`)
             console.log(`[⏱ STUTTER] summary: maxGap=${maxGapMs}ms gapsOver200ms=${gapsOver500ms} reasoningInterruptions=${reasoningBetweenTextCount} totalReasoningChunks=${reasoningChunkCount} isDrafting=${!!config.isDraftingStage}`)
+            console.log(`[⏱ LIFECYCLE] finish-handler: citations+reasoning written, starting persistence`)
 
             // Call onFinish with the complete result
             const onFinishStart = Date.now()
@@ -767,6 +768,7 @@ export async function executeWebSearch(
               reasoningSnapshot,
             })
             console.log(`[⏱ LATENCY] onFinish(DB writes)=${Date.now() - onFinishStart}ms`)
+            console.log(`[⏱ LIFECYCLE] finish-handler: onFinish done, starting exact-source persist`)
             console.log(`[⏱ LATENCY] ORCHESTRATOR TOTAL=${Date.now() - orchestratorStart}ms (Phase1=${phase1Start ? Date.now() - phase1Start : '?'}ms includes all)`)
 
             const convexOptions = config.convexToken ? { token: config.convexToken } : undefined
@@ -783,6 +785,7 @@ export async function executeWebSearch(
               conversationId: config.conversationId as Id<"conversations">,
               convexOptions,
             })
+            console.log(`[⏱ LIFECYCLE] finish-handler: exact-source persist done, writing finish event`)
 
             void (async () => {
               const ragStart = Date.now()
@@ -827,6 +830,7 @@ export async function executeWebSearch(
 
           // Forward finish chunk to preserve SDK semantics (finishReason, metadata)
           writer.write(chunk)
+          console.log(`[⏱ LIFECYCLE] finish-handler: finish event written, stream closing`)
           return "break"
         }
 
