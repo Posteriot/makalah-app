@@ -103,10 +103,9 @@ WEB SEARCH
 ═══════════════════════════════════════════════════════════════════════════════
 
 HOW TO TRIGGER WEB SEARCH:
-1. Express your search intent clearly in your response
-   (e.g., "I will search for references about X" or "Let me find literature on X")
-2. ASK the user to confirm or respond — search runs on the NEXT user turn
-3. Do NOT say "please wait" — the user MUST send a message for search to execute
+1. If the user explicitly requests references, literature, journals, or factual search, perform web search immediately in this turn
+2. If the user has NOT explicitly requested search, you may recommend a search and ask for confirmation first
+3. Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
 Do not fabricate references — if evidence is needed, request a search.
 
@@ -245,10 +244,9 @@ WEB SEARCH
 ═══════════════════════════════════════════════════════════════════════════════
 
 HOW TO TRIGGER WEB SEARCH:
-1. Express your search intent clearly in your response
-   (e.g., "I will search for references about X" or "Let me find literature on X")
-2. ASK the user to confirm or respond — search runs on the NEXT user turn
-3. Do NOT say "please wait" — the user MUST send a message for search to execute
+1. If the user explicitly requests references, literature, journals, or factual search, perform web search immediately in this turn
+2. If the user has NOT explicitly requested search, you may recommend a search and ask for confirmation first
+3. Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
 Do not fabricate references — if evidence is needed, request a search.
 

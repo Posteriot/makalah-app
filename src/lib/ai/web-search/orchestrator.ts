@@ -104,14 +104,16 @@ export async function persistExactSourceDocuments(params: {
   fetchedContent: FetchedContent[]
   conversationId: Id<"conversations">
   convexOptions?: { token: string }
+  requestId?: string
 }): Promise<void> {
+  const reqTag = params.requestId ? `[${params.requestId}] ` : ""
   const exactSourceCount = params.fetchedContent.filter(
     (fetched) => fetched.fullContent && fetched.documentText
   ).length
 
   if (exactSourceCount > 0) {
     console.log(
-      `[⏱ LATENCY] Exact source persist starting (detached): ${exactSourceCount} sources`
+      `[⏱ LATENCY] ${reqTag}Exact source persist starting (detached): ${exactSourceCount} sources`
     )
   }
 
@@ -148,12 +150,12 @@ export async function persistExactSourceDocuments(params: {
       const paragraphWasCapped =
         exactParagraphs.length < (fetched.paragraphs?.length ?? 0)
       console.log(
-        `[⏱ LATENCY] Exact source persist [${exactIdx}/${exactSourceCount}] ${fetched.resolvedUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms${exactDocumentText.length < fetched.documentText.length ? ` cappedText=${exactDocumentText.length}` : ""}${paragraphWasCapped ? ` cappedParagraphs=${exactParagraphs.length}/${fetched.paragraphs?.length ?? 0}` : ""}`
+        `[⏱ LATENCY] ${reqTag}Exact source persist [${exactIdx}/${exactSourceCount}] ${fetched.resolvedUrl.slice(0, 60)}... ${Date.now() - sourceStart}ms${exactDocumentText.length < fetched.documentText.length ? ` cappedText=${exactDocumentText.length}` : ""}${paragraphWasCapped ? ` cappedParagraphs=${exactParagraphs.length}/${fetched.paragraphs?.length ?? 0}` : ""}`
       )
     } catch (err) {
       exactIdx++
       console.error(
-        `[⏱ LATENCY] Exact source persist [${exactIdx}/${exactSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`,
+        `[⏱ LATENCY] ${reqTag}Exact source persist [${exactIdx}/${exactSourceCount}] FAILED ${fetched.resolvedUrl.slice(0, 60)}:`,
         err
       )
     }
@@ -161,7 +163,7 @@ export async function persistExactSourceDocuments(params: {
 
   if (exactSourceCount > 0) {
     console.log(
-      `[⏱ LATENCY] Exact source persist ALL DONE total=${Date.now() - exactStart}ms sources=${exactSourceCount}`
+      `[⏱ LATENCY] ${reqTag}Exact source persist ALL DONE total=${Date.now() - exactStart}ms sources=${exactSourceCount}`
     )
   }
 }
@@ -180,7 +182,7 @@ export async function executeWebSearch(
   config: WebSearchOrchestratorConfig,
 ): Promise<Response> {
   const orchestratorStart = Date.now()
-  const reqId = `ws-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+  const reqId = config.requestId ?? `ws-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
   const attemptedRetrievers: string[] = []
 
   // ────────────────────────────────────────────────────────────
@@ -287,7 +289,7 @@ export async function executeWebSearch(
       await Promise.allSettled([sourcesProbe, metadataProbe])
 
       console.log(
-        `[⏱ RETRIEVER] summary name=${retriever.name} ` +
+        `[⏱ RETRIEVER][${reqId}] summary name=${retriever.name} ` +
         `created=${resultCreatedAt - retrieverStart}ms ` +
         `text=${textDone - retrieverStart}ms ` +
         `sources=${sourcesReadyAt ?? -1}ms ` +
@@ -427,7 +429,7 @@ export async function executeWebSearch(
 
       const fetchedContent = await fetchPageContent(
         urlsToFetch,
-        { tavilyApiKey: config.tavilyApiKey, timeoutMs: 5_000 },
+        { tavilyApiKey: config.tavilyApiKey, timeoutMs: 5_000, requestId: reqId },
       )
 
       console.log(`[Orchestrator][${reqId}] Phase 1.5 done in ${Date.now() - fetchStart}ms`)
@@ -486,10 +488,9 @@ export async function executeWebSearch(
 
       // Build compose system messages
       // EXCLUDED from compose phase:
-      // - paperModePrompt: Contains "ASK user to confirm search" and tool usage instructions
-      //   that conflict with compose behavior. The model follows these over COMPOSE_PHASE_DIRECTIVE
-      //   because they are longer and more specific. Compose phase only needs to synthesize
-      //   search results — it does not need paper workflow instructions.
+      // - paperModePrompt: Contains workflow and tool-usage instructions that conflict
+      //   with compose behavior. Even after search-contract cleanup, compose phase only
+      //   needs to synthesize search results — it does not need paper workflow guidance.
       // - paperWorkflowReminder: Instructs "call startPaperSession IMMEDIATELY" — irrelevant
       //   and harmful in compose phase (no tools available).
       // COMPOSE_PHASE_DIRECTIVE goes FIRST — it defines the phase context and overrides.
@@ -939,6 +940,7 @@ export async function executeWebSearch(
               fetchedContent: pf.fetchedContent,
               conversationId: config.conversationId as Id<"conversations">,
               convexOptions,
+              requestId: reqId,
             })
 
             const ragSourceCount = pf.fetchedContent.filter((f: FetchedContent) => f.fullContent).length

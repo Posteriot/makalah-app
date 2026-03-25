@@ -111,8 +111,9 @@ WEB SEARCH
 
 PASSIVE MODE: Web search should ONLY be used if the user explicitly requests it.
 Do NOT proactively initiate search at this stage. This stage compiles existing data.
-HOW TO TRIGGER: Express search intent in your response, then ASK user to confirm.
-Search runs on the NEXT user turn. Do NOT say "please wait" — user MUST respond.
+If the user explicitly requests search, run it immediately in this turn.
+If the user has not explicitly requested search, you may recommend a search and ask for confirmation first.
+Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request.
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
 
 ===============================================================================
@@ -265,8 +266,9 @@ WEB SEARCH
 PASSIVE MODE: Web search should ONLY be used if the user explicitly requests
 verification/enrichment of incomplete references. Do NOT proactively initiate
 search at this stage.
-HOW TO TRIGGER: Express search intent in your response, then ASK user to confirm.
-Search runs on the NEXT user turn. Do NOT say "please wait" — user MUST respond.
+If the user explicitly requests search, run it immediately in this turn.
+If the user has not explicitly requested search, you may recommend a search and ask for confirmation first.
+Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request.
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
 After search results arrive, use function tools to save findings in the next turn.
 
@@ -403,8 +405,9 @@ WEB SEARCH
 
 PASSIVE MODE: Web search should ONLY be used if the user explicitly asks to find
 appendix templates/examples. Do NOT proactively initiate search at this stage.
-HOW TO TRIGGER: Express search intent in your response, then ASK user to confirm.
-Search runs on the NEXT user turn. Do NOT say "please wait" — user MUST respond.
+If the user explicitly requests search, run it immediately in this turn.
+If the user has not explicitly requested search, you may recommend a search and ask for confirmation first.
+Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request.
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
 
 ===============================================================================
@@ -546,8 +549,9 @@ WEB SEARCH
 
 PASSIVE MODE: Web search should ONLY be used if the user explicitly asks to find
 title inspiration from similar papers. Do NOT proactively initiate search at this stage.
-HOW TO TRIGGER: Express search intent in your response, then ASK user to confirm.
-Search runs on the NEXT user turn. Do NOT say "please wait" — user MUST respond.
+If the user explicitly requests search, run it immediately in this turn.
+If the user has not explicitly requested search, you may recommend a search and ask for confirmation first.
+Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request.
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
 
 ===============================================================================
@@ -688,8 +692,9 @@ WEB SEARCH
 PASSIVE MODE: Web search should ONLY be used if the user explicitly asks to find
 example paper structures for similar topics. Do NOT proactively initiate search
 at this stage.
-HOW TO TRIGGER: Express search intent in your response, then ASK user to confirm.
-Search runs on the NEXT user turn. Do NOT say "please wait" — user MUST respond.
+If the user explicitly requests search, run it immediately in this turn.
+If the user has not explicitly requested search, you may recommend a search and ask for confirmation first.
+Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request.
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
 
 ===============================================================================

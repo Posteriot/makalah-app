@@ -27,6 +27,7 @@ export interface FetchedContent {
 interface FetchOptions {
   tavilyApiKey?: string
   timeoutMs?: number
+  requestId?: string
 }
 
 const MAX_CONTENT_CHARS = 12000 // ~3000 tokens for compose context
@@ -59,6 +60,7 @@ export async function fetchPageContent(
   if (urls.length === 0) return []
 
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const reqTag = options?.requestId ? `[${options.requestId}] ` : ""
 
   // Primary tier: parallel fetch + readability
   const primaryStart = Date.now()
@@ -86,7 +88,7 @@ export async function fetchPageContent(
         paragraphs,
         documentText,
       } = settled.value
-      console.log(`[⏱ LATENCY] FetchWeb PRIMARY [${i+1}/${urls.length}] ✓ ${elapsed}ms ${resolvedUrl.slice(0, 70)} (${content.length} chars)`)
+      console.log(`[⏱ LATENCY] ${reqTag}FetchWeb PRIMARY [${i+1}/${urls.length}] ✓ ${elapsed}ms ${resolvedUrl.slice(0, 70)} (${content.length} chars)`)
       return {
         url: urls[i],
         resolvedUrl,
@@ -105,7 +107,7 @@ export async function fetchPageContent(
       }
     }
     const reason = settled.status === "rejected" ? settled.reason?.message : "empty/null content"
-    console.log(`[⏱ LATENCY] FetchWeb PRIMARY [${i+1}/${urls.length}] ✗ ${elapsed}ms ${urls[i].slice(0, 70)} — ${reason}`)
+    console.log(`[⏱ LATENCY] ${reqTag}FetchWeb PRIMARY [${i+1}/${urls.length}] ✗ ${elapsed}ms ${urls[i].slice(0, 70)} — ${reason}`)
     return {
       url: urls[i],
       resolvedUrl: urls[i],
@@ -123,7 +125,7 @@ export async function fetchPageContent(
       fetchMethod: null,
     }
   })
-  console.log(`[⏱ LATENCY] FetchWeb PRIMARY batch=${Date.now() - primaryStart}ms (parallel, slowest URL determines total)`)
+  console.log(`[⏱ LATENCY] ${reqTag}FetchWeb PRIMARY batch=${Date.now() - primaryStart}ms (parallel, slowest URL determines total)`)
 
   // Fallback tier: Tavily for failed URLs
   if (options?.tavilyApiKey) {
@@ -133,13 +135,13 @@ export async function fetchPageContent(
 
     if (failedUrls.length > 0) {
       const tavilyStart = Date.now()
-      console.log(`[FetchWeb] Tavily fallback for ${failedUrls.length} failed URLs...`)
+      console.log(`[FetchWeb] ${reqTag}Tavily fallback for ${failedUrls.length} failed URLs...`)
       const tavilyResults = await fetchViaTavily(failedUrls, options.tavilyApiKey)
-      console.log(`[⏱ LATENCY] FetchWeb TAVILY batch=${Date.now() - tavilyStart}ms urls=${failedUrls.length}`)
+      console.log(`[⏱ LATENCY] ${reqTag}FetchWeb TAVILY batch=${Date.now() - tavilyStart}ms urls=${failedUrls.length}`)
       for (const tr of tavilyResults) {
         const idx = results.findIndex((r) => r.url === tr.url)
         if (idx !== -1 && tr.content) {
-          console.log(`[FetchWeb] ✓ TAVILY ok: ${tr.url} (${tr.content.length} chars)`)
+          console.log(`[FetchWeb] ${reqTag}✓ TAVILY ok: ${tr.url} (${tr.content.length} chars)`)
           results[idx].pageContent = truncate(tr.content)
           results[idx].fullContent = truncateRag(tr.content)
           results[idx].fetchMethod = "tavily"
@@ -155,7 +157,7 @@ export async function fetchPageContent(
           results[idx].paragraphs = buildParagraphsFromText(tr.content)
           results[idx].documentText = normalizeDocumentText(tr.content)
         } else {
-          console.log(`[FetchWeb] ✗ TAVILY fail: ${tr.url}`)
+          console.log(`[FetchWeb] ${reqTag}✗ TAVILY fail: ${tr.url}`)
         }
       }
     }
@@ -164,7 +166,7 @@ export async function fetchPageContent(
   const successCount = results.filter((r) => r.pageContent !== null).length
   const fetchCount = results.filter((r) => r.fetchMethod === "fetch").length
   const tavilyCount = results.filter((r) => r.fetchMethod === "tavily").length
-  console.log(`[FetchWeb] Done: ${successCount}/${urls.length} succeeded (fetch=${fetchCount}, tavily=${tavilyCount})`)
+  console.log(`[FetchWeb] ${reqTag}Done: ${successCount}/${urls.length} succeeded (fetch=${fetchCount}, tavily=${tavilyCount})`)
 
   return results
 }
