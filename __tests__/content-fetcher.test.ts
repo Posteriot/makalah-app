@@ -535,26 +535,105 @@ describe("fetchPageContent — Tavily fallback", () => {
       throw new Error("fetch should not be called for pdf_or_download with Tavily")
     })
 
+    const extractSpy = vi.fn().mockResolvedValue({
+      results: [
+        { url: "https://example.com/files/paper-a.pdf", rawContent: "# PDF A\n\nFrom Tavily" },
+        { url: "https://example.com/files/paper-b.pdf", rawContent: "# PDF B\n\nFrom Tavily" },
+      ],
+      failedResults: [],
+    })
+
     vi.doMock("@tavily/core", () => ({
       tavily: () => ({
-        extract: vi.fn().mockResolvedValue({
-          results: [{ url: "https://example.com/files/paper.pdf", rawContent: "# PDF Extract\n\nFrom Tavily" }],
-          failedResults: [],
-        }),
+        extract: extractSpy,
       }),
     }))
 
     const { fetchPageContent: fetchFn } = await import("@/lib/ai/web-search/content-fetcher")
 
     const results = await fetchFn(
-      ["https://example.com/files/paper.pdf"],
+      [
+        "https://example.com/files/paper-a.pdf",
+        "https://example.com/files/paper-b.pdf",
+      ],
       { tavilyApiKey: "tvly-test-key" },
     )
 
-    expect(results[0].pageContent).toContain("PDF Extract")
-    expect(results[0].fetchMethod).toBe("tavily")
-    expect((results[0] as any).routeKind).toBe("pdf_or_download")
+    expect(extractSpy).toHaveBeenCalledTimes(1)
+    expect(extractSpy).toHaveBeenCalledWith([
+      "https://example.com/files/paper-a.pdf",
+      "https://example.com/files/paper-b.pdf",
+    ], { extractDepth: "basic" })
+    expect(results.map((result) => result.fetchMethod)).toEqual(["tavily", "tavily"])
+    expect(results[0].pageContent).toContain("PDF A")
+    expect(results[1].pageContent).toContain("PDF B")
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("batches Tavily fallback candidates into a single call", async () => {
+    fetchSpy
+      .mockResolvedValueOnce(new Response("Blocked", { status: 403 }))
+      .mockResolvedValueOnce(new Response("Blocked", { status: 403 }))
+
+    const extractSpy = vi.fn().mockResolvedValue({
+      results: [
+        { url: "https://blocked.com/a", rawContent: "# A\n\nFrom Tavily" },
+        { url: "https://blocked.com/b", rawContent: "# B\n\nFrom Tavily" },
+      ],
+      failedResults: [],
+    })
+
+    vi.doMock("@tavily/core", () => ({
+      tavily: () => ({
+        extract: extractSpy,
+      }),
+    }))
+
+    const { fetchPageContent: fetchFn } = await import("@/lib/ai/web-search/content-fetcher")
+
+    const results = await fetchFn(
+      ["https://blocked.com/a", "https://blocked.com/b"],
+      { tavilyApiKey: "tvly-test-key" },
+    )
+
+    expect(extractSpy).toHaveBeenCalledTimes(1)
+    expect(extractSpy).toHaveBeenCalledWith([
+      "https://blocked.com/a",
+      "https://blocked.com/b",
+    ], { extractDepth: "basic" })
+    expect(results.map((result) => result.fetchMethod)).toEqual(["tavily", "tavily"])
+    expect(results[0].pageContent).toContain("A")
+    expect(results[1].pageContent).toContain("B")
+  })
+
+  it("logs Tavily-specific failure reasons instead of reusing primary failure details", async () => {
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+    fetchSpy.mockResolvedValueOnce(new Response("Blocked", { status: 403 }))
+
+    const extractSpy = vi.fn().mockResolvedValue({
+      results: [{ url: "https://blocked.com/page", rawContent: null }],
+      failedResults: [],
+    })
+
+    vi.doMock("@tavily/core", () => ({
+      tavily: () => ({
+        extract: extractSpy,
+      }),
+    }))
+
+    const { fetchPageContent: fetchFn } = await import("@/lib/ai/web-search/content-fetcher")
+    await fetchFn(["https://blocked.com/page"], { tavilyApiKey: "tvly-test-key", requestId: "chat-789" })
+
+    expect(
+      consoleSpy.mock.calls.some(([message]) =>
+        typeof message === "string"
+        && message.includes("[chat-789] FetchWeb TAVILY [1/1] ✗")
+        && message.includes("reason=tavily_no_content")
+        && !message.includes("reason=http_non_ok"),
+      ),
+    ).toBe(true)
+
+    consoleSpy.mockRestore()
   })
 
   it("skips Tavily when no API key provided", async () => {

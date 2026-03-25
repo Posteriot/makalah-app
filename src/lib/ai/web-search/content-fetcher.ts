@@ -22,6 +22,8 @@ export type FetchFailureReason =
   | "content_too_short"
   | "proxy_unresolved"
 
+type TavilyFailureReason = "tavily_no_content"
+
 export interface FetchedContent {
   url: string                      // input URL (may be proxy)
   resolvedUrl: string              // final URL after redirect:follow
@@ -97,78 +99,148 @@ export async function fetchPageContent(
   const reqTag = options?.requestId ? `[${options.requestId}] ` : ""
   const hasTavily = Boolean(options?.tavilyApiKey)
 
-  const results = await Promise.all(
-    urls.map(async (url, idx) => {
-      const routeKind = classifyFetchRoute(url)
+  const results: FetchedContent[] = Array.from({ length: urls.length }, (_, index) => ({
+    url: urls[index],
+    resolvedUrl: urls[index],
+    routeKind: classifyFetchRoute(urls[index]),
+    rawTitle: null,
+    title: null,
+    author: null,
+    publishedAt: null,
+    siteName: null,
+    documentKind: inferDocumentKindFromRouteKind(classifyFetchRoute(urls[index])),
+    exactMetadataAvailable: false,
+    paragraphs: null,
+    documentText: null,
+    pageContent: null,
+    fullContent: null,
+    fetchMethod: null,
+  }))
 
-      if (routeKind === "pdf_or_download") {
-        if (!hasTavily) {
-          logRouteOutcome(reqTag, "ROUTE", idx + 1, urls.length, {
-            kind: "failure",
-            url,
-            routeKind,
-            failureReason: "pdf_unsupported",
-            elapsedMs: 0,
-          })
-          return buildPdfUnsupportedResult(url, routeKind)
-        }
+  const primaryCandidates: Array<{ url: string; index: number; routeKind: FetchRouteKind }> = []
+  const pdfCandidates: Array<{ url: string; index: number; routeKind: FetchRouteKind }> = []
 
-        const tavilyResult = await fetchViaTavily([url], options!.tavilyApiKey!)
-        const content = tavilyResult[0]?.content
-        if (content) {
-          logRouteOutcome(reqTag, "TAVILY", idx + 1, urls.length, {
-            kind: "success",
-            url,
-            routeKind,
-            elapsedMs: 0,
-          })
-          return buildTavilySuccessResult(url, routeKind, tavilyResult[0].url, content)
-        }
+  for (let index = 0; index < urls.length; index += 1) {
+    const url = urls[index]
+    const routeKind = classifyFetchRoute(url)
 
-        logRouteOutcome(reqTag, "TAVILY", idx + 1, urls.length, {
+    if (routeKind === "pdf_or_download") {
+      if (!hasTavily) {
+        const startedAt = Date.now()
+        logRouteOutcome(reqTag, "ROUTE", index + 1, urls.length, {
           kind: "failure",
           url,
           routeKind,
           failureReason: "pdf_unsupported",
-          elapsedMs: 0,
+          elapsedMs: Date.now() - startedAt,
         })
-        return buildPdfUnsupportedResult(url, routeKind)
+        results[index] = buildPdfUnsupportedResult(url, routeKind)
+        continue
       }
 
-      const routeTimeoutMs = getRouteTimeoutMs(routeKind, timeoutMs)
-      const primaryResult = await fetchAndParse(url, routeTimeoutMs, reqTag, idx + 1, urls.length)
-      if (primaryResult.ok) {
-        return buildFetchSuccessResult(url, primaryResult)
-      }
+      pdfCandidates.push({ url, index, routeKind })
+      continue
+    }
 
-      if (routeKind === "proxy_or_redirect_like" || !hasTavily) {
-        return buildFetchFailureResult(url, primaryResult)
-      }
+    primaryCandidates.push({ url, index, routeKind })
+  }
 
-      const tavilyResult = await fetchViaTavily([url], options!.tavilyApiKey!)
-      const content = tavilyResult[0]?.content
-      if (content) {
-        logRouteOutcome(reqTag, "TAVILY", idx + 1, urls.length, {
-          kind: "success",
-          url,
-          routeKind,
-          elapsedMs: 0,
-        })
-        return buildTavilySuccessResult(url, routeKind, tavilyResult[0].url, content)
-      }
-
-      logRouteOutcome(reqTag, "TAVILY", idx + 1, urls.length, {
-        kind: "failure",
-        url,
-        routeKind,
-        failureReason: primaryResult.failureReason,
-        statusCode: primaryResult.statusCode,
-        contentType: primaryResult.contentType,
-        elapsedMs: 0,
-      })
-      return buildFetchFailureResult(url, primaryResult)
+  const primaryResults = await Promise.all(
+    primaryCandidates.map(async (candidate) => {
+      const routeTimeoutMs = getRouteTimeoutMs(candidate.routeKind, timeoutMs)
+      const primaryResult = await fetchAndParse(
+        candidate.url,
+        routeTimeoutMs,
+        reqTag,
+        candidate.index + 1,
+        urls.length,
+      )
+      return { candidate, primaryResult }
     }),
   )
+
+  const fallbackCandidates: Array<{ url: string; index: number; routeKind: FetchRouteKind; failure: FetchParseFailureResult }> = []
+
+  for (const { candidate, primaryResult } of primaryResults) {
+    if (primaryResult.ok) {
+      results[candidate.index] = buildFetchSuccessResult(candidate.url, primaryResult)
+      continue
+    }
+
+    if (candidate.routeKind !== "proxy_or_redirect_like" && hasTavily) {
+      fallbackCandidates.push({
+        url: candidate.url,
+        index: candidate.index,
+        routeKind: candidate.routeKind,
+        failure: primaryResult,
+      })
+      continue
+    }
+
+    results[candidate.index] = buildFetchFailureResult(candidate.url, primaryResult)
+  }
+
+  if (pdfCandidates.length > 0) {
+    const pdfUrls = pdfCandidates.map((candidate) => candidate.url)
+    const pdfStart = Date.now()
+    const tavilyResults = await fetchViaTavily(pdfUrls, options!.tavilyApiKey!)
+    const elapsedMs = Date.now() - pdfStart
+
+    for (let i = 0; i < pdfCandidates.length; i += 1) {
+      const candidate = pdfCandidates[i]
+      const tavilyResult = tavilyResults[i]
+      if (tavilyResult?.content) {
+        logTavilyOutcome(reqTag, i + 1, pdfCandidates.length, {
+          kind: "success",
+          url: candidate.url,
+          routeKind: candidate.routeKind,
+          elapsedMs,
+        })
+        results[candidate.index] = buildTavilySuccessResult(candidate.url, candidate.routeKind, tavilyResult.url, tavilyResult.content)
+        continue
+      }
+
+      logTavilyOutcome(reqTag, i + 1, pdfCandidates.length, {
+        kind: "failure",
+        url: candidate.url,
+        routeKind: candidate.routeKind,
+        failureReason: "tavily_no_content",
+        elapsedMs,
+      })
+      results[candidate.index] = buildPdfUnsupportedResult(candidate.url, candidate.routeKind)
+    }
+  }
+
+  if (fallbackCandidates.length > 0) {
+    const fallbackUrls = fallbackCandidates.map((candidate) => candidate.url)
+    const tavilyStart = Date.now()
+    const tavilyResults = await fetchViaTavily(fallbackUrls, options!.tavilyApiKey!)
+    const elapsedMs = Date.now() - tavilyStart
+
+    for (let i = 0; i < fallbackCandidates.length; i += 1) {
+      const candidate = fallbackCandidates[i]
+      const tavilyResult = tavilyResults[i]
+      if (tavilyResult?.content) {
+        logTavilyOutcome(reqTag, i + 1, fallbackCandidates.length, {
+          kind: "success",
+          url: candidate.url,
+          routeKind: candidate.routeKind,
+          elapsedMs,
+        })
+        results[candidate.index] = buildTavilySuccessResult(candidate.url, candidate.routeKind, tavilyResult.url, tavilyResult.content)
+        continue
+      }
+
+      logTavilyOutcome(reqTag, i + 1, fallbackCandidates.length, {
+        kind: "failure",
+        url: candidate.url,
+        routeKind: candidate.routeKind,
+        failureReason: "tavily_no_content",
+        elapsedMs,
+      })
+      results[candidate.index] = buildFetchFailureResult(candidate.url, candidate.failure)
+    }
+  }
 
   const successCount = results.filter((r) => r.pageContent !== null).length
   const fetchCount = results.filter((r) => r.fetchMethod === "fetch").length
@@ -176,6 +248,29 @@ export async function fetchPageContent(
   console.log(`[FetchWeb] ${reqTag}Done: ${successCount}/${urls.length} succeeded (fetch=${fetchCount}, tavily=${tavilyCount})`)
 
   return results
+}
+
+function logTavilyOutcome(
+  reqTag: string,
+  index: number,
+  total: number,
+  details: {
+    kind: "success" | "failure"
+    url: string
+    routeKind: FetchRouteKind
+    elapsedMs: number
+    failureReason?: TavilyFailureReason
+  },
+): void {
+  const statusBits = [
+    `route=${details.routeKind}`,
+    details.kind === "failure" && details.failureReason ? `reason=${details.failureReason}` : null,
+  ].filter(Boolean).join(" ")
+
+  const resultMark = details.kind === "success" ? "✓" : "✗"
+  console.log(
+    `[⏱ LATENCY] ${reqTag}FetchWeb TAVILY [${index}/${total}] ${resultMark} ${details.elapsedMs}ms ${statusBits} ${details.url.slice(0, 70)}`,
+  )
 }
 
 function logRouteOutcome(
