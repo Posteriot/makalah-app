@@ -506,6 +506,7 @@ export function ChatWindow({
   const processHideTimeoutRef = useRef<number | null>(null)
   const processStartedAtRef = useRef<number | null>(null)
   const pendingRequestStartedAtRef = useRef<number | null>(null)
+  const staleStreamingTimeoutRef = useRef<number | null>(null)
   const sourceFocusTimeoutRef = useRef<number | null>(null)
   const previousStatusRef = useRef<string>("ready")
   const stoppedManuallyRef = useRef(false)
@@ -1479,6 +1480,10 @@ export function ChatWindow({
       window.clearTimeout(processHideTimeoutRef.current)
       processHideTimeoutRef.current = null
     }
+    if (staleStreamingTimeoutRef.current !== null) {
+      clearTimeout(staleStreamingTimeoutRef.current)
+      staleStreamingTimeoutRef.current = null
+    }
   }, [])
 
   useEffect(() => {
@@ -1558,6 +1563,27 @@ export function ChatWindow({
           return { ...prev, progress: nextProgress, elapsedSeconds: elapsed }
         })
       }, 220)
+      // Stale streaming watchdog: if the UI shell stays in "streaming" for too
+      // long without transitioning, recover the local process UI to avoid a
+      // permanently stuck progress bar. This does NOT repair the underlying
+      // transport; it is only a safety net for the presentation layer.
+      const STALE_STREAMING_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
+      if (staleStreamingTimeoutRef.current !== null) {
+        clearTimeout(staleStreamingTimeoutRef.current)
+      }
+      staleStreamingTimeoutRef.current = window.setTimeout(() => {
+        setProcessUi((prev) => {
+          if (prev.status !== "streaming") return prev
+          console.warn("[WATCHDOG] Stale streaming UI detected -- forcing local ready state after 5 minutes")
+          return {
+            ...prev,
+            visible: true,
+            status: "ready",
+            progress: 100,
+          }
+        })
+        staleStreamingTimeoutRef.current = null
+      }, STALE_STREAMING_TIMEOUT_MS)
     } else if (status === "ready" && hadGeneratingStatus) {
       clearProcessTimers()
       const wasStoppedManually = stoppedManuallyRef.current
