@@ -8,6 +8,11 @@ describe("classifyFetchRoute", () => {
     expect(classifyFetchRoute("https://example.com/files/paper.pdf")).toBe("pdf_or_download")
     expect(classifyFetchRoute("https://arxiv.org/pdf/2507.00181")).toBe("pdf_or_download")
     expect(classifyFetchRoute("https://onlinelibrary.wiley.com/doi/pdf/10.1111/jcal.70096")).toBe("pdf_or_download")
+    expect(classifyFetchRoute("https://arxiv.org/abs/2507.00181")).toBe("academic_wall_risk")
+    expect(classifyFetchRoute("https://link.springer.com/article/10.1007/s00134-024-03402-4")).toBe("academic_wall_risk")
+    expect(classifyFetchRoute("https://www.sciencedirect.com/science/article/pii/S0164121224001234")).toBe("academic_wall_risk")
+    expect(classifyFetchRoute("https://dl.acm.org/doi/10.1145/1234567.8901234")).toBe("academic_wall_risk")
+    expect(classifyFetchRoute("https://ieeexplore.ieee.org/document/1234567")).toBe("academic_wall_risk")
     expect(classifyFetchRoute("https://www.researchgate.net/publication/393260682_ChatGPT_produces_mo")).toBe("academic_wall_risk")
     expect(classifyFetchRoute("https://doi.org/10.1234/example")).toBe("proxy_or_redirect_like")
     expect(classifyFetchRoute("https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG")).toBe("proxy_or_redirect_like")
@@ -378,6 +383,22 @@ describe("fetchPageContent", () => {
     expect(results[0].pageContent).toContain("Academic Extract")
     expect(results[0].fetchMethod).toBe("tavily")
     expect((results[0] as any).routeKind).toBe("academic_wall_risk")
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("uses the shorter academic timeout for arXiv abstract URLs", async () => {
+    vi.useFakeTimers()
+    fetchSpy.mockImplementation(() => new Promise(() => {}))
+
+    const pending = fetchPageContent(["https://arxiv.org/abs/2507.00181"], { timeoutMs: 5000 })
+
+    await vi.advanceTimersByTimeAsync(2100)
+    const results = await pending
+
+    expect(results[0].pageContent).toBeNull()
+    expect(results[0].fetchMethod).toBeNull()
+    expect((results[0] as any).routeKind).toBe("academic_wall_risk")
+    expect((results[0] as any).failureReason).toBe("timeout")
     expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 

@@ -78,7 +78,7 @@ export function classifyFetchRoute(url: string): FetchRouteKind {
 
   if (isProxyLikeHost(hostname)) return "proxy_or_redirect_like"
   if (isPdfOrDownloadPath(pathname)) return "pdf_or_download"
-  if (isAcademicWallHost(hostname)) return "academic_wall_risk"
+  if (isAcademicWallHost(hostname, pathname)) return "academic_wall_risk"
 
   return "html_standard"
 }
@@ -869,12 +869,42 @@ function isProxyLikeHost(hostname: string): boolean {
   ].some((proxyHost) => hostname === proxyHost || hostname.endsWith(`.${proxyHost}`))
 }
 
-function isAcademicWallHost(hostname: string): boolean {
-  return [
-    "onlinelibrary.wiley.com",
-    "www.researchgate.net",
-    "researchgate.net",
-  ].some((academicHost) => hostname === academicHost || hostname.endsWith(`.${academicHost}`))
+function isAcademicWallHost(hostname: string, pathname: string): boolean {
+  if (matchesHostOrSubdomain(hostname, "onlinelibrary.wiley.com")
+    || matchesHostOrSubdomain(hostname, "www.researchgate.net")
+    || matchesHostOrSubdomain(hostname, "researchgate.net")
+  ) {
+    return true
+  }
+
+  if (matchesHostOrSubdomain(hostname, "arxiv.org")) {
+    return pathname.startsWith("/abs/")
+      || pathname.startsWith("/html/")
+  }
+
+  if (matchesHostOrSubdomain(hostname, "link.springer.com")) {
+    return pathname.startsWith("/article/")
+      || pathname.startsWith("/chapter/")
+  }
+
+  if (matchesHostOrSubdomain(hostname, "www.sciencedirect.com")) {
+    return pathname.startsWith("/science/article/pii/")
+  }
+
+  if (matchesHostOrSubdomain(hostname, "dl.acm.org")) {
+    return pathname.startsWith("/doi/")
+  }
+
+  if (matchesHostOrSubdomain(hostname, "ieeexplore.ieee.org")) {
+    return pathname.startsWith("/document/")
+      || pathname.startsWith("/abstract/")
+  }
+
+  return false
+}
+
+function matchesHostOrSubdomain(hostname: string, candidateHost: string): boolean {
+  return hostname === candidateHost || hostname.endsWith(`.${candidateHost}`)
 }
 
 function isPdfOrDownloadPath(pathname: string): boolean {
