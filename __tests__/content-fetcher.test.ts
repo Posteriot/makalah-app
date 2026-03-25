@@ -25,6 +25,8 @@ describe("fetchPageContent", () => {
   afterEach(() => {
     fetchSpy.mockRestore()
     vi.clearAllMocks()
+    vi.unmock("@tavily/core")
+    vi.useRealTimers()
   })
 
   it("extracts markdown content from a simple HTML page", async () => {
@@ -293,17 +295,62 @@ describe("fetchPageContent", () => {
   })
 
   it("returns pdf_unsupported for PDF/download URLs", async () => {
-    fetchSpy.mockResolvedValueOnce(
-      new Response("%PDF-1.7", { status: 200, headers: { "content-type": "application/pdf" } }),
-    )
-
+    fetchSpy.mockImplementation(() => {
+      throw new Error("fetch should not be called for pdf_or_download without Tavily")
+    })
     const results = await fetchPageContent(["https://example.com/files/paper.pdf"])
 
     expect(results[0].pageContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
     expect((results[0] as any).routeKind).toBe("pdf_or_download")
     expect((results[0] as any).failureReason).toBe("pdf_unsupported")
-    expect((results[0] as any).contentType).toBe("application/pdf")
+    expect((results[0] as any).contentType).toBeNull()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it("uses the shorter academic timeout before Tavily fallback", async () => {
+    vi.useFakeTimers()
+    fetchSpy.mockImplementation(() => new Promise(() => {}))
+
+    vi.doMock("@tavily/core", () => ({
+      tavily: () => ({
+        extract: vi.fn().mockResolvedValue({
+          results: [{ url: "https://www.researchgate.net/publication/393260682_ChatGPT_produces_mo", rawContent: "# Academic Extract\n\nFrom Tavily" }],
+          failedResults: [],
+        }),
+      }),
+    }))
+
+    const { fetchPageContent: fetchFn } = await import("@/lib/ai/web-search/content-fetcher")
+
+    const pending = fetchFn(
+      ["https://www.researchgate.net/publication/393260682_ChatGPT_produces_mo"],
+      { tavilyApiKey: "tvly-test-key", timeoutMs: 5000 },
+    )
+
+    await vi.advanceTimersByTimeAsync(2100)
+    const results = await pending
+
+    expect(results[0].pageContent).toContain("Academic Extract")
+    expect(results[0].fetchMethod).toBe("tavily")
+    expect((results[0] as any).routeKind).toBe("academic_wall_risk")
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("fails fast for proxy-like URLs with the shorter timeout", async () => {
+    vi.useFakeTimers()
+    fetchSpy.mockImplementation(() => new Promise(() => {}))
+
+    const pending = fetchPageContent(["https://doi.org/10.1234/example"], { timeoutMs: 5000 })
+
+    await vi.advanceTimersByTimeAsync(900)
+    const results = await pending
+
+    expect(results[0].pageContent).toBeNull()
+    expect(results[0].fetchMethod).toBeNull()
+    expect((results[0] as any).routeKind).toBe("proxy_or_redirect_like")
+    expect((results[0] as any).failureReason).toBe("timeout")
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 
   it("returns proxy_unresolved for proxy-like URLs that stay on the proxy host", async () => {
@@ -399,6 +446,7 @@ describe("fetchPageContent — Tavily fallback", () => {
     fetchSpy.mockRestore()
     vi.clearAllMocks()
     vi.restoreAllMocks()
+    vi.unmock("@tavily/core")
   })
 
   it("falls back to Tavily when primary fetch fails", async () => {
@@ -436,6 +484,33 @@ describe("fetchPageContent — Tavily fallback", () => {
     expect(results[0].failureReason).toBeUndefined()
     expect(results[0].statusCode).toBeUndefined()
     expect(results[0].contentType).toBeUndefined()
+  })
+
+  it("uses Tavily first for PDF/download URLs when API key is available", async () => {
+    fetchSpy.mockImplementation(() => {
+      throw new Error("fetch should not be called for pdf_or_download with Tavily")
+    })
+
+    vi.doMock("@tavily/core", () => ({
+      tavily: () => ({
+        extract: vi.fn().mockResolvedValue({
+          results: [{ url: "https://example.com/files/paper.pdf", rawContent: "# PDF Extract\n\nFrom Tavily" }],
+          failedResults: [],
+        }),
+      }),
+    }))
+
+    const { fetchPageContent: fetchFn } = await import("@/lib/ai/web-search/content-fetcher")
+
+    const results = await fetchFn(
+      ["https://example.com/files/paper.pdf"],
+      { tavilyApiKey: "tvly-test-key" },
+    )
+
+    expect(results[0].pageContent).toContain("PDF Extract")
+    expect(results[0].fetchMethod).toBe("tavily")
+    expect((results[0] as any).routeKind).toBe("pdf_or_download")
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   it("skips Tavily when no API key provided", async () => {

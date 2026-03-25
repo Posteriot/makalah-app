@@ -53,6 +53,9 @@ const MAX_CONTENT_CHARS = 12000 // ~3000 tokens for compose context
 const MAX_RAG_CONTENT_CHARS = 80000 // ~20K tokens — cap for RAG ingest (prevents 500K+ PDF dumps)
 const MIN_CONTENT_CHARS = 50 // Skip trivially short extractions (nav-only, login forms)
 const DEFAULT_TIMEOUT_MS = 5000
+const HTML_STANDARD_TIMEOUT_MS = DEFAULT_TIMEOUT_MS
+const ACADEMIC_WALL_TIMEOUT_MS = 2000
+const PROXY_OR_REDIRECT_TIMEOUT_MS = 800
 
 const FETCH_HEADERS = {
   "User-Agent":
@@ -92,153 +95,45 @@ export async function fetchPageContent(
 
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const reqTag = options?.requestId ? `[${options.requestId}] ` : ""
+  const hasTavily = Boolean(options?.tavilyApiKey)
 
-  // Primary tier: parallel fetch + readability
-  const primaryStart = Date.now()
-  const urlTimers = urls.map(() => Date.now())
-  const primaryResults = await Promise.allSettled(
-    urls.map((url, idx) => {
-      urlTimers[idx] = Date.now()
-      return fetchAndParse(url, timeoutMs)
+  const results = await Promise.all(
+    urls.map(async (url) => {
+      const routeKind = classifyFetchRoute(url)
+
+      if (routeKind === "pdf_or_download") {
+        if (!hasTavily) {
+          return buildPdfUnsupportedResult(url, routeKind)
+        }
+
+        const tavilyResult = await fetchViaTavily([url], options!.tavilyApiKey!)
+        const content = tavilyResult[0]?.content
+        if (content) {
+          return buildTavilySuccessResult(url, routeKind, tavilyResult[0].url, content)
+        }
+
+        return buildPdfUnsupportedResult(url, routeKind)
+      }
+
+      const routeTimeoutMs = getRouteTimeoutMs(routeKind, timeoutMs)
+      const primaryResult = await fetchAndParse(url, routeTimeoutMs)
+      if (primaryResult.ok) {
+        return buildFetchSuccessResult(url, primaryResult)
+      }
+
+      if (routeKind === "proxy_or_redirect_like" || !hasTavily) {
+        return buildFetchFailureResult(url, primaryResult)
+      }
+
+      const tavilyResult = await fetchViaTavily([url], options!.tavilyApiKey!)
+      const content = tavilyResult[0]?.content
+      if (content) {
+        return buildTavilySuccessResult(url, routeKind, tavilyResult[0].url, content)
+      }
+
+      return buildFetchFailureResult(url, primaryResult)
     }),
   )
-
-  const results: FetchedContent[] = primaryResults.map((settled, i) => {
-    const elapsed = Date.now() - urlTimers[i]
-    if (settled.status === "fulfilled") {
-      const result = settled.value
-      if (result.ok) {
-        const {
-          content,
-          resolvedUrl,
-          routeKind,
-          rawTitle,
-          title,
-          author,
-          publishedAt,
-          siteName,
-          documentKind,
-          exactMetadataAvailable,
-          paragraphs,
-          documentText,
-          contentType,
-        } = result
-        console.log(`[⏱ LATENCY] ${reqTag}FetchWeb PRIMARY [${i+1}/${urls.length}] ✓ ${elapsed}ms ${resolvedUrl.slice(0, 70)} (${content.length} chars)`)
-        return {
-          url: urls[i],
-          resolvedUrl,
-          routeKind,
-          rawTitle,
-          title,
-          author,
-          publishedAt,
-          siteName,
-          documentKind,
-          failureReason: undefined,
-          statusCode: undefined,
-          contentType: contentType ?? null,
-          exactMetadataAvailable,
-          paragraphs,
-          documentText,
-          pageContent: truncate(content),
-          fullContent: truncateRag(content),
-          fetchMethod: "fetch" as const,
-        }
-      }
-
-      const failure = result
-      const { failureReason, routeKind, statusCode, contentType, resolvedUrl, documentKind } = failure
-      const statusBits = [
-        `route=${routeKind}`,
-        `reason=${failureReason}`,
-        statusCode ? `status=${statusCode}` : null,
-        contentType ? `contentType=${contentType}` : null,
-      ].filter(Boolean).join(" ")
-      console.log(`[⏱ LATENCY] ${reqTag}FetchWeb PRIMARY [${i+1}/${urls.length}] ✗ ${elapsed}ms ${statusBits} ${urls[i].slice(0, 70)}`)
-      return {
-        url: urls[i],
-        resolvedUrl,
-        routeKind,
-        rawTitle: null,
-        title: null,
-        author: null,
-        publishedAt: null,
-        siteName: null,
-        documentKind: documentKind ?? inferDocumentKindFromRouteKind(routeKind),
-        failureReason,
-        statusCode,
-        contentType,
-        exactMetadataAvailable: false,
-        paragraphs: null,
-        documentText: null,
-        pageContent: null,
-        fullContent: null,
-        fetchMethod: null,
-      }
-    }
-
-    const routeKind = classifyFetchRoute(urls[i])
-    const failureReason: FetchFailureReason = "fetch_error"
-    console.log(`[⏱ LATENCY] ${reqTag}FetchWeb PRIMARY [${i+1}/${urls.length}] ✗ ${elapsed}ms route=${routeKind} reason=${failureReason} ${urls[i].slice(0, 70)}`)
-    return {
-      url: urls[i],
-      resolvedUrl: urls[i],
-      routeKind,
-      rawTitle: null,
-      title: null,
-      author: null,
-      publishedAt: null,
-      siteName: null,
-      documentKind: inferDocumentKindFromRouteKind(routeKind),
-      failureReason,
-      exactMetadataAvailable: false,
-      paragraphs: null,
-      documentText: null,
-      pageContent: null,
-      fullContent: null,
-      fetchMethod: null,
-    }
-  })
-  console.log(`[⏱ LATENCY] ${reqTag}FetchWeb PRIMARY batch=${Date.now() - primaryStart}ms (parallel, slowest URL determines total)`)
-
-  // Fallback tier: Tavily for failed URLs
-  if (options?.tavilyApiKey) {
-    const failedUrls = results
-      .filter((r) => r.pageContent === null)
-      .map((r) => r.url)
-
-    if (failedUrls.length > 0) {
-      const tavilyStart = Date.now()
-      console.log(`[FetchWeb] ${reqTag}Tavily fallback for ${failedUrls.length} failed URLs...`)
-      const tavilyResults = await fetchViaTavily(failedUrls, options.tavilyApiKey)
-      console.log(`[⏱ LATENCY] ${reqTag}FetchWeb TAVILY batch=${Date.now() - tavilyStart}ms urls=${failedUrls.length}`)
-      for (const tr of tavilyResults) {
-        const idx = results.findIndex((r) => r.url === tr.url)
-        if (idx !== -1 && tr.content) {
-          console.log(`[FetchWeb] ${reqTag}✓ TAVILY ok: ${tr.url} (${tr.content.length} chars)`)
-          results[idx].pageContent = truncate(tr.content)
-          results[idx].fullContent = truncateRag(tr.content)
-          results[idx].fetchMethod = "tavily"
-          results[idx].failureReason = undefined
-          results[idx].statusCode = undefined
-          results[idx].contentType = undefined
-          // Tavily returns the real URL — use it as resolvedUrl
-          results[idx].resolvedUrl = tr.url
-          results[idx].rawTitle = null
-          results[idx].title = null
-          results[idx].author = null
-          results[idx].publishedAt = null
-          results[idx].siteName = null
-          results[idx].documentKind = "unknown"
-          results[idx].exactMetadataAvailable = false
-          results[idx].paragraphs = buildParagraphsFromText(tr.content)
-          results[idx].documentText = normalizeDocumentText(tr.content)
-        } else {
-          console.log(`[FetchWeb] ${reqTag}✗ TAVILY fail: ${tr.url}`)
-        }
-      }
-    }
-  }
 
   const successCount = results.filter((r) => r.pageContent !== null).length
   const fetchCount = results.filter((r) => r.fetchMethod === "fetch").length
@@ -246,6 +141,99 @@ export async function fetchPageContent(
   console.log(`[FetchWeb] ${reqTag}Done: ${successCount}/${urls.length} succeeded (fetch=${fetchCount}, tavily=${tavilyCount})`)
 
   return results
+}
+
+function getRouteTimeoutMs(routeKind: FetchRouteKind, baseTimeoutMs: number): number {
+  switch (routeKind) {
+    case "academic_wall_risk":
+      return Math.min(baseTimeoutMs, ACADEMIC_WALL_TIMEOUT_MS)
+    case "proxy_or_redirect_like":
+      return Math.min(baseTimeoutMs, PROXY_OR_REDIRECT_TIMEOUT_MS)
+    case "html_standard":
+      return Math.min(baseTimeoutMs, HTML_STANDARD_TIMEOUT_MS)
+    case "pdf_or_download":
+      return baseTimeoutMs
+  }
+}
+
+function buildFetchSuccessResult(url: string, result: FetchParseResult): FetchedContent {
+  return {
+    url,
+    resolvedUrl: result.resolvedUrl,
+    routeKind: result.routeKind,
+    rawTitle: result.rawTitle,
+    title: result.title,
+    author: result.author,
+    publishedAt: result.publishedAt,
+    siteName: result.siteName,
+    documentKind: result.documentKind,
+    failureReason: undefined,
+    statusCode: undefined,
+    contentType: result.contentType ?? null,
+    exactMetadataAvailable: result.exactMetadataAvailable,
+    paragraphs: result.paragraphs,
+    documentText: result.documentText,
+    pageContent: truncate(result.content),
+    fullContent: truncateRag(result.content),
+    fetchMethod: "fetch",
+  }
+}
+
+function buildFetchFailureResult(url: string, failure: FetchParseFailureResult): FetchedContent {
+  return {
+    url,
+    resolvedUrl: failure.resolvedUrl,
+    routeKind: failure.routeKind,
+    rawTitle: null,
+    title: null,
+    author: null,
+    publishedAt: null,
+    siteName: null,
+    documentKind: failure.documentKind ?? inferDocumentKindFromRouteKind(failure.routeKind),
+    failureReason: failure.failureReason,
+    statusCode: failure.statusCode,
+    contentType: failure.contentType,
+    exactMetadataAvailable: false,
+    paragraphs: null,
+    documentText: null,
+    pageContent: null,
+    fullContent: null,
+    fetchMethod: null,
+  }
+}
+
+function buildTavilySuccessResult(
+  url: string,
+  routeKind: FetchRouteKind,
+  resolvedUrl: string,
+  content: string,
+): FetchedContent {
+  return {
+    url,
+    resolvedUrl,
+    routeKind,
+    rawTitle: null,
+    title: null,
+    author: null,
+    publishedAt: null,
+    siteName: null,
+    documentKind: "unknown",
+    failureReason: undefined,
+    statusCode: undefined,
+    contentType: undefined,
+    exactMetadataAvailable: false,
+    paragraphs: buildParagraphsFromText(content),
+    documentText: normalizeDocumentText(content),
+    pageContent: truncate(content),
+    fullContent: truncateRag(content),
+    fetchMethod: "tavily",
+  }
+}
+
+function buildPdfUnsupportedResult(url: string, routeKind: FetchRouteKind): FetchedContent {
+  return buildFetchFailureResult(url, makeFetchFailure(url, routeKind, "pdf_unsupported", {
+    documentKind: "pdf",
+  }))
 }
 
 interface FetchParseResult {
