@@ -34,6 +34,9 @@ function normalizeUrl(url: string | null | undefined): string | null {
 
   try {
     const parsed = new URL(url)
+    for (const key of Array.from(parsed.searchParams.keys())) {
+      if (/^utm_/i.test(key)) parsed.searchParams.delete(key)
+    }
     parsed.hash = ""
     const normalized = parsed.toString()
     return normalized.endsWith("/") ? normalized.slice(0, -1) : normalized
