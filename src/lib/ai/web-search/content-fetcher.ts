@@ -98,25 +98,45 @@ export async function fetchPageContent(
   const hasTavily = Boolean(options?.tavilyApiKey)
 
   const results = await Promise.all(
-    urls.map(async (url) => {
+    urls.map(async (url, idx) => {
       const routeKind = classifyFetchRoute(url)
 
       if (routeKind === "pdf_or_download") {
         if (!hasTavily) {
+          logRouteOutcome(reqTag, "ROUTE", idx + 1, urls.length, {
+            kind: "failure",
+            url,
+            routeKind,
+            failureReason: "pdf_unsupported",
+            elapsedMs: 0,
+          })
           return buildPdfUnsupportedResult(url, routeKind)
         }
 
         const tavilyResult = await fetchViaTavily([url], options!.tavilyApiKey!)
         const content = tavilyResult[0]?.content
         if (content) {
+          logRouteOutcome(reqTag, "TAVILY", idx + 1, urls.length, {
+            kind: "success",
+            url,
+            routeKind,
+            elapsedMs: 0,
+          })
           return buildTavilySuccessResult(url, routeKind, tavilyResult[0].url, content)
         }
 
+        logRouteOutcome(reqTag, "TAVILY", idx + 1, urls.length, {
+          kind: "failure",
+          url,
+          routeKind,
+          failureReason: "pdf_unsupported",
+          elapsedMs: 0,
+        })
         return buildPdfUnsupportedResult(url, routeKind)
       }
 
       const routeTimeoutMs = getRouteTimeoutMs(routeKind, timeoutMs)
-      const primaryResult = await fetchAndParse(url, routeTimeoutMs)
+      const primaryResult = await fetchAndParse(url, routeTimeoutMs, reqTag, idx + 1, urls.length)
       if (primaryResult.ok) {
         return buildFetchSuccessResult(url, primaryResult)
       }
@@ -128,9 +148,24 @@ export async function fetchPageContent(
       const tavilyResult = await fetchViaTavily([url], options!.tavilyApiKey!)
       const content = tavilyResult[0]?.content
       if (content) {
+        logRouteOutcome(reqTag, "TAVILY", idx + 1, urls.length, {
+          kind: "success",
+          url,
+          routeKind,
+          elapsedMs: 0,
+        })
         return buildTavilySuccessResult(url, routeKind, tavilyResult[0].url, content)
       }
 
+      logRouteOutcome(reqTag, "TAVILY", idx + 1, urls.length, {
+        kind: "failure",
+        url,
+        routeKind,
+        failureReason: primaryResult.failureReason,
+        statusCode: primaryResult.statusCode,
+        contentType: primaryResult.contentType,
+        elapsedMs: 0,
+      })
       return buildFetchFailureResult(url, primaryResult)
     }),
   )
@@ -141,6 +176,36 @@ export async function fetchPageContent(
   console.log(`[FetchWeb] ${reqTag}Done: ${successCount}/${urls.length} succeeded (fetch=${fetchCount}, tavily=${tavilyCount})`)
 
   return results
+}
+
+function logRouteOutcome(
+  reqTag: string,
+  phase: "PRIMARY" | "TAVILY" | "ROUTE",
+  index: number,
+  total: number,
+  details: {
+    kind: "success" | "failure"
+    url: string
+    routeKind: FetchRouteKind
+    elapsedMs: number
+    failureReason?: FetchFailureReason
+    statusCode?: number
+    contentType?: string | null
+  },
+): void {
+  const statusBits = [
+    `route=${details.routeKind}`,
+    details.kind === "failure" && details.failureReason ? `reason=${details.failureReason}` : null,
+    details.statusCode ? `status=${details.statusCode}` : null,
+    details.contentType ? `contentType=${details.contentType}` : null,
+  ].filter(Boolean).join(" ")
+
+  const resultMark = details.kind === "success" ? "✓" : "✗"
+  const elapsedBits = `${details.elapsedMs}ms`
+
+  console.log(
+    `[⏱ LATENCY] ${reqTag}FetchWeb ${phase} [${index}/${total}] ${resultMark} ${elapsedBits} ${statusBits} ${details.url.slice(0, 70)}`,
+  )
 }
 
 function getRouteTimeoutMs(routeKind: FetchRouteKind, baseTimeoutMs: number): number {
@@ -285,15 +350,47 @@ function makeFetchFailure(
   }
 }
 
-async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParseResult | FetchParseFailureResult> {
+async function fetchAndParse(
+  url: string,
+  timeoutMs: number,
+  reqTag: string,
+  index: number,
+  total: number,
+): Promise<FetchParseResult | FetchParseFailureResult> {
   const routeKind = classifyFetchRoute(url)
   const controller = new AbortController()
+  const startedAt = Date.now()
+  let didLogOutcome = false
+
+  const logPrimaryOutcome = (details: {
+    kind: "success" | "failure"
+    failureReason?: FetchFailureReason
+    statusCode?: number
+    contentType?: string | null
+  }) => {
+    if (didLogOutcome) return
+    didLogOutcome = true
+    logRouteOutcome(reqTag, "PRIMARY", index, total, {
+      kind: details.kind,
+      url,
+      routeKind,
+      failureReason: details.failureReason,
+      statusCode: details.statusCode,
+      contentType: details.contentType,
+      elapsedMs: Date.now() - startedAt,
+    })
+  }
 
   let timerId: ReturnType<typeof setTimeout>
   const timeoutPromise = new Promise<FetchParseResult | FetchParseFailureResult>((resolve) => {
     timerId = setTimeout(() => {
       controller.abort()
-      resolve(makeFetchFailure(url, routeKind, "timeout"))
+      const failure = makeFetchFailure(url, routeKind, "timeout")
+      logPrimaryOutcome({
+        kind: "failure",
+        failureReason: failure.failureReason,
+      })
+      resolve(failure)
     }, timeoutMs)
   })
 
@@ -311,30 +408,51 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParse
       const documentKind = detectDocumentKind(contentType)
 
       if (!response.ok) {
-        return makeFetchFailure(url, routeKind, "http_non_ok", {
+        const failure = makeFetchFailure(url, routeKind, "http_non_ok", {
           resolvedUrl,
           documentKind,
           statusCode: response.status,
           contentType,
         })
+        logPrimaryOutcome({
+          kind: "failure",
+          failureReason: failure.failureReason,
+          statusCode: failure.statusCode,
+          contentType: failure.contentType,
+        })
+        return failure
       }
 
       if (documentKind === "pdf") {
-        return makeFetchFailure(url, routeKind, "pdf_unsupported", {
+        const failure = makeFetchFailure(url, routeKind, "pdf_unsupported", {
           resolvedUrl,
           documentKind,
           statusCode: response.status,
           contentType,
         })
+        logPrimaryOutcome({
+          kind: "failure",
+          failureReason: failure.failureReason,
+          statusCode: failure.statusCode,
+          contentType: failure.contentType,
+        })
+        return failure
       }
 
       if (routeKind === "proxy_or_redirect_like" && isProxyLikeUrl(resolvedUrl)) {
-        return makeFetchFailure(url, routeKind, "proxy_unresolved", {
+        const failure = makeFetchFailure(url, routeKind, "proxy_unresolved", {
           resolvedUrl,
           documentKind,
           statusCode: response.status,
           contentType,
         })
+        logPrimaryOutcome({
+          kind: "failure",
+          failureReason: failure.failureReason,
+          statusCode: failure.statusCode,
+          contentType: failure.contentType,
+        })
+        return failure
       }
 
       const html = await response.text()
@@ -344,23 +462,37 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParse
       const article = reader.parse()
 
       if (!article?.content) {
-        return makeFetchFailure(url, routeKind, "readability_empty", {
+        const failure = makeFetchFailure(url, routeKind, "readability_empty", {
           resolvedUrl,
           documentKind,
           statusCode: response.status,
           contentType,
         })
+        logPrimaryOutcome({
+          kind: "failure",
+          failureReason: failure.failureReason,
+          statusCode: failure.statusCode,
+          contentType: failure.contentType,
+        })
+        return failure
       }
 
       const markdown = turndown.turndown(article.content)
       // Skip trivially short extractions (login forms, nav-only pages)
       if (markdown.trim().length < MIN_CONTENT_CHARS) {
-        return makeFetchFailure(url, routeKind, "content_too_short", {
+        const failure = makeFetchFailure(url, routeKind, "content_too_short", {
           resolvedUrl,
           documentKind,
           statusCode: response.status,
           contentType,
         })
+        logPrimaryOutcome({
+          kind: "failure",
+          failureReason: failure.failureReason,
+          statusCode: failure.statusCode,
+          contentType: failure.contentType,
+        })
+        return failure
       }
 
       const structured = extractStructuredMetadata(article, document)
@@ -370,6 +502,7 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParse
       // Extract metadata that readability parses but excludes from content
       const metadataBlock = buildMetadataBlock(structured)
       const content = metadataBlock ? `${metadataBlock}\n\n${markdown}` : markdown
+      logPrimaryOutcome({ kind: "success" })
       return {
         ok: true,
         content,
@@ -388,12 +521,22 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<FetchParse
       }
     } catch (error) {
       if (controller.signal.aborted) {
-        return makeFetchFailure(url, routeKind, "timeout")
+        const failure = makeFetchFailure(url, routeKind, "timeout")
+        logPrimaryOutcome({
+          kind: "failure",
+          failureReason: failure.failureReason,
+        })
+        return failure
       }
 
-      return makeFetchFailure(url, routeKind, "fetch_error", {
+      const failure = makeFetchFailure(url, routeKind, "fetch_error", {
         documentKind: inferDocumentKindFromRouteKind(routeKind),
       })
+      logPrimaryOutcome({
+        kind: "failure",
+        failureReason: failure.failureReason,
+      })
+      return failure
     }
   })()
 

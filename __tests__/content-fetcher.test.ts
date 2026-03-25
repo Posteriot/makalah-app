@@ -282,6 +282,50 @@ describe("fetchPageContent", () => {
     expect((results[0] as any).statusCode).toBe(404)
   })
 
+  it("logs enriched requestId and route details for primary successes and failures", async () => {
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+
+    fetchSpy.mockResolvedValueOnce(
+      new Response("<html><body><article><p>Readable content with enough detail for extraction.</p></article></body></html>", {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      }),
+    )
+
+    await fetchPageContent(["https://example.com/article"], { requestId: "chat-123" })
+
+    expect(
+      consoleSpy.mock.calls.some(([message]) =>
+        typeof message === "string"
+        && message.includes("[chat-123] FetchWeb PRIMARY [1/1] ✓")
+        && message.includes("route=html_standard"),
+      ),
+    ).toBe(true)
+
+    consoleSpy.mockClear()
+    fetchSpy.mockResolvedValueOnce(
+      new Response("Not Found", {
+        status: 404,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      }),
+    )
+
+    await fetchPageContent(["https://example.com/missing"], { requestId: "chat-456" })
+
+    expect(
+      consoleSpy.mock.calls.some(([message]) =>
+        typeof message === "string"
+        && message.includes("[chat-456] FetchWeb PRIMARY [1/1] ✗")
+        && message.includes("route=html_standard")
+        && message.includes("reason=http_non_ok")
+        && message.includes("status=404")
+        && message.includes("contentType=text/html"),
+      ),
+    ).toBe(true)
+
+    consoleSpy.mockRestore()
+  })
+
   it("returns null pageContent when fetch throws (network error)", async () => {
     fetchSpy.mockRejectedValueOnce(new Error("ECONNREFUSED"))
 
