@@ -1941,6 +1941,12 @@ Aturan:
             // Detect explicit search intent in user message (e.g., "cari referensi", "search for papers")
             const hasExplicitSearchIntent = /\b(cari\b|search\b|referensi|rujukan|sumber|literature|jurnal)/i.test(normalizedLastUserContentLower)
 
+            // Pre-compute new-search intent for RAG override (used in pre-router fast path)
+            const wantsNewSearch =
+                ragChunksAvailable &&
+                searchAlreadyDone &&
+                /\b(cari\s+(lagi|lebih|baru|tentang)|tambah\s+sumber|search\s+(again|for|more)|referensi\s+(baru|tambahan)|sumber\s+(baru|lain))\b/i.test(normalizedLastUserContentLower)
+
             if (forcePaperToolsMode && !hasExplicitSearchIntent) {
                 searchRequestedByPolicy = false
                 activeStageSearchReason = "force_paper_tools_mode"
@@ -1954,6 +1960,13 @@ Aturan:
                 searchRequestedByPolicy = true
                 activeStageSearchReason = "first_message_chat_mode"
                 console.log("[SearchDecision] Fast path: first chat message, skip router")
+            } else if (ragChunksAvailable && searchAlreadyDone && !wantsNewSearch) {
+                // Pre-router RAG override: RAG chunks exist, search done, user not
+                // requesting new sources. Skip LLM router (~2.5s saved).
+                searchRequestedByPolicy = false
+                activeStageSearchReason = "rag_chunks_available_pre_router"
+                activeStageSearchNote = getFunctionToolsModeNote("RAG tools available for existing sources")
+                console.log("[SearchDecision] Pre-router RAG override: chunks available, search done, no new-search trigger → skip router")
             } else {
                 // --- Unified LLM router for ALL stages (ACTIVE + PASSIVE + chat) ---
                 const { incomplete, requirement } = paperSession
@@ -2035,25 +2048,6 @@ Aturan:
                 isSaveSubmitIntent = !!paperModePrompt
                     && webSearchDecision.intentType === "save_submit"
 
-                // Post-router RAG override: if RAG chunks exist and router still wants search,
-                // check if user is asking about existing sources (not requesting new ones).
-                // Deterministic fallback — router prompt alone isn't reliable enough.
-                if (searchRequestedByPolicy && ragChunksAvailable && searchAlreadyDone) {
-                    const lastUserMsg = (recentForRouter
-                        .filter((m: { role?: string }) => m.role === "user")
-                        .pop() as { content?: string } | undefined)?.content ?? ""
-                    const msgLower = typeof lastUserMsg === "string" ? lastUserMsg.toLowerCase() : ""
-
-                    // Explicit new-search triggers — user wants NEW sources
-                    const wantsNewSearch = /\b(cari\s+(lagi|lebih|baru|tentang)|tambah\s+sumber|search\s+(again|for|more)|referensi\s+(baru|tambahan)|sumber\s+(baru|lain))\b/i.test(msgLower)
-
-                    if (!wantsNewSearch) {
-                        searchRequestedByPolicy = false
-                        activeStageSearchReason = "rag_chunks_available"
-                        activeStageSearchNote = getFunctionToolsModeNote("RAG tools available for existing sources")
-                        console.log("[SearchDecision] RAG override: chunks available, no explicit new-search trigger → enableWebSearch=false")
-                    }
-                }
             }
 
             // Build retriever chain once — reused for both mode resolution and execution
