@@ -434,6 +434,41 @@ describe("fetchPageContent", () => {
     expect((results[0] as any).failureReason).toBe("proxy_unresolved")
   })
 
+  it("salvages proxy-like URLs that resolve to PDF through Tavily when available", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response("%PDF-1.4", {
+        status: 200,
+        headers: { "content-type": "application/pdf" },
+      }),
+    )
+
+    const extractSpy = vi.fn().mockResolvedValue({
+      results: [
+        { url: "https://doi.org/10.1234/example", rawContent: "# Proxy PDF\n\nFrom Tavily" },
+      ],
+      failedResults: [],
+    })
+
+    vi.doMock("@tavily/core", () => ({
+      tavily: () => ({
+        extract: extractSpy,
+      }),
+    }))
+
+    const { fetchPageContent: fetchFn } = await import("@/lib/ai/web-search/content-fetcher")
+
+    const results = await fetchFn(
+      ["https://doi.org/10.1234/example"],
+      { tavilyApiKey: "tvly-test-key" },
+    )
+
+    expect(extractSpy).toHaveBeenCalledTimes(1)
+    expect(results[0].fetchMethod).toBe("tavily")
+    expect(results[0].documentKind).toBe("pdf")
+    expect(results[0].pageContent).toContain("Proxy PDF")
+    expect((results[0] as any).failureReason).toBeUndefined()
+  })
+
   it("handles multiple URLs in parallel", async () => {
     const makeHtml = (title: string) => `
       <html><head><title>${title}</title></head>
@@ -588,6 +623,7 @@ describe("fetchPageContent — Tavily fallback", () => {
     expect(results.map((result) => result.fetchMethod)).toEqual(["tavily", "tavily"])
     expect(results[0].pageContent).toContain("PDF A")
     expect(results[1].pageContent).toContain("PDF B")
+    expect(results.map((result) => result.documentKind)).toEqual(["pdf", "pdf"])
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
@@ -625,6 +661,47 @@ describe("fetchPageContent — Tavily fallback", () => {
     expect(results.map((result) => result.fetchMethod)).toEqual(["tavily", "tavily"])
     expect(results[0].pageContent).toContain("A")
     expect(results[1].pageContent).toContain("B")
+  })
+
+  it("does not mis-assign content when Tavily returns reordered and partial results", async () => {
+    fetchSpy
+      .mockResolvedValueOnce(new Response("Blocked", { status: 403 }))
+      .mockResolvedValueOnce(new Response("Blocked", { status: 403 }))
+      .mockResolvedValueOnce(new Response("Blocked", { status: 403 }))
+
+    const extractSpy = vi.fn().mockResolvedValue({
+      results: [
+        { url: "https://blocked.com/c", rawContent: "# C\n\nFrom Tavily" },
+        { url: "https://blocked.com/b", rawContent: "# B\n\nFrom Tavily" },
+      ],
+      failedResults: [],
+    })
+
+    vi.doMock("@tavily/core", () => ({
+      tavily: () => ({
+        extract: extractSpy,
+      }),
+    }))
+
+    const { fetchPageContent: fetchFn } = await import("@/lib/ai/web-search/content-fetcher")
+
+    const results = await fetchFn(
+      ["https://blocked.com/a", "https://blocked.com/b", "https://blocked.com/c"],
+      { tavilyApiKey: "tvly-test-key" },
+    )
+
+    expect(extractSpy).toHaveBeenCalledTimes(1)
+    expect(results.map((result) => result.url)).toEqual([
+      "https://blocked.com/a",
+      "https://blocked.com/b",
+      "https://blocked.com/c",
+    ])
+    expect(results[0].pageContent).toBeNull()
+    expect(results[0].fetchMethod).toBeNull()
+    expect(results[1].pageContent).toContain("B")
+    expect(results[1].fetchMethod).toBe("tavily")
+    expect(results[2].pageContent).toContain("C")
+    expect(results[2].fetchMethod).toBe("tavily")
   })
 
   it("logs Tavily-specific failure reasons instead of reusing primary failure details", async () => {

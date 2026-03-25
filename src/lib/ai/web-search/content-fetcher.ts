@@ -184,7 +184,14 @@ export async function fetchPageContent(
       continue
     }
 
-    if (candidate.routeKind !== "proxy_or_redirect_like" && hasTavily) {
+    const shouldTavilyFallback =
+      hasTavily
+      && (
+        candidate.routeKind !== "proxy_or_redirect_like"
+        || primaryResult.failureReason === "pdf_unsupported"
+      )
+
+    if (shouldTavilyFallback) {
       fallbackCandidates.push({
         url: candidate.url,
         index: candidate.index,
@@ -200,7 +207,7 @@ export async function fetchPageContent(
   if (pdfBatch) {
     for (let i = 0; i < pdfCandidates.length; i += 1) {
       const candidate = pdfCandidates[i]
-      const tavilyResult = pdfBatch.tavilyResults[i]
+      const tavilyResult = pdfBatch.tavilyResults.get(candidate.url)
       if (tavilyResult?.content) {
         logTavilyOutcome(reqTag, i + 1, pdfCandidates.length, {
           kind: "success",
@@ -208,7 +215,7 @@ export async function fetchPageContent(
           routeKind: candidate.routeKind,
           elapsedMs: pdfBatch.elapsedMs,
         })
-        results[candidate.index] = buildTavilySuccessResult(candidate.url, candidate.routeKind, tavilyResult.url, tavilyResult.content)
+        results[candidate.index] = buildTavilySuccessResult(candidate.url, candidate.routeKind, tavilyResult.url, tavilyResult.content, "pdf")
         continue
       }
 
@@ -231,7 +238,7 @@ export async function fetchPageContent(
 
     for (let i = 0; i < fallbackCandidates.length; i += 1) {
       const candidate = fallbackCandidates[i]
-      const tavilyResult = tavilyResults[i]
+      const tavilyResult = tavilyResults.get(candidate.url)
       if (tavilyResult?.content) {
         logTavilyOutcome(reqTag, i + 1, fallbackCandidates.length, {
           kind: "success",
@@ -239,7 +246,13 @@ export async function fetchPageContent(
           routeKind: candidate.routeKind,
           elapsedMs,
         })
-        results[candidate.index] = buildTavilySuccessResult(candidate.url, candidate.routeKind, tavilyResult.url, tavilyResult.content)
+        results[candidate.index] = buildTavilySuccessResult(
+          candidate.url,
+          candidate.routeKind,
+          tavilyResult.url,
+          tavilyResult.content,
+          candidate.failure.documentKind,
+        )
         continue
       }
 
@@ -379,6 +392,7 @@ function buildTavilySuccessResult(
   routeKind: FetchRouteKind,
   resolvedUrl: string,
   content: string,
+  documentKind: "html" | "pdf" | "unknown" = "unknown",
 ): FetchedContent {
   return {
     url,
@@ -389,7 +403,7 @@ function buildTavilySuccessResult(
     author: null,
     publishedAt: null,
     siteName: null,
-    documentKind: "unknown",
+    documentKind,
     failureReason: undefined,
     statusCode: undefined,
     contentType: undefined,
@@ -657,7 +671,7 @@ async function fetchAndParse(
 async function fetchViaTavily(
   urls: string[],
   apiKey: string,
-): Promise<Array<{ url: string; content: string | null }>> {
+): Promise<Map<string, { url: string; content: string | null }>> {
   try {
     const { tavily } = await import("@tavily/core")
     const client = tavily({ apiKey })
@@ -665,13 +679,18 @@ async function fetchViaTavily(
       extractDepth: "basic",
     })
 
-    return response.results.map((r: { url: string; rawContent?: string; raw_content?: string }) => ({
-      url: r.url,
-      content: r.rawContent ?? r.raw_content ?? null,
-    }))
+    return new Map(
+      response.results.map((r: { url: string; rawContent?: string; raw_content?: string }) => [
+        r.url,
+        {
+          url: r.url,
+          content: r.rawContent ?? r.raw_content ?? null,
+        },
+      ]),
+    )
   } catch {
     // Tavily failure — return all as failed
-    return urls.map((url) => ({ url, content: null }))
+    return new Map(urls.map((url) => [url, { url, content: null }]))
   }
 }
 
