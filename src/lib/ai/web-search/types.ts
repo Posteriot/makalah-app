@@ -1,6 +1,11 @@
 import type { LanguageModel, streamText } from "ai"
 import type { NormalizedCitation } from "@/lib/citations/types"
 import type { PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
+export type {
+  ReferencePresentationSource,
+  ReferenceVerificationStatus,
+  SearchResponseMode,
+} from "./reference-presentation"
 
 export type AnyStreamTextResult = ReturnType<typeof streamText>
 
