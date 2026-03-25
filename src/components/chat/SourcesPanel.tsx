@@ -7,9 +7,13 @@ import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/
 import { getWebCitationDisplayParts, deriveSiteNameFromUrl } from "@/lib/citations/apaWeb"
 
 interface Source {
-  url: string
+  sourceId?: string
+  url: string | null
   title: string
   publishedAt?: number | null
+  verificationStatus?: "verified_content" | "unverified_link" | "unavailable"
+  documentKind?: "html" | "pdf" | "unknown"
+  note?: string
 }
 
 interface SourcesPanelProps {
@@ -35,6 +39,11 @@ export function SourcesPanel({ open, onOpenChange, sources }: SourcesPanelProps)
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
+    if (typeof window.matchMedia !== "function") {
+      setIsMobile(false)
+      return
+    }
+
     const media = window.matchMedia("(max-width: 767px)")
     const sync = () => setIsMobile(media.matches)
     sync()
@@ -77,45 +86,111 @@ export function SourcesPanel({ open, onOpenChange, sources }: SourcesPanelProps)
 }
 
 function SourceCard({ source }: { source: Source }) {
-  const parts = getWebCitationDisplayParts(source)
-  const siteName = deriveSiteNameFromUrl(parts.url)
+  const hasUrl = typeof source.url === "string" && source.url.trim().length > 0
+  const parts = hasUrl
+    ? getWebCitationDisplayParts({
+        url: source.url,
+        title: source.title,
+        publishedAt: source.publishedAt,
+      })
+    : null
+  const siteName = hasUrl ? deriveSiteNameFromUrl(parts.url) : "Tautan tidak tersedia"
+  const label =
+    source.verificationStatus === "verified_content"
+      ? "Konten terverifikasi"
+      : source.verificationStatus === "unverified_link"
+        ? "Tautan belum diverifikasi"
+        : source.verificationStatus === "unavailable"
+          ? "Tidak tersedia"
+          : null
 
   return (
-    <a
-      href={parts.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex gap-3 py-3 transition-colors hover:bg-muted/50"
-    >
-      {/* Favicon */}
-      <img
-        src={faviconUrl(parts.url)}
-        alt=""
-        width={16}
-        height={16}
-        className="mt-0.5 h-4 w-4 flex-shrink-0 rounded-sm"
-        loading="lazy"
-      />
+    hasUrl && parts ? (
+      <a
+        href={parts.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group flex gap-3 py-3 transition-colors hover:bg-muted/50"
+      >
+        {/* Favicon */}
+        <img
+          src={faviconUrl(parts.url)}
+          alt=""
+          width={16}
+          height={16}
+          className="mt-0.5 h-4 w-4 flex-shrink-0 rounded-sm"
+          loading="lazy"
+        />
 
-      {/* Content */}
-      <div className="min-w-0 flex-1">
-        {/* Domain + date row */}
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <span className="truncate">{siteName}</span>
-          {parts.dateText && (
-            <>
-              <span className="text-muted-foreground/50">·</span>
-              <span className="shrink-0">{parts.dateText}</span>
-            </>
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          {/* Domain + date row */}
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+            <span className="truncate">{siteName}</span>
+            {parts.dateText && (
+              <>
+                <span className="text-muted-foreground/50">·</span>
+                <span className="shrink-0">{parts.dateText}</span>
+              </>
+            )}
+            {label && (
+              <>
+                <span className="text-muted-foreground/50">·</span>
+                <span className="rounded-badge border border-[color:var(--border)] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  {label}
+                </span>
+              </>
+            )}
+            {source.documentKind && (
+              <>
+                <span className="text-muted-foreground/50">·</span>
+                <span className="rounded-badge border border-[color:var(--border)] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  {source.documentKind === "pdf" ? "PDF" : source.documentKind === "html" ? "HTML" : "UNKNOWN"}
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Title */}
+          <span className="mt-0.5 flex items-center gap-1 text-sm font-medium text-foreground group-hover:underline">
+            <span className="line-clamp-2">{parts.title}</span>
+            <OpenNewWindow className="h-3 w-3 flex-shrink-0 opacity-0 group-hover:opacity-70 transition-opacity" />
+          </span>
+          {source.note && (
+            <div className="mt-0.5 text-xs text-muted-foreground">{source.note}</div>
           )}
         </div>
-
-        {/* Title */}
-        <span className="mt-0.5 flex items-center gap-1 text-sm font-medium text-foreground group-hover:underline">
-          <span className="line-clamp-2">{parts.title}</span>
-          <OpenNewWindow className="h-3 w-3 flex-shrink-0 opacity-0 group-hover:opacity-70 transition-opacity" />
-        </span>
+      </a>
+    ) : (
+      <div className="flex gap-3 py-3">
+        <div className="mt-0.5 h-4 w-4 flex-shrink-0 rounded-sm border border-[color:var(--border)]" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+            <span className="truncate">{siteName}</span>
+            {label && (
+              <>
+                <span className="text-muted-foreground/50">·</span>
+                <span className="rounded-badge border border-[color:var(--border)] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  {label}
+                </span>
+              </>
+            )}
+            {source.documentKind && (
+              <>
+                <span className="text-muted-foreground/50">·</span>
+                <span className="rounded-badge border border-[color:var(--border)] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  {source.documentKind === "pdf" ? "PDF" : source.documentKind === "html" ? "HTML" : "UNKNOWN"}
+                </span>
+              </>
+            )}
+          </div>
+          <div className="mt-0.5 text-sm font-medium text-foreground">{source.title}</div>
+          <div className="mt-0.5 font-mono text-xs text-muted-foreground">URL tidak tersedia</div>
+          {source.note && (
+            <div className="mt-0.5 text-xs text-muted-foreground">{source.note}</div>
+          )}
+        </div>
       </div>
-    </a>
+    )
   )
 }

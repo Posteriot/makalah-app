@@ -58,6 +58,16 @@ interface ConversationArtifact {
   type: string
 }
 
+type ChatSourceForSheet = {
+  sourceId?: string
+  url: string | null
+  title: string
+  publishedAt?: number | null
+  verificationStatus?: "verified_content" | "unverified_link" | "unavailable"
+  documentKind?: "html" | "pdf" | "unknown"
+  note?: string
+}
+
 interface ChatWindowProps {
   conversationId: string | null
   onMobileMenuClick?: () => void
@@ -489,7 +499,7 @@ export function ChatWindow({
   const [chatViewportWidth, setChatViewportWidth] = useState(0)
   type ActiveSheet = "proses" | "sources" | null
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null)
-  const [sourcesForSheet, setSourcesForSheet] = useState<{ url: string; title: string; publishedAt?: number | null }[]>([])
+  const [sourcesForSheet, setSourcesForSheet] = useState<ChatSourceForSheet[]>([])
 
   const [processUi, setProcessUi] = useState<{
     visible: boolean
@@ -1788,7 +1798,7 @@ export function ChatWindow({
     stop()
   }, [hasPendingAssistantGeneration, stop])
 
-  const handleOpenSources = useCallback((sources: { url: string; title: string; publishedAt?: number | null }[]) => {
+  const handleOpenSources = useCallback((sources: ChatSourceForSheet[]) => {
     setSourcesForSheet(sources)
     setActiveSheet("sources")
   }, [])

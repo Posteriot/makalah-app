@@ -124,4 +124,41 @@ describe("MessageBubble search status", () => {
     expect(screen.getByText(/Ini fallback jawaban tanpa sumber\./)).toBeInTheDocument()
     expect(screen.getByTestId("internal-thought-block")).toHaveTextContent(/Bentar ya, aku cari dulu\./)
   })
+
+  it("keeps search status visible when a reference inventory payload is present", () => {
+    const message = {
+      id: "m-search-inventory",
+      role: "assistant",
+      parts: [
+        {
+          type: "data-search",
+          data: {
+            status: "error",
+            message: "Tool pencarian tidak tersedia",
+          },
+        },
+        {
+          type: "data-reference-inventory",
+          data: {
+            responseMode: "reference_inventory",
+            introText: "Berikut inventaris referensi yang ditemukan.",
+            items: [
+              {
+                sourceId: "s1",
+                title: "Paper A",
+                url: "https://example.com/a.pdf",
+                verificationStatus: "unverified_link",
+                documentKind: "pdf",
+              },
+            ],
+          },
+        },
+      ],
+    } as unknown as UIMessage
+
+    render(<MessageBubble message={message} persistProcessIndicators />)
+
+    expect(screen.getByText("Tool pencarian tidak tersedia")).toBeInTheDocument()
+    expect(screen.queryByText(/^Link:\s*$/i)).not.toBeInTheDocument()
+  })
 })

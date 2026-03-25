@@ -67,6 +67,22 @@ interface PersistedArtifact {
     parentId?: Id<"artifacts">
 }
 
+type ChatSource = {
+    sourceId?: string
+    title: string
+    url: string | null
+    publishedAt?: number | null
+    verificationStatus?: "verified_content" | "unverified_link" | "unavailable"
+    documentKind?: "html" | "pdf" | "unknown"
+    note?: string
+}
+
+type ReferenceInventoryPayload = {
+    responseMode?: "synthesis" | "reference_inventory" | "mixed"
+    introText?: string
+    items?: ChatSource[]
+}
+
 interface MessageBubbleProps {
     message: UIMessage
     onEdit?: (payload: {
@@ -94,7 +110,7 @@ interface MessageBubbleProps {
     /** File metadata lookup map (fileId → name/size/type) for history messages */
     fileMetaMap?: Map<string, { name: string; size: number; type: string }>
     /** Callback to open the Sources sheet with the given sources */
-    onOpenSources?: (sources: { url: string; title: string; publishedAt?: number | null }[]) => void
+    onOpenSources?: (sources: ChatSource[]) => void
     /** Whether the choice card for this message has already been submitted */
     isChoiceSubmitted?: boolean
     /** Callback when user submits a choice card selection */
@@ -331,7 +347,7 @@ export function MessageBubble({
         return null
     }
 
-    const extractCitedSources = (uiMessage: UIMessage): { url: string; title: string; publishedAt?: number | null }[] | null => {
+    const extractCitedSources = (uiMessage: UIMessage): ChatSource[] | null => {
         for (const part of uiMessage.parts ?? []) {
             if (!part || typeof part !== "object") continue
             const maybeDataPart = part as unknown as { type?: string; data?: unknown }
@@ -341,18 +357,88 @@ export function MessageBubble({
             if (!Array.isArray(data.sources)) return null
             const out = data.sources
                 .map((s) => {
-                    const src = s as { url?: unknown; title?: unknown; publishedAt?: unknown }
+                    const src = s as {
+                        sourceId?: unknown
+                        url?: unknown
+                        title?: unknown
+                        publishedAt?: unknown
+                        verificationStatus?: unknown
+                        documentKind?: unknown
+                        note?: unknown
+                    }
                     if (typeof src?.url !== "string" || typeof src?.title !== "string") return null
                     const publishedAt = typeof src.publishedAt === "number" && Number.isFinite(src.publishedAt) ? src.publishedAt : null
                     return {
+                        ...(typeof src.sourceId === "string" ? { sourceId: src.sourceId } : {}),
                         url: src.url,
                         title: src.title,
                         ...(publishedAt ? { publishedAt } : {}),
+                        ...(src.verificationStatus === "verified_content" || src.verificationStatus === "unverified_link" || src.verificationStatus === "unavailable"
+                            ? { verificationStatus: src.verificationStatus }
+                            : {}),
+                        ...(src.documentKind === "html" || src.documentKind === "pdf" || src.documentKind === "unknown"
+                            ? { documentKind: src.documentKind }
+                            : {}),
+                        ...(typeof src.note === "string" ? { note: src.note } : {}),
                     }
                 })
-                .filter(Boolean) as { url: string; title: string; publishedAt?: number | null }[]
+                .filter(Boolean) as ChatSource[]
             return out.length > 0 ? out : null
         }
+        return null
+    }
+
+    const extractReferenceInventory = (uiMessage: UIMessage): ReferenceInventoryPayload | null => {
+        for (const part of uiMessage.parts ?? []) {
+            if (!part || typeof part !== "object") continue
+            const maybeDataPart = part as unknown as { type?: string; data?: unknown }
+            if (maybeDataPart.type !== "data-reference-inventory") continue
+            const data = maybeDataPart.data as ReferenceInventoryPayload | null
+            if (!data || typeof data !== "object") continue
+            if (data.responseMode !== "reference_inventory" && data.responseMode !== "mixed" && data.responseMode !== "synthesis") {
+                continue
+            }
+            if (!Array.isArray(data.items)) return null
+            const items = data.items
+                .map((item) => {
+                    if (!item || typeof item !== "object") return null
+                    const src = item as {
+                        sourceId?: unknown
+                        title?: unknown
+                        url?: unknown
+                        publishedAt?: unknown
+                        verificationStatus?: unknown
+                        documentKind?: unknown
+                        note?: unknown
+                    }
+
+                    if (typeof src.title !== "string") return null
+
+                    return {
+                        ...(typeof src.sourceId === "string" ? { sourceId: src.sourceId } : {}),
+                        title: src.title,
+                        url: src.url === null ? null : (typeof src.url === "string" ? src.url : null),
+                        ...(typeof src.publishedAt === "number" && Number.isFinite(src.publishedAt)
+                            ? { publishedAt: src.publishedAt }
+                            : {}),
+                        ...(src.verificationStatus === "verified_content" || src.verificationStatus === "unverified_link" || src.verificationStatus === "unavailable"
+                            ? { verificationStatus: src.verificationStatus }
+                            : {}),
+                        ...(src.documentKind === "html" || src.documentKind === "pdf" || src.documentKind === "unknown"
+                            ? { documentKind: src.documentKind }
+                            : {}),
+                        ...(typeof src.note === "string" ? { note: src.note } : {}),
+                    } satisfies ChatSource
+                })
+                .filter(Boolean) as ChatSource[]
+
+            return {
+                responseMode: data.responseMode,
+                ...(typeof data.introText === "string" ? { introText: data.introText } : {}),
+                items,
+            }
+        }
+
         return null
     }
 
@@ -596,15 +682,22 @@ export function MessageBubble({
         annotations?: { type?: string; sources?: { url: string; title: string; publishedAt?: number | null }[] }[]
     }).annotations?.find((annotation) => annotation.type === "sources")?.sources
     const citedSources = extractCitedSources(message)
+    const referenceInventory = extractReferenceInventory(message)
     const messageSources = (message as { sources?: { url: string; title: string; publishedAt?: number | null }[] }).sources
+    const referenceInventorySources = referenceInventory?.items ?? []
     const persistedOrStreamedSources = citedSources || sourcesFromAnnotation || messageSources || []
     const sourceExtractionText = citedText && citedText.trim().length > 0 ? citedText : content
     const legacyExtractedSources = isAssistant && persistedOrStreamedSources.length === 0
         ? extractLegacySourcesFromText(sourceExtractionText)
         : []
-    const sources = persistedOrStreamedSources.length > 0
+    const sources = referenceInventorySources.length > 0
+        ? referenceInventorySources
+        : persistedOrStreamedSources.length > 0
         ? persistedOrStreamedSources
         : legacyExtractedSources
+    const sourcesWithUrls = sources.filter((source): source is ChatSource & { url: string } => {
+        return typeof source.url === "string" && source.url.trim().length > 0
+    })
     const hasArtifactSignals = isAssistant && artifactSignals.length > 0 && Boolean(onArtifactSelect)
     const hasSources = isAssistant && sources.length > 0
     const hasQuickActions = !isEditing && isAssistant
@@ -638,7 +731,7 @@ export function MessageBubble({
             })
 
         const sourceHosts = Array.from(new Set(
-            sources
+            sourcesWithUrls
                 .map((source) => {
                     try {
                         return new URL(source.url).hostname.replace(/^www\./i, "").toLowerCase()
@@ -665,7 +758,11 @@ export function MessageBubble({
             anchors: [],
         })
     })()
-    const displayMarkdown = normalizedLegacyCitedText ?? publicDisplayText
+    const isReferenceInventoryResponse = referenceInventory?.responseMode === "reference_inventory" && referenceInventorySources.length > 0
+    const displayMarkdown = isReferenceInventoryResponse
+        ? ""
+        : (normalizedLegacyCitedText ?? publicDisplayText)
+    const referenceInventoryIntroText = referenceInventory?.introText?.trim() ?? ""
 
     // Get timestamp from allMessages if available
 
@@ -915,11 +1012,68 @@ export function MessageBubble({
                         )
                     ) : (
                         <div className="space-y-3">
-                            {displayMarkdown.trim().length > 0 && (
+                            {isReferenceInventoryResponse && (
+                                <div
+                                    className="space-y-3 rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-3 py-2.5"
+                                    data-testid="reference-inventory-body"
+                                >
+                                    {referenceInventoryIntroText.length > 0 && (
+                                        <div className="text-xs font-mono text-[var(--chat-muted-foreground)]">
+                                            {referenceInventoryIntroText}
+                                        </div>
+                                    )}
+                                    <div className="space-y-2">
+                                        {referenceInventorySources.map((source, index) => (
+                                            <div key={source.sourceId ?? `${source.title}-${index}`} className="space-y-1">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="text-sm font-medium text-[var(--chat-foreground)]">
+                                                        {source.title}
+                                                    </span>
+                                                    {source.verificationStatus === "unverified_link" && (
+                                                        <span className="rounded-badge border border-[color:var(--chat-border)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
+                                                            Tautan belum diverifikasi
+                                                        </span>
+                                                    )}
+                                                    {source.verificationStatus === "verified_content" && (
+                                                        <span className="rounded-badge border border-[color:var(--chat-border)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
+                                                            Konten terverifikasi
+                                                        </span>
+                                                    )}
+                                                    {source.documentKind && (
+                                                        <span className="rounded-badge border border-[color:var(--chat-border)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
+                                                            {source.documentKind === "pdf" ? "PDF" : source.documentKind === "html" ? "HTML" : "UNKNOWN"}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {source.url ? (
+                                                    <a
+                                                        href={source.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="block break-all font-mono text-xs text-[var(--chat-info)] underline decoration-[color:var(--chat-border)] underline-offset-2"
+                                                    >
+                                                        {source.url}
+                                                    </a>
+                                                ) : (
+                                                    <div className="font-mono text-xs text-[var(--chat-muted-foreground)]">
+                                                        URL tidak tersedia
+                                                    </div>
+                                                )}
+                                                {source.note && (
+                                                    <div className="text-xs text-[var(--chat-muted-foreground)]">
+                                                        {source.note}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {!isReferenceInventoryResponse && displayMarkdown.trim().length > 0 && (
                                 <MarkdownRenderer
                                     markdown={displayMarkdown}
                                     className="space-y-2 text-sm leading-relaxed text-[var(--chat-foreground)]"
-                                    sources={sources}
+                                    sources={sourcesWithUrls}
                                     context="chat"
                                 />
                             )}

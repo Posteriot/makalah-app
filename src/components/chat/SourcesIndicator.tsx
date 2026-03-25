@@ -11,9 +11,13 @@ import { getWebCitationDisplayParts } from "@/lib/citations/apaWeb"
 import { cn } from "@/lib/utils"
 
 interface Source {
-    url: string
+    sourceId?: string
+    url: string | null
     title: string
     publishedAt?: number | null
+    verificationStatus?: "verified_content" | "unverified_link" | "unavailable"
+    documentKind?: "html" | "pdf" | "unknown"
+    note?: string
 }
 
 interface SourcesIndicatorProps {
@@ -78,9 +82,8 @@ function SourcesCollapsible({ sources }: { sources: Source[] }) {
             <CollapsibleContent className="pt-1">
                 <div className="flex flex-col divide-y divide-[var(--chat-border)]">
                     {displayedSources.map(({ source, idx }) => {
-                        const parts = getWebCitationDisplayParts(source)
                         return (
-                            <SourceItem key={idx} parts={parts} />
+                            <SourceItem key={idx} source={source} />
                         )
                     })}
                 </div>
@@ -106,7 +109,45 @@ function SourcesCollapsible({ sources }: { sources: Source[] }) {
     )
 }
 
-function SourceItem({ parts }: { parts: ReturnType<typeof getWebCitationDisplayParts> }) {
+function SourceItem({ source }: { source: Source }) {
+    const hasUrl = typeof source.url === "string" && source.url.trim().length > 0
+    const parts = hasUrl
+        ? getWebCitationDisplayParts({
+            url: source.url,
+            title: source.title,
+            publishedAt: source.publishedAt,
+        })
+        : null
+    const label =
+        source.verificationStatus === "verified_content"
+            ? "Konten terverifikasi"
+            : source.verificationStatus === "unverified_link"
+                ? "Tautan belum diverifikasi"
+                : source.verificationStatus === "unavailable"
+                    ? "Tidak tersedia"
+                    : null
+
+    if (!hasUrl || !parts) {
+        return (
+            <div className="group flex flex-col gap-0.5 py-1.5">
+                <span className="text-xs font-medium text-[var(--chat-foreground)] flex flex-wrap items-center gap-1">
+                    {source.title}
+                    {label && (
+                        <span className="rounded-badge border border-[var(--chat-border)] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
+                            {label}
+                        </span>
+                    )}
+                </span>
+                <span className="font-mono text-[11px] text-[var(--chat-muted-foreground)]">
+                    URL tidak tersedia
+                </span>
+                {source.note && (
+                    <span className="text-[11px] text-[var(--chat-muted-foreground)]">{source.note}</span>
+                )}
+            </div>
+        )
+    }
+
     return (
         <a
             href={parts.url}
@@ -121,6 +162,16 @@ function SourceItem({ parts }: { parts: ReturnType<typeof getWebCitationDisplayP
             <span className="truncate font-mono text-[11px] text-[var(--chat-info)] dark:text-[oklch(0.746_0.16_232.661)] group-hover:underline">
                 {parts.url}
             </span>
+            {label && (
+                <span className="rounded-badge border border-[var(--chat-border)] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
+                    {label}
+                </span>
+            )}
+            {source.documentKind && (
+                <span className="rounded-badge border border-[var(--chat-border)] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
+                    {source.documentKind === "pdf" ? "PDF" : source.documentKind === "html" ? "HTML" : "UNKNOWN"}
+                </span>
+            )}
         </a>
     )
 }
