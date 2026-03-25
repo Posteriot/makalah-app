@@ -43,4 +43,22 @@ describe("buildSearchResultsContext — with pageContent", () => {
     expect(result).toContain("Source A")
     expect(result).toContain("Source B")
   })
+
+  it("keeps page content guidance in synthesis mode", () => {
+    const sources = [
+      {
+        url: "https://example.com/article",
+        title: "Test Article",
+        pageContent: "Verified content",
+      },
+    ]
+
+    const result = buildSearchResultsContext(sources, "search findings", {
+      responseMode: "synthesis",
+    })
+
+    expect(result).toContain("Page content (verified)")
+    expect(result).toContain("MUST synthesize these sources")
+    expect(result).not.toContain("REFERENCE INVENTORY MODE")
+  })
 })

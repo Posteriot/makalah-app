@@ -7,13 +7,41 @@ interface SearchSource {
   pageContent?: string // actual page content in markdown
 }
 
+export type SearchResultsContextOptions = {
+  responseMode?: "synthesis" | "reference_inventory" | "mixed"
+}
+
+function getResponseModeInstructions(responseMode: NonNullable<SearchResultsContextOptions["responseMode"]>): string {
+  if (responseMode === "reference_inventory") {
+    return `REFERENCE INVENTORY MODE
+This response is an inventory of references, not a general analysis.
+- display the URL when available
+- do not make factual claims from unverified links
+- treat verified page content as claimable evidence
+- treat unverified links as displayable pointers only`
+  }
+
+  if (responseMode === "mixed") {
+    return `MIXED MODE
+Provide a brief synthesis first, then a compact reference inventory.
+- display the URL when available
+- do not make factual claims from unverified links
+- keep the anti-fabrication rules in force`
+  }
+
+  return ""
+}
+
 export function buildSearchResultsContext(
   sources: SearchSource[],
   searchText?: string,
+  options: SearchResultsContextOptions = {},
 ): string {
   if (sources.length === 0) {
     return `## SEARCH RESULTS\nNo sources found from web search. Answer based on your knowledge and inform the user that no web sources were available.`
   }
+
+  const responseMode = options.responseMode ?? "synthesis"
 
   // Only show verified/unverified labels when at least one source has pageContent.
   // When FetchWeb is entirely unavailable (no source has pageContent), omit labels
@@ -46,7 +74,14 @@ export function buildSearchResultsContext(
 
   const context = `## SEARCH RESULTS (COMPLETED)
 Web search has been executed. The following sources were retrieved.
-You MUST synthesize these sources in your response. Use ONLY these sources for citations. Do not fabricate or guess URLs.
+${responseMode === "reference_inventory"
+  ? "You MUST build a reference inventory from these sources in your response."
+  : responseMode === "mixed"
+    ? "You MUST synthesize these sources in your response and include a short reference inventory."
+    : "You MUST synthesize these sources in your response."}
+Use ONLY these sources for citations. Do not fabricate or guess URLs.
+
+${getResponseModeInstructions(responseMode)}
 
 Sources:
 ${sourceList}${searchFindings}`
