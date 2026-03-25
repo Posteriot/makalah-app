@@ -70,18 +70,42 @@ describe("reference presentation contract", () => {
     ).toBe("reference_inventory")
   })
 
-  it("deduplicates common URL variants and upgrades weak titles from fetched content", () => {
+  it("preserves semantic ref values instead of stripping them", () => {
     const sources = buildReferencePresentationSources({
       citations: [
         {
-          url: "http://example.com/paper?ref=search&utm_source=newsletter#section",
-          title: "http://example.com/paper?ref=search&utm_source=newsletter#section",
+          url: "https://example.com/paper?ref=chapter-1",
+          title: "Chapter reference",
+        },
+        {
+          url: "https://example.com/paper",
+          title: "Base paper",
+        },
+      ],
+      fetchedContent: [],
+    })
+
+    expect(sources).toHaveLength(2)
+    expect(sources[0].url).toBe("https://example.com/paper?ref=chapter-1")
+    expect(sources[1].url).toBe("https://example.com/paper")
+  })
+
+  it("deduplicates citation inputs before fetched-content upgrade", () => {
+    const sources = buildReferencePresentationSources({
+      citations: [
+        {
+          url: "http://example.com/paper?utm_source=newsletter#section",
+          title: "http://example.com/paper?utm_source=newsletter#section",
+        },
+        {
+          url: "https://example.com/paper?fbclid=abc123",
+          title: "Paper A",
         },
       ],
       fetchedContent: [
         {
-          url: "https://example.com/paper?ref=search&fbclid=abc123",
-          resolvedUrl: "https://example.com/paper?ref=search&gclid=xyz789",
+          url: "https://example.com/paper?gclid=xyz789",
+          resolvedUrl: "https://example.com/paper?fbclid=abc123",
           title: "Paper A",
           publishedAt: null,
           documentKind: "pdf",

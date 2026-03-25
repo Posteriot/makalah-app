@@ -37,7 +37,6 @@ const TRACKING_QUERY_PARAMS = new Set([
   "mc_eid",
   "msclkid",
   "dclid",
-  "ref",
 ])
 
 function isTrackingQueryParam(key: string): boolean {
@@ -133,6 +132,52 @@ function selectFetchedTitle(fetched: FetchedContent): string | null {
   return null
 }
 
+function isWeakPresentationTitle(title: string | null | undefined): boolean {
+  if (!title) return true
+
+  const normalized = title.trim()
+  if (!normalized) return true
+  if (/^source-\d+$/i.test(normalized)) return true
+  if (/^https?:\/\//i.test(normalized) || /^www\./i.test(normalized)) return true
+
+  return false
+}
+
+function dedupeCitationInputs(citations: CitationInput[]): CitationInput[] {
+  const deduped: CitationInput[] = []
+  const indexByKey = new Map<string, number>()
+
+  for (const citation of citations) {
+    const normalizedUrl = normalizeUrl(citation.url) ?? citation.url
+    const canonicalKey = canonicalUrlKey(normalizedUrl) ?? normalizedUrl
+    const existingIndex = indexByKey.get(canonicalKey)
+
+    const nextCitation: CitationInput = {
+      ...citation,
+      url: normalizedUrl,
+    }
+
+    if (typeof existingIndex !== "number") {
+      indexByKey.set(canonicalKey, deduped.length)
+      deduped.push(nextCitation)
+      continue
+    }
+
+    const existing = deduped[existingIndex]
+    deduped[existingIndex] = {
+      ...existing,
+      title:
+        !isWeakPresentationTitle(existing.title) || isWeakPresentationTitle(nextCitation.title)
+          ? existing.title
+          : nextCitation.title,
+      publishedAt: existing.publishedAt ?? nextCitation.publishedAt,
+      citedText: existing.citedText ?? nextCitation.citedText,
+    }
+  }
+
+  return deduped
+}
+
 function createBaseSource(params: {
   id: string
   url: string | null
@@ -194,6 +239,7 @@ export function buildReferencePresentationSources(params: {
 }): ReferencePresentationSource[] {
   const sources: ReferencePresentationSource[] = []
   const sourceIndexByUrl = new Map<string, number>()
+  const dedupedCitations = dedupeCitationInputs(params.citations)
 
   const registerSource = (source: ReferencePresentationSource) => {
     const normalizedUrl = canonicalUrlKey(source.url)
@@ -229,8 +275,8 @@ export function buildReferencePresentationSources(params: {
     }
   }
 
-  for (let i = 0; i < params.citations.length; i += 1) {
-    const citation = params.citations[i]
+  for (let i = 0; i < dedupedCitations.length; i += 1) {
+    const citation = dedupedCitations[i]
     const url = citation.url ?? null
     registerSource(
       createBaseSource({
