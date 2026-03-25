@@ -409,17 +409,6 @@ export function MessageBubble({
     const citedText = extractCitedText(message)
     const choiceSpec = extractChoiceSpec(message)
 
-    // TEMP: diagnostic — log all part types to verify data-spec arrives
-    if (message.role === "assistant" && (message.parts?.length ?? 0) > 0) {
-        const partTypes = (message.parts ?? []).map((p) => {
-            if (!p || typeof p !== "object") return "null"
-            return (p as { type?: string }).type ?? "unknown"
-        })
-        if (partTypes.some(t => t !== "text" && t !== "null" && t !== "unknown")) {
-            console.info(`[CHOICE-CARD][frontend-parts] msgId=${message.id} partTypes=[${partTypes.join(",")}] choiceSpec=${choiceSpec ? "YES" : "NO"}`)
-        }
-    }
-
     const startEditing = () => {
         setIsEditing(true)
         setEditContent(content)
