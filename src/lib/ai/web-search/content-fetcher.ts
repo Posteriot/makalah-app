@@ -145,7 +145,7 @@ export async function fetchPageContent(
     primaryCandidates.push({ url, index, routeKind })
   }
 
-  const primaryResults = await Promise.all(
+  const primaryResultsPromise = Promise.all(
     primaryCandidates.map(async (candidate) => {
       const routeTimeoutMs = getRouteTimeoutMs(candidate.routeKind, timeoutMs)
       const primaryResult = await fetchAndParse(
@@ -158,6 +158,23 @@ export async function fetchPageContent(
       return { candidate, primaryResult }
     }),
   )
+
+  const pdfBatchPromise = pdfCandidates.length > 0
+    ? (async () => {
+        const pdfUrls = pdfCandidates.map((candidate) => candidate.url)
+        const pdfStart = Date.now()
+        const tavilyResults = await fetchViaTavily(pdfUrls, options!.tavilyApiKey!)
+        return {
+          tavilyResults,
+          elapsedMs: Date.now() - pdfStart,
+        }
+      })()
+    : null
+
+  const [primaryResults, pdfBatch] = await Promise.all([
+    primaryResultsPromise,
+    pdfBatchPromise ?? Promise.resolve(null),
+  ])
 
   const fallbackCandidates: Array<{ url: string; index: number; routeKind: FetchRouteKind; failure: FetchParseFailureResult }> = []
 
@@ -180,21 +197,16 @@ export async function fetchPageContent(
     results[candidate.index] = buildFetchFailureResult(candidate.url, primaryResult)
   }
 
-  if (pdfCandidates.length > 0) {
-    const pdfUrls = pdfCandidates.map((candidate) => candidate.url)
-    const pdfStart = Date.now()
-    const tavilyResults = await fetchViaTavily(pdfUrls, options!.tavilyApiKey!)
-    const elapsedMs = Date.now() - pdfStart
-
+  if (pdfBatch) {
     for (let i = 0; i < pdfCandidates.length; i += 1) {
       const candidate = pdfCandidates[i]
-      const tavilyResult = tavilyResults[i]
+      const tavilyResult = pdfBatch.tavilyResults[i]
       if (tavilyResult?.content) {
         logTavilyOutcome(reqTag, i + 1, pdfCandidates.length, {
           kind: "success",
           url: candidate.url,
           routeKind: candidate.routeKind,
-          elapsedMs,
+          elapsedMs: pdfBatch.elapsedMs,
         })
         results[candidate.index] = buildTavilySuccessResult(candidate.url, candidate.routeKind, tavilyResult.url, tavilyResult.content)
         continue
@@ -205,7 +217,7 @@ export async function fetchPageContent(
         url: candidate.url,
         routeKind: candidate.routeKind,
         failureReason: "tavily_no_content",
-        elapsedMs,
+        elapsedMs: pdfBatch.elapsedMs,
       })
       results[candidate.index] = buildPdfUnsupportedResult(candidate.url, candidate.routeKind)
     }

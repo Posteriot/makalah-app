@@ -636,6 +636,47 @@ describe("fetchPageContent — Tavily fallback", () => {
     consoleSpy.mockRestore()
   })
 
+  it("starts PDF Tavily batching without waiting for slow primary routes", async () => {
+    vi.useFakeTimers()
+
+    fetchSpy.mockImplementation(() => new Promise(() => {}))
+
+    const extractSpy = vi.fn().mockImplementation(async (urls: string[]) => ({
+      results: urls.map((url) => url.endsWith(".pdf")
+        ? { url, rawContent: "# PDF A\n\nFrom Tavily" }
+        : { url, rawContent: null }),
+      failedResults: [],
+    }))
+
+    vi.doMock("@tavily/core", () => ({
+      tavily: () => ({
+        extract: extractSpy,
+      }),
+    }))
+
+    const { fetchPageContent: fetchFn } = await import("@/lib/ai/web-search/content-fetcher")
+
+    const pending = fetchFn(
+      [
+        "https://example.com/files/paper-a.pdf",
+        "https://example.com/article",
+      ],
+      { tavilyApiKey: "tvly-test-key", timeoutMs: 1000 },
+    )
+
+    await vi.advanceTimersByTimeAsync(0)
+    expect(extractSpy).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(1000)
+    const results = await pending
+
+    expect(results[0].fetchMethod).toBe("tavily")
+    expect(results[0].pageContent).toContain("PDF A")
+    expect(extractSpy).toHaveBeenCalledTimes(2)
+    expect(results[1].fetchMethod).toBeNull()
+    expect((results[1] as any).failureReason).toBe("timeout")
+  })
+
   it("skips Tavily when no API key provided", async () => {
     fetchSpy.mockResolvedValueOnce(new Response("Blocked", { status: 403 }))
 
