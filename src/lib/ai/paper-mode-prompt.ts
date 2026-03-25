@@ -124,71 +124,136 @@ export const getPaperModeSystemPrompt = async (
 
         // Resolve stage-specific instructions: active skill first, then hardcoded fallback.
         const fallbackStageInstructions = getStageInstructions(stage);
-        const stageInstructionsStart = Date.now();
-        const stageInstructionsResolution = await resolveStageInstructions({
-            stage,
-            fallbackInstructions: fallbackStageInstructions,
-            convexToken,
-            requestId,
+
+        // ── Parallel query batch: all three depend on session but not on each other ──
+        const parallelStart = Date.now();
+        const [stageInstructionsResult, artifactsResult, invalidatedResult] = await Promise.allSettled([
+            // 1. Resolve stage instructions
+            (async () => {
+                const start = Date.now();
+                const resolution = await resolveStageInstructions({
+                    stage,
+                    fallbackInstructions: fallbackStageInstructions,
+                    convexToken,
+                    requestId,
+                });
+                logPaperPromptLatency("paperPrompt.resolveStageInstructions", start, {
+                    source: resolution.source,
+                });
+                return resolution;
+            })(),
+
+            // 2. List artifacts
+            (async () => {
+                const start = Date.now();
+                const allArtifacts = await fetchQuery(
+                    api.artifacts.listByConversation,
+                    { conversationId, userId: session.userId },
+                    convexOptions
+                );
+                logPaperPromptLatency("paperPrompt.listArtifacts", start, {
+                    count: Array.isArray(allArtifacts) ? allArtifacts.length : 0,
+                });
+                return allArtifacts;
+            })(),
+
+            // 3. Get invalidated artifacts
+            (async () => {
+                const start = Date.now();
+                const invalidated = await fetchQuery(
+                    api.artifacts.getInvalidatedByConversation,
+                    { conversationId, userId: session.userId },
+                    convexOptions
+                );
+                logPaperPromptLatency("paperPrompt.getInvalidatedArtifacts", start, {
+                    count: Array.isArray(invalidated) ? invalidated.length : 0,
+                });
+                return invalidated;
+            })(),
+        ]);
+        logPaperPromptLatency("paperPrompt.parallelBatch", parallelStart, {
+            stageInstructions: stageInstructionsResult.status,
+            artifacts: artifactsResult.status,
+            invalidated: invalidatedResult.status,
         });
-        logPaperPromptLatency("paperPrompt.resolveStageInstructions", stageInstructionsStart, {
-            source: stageInstructionsResolution.source,
-        });
-        const stageInstructions = stageInstructionsResolution.instructions;
+
+        // ── Extract results with graceful fallbacks ──
+
+        // Stage instructions: critical — if failed, use fallback
+        const stageInstructions = stageInstructionsResult.status === "fulfilled"
+            ? stageInstructionsResult.value.instructions
+            : (() => {
+                console.error("Error resolving stage instructions:", (stageInstructionsResult as PromiseRejectedResult).reason);
+                return fallbackStageInstructions;
+            })();
+        const stageInstructionSource = stageInstructionsResult.status === "fulfilled"
+            ? stageInstructionsResult.value.source
+            : "fallback";
+        const skillResolverFallback = stageInstructionsResult.status === "fulfilled"
+            ? stageInstructionsResult.value.skillResolverFallback
+            : true;
+        const activeSkillId = stageInstructionsResult.status === "fulfilled"
+            ? stageInstructionsResult.value.skillId
+            : undefined;
+        const activeSkillVersion = stageInstructionsResult.status === "fulfilled"
+            ? stageInstructionsResult.value.version
+            : undefined;
+        const fallbackReason = stageInstructionsResult.status === "fulfilled"
+            ? stageInstructionsResult.value.fallbackReason
+            : "parallel_batch_failure";
 
         // Format stageData into readable context
         const formattedData = formatStageData(session.stageData, stage);
 
-        // Build artifact summaries from completed stages
+        // Artifact summaries: non-critical — empty string on failure
         let artifactSummariesSection = "";
-        try {
-            const listArtifactsStart = Date.now();
-            const allArtifacts = await fetchQuery(
-                api.artifacts.listByConversation,
-                { conversationId, userId: session.userId },
-                convexOptions
-            );
-            logPaperPromptLatency("paperPrompt.listArtifacts", listArtifactsStart, {
-                count: Array.isArray(allArtifacts) ? allArtifacts.length : 0,
-            });
-
-            // Map artifactId -> artifact metadata for quick lookup
-            const artifactMap = new Map<string, { content: string; version: number; title: string; artifactId: string }>();
-            for (const a of allArtifacts) {
-                // Only include non-invalidated, latest-version artifacts
-                if (!a.invalidatedAt) {
-                    artifactMap.set(String(a._id), { content: a.content, version: a.version, title: a.title, artifactId: String(a._id) });
+        if (artifactsResult.status === "fulfilled") {
+            try {
+                const allArtifacts = artifactsResult.value;
+                const artifactMap = new Map<string, { content: string; version: number; title: string; artifactId: string }>();
+                for (const a of allArtifacts) {
+                    if (!a.invalidatedAt) {
+                        artifactMap.set(String(a._id), { content: a.content, version: a.version, title: a.title, artifactId: String(a._id) });
+                    }
                 }
-            }
 
-            // Collect artifacts from completed (validated) stages
-            const stageData = session.stageData as Record<string, { artifactId?: string; validatedAt?: number; superseded?: boolean }>;
-            const completedArtifacts: Array<{ stageLabel: string; content: string; version: number; title: string; artifactId: string }> = [];
+                const stageData = session.stageData as Record<string, { artifactId?: string; validatedAt?: number; superseded?: boolean }>;
+                const completedArtifacts: Array<{ stageLabel: string; content: string; version: number; title: string; artifactId: string }> = [];
 
-            for (const stageId of STAGE_ORDER) {
-                // Skip current stage (not yet completed)
-                if (stage !== "completed" && stageId === stage) continue;
-
-                const sd = stageData[stageId];
-                if (!sd?.validatedAt || sd.superseded) continue;
-                if (!sd.artifactId) continue;
-
-                const artifact = artifactMap.get(sd.artifactId);
-                if (artifact) {
-                    completedArtifacts.push({
-                        stageLabel: getStageLabel(stageId as PaperStageId),
-                        content: artifact.content,
-                        version: artifact.version,
-                        title: artifact.title,
-                        artifactId: artifact.artifactId,
-                    });
+                for (const stageId of STAGE_ORDER) {
+                    if (stage !== "completed" && stageId === stage) continue;
+                    const sd = stageData[stageId];
+                    if (!sd?.validatedAt || sd.superseded) continue;
+                    if (!sd.artifactId) continue;
+                    const artifact = artifactMap.get(sd.artifactId);
+                    if (artifact) {
+                        completedArtifacts.push({
+                            stageLabel: getStageLabel(stageId as PaperStageId),
+                            content: artifact.content,
+                            version: artifact.version,
+                            title: artifact.title,
+                            artifactId: artifact.artifactId,
+                        });
+                    }
                 }
+                artifactSummariesSection = formatArtifactSummaries(completedArtifacts);
+            } catch (err) {
+                console.error("Error building artifact summaries:", err);
             }
+        } else {
+            console.error("Error fetching artifacts:", (artifactsResult as PromiseRejectedResult).reason);
+        }
 
-            artifactSummariesSection = formatArtifactSummaries(completedArtifacts);
-        } catch (err) {
-            console.error("Error building artifact summaries:", err);
-            // Continue without artifact summaries - non-critical
+        // Invalidated artifacts: non-critical — empty string on failure
+        let invalidatedArtifactsContext = "";
+        if (invalidatedResult.status === "fulfilled") {
+            try {
+                invalidatedArtifactsContext = getInvalidatedArtifactsContext(invalidatedResult.value);
+            } catch (err) {
+                console.error("Error processing invalidated artifacts:", err);
+            }
+        } else {
+            console.error("Error fetching invalidated artifacts:", (invalidatedResult as PromiseRejectedResult).reason);
         }
 
         // Inline revision context (simple, not over-prescriptive)
@@ -204,25 +269,6 @@ export const getPaperModeSystemPrompt = async (
         const dirtySyncContractNote = status === "pending_validation" && isDirty
             ? "\n⚠️ SYNC CONTRACT: Stage data is not yet synced. If user asks to sync or continue from state, you MUST explain that the update cannot be finalized until the user requests a revision first.\n"
             : "";
-
-        // Query invalidated artifacts (Rewind Feature)
-        // Gracefully handle errors - don't break the prompt if query fails
-        let invalidatedArtifactsContext = "";
-        try {
-            const invalidatedArtifactsStart = Date.now();
-            const invalidatedArtifacts = await fetchQuery(
-                api.artifacts.getInvalidatedByConversation,
-                { conversationId, userId: session.userId },
-                convexOptions
-            );
-            logPaperPromptLatency("paperPrompt.getInvalidatedArtifacts", invalidatedArtifactsStart, {
-                count: Array.isArray(invalidatedArtifacts) ? invalidatedArtifacts.length : 0,
-            });
-            invalidatedArtifactsContext = getInvalidatedArtifactsContext(invalidatedArtifacts);
-        } catch (err) {
-            console.error("Error fetching invalidated artifacts:", err);
-            // Continue without invalidated artifacts context
-        }
 
         logPaperPromptLatency("paperPrompt.total", paperPromptStart, {
             hasPrompt: true,
@@ -270,11 +316,11 @@ ${formattedData}
 ${artifactSummariesSection ? `\n${artifactSummariesSection}` : ""}
 ---
 `,
-            skillResolverFallback: stageInstructionsResolution.skillResolverFallback,
-            stageInstructionSource: stageInstructionsResolution.source,
-            activeSkillId: stageInstructionsResolution.skillId,
-            activeSkillVersion: stageInstructionsResolution.version,
-            fallbackReason: stageInstructionsResolution.fallbackReason,
+            skillResolverFallback: skillResolverFallback,
+            stageInstructionSource: stageInstructionSource,
+            activeSkillId: activeSkillId,
+            activeSkillVersion: activeSkillVersion,
+            fallbackReason: fallbackReason,
         };
     } catch (error) {
         console.error("Error fetching paper session for prompt:", error);
