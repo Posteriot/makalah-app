@@ -923,8 +923,12 @@ export async function executeWebSearch(
           } catch (err) {
             console.error("[Orchestrator] Detached post-finish persistence failed:", err)
           }
+          console.log(`[⏱ LATENCY] DETACHED ALL DONE total=${Date.now() - orchestratorStart}ms (from request start, includes persist+RAG)`)
         })()
       }
+
+      // ── Execute settle point: stream can close after this line ──
+      console.log(`[⏱ LATENCY] EXECUTE SETTLE=${Date.now() - orchestratorStart}ms (stream will close, client transitions to ready)`)
     },
   })
 
