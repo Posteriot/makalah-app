@@ -796,6 +796,7 @@ export async function executeWebSearch(
                 id: referenceInventoryId,
                 data: {
                   responseMode: userFacingPayload.responseMode,
+                  introText: userFacingPayload.referenceInventory.introText,
                   items: userFacingPayload.referenceInventory.items,
                 },
               })

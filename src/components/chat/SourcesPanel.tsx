@@ -86,15 +86,15 @@ export function SourcesPanel({ open, onOpenChange, sources }: SourcesPanelProps)
 }
 
 function SourceCard({ source }: { source: Source }) {
-  const hasUrl = typeof source.url === "string" && source.url.trim().length > 0
-  const parts = hasUrl
+  const url = typeof source.url === "string" && source.url.trim().length > 0 ? source.url : null
+  const parts = url
     ? getWebCitationDisplayParts({
-        url: source.url,
+        url,
         title: source.title,
         publishedAt: source.publishedAt,
       })
     : null
-  const siteName = hasUrl ? deriveSiteNameFromUrl(parts.url) : "Tautan tidak tersedia"
+  const siteName = parts ? deriveSiteNameFromUrl(parts.url) : "Tautan tidak tersedia"
   const label =
     source.verificationStatus === "verified_content"
       ? "Konten terverifikasi"
@@ -105,7 +105,7 @@ function SourceCard({ source }: { source: Source }) {
           : null
 
   return (
-    hasUrl && parts ? (
+    url && parts ? (
       <a
         href={parts.url}
         target="_blank"

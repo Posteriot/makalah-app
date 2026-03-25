@@ -110,10 +110,10 @@ function SourcesCollapsible({ sources }: { sources: Source[] }) {
 }
 
 function SourceItem({ source }: { source: Source }) {
-    const hasUrl = typeof source.url === "string" && source.url.trim().length > 0
-    const parts = hasUrl
+    const url = typeof source.url === "string" && source.url.trim().length > 0 ? source.url : null
+    const parts = url
         ? getWebCitationDisplayParts({
-            url: source.url,
+            url,
             title: source.title,
             publishedAt: source.publishedAt,
         })
@@ -127,7 +127,7 @@ function SourceItem({ source }: { source: Source }) {
                     ? "Tidak tersedia"
                     : null
 
-    if (!hasUrl || !parts) {
+    if (!url || !parts) {
         return (
             <div className="group flex flex-col gap-0.5 py-1.5">
                 <span className="text-xs font-medium text-[var(--chat-foreground)] flex flex-wrap items-center gap-1">

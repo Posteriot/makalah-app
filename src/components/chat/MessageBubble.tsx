@@ -83,6 +83,30 @@ type ReferenceInventoryPayload = {
     items?: ChatSource[]
 }
 
+function buildReferenceInventoryCopyText(params: {
+    introText: string
+    items: ChatSource[]
+}): string {
+    const intro = params.introText.trim()
+    const rows = params.items.flatMap((source, index) => {
+        const lines = [`${index + 1}. ${source.title}`]
+
+        if (source.url && source.url.trim().length > 0) {
+            lines.push(`URL: ${source.url}`)
+        } else {
+            lines.push("Status: URL tidak tersedia")
+        }
+
+        if (source.note?.trim()) {
+            lines.push(`Catatan: ${source.note.trim()}`)
+        }
+
+        return lines.join("\n")
+    })
+
+    return [intro, ...rows].filter(Boolean).join("\n\n").trim()
+}
+
 interface MessageBubbleProps {
     message: UIMessage
     onEdit?: (payload: {
@@ -754,7 +778,7 @@ export function MessageBubble({
 
         return formatParagraphEndCitations({
             text: publicDisplayText,
-            sources,
+            sources: sourcesWithUrls,
             anchors: [],
         })
     })()
@@ -762,7 +786,13 @@ export function MessageBubble({
     const displayMarkdown = isReferenceInventoryResponse
         ? ""
         : (normalizedLegacyCitedText ?? publicDisplayText)
-    const referenceInventoryIntroText = referenceInventory?.introText?.trim() ?? ""
+    const referenceInventoryIntroText = referenceInventory?.introText?.trim() || citedText?.trim() || ""
+    const quickActionsContent = isReferenceInventoryResponse
+        ? buildReferenceInventoryCopyText({
+            introText: referenceInventoryIntroText,
+            items: referenceInventorySources,
+        })
+        : (displayMarkdown || content)
 
     // Get timestamp from allMessages if available
 
@@ -1137,7 +1167,7 @@ export function MessageBubble({
                                 />
                             )}
 
-                            {hasQuickActions && <QuickActions content={displayMarkdown || content} />}
+                            {hasQuickActions && <QuickActions content={quickActionsContent} />}
                         </div>
                     )}
                 </div>

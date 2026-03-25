@@ -58,6 +58,14 @@ describe("reference presentation contract", () => {
     expect(mode).toBe("reference_inventory")
   })
 
+  it("keeps synthesis mode for analytical prompts without reference-list intent", () => {
+    const mode = inferSearchResponseMode({
+      lastUserMessage: "jelaskan dampak penggunaan AI pada pembelajaran siswa SD",
+    })
+
+    expect(mode).toBe("synthesis")
+  })
+
   it("recognizes common inventory phrasing as reference inventory mode", () => {
     expect(
       inferSearchResponseMode({ lastUserMessage: "tampilkan sumbernya" })

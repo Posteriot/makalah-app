@@ -104,6 +104,44 @@ describe("MessageBubble reference inventory", () => {
     ])
   })
 
+  it("falls back to cited text when inventory introText is absent", () => {
+    const message = {
+      id: "m-ref-inventory-fallback",
+      role: "assistant",
+      parts: [
+        { type: "text", text: "placeholder" },
+        {
+          type: "data-cited-text",
+          data: {
+            text: "Berikut inventaris referensi yang ditemukan.",
+          },
+        },
+        {
+          type: "data-reference-inventory",
+          data: {
+            responseMode: "reference_inventory",
+            items: [
+              {
+                sourceId: "s1",
+                title: "Paper A",
+                url: "https://example.com/a.pdf",
+                verificationStatus: "unverified_link",
+                documentKind: "pdf",
+              },
+            ],
+          },
+        },
+      ],
+    } as unknown as UIMessage
+
+    render(<MessageBubble message={message} />)
+
+    expect(screen.getByTestId("reference-inventory-body")).toHaveTextContent(
+      "Berikut inventaris referensi yang ditemukan."
+    )
+    expect(screen.getByText("https://example.com/a.pdf")).toBeInTheDocument()
+  })
+
   it("renders the same source contract in the Rujukan panel", () => {
     render(
       <SourcesPanel
