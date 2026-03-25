@@ -1572,6 +1572,9 @@ export function ChatWindow({
         clearTimeout(staleStreamingTimeoutRef.current)
       }
       staleStreamingTimeoutRef.current = window.setTimeout(() => {
+        // Clear all running timers first — prevents the progress interval from
+        // overwriting progress back to 92 after we force it to 100.
+        clearProcessTimers()
         setProcessUi((prev) => {
           if (prev.status !== "streaming") return prev
           console.warn("[WATCHDOG] Stale streaming UI detected -- forcing local ready state after 5 minutes")
@@ -1582,7 +1585,6 @@ export function ChatWindow({
             progress: 100,
           }
         })
-        staleStreamingTimeoutRef.current = null
       }, STALE_STREAMING_TIMEOUT_MS)
     } else if (status === "ready" && hadGeneratingStatus) {
       clearProcessTimers()

@@ -111,7 +111,7 @@ export async function persistExactSourceDocuments(params: {
 
   if (exactSourceCount > 0) {
     console.log(
-      `[⏱ LATENCY] Exact source persist starting (awaited): ${exactSourceCount} sources`
+      `[⏱ LATENCY] Exact source persist starting (detached): ${exactSourceCount} sources`
     )
   }
 
