@@ -82,14 +82,29 @@ export const getPaperModeSystemPrompt = async (
     convexToken?: string,
     requestId?: string
 ): Promise<PaperModePromptContext> => {
+    const paperPromptStart = Date.now();
+    const logPaperPromptLatency = (phase: string, start: number, extra?: Record<string, unknown>) => {
+        const extraText = extra
+            ? " " + Object.entries(extra).map(([key, value]) => `${key}=${String(value)}`).join(" ")
+            : "";
+        console.log(
+            `[⏱ PAPER_PROMPT] requestId=${requestId ?? "none"} conversationId=${conversationId} phase=${phase} total=${Date.now() - start}ms${extraText}`
+        );
+    };
     try {
         const convexOptions = convexToken ? { token: convexToken } : undefined;
+        const sessionStart = Date.now();
         const session = await fetchQuery(
             api.paperSessions.getByConversation,
             { conversationId },
             convexOptions
         );
+        logPaperPromptLatency("paperPrompt.getSession", sessionStart, { found: !!session });
         if (!session) {
+            logPaperPromptLatency("paperPrompt.total", paperPromptStart, {
+                hasPrompt: false,
+                reason: "no_session",
+            });
             return {
                 prompt: "",
                 skillResolverFallback: false,
@@ -109,11 +124,15 @@ export const getPaperModeSystemPrompt = async (
 
         // Resolve stage-specific instructions: active skill first, then hardcoded fallback.
         const fallbackStageInstructions = getStageInstructions(stage);
+        const stageInstructionsStart = Date.now();
         const stageInstructionsResolution = await resolveStageInstructions({
             stage,
             fallbackInstructions: fallbackStageInstructions,
             convexToken,
             requestId,
+        });
+        logPaperPromptLatency("paperPrompt.resolveStageInstructions", stageInstructionsStart, {
+            source: stageInstructionsResolution.source,
         });
         const stageInstructions = stageInstructionsResolution.instructions;
 
@@ -123,11 +142,15 @@ export const getPaperModeSystemPrompt = async (
         // Build artifact summaries from completed stages
         let artifactSummariesSection = "";
         try {
+            const listArtifactsStart = Date.now();
             const allArtifacts = await fetchQuery(
                 api.artifacts.listByConversation,
                 { conversationId, userId: session.userId },
                 convexOptions
             );
+            logPaperPromptLatency("paperPrompt.listArtifacts", listArtifactsStart, {
+                count: Array.isArray(allArtifacts) ? allArtifacts.length : 0,
+            });
 
             // Map artifactId -> artifact metadata for quick lookup
             const artifactMap = new Map<string, { content: string; version: number; title: string; artifactId: string }>();
@@ -186,17 +209,25 @@ export const getPaperModeSystemPrompt = async (
         // Gracefully handle errors - don't break the prompt if query fails
         let invalidatedArtifactsContext = "";
         try {
+            const invalidatedArtifactsStart = Date.now();
             const invalidatedArtifacts = await fetchQuery(
                 api.artifacts.getInvalidatedByConversation,
                 { conversationId, userId: session.userId },
                 convexOptions
             );
+            logPaperPromptLatency("paperPrompt.getInvalidatedArtifacts", invalidatedArtifactsStart, {
+                count: Array.isArray(invalidatedArtifacts) ? invalidatedArtifacts.length : 0,
+            });
             invalidatedArtifactsContext = getInvalidatedArtifactsContext(invalidatedArtifacts);
         } catch (err) {
             console.error("Error fetching invalidated artifacts:", err);
             // Continue without invalidated artifacts context
         }
 
+        logPaperPromptLatency("paperPrompt.total", paperPromptStart, {
+            hasPrompt: true,
+            stage,
+        });
         return {
             prompt: `
 ---
@@ -247,6 +278,10 @@ ${artifactSummariesSection ? `\n${artifactSummariesSection}` : ""}
         };
     } catch (error) {
         console.error("Error fetching paper session for prompt:", error);
+        logPaperPromptLatency("paperPrompt.total", paperPromptStart, {
+            hasPrompt: false,
+            reason: "error",
+        });
         return {
             prompt: "",
             skillResolverFallback: false,
