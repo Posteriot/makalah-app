@@ -58,6 +58,52 @@ describe("reference presentation contract", () => {
     expect(mode).toBe("reference_inventory")
   })
 
+  it("recognizes common inventory phrasing as reference inventory mode", () => {
+    expect(
+      inferSearchResponseMode({ lastUserMessage: "tampilkan sumbernya" })
+    ).toBe("reference_inventory")
+    expect(
+      inferSearchResponseMode({ lastUserMessage: "kasih rujukan yang dipakai" })
+    ).toBe("reference_inventory")
+    expect(
+      inferSearchResponseMode({ lastUserMessage: "bikin daftar pustaka" })
+    ).toBe("reference_inventory")
+  })
+
+  it("deduplicates common URL variants and upgrades weak titles from fetched content", () => {
+    const sources = buildReferencePresentationSources({
+      citations: [
+        {
+          url: "http://example.com/paper?ref=search&utm_source=newsletter#section",
+          title: "http://example.com/paper?ref=search&utm_source=newsletter#section",
+        },
+      ],
+      fetchedContent: [
+        {
+          url: "https://example.com/paper?ref=search&fbclid=abc123",
+          resolvedUrl: "https://example.com/paper?ref=search&gclid=xyz789",
+          title: "Paper A",
+          publishedAt: null,
+          documentKind: "pdf",
+          pageContent: "Verified content",
+          fullContent: "Verified content",
+          fetchMethod: "tavily",
+          exactMetadataAvailable: false,
+          paragraphs: null,
+          documentText: null,
+          rawTitle: null,
+          author: null,
+          siteName: null,
+        },
+      ],
+    })
+
+    expect(sources).toHaveLength(1)
+    expect(sources[0].verificationStatus).toBe("verified_content")
+    expect(sources[0].title).toBe("Paper A")
+    expect(sources[0].url).toBe("https://example.com/paper")
+  })
+
   it("exposes a shared reference presentation slot on WebSearchResult", () => {
     const result: WebSearchResult = {
       text: "",

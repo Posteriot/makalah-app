@@ -29,19 +29,63 @@ export interface ReferencePresentationSource {
 
 type CitationInput = Pick<NormalizedCitation, "url" | "title" | "publishedAt" | "citedText">
 
+const TRACKING_QUERY_PARAMS = new Set([
+  "fbclid",
+  "gclid",
+  "igshid",
+  "mc_cid",
+  "mc_eid",
+  "msclkid",
+  "dclid",
+  "ref",
+])
+
+function isTrackingQueryParam(key: string): boolean {
+  return /^utm_/i.test(key) || TRACKING_QUERY_PARAMS.has(key.toLowerCase())
+}
+
 function normalizeUrl(url: string | null | undefined): string | null {
   if (!url) return null
 
   try {
     const parsed = new URL(url)
     for (const key of Array.from(parsed.searchParams.keys())) {
-      if (/^utm_/i.test(key)) parsed.searchParams.delete(key)
+      if (isTrackingQueryParam(key)) parsed.searchParams.delete(key)
     }
     parsed.hash = ""
     const normalized = parsed.toString()
     return normalized.endsWith("/") ? normalized.slice(0, -1) : normalized
   } catch {
     return url.endsWith("/") ? url.slice(0, -1) : url
+  }
+}
+
+function canonicalUrlKey(url: string | null | undefined): string | null {
+  if (!url) return null
+
+  try {
+    const parsed = new URL(url)
+    const params = Array.from(parsed.searchParams.entries())
+      .filter(([key]) => !isTrackingQueryParam(key))
+      .sort(([leftKey, leftValue], [rightKey, rightValue]) => {
+        const keyCompare = leftKey.localeCompare(rightKey)
+        if (keyCompare !== 0) return keyCompare
+        return leftValue.localeCompare(rightValue)
+      })
+
+    const search = params.length
+      ? `?${params
+          .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+          .join("&")}`
+      : ""
+
+    const path = parsed.pathname.endsWith("/") && parsed.pathname !== "/"
+      ? parsed.pathname.slice(0, -1)
+      : parsed.pathname
+
+    return `${parsed.host}${path}${search}`
+  } catch {
+    return normalizeUrl(url)
   }
 }
 
@@ -61,6 +105,31 @@ function toPublishedAtMs(value: string | number | null | undefined): number | nu
     const parsed = Date.parse(value)
     return Number.isNaN(parsed) ? null : parsed
   }
+  return null
+}
+
+function isWeakFallbackTitle(title: string | null | undefined, fallbackUrls: Array<string | null | undefined>): boolean {
+  if (!title) return true
+
+  const normalizedTitle = title.trim()
+  if (!normalizedTitle) return true
+  if (/^source-\d+$/i.test(normalizedTitle)) return true
+  if (/^https?:\/\//i.test(normalizedTitle) || /^www\./i.test(normalizedTitle)) return true
+
+  const titleKey = canonicalUrlKey(normalizedTitle)
+  if (!titleKey) return false
+
+  return fallbackUrls.some((fallbackUrl) => {
+    const fallbackKey = canonicalUrlKey(fallbackUrl)
+    return Boolean(fallbackKey && fallbackKey === titleKey)
+  })
+}
+
+function selectFetchedTitle(fetched: FetchedContent): string | null {
+  const title = fetched.title?.trim()
+  if (title) return title
+  const rawTitle = fetched.rawTitle?.trim()
+  if (rawTitle) return rawTitle
   return null
 }
 
@@ -95,12 +164,19 @@ export function inferSearchResponseMode(params: {
   lastUserMessage: string
 }): SearchResponseMode {
   const text = params.lastUserMessage.toLowerCase()
-  const wantsReferences =
-    text.includes("pdf") ||
-    text.includes("link") ||
-    text.includes("tautan") ||
-    text.includes("daftar sumber") ||
-    text.includes("referensi")
+  const inventoryPatterns = [
+    /\bpdf\b/i,
+    /\blink\b/i,
+    /\btautan\b/i,
+    /\bdaftar\s+(sumber|pustaka|referensi)\b/i,
+    /\breferensi\b/i,
+    /\bsumbernya\b/i,
+    /\btampilkan\s+sumber/i,
+    /\bkasih\s+rujukan\b/i,
+    /\bbikin\s+daftar\s+pustaka\b/i,
+    /\brujukan\b/i,
+  ]
+  const wantsReferences = inventoryPatterns.some((pattern) => pattern.test(text))
   const wantsSynthesis =
     text.includes("analisis") ||
     text.includes("jelaskan") ||
@@ -120,7 +196,7 @@ export function buildReferencePresentationSources(params: {
   const sourceIndexByUrl = new Map<string, number>()
 
   const registerSource = (source: ReferencePresentationSource) => {
-    const normalizedUrl = normalizeUrl(source.url)
+    const normalizedUrl = canonicalUrlKey(source.url)
     if (normalizedUrl) sourceIndexByUrl.set(normalizedUrl, sources.length)
     sources.push(source)
   }
@@ -131,11 +207,16 @@ export function buildReferencePresentationSources(params: {
     sourceUrl: string | null,
   ) => {
     const existing = sources[index]
+    const fetchedTitle = selectFetchedTitle(fetched)
+    const displayUrl = normalizeUrl(sourceUrl) ?? normalizeUrl(existing.url) ?? existing.url
+    const fallbackUrls = [existing.url, sourceUrl, fetched.resolvedUrl, fetched.url]
+    const shouldUpgradeTitle = isWeakFallbackTitle(existing.title, fallbackUrls)
+    const nextTitle = shouldUpgradeTitle && fetchedTitle ? fetchedTitle : existing.title || fetchedTitle
     sources[index] = {
       ...existing,
       id: existing.id || sourceUrl || fetched.resolvedUrl,
-      url: sourceUrl ?? existing.url,
-      title: existing.title || fetched.title || fetched.rawTitle || existing.url || fetched.resolvedUrl,
+      url: displayUrl ?? sourceUrl ?? existing.url,
+      title: nextTitle || existing.url || fetched.resolvedUrl,
       publishedAt: existing.publishedAt ?? toPublishedAtMs(fetched.publishedAt),
       documentKind: fetched.documentKind ?? existing.documentKind,
       routeKind: fetched.routeKind ?? existing.routeKind,
@@ -167,30 +248,31 @@ export function buildReferencePresentationSources(params: {
   for (let i = 0; i < params.fetchedContent.length; i += 1) {
     const fetched = params.fetchedContent[i]
     const sourceUrl = fetched.resolvedUrl || fetched.url || null
-    const normalizedSourceUrl = normalizeUrl(sourceUrl)
+    const normalizedSourceUrl = canonicalUrlKey(sourceUrl)
     const matchedIndex =
       (normalizedSourceUrl ? sourceIndexByUrl.get(normalizedSourceUrl) : undefined) ??
-      (normalizeUrl(fetched.url) ? sourceIndexByUrl.get(normalizeUrl(fetched.url)!) : undefined)
+      (canonicalUrlKey(fetched.url) ? sourceIndexByUrl.get(canonicalUrlKey(fetched.url)!) : undefined)
 
     if (typeof matchedIndex === "number") {
       upgradeSource(matchedIndex, fetched, sourceUrl)
       continue
     }
 
+    const displayUrl = normalizeUrl(sourceUrl) ?? normalizeUrl(fetched.url) ?? sourceUrl ?? fetched.url ?? null
     registerSource(
       {
-        id: sourceUrl || fetched.url || `fetched-${i + 1}`,
-        url: sourceUrl || fetched.url || null,
-        title: fetched.title || fetched.rawTitle || sourceUrl || fetched.url || `source-${i + 1}`,
+        id: displayUrl || `fetched-${i + 1}`,
+        url: displayUrl,
+        title: selectFetchedTitle(fetched) || displayUrl || `source-${i + 1}`,
         publishedAt: toPublishedAtMs(fetched.publishedAt),
-        documentKind: fetched.documentKind ?? inferDocumentKindFromUrl(sourceUrl || fetched.url || null),
+        documentKind: fetched.documentKind ?? inferDocumentKindFromUrl(displayUrl),
         routeKind: fetched.routeKind,
         verificationStatus: fetched.pageContent
           ? "verified_content"
-          : sourceUrl || fetched.url
+          : displayUrl
             ? "unverified_link"
             : "unavailable",
-        referenceAvailable: Boolean(sourceUrl || fetched.url),
+        referenceAvailable: Boolean(displayUrl),
         claimable: Boolean(fetched.pageContent),
         fetchMethod: fetched.fetchMethod ?? null,
         failureReason: fetched.failureReason,
