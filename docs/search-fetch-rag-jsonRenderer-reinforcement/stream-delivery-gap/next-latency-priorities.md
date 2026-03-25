@@ -1,9 +1,10 @@
 # stream-delivery-gap — Next Latency Priorities
 
-> Tanggal: 2026-03-25
-> Status: stream-delivery-gap P1 selesai (persist detached, ~3.2s saved).
-> Bottleneck sekarang bukan lagi finish-path blocking, tapi search pipeline.
-> Baseline log: POST /api/chat 200 in 52s, EXECUTE SETTLE=40905ms
+> Tanggal: 2026-03-25 (updated after NLP-1/NLP-2 execution + retriever audit)
+> Status: P1 selesai, NLP-1 selesai, NLP-2 selesai.
+> Bottleneck sekarang: search pipeline, terutama retriever call rate dan retriever blocking behavior.
+> Baseline log (pre-NLP): POST /api/chat 200 in 52s, EXECUTE SETTLE=40905ms
+> Post-NLP log: follow-up requests 14-17s (router skipped), search requests ~45-49s
 
 ---
 
@@ -31,48 +32,30 @@ Breakdown sisa latency dari log terakhir (52s total):
 
 ### NLP-1: RAG override ke pre-router
 
-**Status: siap implementasi**
+**Status: SELESAI** (commit `142ca71f`)
 
-Saat ini `ragChunksAvailable && searchAlreadyDone && !wantsNewSearch`
-dideteksi **setelah** LLM router (`route.ts:2041-2055`). Logic ini pure
-deterministic — regex + state check, tidak butuh output LLM. Tapi karena
-posisinya post-router, user tetap bayar ~2.5s router sebelum override
-berlaku.
+RAG override dipindahkan dari post-router ke pre-router di `route.ts:1963`.
+`wantsNewSearch` di-precompute di line 1945 menggunakan `normalizedLastUserContentLower`.
+Post-router RAG override block dihapus (redundant).
 
-Arah: pindahkan block ini ke pre-router, sebelum `decideWebSearchMode()`
-di `route.ts:1967`. Kalau condition terpenuhi, skip router entirely.
+Hasil tes: 4 follow-up request berhasil skip router, 1 explicit new-search
+request jatuh ke router. Kedua jalur verified.
 
-Impact: ~2.5s saved per request yang match condition ini (lintas mode,
-bukan paper-mode only).
-
-Catatan: `wantsNewSearch` regex di line 2048 harus tetap sama —
-jangan ubah behavior detection.
+Impact terukur: ~2.3-2.5s saved per follow-up request yang match condition.
 
 ### NLP-2: Paper prompt parallelization
 
-**Status: siap implementasi (low risk)**
+**Status: SELESAI** (commit `3992429e`)
 
-Empat Convex query di `paper-mode-prompt.ts` jalan sequential:
+Tiga sequential Convex queries setelah `getSession` diubah ke
+`Promise.allSettled`. `resolveStageInstructions` fallback ke hardcoded
+on failure. Return value fields di-extract dari settled results.
 
-| Query | Durasi | Butuh session? | Independent? |
-|-------|--------|----------------|-------------|
-| `getSession` | 510ms | — | Harus duluan |
-| `resolveStageInstructions` | 458ms | Ya | Independent dari 2 lainnya |
-| `listArtifacts` | 442ms | Ya | Independent |
-| `getInvalidatedArtifacts` | 475ms | Ya | Independent |
+Hasil tes: `parallelBatch` typical ~600-700ms (= query terlambat),
+`paperPrompt.total` turun ke ~1.1-1.2s pada request sehat.
 
-Tiga query terakhir bisa parallel setelah `getSession` selesai.
-Estimasi tambahan setelah `getSession`: 1,375ms → ~475ms.
-Total `paperPrompt.total` kira-kira bisa turun dari ~1,891ms ke ~985ms.
-**Hemat ~900ms**.
-
-Catatan implementasi:
-- `resolveStageInstructions` (`paper-mode-prompt.ts:128`) tidak dibungkus
-  try/catch lokal (beda dengan `listArtifacts` dan `getInvalidatedArtifacts`
-  yang sudah punya try/catch sendiri).
-- Jangan pakai `Promise.all` polos — pakai `Promise.allSettled` atau wrapper
-  per branch supaya error di satu query tidak cancel yang lain.
-- Scope: paper-mode only (tidak berlaku untuk chat biasa).
+Impact terukur: ~700ms saved per paper-mode request (estimasi awal 900ms,
+aktual lebih rendah karena query terlambat mendominasi).
 
 ### NLP-3: Riset deterministic pre-detection untuk intent router
 
@@ -97,23 +80,70 @@ Riset yang dibutuhkan:
 
 Impact potensial: ~2.5s per request yang match, tapi scope belum jelas.
 
-### NLP-4: Investigasi biaya retriever google-grounding
+### NLP-4: Retriever latency — lever-lever internal
 
-**Status: investigasi, bukan implementasi**
+**Status: investigasi aktif, beberapa lever siap tes**
 
-google-grounding makan 23,493ms (45% total). Sebelum mempertimbangkan ganti
-retriever, investigasi dulu:
+google-grounding makan 10-23s (45% total di search request). Bulk dari
+latency ini adalah Google API + model inference — tidak bisa dipaksa cepat.
+Tapi framing "di luar kontrol kita" terlalu absolut. Ada beberapa lever
+internal yang masih dalam kontrol tanpa ganti retriever:
 
-- Apakah 23.5s itu normal untuk google-grounding, atau ada overhead?
-- `await searchResult.text` di `orchestrator.ts:228` menunggu full text
-  generation. Apakah source metadata (grounding chunks) tersedia lebih
-  awal dari full text? Kalau ya, bisa lanjut ke Phase 1.5 lebih cepat.
-- Apakah search messages terlalu besar (context/token overhead)?
-- Apakah `retrieverMaxTokens` (`orchestrator.ts:217`) sudah optimal?
+**Lever 4a: Audit dependency ke `searchResult.text` (impact potensial: 2-5s)**
 
-Jangan ganti default retriever tanpa audit kualitas — google-grounding
-menghasilkan grounding metadata yang relatif kaya (20 citations dengan
-inline grounding dari `retrievers/google-grounding.ts`).
+Di `orchestrator.ts:228`, orchestrator menunggu `await searchResult.text`
+(full text generation) sebelum proceed ke Phase 1.5. Tapi `extractSources`
+di line 242 mengambil dari `providerMetadata` (grounding chunks), bukan
+dari `text`. Dua data path ini terpisah.
+
+Pertanyaan kunci: apakah `providerMetadata` tersedia lebih awal dari `text`?
+Kalau ya, Phase 1.5 (FetchWeb) bisa mulai lebih cepat — overlap dengan
+sisa text generation.
+
+Status: butuh tes empiris. Code menunjukkan dua path terpisah, tapi belum
+terbukti secara runtime apakah metadata ready lebih awal.
+
+**Lever 4b: Set `retrieverMaxTokens` (impact potensial: 1-3s)**
+
+`retrieverMaxTokens` di `orchestrator.ts:217` **tidak di-set** dari
+`route.ts`. Model generate text tanpa cap, padahal text retriever di-drop
+kalau Phase 1.5 berhasil fetch page content. Comment di code sendiri bilang:
+"Retriever can use lower maxTokens than compose — its text output gets
+dropped when page content is available."
+
+Arah: set `retrieverMaxTokens` ke 2048-4096. Warning dari code: "don't set
+too low or Gemini skips tool calls" — perlu tes threshold minimum yang aman.
+
+Status: siap tes. Tinggal pass config dari `route.ts` ke `executeWebSearch`.
+
+**Lever 4c: Audit payload search messages (impact potensial: 500ms-1s)**
+
+`searchMessages` dibangun dari `getSearchSystemPrompt()` (~800 chars) +
+`augmentUserMessageForSearch()` (~400 chars) + seluruh conversation history
+(tidak di-truncate via `sanitizeMessagesForSearch`). Di multi-turn
+conversations, history bisa substansial.
+
+Arah: audit apakah seluruh history diperlukan untuk retriever, atau cukup
+N pesan terakhir + system prompt.
+
+**Lever 4d: Tambah observability retriever (prerequisite untuk lever lain)**
+
+Sekarang kita log `textGen` total tapi tidak breakdown:
+- time-to-first-chunk dari provider
+- panjang searchText yang di-generate
+- ukuran searchMessages (token count)
+- apakah retrieverMaxTokens aktif
+- timestamp metadata availability vs text completion
+
+Arah: tambah log ini supaya bisa measure impact dari lever 4a-4c secara
+empiris.
+
+**Yang BUKAN lever internal:**
+
+- Latency dasar Google API (inherent, di luar kontrol)
+- Variance 10s vs 23s (API variability, bukan code)
+- Ganti retriever default (prematur tanpa audit kualitas — google-grounding
+  menghasilkan grounding metadata yang relatif kaya, 20 citations)
 
 ### NLP-5: Proxy resolve hardening
 
@@ -150,9 +180,25 @@ Gains: probably ratusan ms, bukan detik.
 
 | Item | Alasan |
 |------|--------|
-| Ganti default retriever | Prematur tanpa audit kualitas output |
+| Ganti default retriever | Prematur tanpa audit kualitas output. Ganti retriever adalah langkah TERAKHIR setelah lever 4a-4d habis. |
 | Detach `saveAssistantMessage` (P2) | Product tradeoff, 706ms, jauh lebih kecil dari retriever |
 | Stream-delivery-gap lanjutan | P1 sudah selesai, sisa gap intentional |
+
+---
+
+## Urutan kerja yang direkomendasikan setelah NLP-1/NLP-2
+
+1. **Audit `searchResult.text` dependency** (NLP-4a) — apakah Phase 1.5 bisa
+   mulai sebelum full text selesai? Ini lever terbesar yang masih bisa kita
+   kontrol.
+2. **Kurangi call rate ke retriever** (NLP-3) — setiap request yang skip
+   retriever = hemat 10-23s penuh. Lanjutkan riset intent pre-detection.
+3. **Audit payload/token search** (NLP-4b + 4c) — set `retrieverMaxTokens`,
+   evaluasi truncation search messages.
+4. **Tambah observability retriever** (NLP-4d) — prerequisite untuk measure
+   impact lever lain secara empiris.
+5. **Baru setelah semua lever habis**, evaluasi retriever alternatif lewat
+   audit kualitas, bukan cuma latency.
 
 ---
 
@@ -160,9 +206,12 @@ Gains: probably ratusan ms, bukan detik.
 
 | # | Target | Impact | Status |
 |---|--------|--------|--------|
-| NLP-1 | RAG override ke pre-router | ~2.5s, lintas mode | Siap |
-| NLP-2 | Paper prompt parallel | ~900ms, paper-mode | Siap |
+| NLP-1 | RAG override ke pre-router | ~2.5s, lintas mode | **Selesai** |
+| NLP-2 | Paper prompt parallel | ~700ms, paper-mode | **Selesai** |
 | NLP-3 | Deterministic intent pre-detection | ~2.5s, riset dulu | Riset |
-| NLP-4 | Retriever cost investigation | Terbesar tapi scope terluas | Investigasi |
+| NLP-4a | Audit `searchResult.text` dependency | 2-5s potensial | Investigasi |
+| NLP-4b | Set `retrieverMaxTokens` | 1-3s potensial | Siap tes |
+| NLP-4c | Audit search payload size | 500ms-1s potensial | Investigasi |
+| NLP-4d | Retriever observability | Prerequisite | Quick add |
 | NLP-5 | Proxy resolve hardening | Kecil, hygiene | Quick fix |
 | NLP-6 | Compose TTFT audit | Ratusan ms | Terakhir |
