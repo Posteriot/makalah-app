@@ -126,17 +126,25 @@ conversations, history bisa substansial.
 Arah: audit apakah seluruh history diperlukan untuk retriever, atau cukup
 N pesan terakhir + system prompt.
 
-**Lever 4d: Tambah observability retriever (prerequisite untuk lever lain)**
+**Lever 4d: Tambah observability retriever**
 
-Sekarang kita log `textGen` total tapi tidak breakdown:
-- time-to-first-chunk dari provider
-- panjang searchText yang di-generate
-- ukuran searchMessages (token count)
-- apakah retrieverMaxTokens aktif
-- timestamp metadata availability vs text completion
+**Status: SEBAGIAN SELESAI**
 
-Arah: tambah log ini supaya bisa measure impact dari lever 4a-4c secara
-empiris.
+Retriever timeline probes sudah ditambahkan (commit `bd68e35d`):
+- `sources_ready`, `metadata_ready`, `text_ready` timestamps
+- `extract_start`/`extract_done` timing
+- Summary line per retriever
+
+`requestId` (`reqId`) sudah ditambahkan ke semua log orchestrator (commit
+`52797997`).
+
+Hasil probe NLP-4a: `sources`, `metadata`, dan `text` resolve pada
+milidetik yang sama. **Lever 4a confirmed dead end** — AI SDK buffers
+semua Promise sampai stream complete.
+
+Sisa yang belum di-tag: `route.ts` search decision logs (`[SearchDecision]`,
+`[SearchExecution]`, `[Context Budget]`) dan `persistExactSourceDocuments`
+internal logs (`orchestrator.ts:113-165`).
 
 **Yang BUKAN lever internal:**
 
@@ -160,6 +168,26 @@ Tapi ini noise yang buang resource dan bikin log kotor.
 
 Arah: filter URL yang masih proxy setelah resolve attempt — jangan masukkan
 ke batch fetch.
+
+### NLP-7: Audit fallback cost retriever chain
+
+**Status: investigasi**
+
+Saat google-grounding return 0 citations (model tidak call search tool),
+orchestrator treats it as failure dan falls through ke perplexity. Phase 1
+jadi dobel: ~10s + ~10s = ~20s.
+
+Dari log: ini terjadi di 1 dari 3 search request yang di-test. Saat
+google-grounding gagal, total Phase 1 naik dari ~18-22s ke ~20s (karena
+perplexity juga ~10s).
+
+Pertanyaan:
+- Apakah google-grounding 0-citation failure bisa dideteksi lebih awal
+  (sebelum menunggu full text ~10s)?
+- Apakah timeout retriever pertama bisa diperketat untuk case ini?
+- Apakah ada pattern di input yang predict 0-citation failure?
+
+Ref: `post-retriever-investigation-priorities.md` item 5
 
 ### NLP-6: Compose TTFT audit
 
@@ -188,15 +216,15 @@ Gains: probably ratusan ms, bukan detik.
 
 ## Urutan kerja yang direkomendasikan setelah NLP-1/NLP-2
 
-1. **Audit `searchResult.text` dependency** (NLP-4a) — apakah Phase 1.5 bisa
-   mulai sebelum full text selesai? Ini lever terbesar yang masih bisa kita
-   kontrol.
+1. ~~**Audit `searchResult.text` dependency** (NLP-4a)~~ — **Dead end.**
+   Probe menunjukkan `sources`, `metadata`, `text` resolve bersamaan.
+   AI SDK buffers semua Promise sampai stream complete.
 2. **Kurangi call rate ke retriever** (NLP-3) — setiap request yang skip
    retriever = hemat 10-23s penuh. Lanjutkan riset intent pre-detection.
 3. **Audit payload/token search** (NLP-4b + 4c) — set `retrieverMaxTokens`,
    evaluasi truncation search messages.
-4. **Tambah observability retriever** (NLP-4d) — prerequisite untuk measure
-   impact lever lain secara empiris.
+4. **Audit fallback cost** (NLP-7) — google-grounding 0-citation failure
+   menyebabkan Phase 1 dobel (~20s). Evaluasi early-exit atau timeout ketat.
 5. **Baru setelah semua lever habis**, evaluasi retriever alternatif lewat
    audit kualitas, bukan cuma latency.
 
@@ -209,9 +237,10 @@ Gains: probably ratusan ms, bukan detik.
 | NLP-1 | RAG override ke pre-router | ~2.5s, lintas mode | **Selesai** |
 | NLP-2 | Paper prompt parallel | ~700ms, paper-mode | **Selesai** |
 | NLP-3 | Deterministic intent pre-detection | ~2.5s, riset dulu | Riset |
-| NLP-4a | Audit `searchResult.text` dependency | 2-5s potensial | Investigasi |
+| NLP-4a | Audit `searchResult.text` dependency | — | **Dead end** (probe: semua resolve bersamaan) |
 | NLP-4b | Set `retrieverMaxTokens` | 1-3s potensial | Siap tes |
 | NLP-4c | Audit search payload size | 500ms-1s potensial | Investigasi |
-| NLP-4d | Retriever observability | Prerequisite | Quick add |
+| NLP-4d | Retriever observability | — | **Sebagian selesai** (probe + reqId done, sisa: route.ts logs) |
 | NLP-5 | Proxy resolve hardening | Kecil, hygiene | Quick fix |
+| NLP-7 | Audit fallback cost retriever chain | ~10s saat 0-citation failure | Investigasi |
 | NLP-6 | Compose TTFT audit | Ratusan ms | Terakhir |
