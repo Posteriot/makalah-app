@@ -32,6 +32,18 @@ Provide a brief synthesis first, then a compact reference inventory.
   return ""
 }
 
+function getSearchFindingsIntro(responseMode: NonNullable<SearchResultsContextOptions["responseMode"]>): string {
+  if (responseMode === "reference_inventory") {
+    return "Search findings (raw, for reference inventory — do NOT copy verbatim, rewrite with your own reference list):"
+  }
+
+  if (responseMode === "mixed") {
+    return "Search findings (raw, for your synthesis and reference inventory — do NOT copy verbatim, rewrite with your own analysis and reference list):"
+  }
+
+  return "Search findings (raw, for your synthesis — do NOT copy verbatim, rewrite with your own analysis):"
+}
+
 export function buildSearchResultsContext(
   sources: SearchSource[],
   searchText?: string,
@@ -69,7 +81,7 @@ export function buildSearchResultsContext(
   // When NO page content is available (FetchWeb failed), keep searchText as
   // fallback — same as pre-FetchWeb behavior.
   const searchFindings = (!anyHasPageContent && searchText?.trim())
-    ? `\n\nSearch findings (raw, for your synthesis — do NOT copy verbatim, rewrite with your own analysis):\n${searchText.trim()}`
+    ? `\n\n${getSearchFindingsIntro(responseMode)}\n${searchText.trim()}`
     : ""
 
   const context = `## SEARCH RESULTS (COMPLETED)
