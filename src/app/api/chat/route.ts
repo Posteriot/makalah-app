@@ -427,25 +427,15 @@ export async function POST(req: Request) {
         const userMessageCount = Array.isArray(messages)
             ? messages.filter((message: { role?: string }) => message?.role === "user").length
             : 0
-        const isAttachmentProbePrompt = (() => {
-            if (!normalizedLastUserContentLower) return true
-            if (normalizedLastUserContentLower === "." || normalizedLastUserContentLower.length <= 2) return true
-
-            const probePatterns = [
-                /^apa ini\??$/,
-                /^ini apa\??$/,
-                /^jelaskan( isi)?( file| dokumen)?( ini)?\??$/,
-                /^ringkas(kan)?( isi)?( file| dokumen)?( ini)?\??$/,
-                /^analisis(kan)?( isi)?( file| dokumen)?( ini)?\??$/,
-                /^tolong jelaskan( ini)?\??$/,
-            ]
-            return probePatterns.some((pattern) => pattern.test(normalizedLastUserContentLower))
-        })()
+        // Attachment first-response: structural check only (file present + first message + short text).
+        // No regex probe patterns — the model can judge user intent from the message itself.
+        // The instruction tells the model HOW to respond when files are attached, not IF.
         const shouldForceAttachmentFirstResponse =
             effectiveFileIds.length > 0 &&
             requestedAttachmentMode === "explicit" &&
             !paperModePrompt &&
-            (isAttachmentProbePrompt || (userMessageCount <= 1 && normalizedLastUserContent.length <= 64))
+            userMessageCount <= 1 &&
+            normalizedLastUserContent.length <= 64
         const attachmentFirstResponseInstruction = shouldForceAttachmentFirstResponse
             ? "Pengguna baru saja melampirkan file secara eksplisit. Jawaban pertama WAJIB langsung mengulas isi file terlampir. DILARANG membuka dengan perkenalan umum, profil asisten, atau daftar kemampuan. Kalimat pertama harus langsung menjelaskan inti isi dokumen yang dilampirkan."
             : ""
@@ -1937,36 +1927,24 @@ Aturan:
             let isSyncRequest = false
             let isSaveSubmitIntent = false
 
-            // --- Pre-router guardrails (deterministic, structural) ---
-            // Detect explicit search intent in user message (e.g., "cari referensi", "search for papers")
-            const hasExplicitSearchIntent = /\b(cari\b|search\b|referensi|rujukan|sumber|literature|jurnal)/i.test(normalizedLastUserContentLower)
+            // --- Pre-router guardrails (structural state only, NO regex intent detection) ---
+            // Intent detection is the LLM router's job. Regex cannot scale to language
+            // variation (Indonesian, Javanese, English, slang, etc.) and will miss edge
+            // cases that cause users to lose search functionality silently.
 
-            // Pre-compute new-search intent for RAG override (used in pre-router fast path)
-            const wantsNewSearch =
-                ragChunksAvailable &&
-                searchAlreadyDone &&
-                /\b(cari\s+(lagi|lebih|baru|tentang)|tambah\s+sumber|search\s+(again|for|more)|referensi\s+(baru|tambahan)|sumber\s+(baru|lain))\b/i.test(normalizedLastUserContentLower)
-
-            if (forcePaperToolsMode && !hasExplicitSearchIntent) {
+            if (forcePaperToolsMode) {
+                // No paper session yet — block search so model calls startPaperSession first.
+                // Search will be available on the next turn once session is created.
+                // Do NOT try to regex-detect "does user want search" — let the session
+                // creation happen first, then the router handles search on the next turn.
                 searchRequestedByPolicy = false
                 activeStageSearchReason = "force_paper_tools_mode"
-                console.log("[SearchDecision] Force paper tools: no session yet, no explicit search intent")
-            } else if (forcePaperToolsMode && hasExplicitSearchIntent) {
-                searchRequestedByPolicy = true
-                activeStageSearchReason = "force_paper_tools_mode_with_search_intent"
-                console.log("[SearchDecision] Force paper tools: no session yet, but user has explicit search intent — allowing search")
+                console.log("[SearchDecision] Force paper tools: no session yet, blocking search until session created")
             } else if (!paperModePrompt && userMessageCount <= 1 && !searchAlreadyDone) {
-                // Fast path: first message in chat mode → always search (skip 2.9s LLM router)
+                // Fast path: first message in chat mode → always search (skip LLM router)
                 searchRequestedByPolicy = true
                 activeStageSearchReason = "first_message_chat_mode"
                 console.log("[SearchDecision] Fast path: first chat message, skip router")
-            } else if (ragChunksAvailable && searchAlreadyDone && !wantsNewSearch) {
-                // Pre-router RAG override: RAG chunks exist, search done, user not
-                // requesting new sources. Skip LLM router (~2.5s saved).
-                searchRequestedByPolicy = false
-                activeStageSearchReason = "rag_chunks_available_pre_router"
-                activeStageSearchNote = getFunctionToolsModeNote("RAG tools available for existing sources")
-                console.log("[SearchDecision] Pre-router RAG override: chunks available, search done, no new-search trigger → skip router")
             } else {
                 // --- Unified LLM router for ALL stages (ACTIVE + PASSIVE + chat) ---
                 const { incomplete, requirement } = paperSession
@@ -2234,6 +2212,7 @@ Aturan:
                 }
 
                 return await executeWebSearch({
+                    requestId,
                     conversationId: currentConversationId as string,
                     retrieverChain,
                     tavilyApiKey: process.env.TAVILY_API_KEY,
