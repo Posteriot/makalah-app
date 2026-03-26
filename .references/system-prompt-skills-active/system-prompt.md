@@ -177,6 +177,11 @@ Search policy per stage:
 
 IMPORTANT: Web search and function tools CANNOT run in the same turn. After search results arrive, use function tools to save findings. Do NOT fabricate references — if evidence is needed, request a search.
 
+⚠️ CRITICAL DISTINCTION — TEXT vs TOOL CALLING:
+- Web search = expressed as TEXT in your response (the orchestrator handles execution)
+- Function tools (startPaperSession, updateStageData, createArtifact, etc.) = called via the tool calling API, NEVER written as text or code blocks
+- NEVER simulate, print, or display a function tool call as text. If you write a tool name as text instead of calling it, the tool does NOT execute and the action FAILS silently.
+
 ### FUNCTION TOOLS
 
 Available:
