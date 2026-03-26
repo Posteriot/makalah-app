@@ -78,33 +78,9 @@ type ChatSource = {
 }
 
 type ReferenceInventoryPayload = {
-    responseMode?: "synthesis" | "reference_inventory" | "mixed"
+    responseMode?: "synthesis"
     introText?: string
     items?: ChatSource[]
-}
-
-function buildReferenceInventoryCopyText(params: {
-    introText: string
-    items: ChatSource[]
-}): string {
-    const intro = params.introText.trim()
-    const rows = params.items.flatMap((source, index) => {
-        const lines = [`${index + 1}. ${source.title}`]
-
-        if (source.url && source.url.trim().length > 0) {
-            lines.push(`URL: ${source.url}`)
-        } else {
-            lines.push("Status: URL tidak tersedia")
-        }
-
-        if (source.note?.trim()) {
-            lines.push(`Catatan: ${source.note.trim()}`)
-        }
-
-        return lines.join("\n")
-    })
-
-    return [intro, ...rows].filter(Boolean).join("\n\n").trim()
 }
 
 interface MessageBubbleProps {
@@ -419,7 +395,7 @@ export function MessageBubble({
             if (maybeDataPart.type !== "data-reference-inventory") continue
             const data = maybeDataPart.data as ReferenceInventoryPayload | null
             if (!data || typeof data !== "object") continue
-            if (data.responseMode !== "reference_inventory" && data.responseMode !== "mixed" && data.responseMode !== "synthesis") {
+            if (data.responseMode !== "synthesis") {
                 continue
             }
             if (!Array.isArray(data.items)) return null
@@ -782,17 +758,8 @@ export function MessageBubble({
             anchors: [],
         })
     })()
-    const isReferenceInventoryResponse = referenceInventory?.responseMode === "reference_inventory" && referenceInventorySources.length > 0
-    const displayMarkdown = isReferenceInventoryResponse
-        ? ""
-        : (normalizedLegacyCitedText ?? publicDisplayText)
-    const referenceInventoryIntroText = referenceInventory?.introText?.trim() || citedText?.trim() || ""
-    const quickActionsContent = isReferenceInventoryResponse
-        ? buildReferenceInventoryCopyText({
-            introText: referenceInventoryIntroText,
-            items: referenceInventorySources,
-        })
-        : (displayMarkdown || content)
+    const displayMarkdown = normalizedLegacyCitedText ?? publicDisplayText
+    const quickActionsContent = displayMarkdown || content
 
     // Get timestamp from allMessages if available
 
@@ -1042,64 +1009,7 @@ export function MessageBubble({
                         )
                     ) : (
                         <div className="space-y-3">
-                            {isReferenceInventoryResponse && (
-                                <div
-                                    className="space-y-3 rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-3 py-2.5"
-                                    data-testid="reference-inventory-body"
-                                >
-                                    {referenceInventoryIntroText.length > 0 && (
-                                        <div className="text-xs font-mono text-[var(--chat-muted-foreground)]">
-                                            {referenceInventoryIntroText}
-                                        </div>
-                                    )}
-                                    <div className="space-y-2">
-                                        {referenceInventorySources.map((source, index) => (
-                                            <div key={source.sourceId ?? `${source.title}-${index}`} className="space-y-1">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <span className="text-sm font-medium text-[var(--chat-foreground)]">
-                                                        {source.title}
-                                                    </span>
-                                                    {source.verificationStatus === "unverified_link" && (
-                                                        <span className="rounded-badge border border-[color:var(--chat-border)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
-                                                            Tautan belum diverifikasi
-                                                        </span>
-                                                    )}
-                                                    {source.verificationStatus === "verified_content" && (
-                                                        <span className="rounded-badge border border-[color:var(--chat-border)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
-                                                            Konten terverifikasi
-                                                        </span>
-                                                    )}
-                                                    {source.documentKind && (
-                                                        <span className="rounded-badge border border-[color:var(--chat-border)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
-                                                            {source.documentKind === "pdf" ? "PDF" : source.documentKind === "html" ? "HTML" : "UNKNOWN"}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {source.url ? (
-                                                    <a
-                                                        href={source.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="block break-all font-mono text-xs text-[var(--chat-info)] underline decoration-[color:var(--chat-border)] underline-offset-2"
-                                                    >
-                                                        {source.url}
-                                                    </a>
-                                                ) : (
-                                                    <div className="font-mono text-xs text-[var(--chat-muted-foreground)]">
-                                                        URL tidak tersedia
-                                                    </div>
-                                                )}
-                                                {source.note && (
-                                                    <div className="text-xs text-[var(--chat-muted-foreground)]">
-                                                        {source.note}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            {!isReferenceInventoryResponse && displayMarkdown.trim().length > 0 && (
+                            {displayMarkdown.trim().length > 0 && (
                                 <MarkdownRenderer
                                     markdown={displayMarkdown}
                                     className="space-y-2 text-sm leading-relaxed text-[var(--chat-foreground)]"

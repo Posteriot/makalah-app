@@ -110,18 +110,6 @@ export type BuildUserFacingSearchPayloadInput = {
   referenceItems?: ReferenceInventoryItem[]
 }
 
-function getReferenceInventoryIntroText(responseMode: SearchResponseMode): string {
-  if (responseMode === "reference_inventory") {
-    return "Berikut inventaris referensi yang ditemukan."
-  }
-
-  if (responseMode === "mixed") {
-    return "Berikut inventaris referensi pendukung."
-  }
-
-  return ""
-}
-
 export function buildUserFacingSearchPayload(input: string): UserFacingSearchPayload
 export function buildUserFacingSearchPayload(
   input: BuildUserFacingSearchPayloadInput,
@@ -135,15 +123,13 @@ export function buildUserFacingSearchPayload(
       : input
 
   const split = splitInternalThought(normalizedInput.text)
-  const citedText = normalizedInput.responseMode === "reference_inventory"
-    ? getReferenceInventoryIntroText(normalizedInput.responseMode)
-    : stripEmptyReferenceLines(split.publicContent.trim())
+  const citedText = stripEmptyReferenceLines(split.publicContent.trim())
   const internalThoughtText = split.internalThoughtContent.trim()
   const referenceItems = normalizedInput.referenceItems ?? []
   const referenceInventory =
-    referenceItems.length > 0 || normalizedInput.responseMode === "reference_inventory"
+    referenceItems.length > 0
       ? {
-          introText: getReferenceInventoryIntroText(normalizedInput.responseMode),
+          introText: "",
           items: referenceItems,
         }
       : undefined

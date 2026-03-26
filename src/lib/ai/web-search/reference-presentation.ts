@@ -1,7 +1,7 @@
 import type { NormalizedCitation } from "@/lib/citations/types"
 import type { FetchedContent, FetchRouteKind } from "./content-fetcher"
 
-export type SearchResponseMode = "synthesis" | "reference_inventory" | "mixed"
+export type SearchResponseMode = "synthesis"
 
 export type ReferenceVerificationStatus =
   | "verified_content"
@@ -205,31 +205,9 @@ function createBaseSource(params: {
   }
 }
 
-export function inferSearchResponseMode(params: {
+export function inferSearchResponseMode(_params: {
   lastUserMessage: string
 }): SearchResponseMode {
-  const text = params.lastUserMessage.toLowerCase()
-  const inventoryPatterns = [
-    /\bpdf\b/i,
-    /\blink\b/i,
-    /\btautan\b/i,
-    /\bdaftar\s+(sumber|pustaka|referensi)\b/i,
-    /\breferensi\b/i,
-    /\bsumbernya\b/i,
-    /\btampilkan\s+sumber/i,
-    /\bkasih\s+rujukan\b/i,
-    /\bbikin\s+daftar\s+pustaka\b/i,
-    /\brujukan\b/i,
-  ]
-  const wantsReferences = inventoryPatterns.some((pattern) => pattern.test(text))
-  const wantsSynthesis =
-    text.includes("analisis") ||
-    text.includes("jelaskan") ||
-    text.includes("bandingkan") ||
-    text.includes("ringkas")
-
-  if (wantsReferences && wantsSynthesis) return "mixed"
-  if (wantsReferences) return "reference_inventory"
   return "synthesis"
 }
 

@@ -2286,11 +2286,8 @@ export function ChatWindow({
             }
             return null
           })()}
-          {((isHistoryLoading || isConversationLoading || isAwaitingAssistantStart) && messages.length === 0) ||
-          (Boolean(conversationId) && messages.length === 0) ? (
-            // Loading skeleton - keep horizontal boundary in sync with ChatInput
-            // Also shown for conversation routes with zero hydrated messages yet,
-            // so TemplateGrid never leaks into an existing conversation view.
+          {(isHistoryLoading || isConversationLoading || isAwaitingAssistantStart) && messages.length === 0 ? (
+            // Loading skeleton - shown while Convex queries are still resolving.
             <div className="space-y-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
               <div className="flex justify-start">
                 <Skeleton className="h-12 w-[60%] rounded-action" />

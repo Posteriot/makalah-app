@@ -2227,6 +2227,7 @@ Aturan:
                     currentStage: paperStageScope ?? undefined,
                     fileContext: fileContext || undefined,
                     samplingOptions,
+                    retrieverMaxTokens: 4096,
                     reasoningTraceEnabled,
                     isTransparentReasoning,
                     reasoningProviderOptions: primaryReasoningProviderOptions ?? undefined,
