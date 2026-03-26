@@ -74,7 +74,7 @@ describe("sourceChunks auth guard", () => {
   it("verifies conversation ownership before ingesting chunks", async () => {
     const db = createMockDb()
 
-    await ingestChunks._handler(
+    await (ingestChunks as unknown as { _handler: Function })._handler(
       { db } as never,
       {
         conversationId: "conversation_1" as never,
@@ -100,7 +100,7 @@ describe("sourceChunks auth guard", () => {
   it("verifies conversation ownership before checking source existence", async () => {
     const db = createMockDb()
 
-    await hasSource._handler(
+    await (hasSource as unknown as { _handler: Function })._handler(
       { db } as never,
       {
         conversationId: "conversation_1" as never,
@@ -118,7 +118,7 @@ describe("sourceChunks auth guard", () => {
     const vectorSearch = vi.fn()
 
     await expect(
-      searchByEmbedding._handler(
+      (searchByEmbedding as unknown as { _handler: Function })._handler(
         {
           auth: {
             getUserIdentity: vi.fn().mockResolvedValue({ subject: "ba_user_1" }),
