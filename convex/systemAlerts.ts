@@ -3,7 +3,7 @@ import { v } from "convex/values"
 import { requireRole } from "./permissions"
 
 const LEGACY_UPDATE_STAGE_SIGNATURE = "updateStageData({ stage, data })"
-const ARTIFACT_SOURCES_SECTION_MARKER = "**SOURCES DAN SITASI ARTIFACT:**"
+const ARTIFACT_SOURCES_SECTION_MARKER = "SOURCES AND CITATIONS IN ARTIFACTS"
 
 // ============================================================================
 // QUERIES
