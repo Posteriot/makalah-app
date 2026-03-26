@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { JSONUIProvider, Renderer } from "@json-render/react"
 import type { Spec } from "@json-render/core"
 import {
@@ -23,18 +23,21 @@ export function JsonRendererChoiceBlock({
   isSubmitted = false,
   onSubmit,
 }: JsonRendererChoiceBlockProps) {
+  const [localSubmitted, setLocalSubmitted] = useState(false)
+  const submitted = isSubmitted || localSubmitted
+
   const renderedSpec = useMemo(
     () =>
-      isSubmitted
+      submitted
         ? cloneSpecWithReadOnlyState(payload.spec)
         : payload.spec,
-    [isSubmitted, payload.spec]
+    [submitted, payload.spec]
   )
 
   const handlers = useMemo(
     () => ({
       submitChoice: async (params?: Record<string, unknown>) => {
-        if (isSubmitted || !onSubmit) return
+        if (submitted || !onSubmit) return
 
         const selectedOptionId =
           typeof params?.selectedOptionId === "string"
@@ -49,10 +52,11 @@ export function JsonRendererChoiceBlock({
             ? params.customText.trim()
             : undefined
 
+        setLocalSubmitted(true)
         await onSubmit({ selectedOptionId, customText })
       },
     }),
-    [isSubmitted, onSubmit]
+    [submitted, onSubmit]
   )
 
   return (

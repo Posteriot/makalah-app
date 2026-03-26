@@ -50,6 +50,12 @@ type AutoUserAction =
         stageLabel: string;
         feedback: string;
     }
+    | {
+        kind: "choice";
+        stageLabel: string;
+        selectedOption: string;
+        customNote?: string;
+    }
     | null;
 
 type ArtifactSignal = {
@@ -165,6 +171,21 @@ export function MessageBubble({
                 kind: "revision",
                 stageLabel: revisionMatch[1].trim(),
                 feedback: (revisionMatch[2] ?? "").trim(),
+            }
+        }
+
+        const choiceMatch = rawContent.match(/^\[Choice:\s*(.+?)\]\s*([\s\S]*)$/)
+        if (choiceMatch) {
+            const stageLabel = choiceMatch[1].trim()
+            const rest = (choiceMatch[2] ?? "").trim()
+            const lines = rest.split("\n").map(l => l.trim()).filter(Boolean)
+            const pilihan = lines.find(l => l.startsWith("Pilihan:"))
+            const catatan = lines.find(l => l.startsWith("Catatan user:"))
+            return {
+                kind: "choice",
+                stageLabel,
+                selectedOption: pilihan ? pilihan.replace(/^Pilihan:\s*/, "") : rest,
+                ...(catatan ? { customNote: catatan.replace(/^Catatan user:\s*/, "") } : {}),
             }
         }
         return null
@@ -987,6 +1008,23 @@ export function MessageBubble({
                                 <div className="mt-0.5 text-xs font-mono text-[var(--chat-foreground)]">
                                     {autoUserAction.followupText || "Lanjut ke tahap berikutnya."}
                                 </div>
+                            </div>
+                        ) : autoUserAction.kind === "choice" ? (
+                            <div className="rounded-action bg-[var(--chat-muted)] px-3 py-2.5">
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle className="h-4 w-4 text-[var(--chat-muted-foreground)]" />
+                                    <span className="text-[11px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-foreground)]">
+                                        Pilihan dikonfirmasi
+                                    </span>
+                                </div>
+                                <div className="mt-1.5 text-sm font-semibold text-[var(--chat-foreground)]">
+                                    {autoUserAction.selectedOption}
+                                </div>
+                                {autoUserAction.customNote && (
+                                    <div className="mt-0.5 whitespace-pre-wrap text-xs font-mono leading-relaxed text-[var(--chat-foreground)]">
+                                        {autoUserAction.customNote}
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="rounded-action bg-[var(--chat-muted)] px-3 py-2.5">

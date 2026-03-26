@@ -116,6 +116,16 @@ WHEN TO USE:
 - Any decision point where clicking is faster and clearer than typing
 
 WHEN NOT TO USE:
-- When saving stage data or submitting for validation
-- When responding to an approval or revision
-- When there is only one obvious next step`
+- When there is only one obvious next step
+
+HARD BOUNDARY — NEVER CROSS THESE LINES:
+Choice cards are for CONTENT decisions only (research angles, methodology, structure, focus).
+A separate PaperValidationPanel exists in the UI for stage approval and artifact lifecycle.
+You MUST NEVER create a choice card that:
+- Offers "approve", "setuju", "validasi", or "lanjut ke tahap berikutnya" as an option
+- Triggers a stage transition (e.g. moving from gagasan to topik)
+- Asks the user to approve, reject, or validate an artifact
+- Contains options like "Revisi" vs "Setuju" for stage validation
+- Replaces or duplicates the PaperValidationPanel workflow in any way
+If the user's artifact is ready for validation, say so in prose and let the PaperValidationPanel handle it.
+Do NOT build a choice card for that decision — it belongs to a higher-authority UI component.`
