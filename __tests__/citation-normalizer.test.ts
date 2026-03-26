@@ -125,6 +125,11 @@ describe('normalizeSourcesList', () => {
     expect(result).toHaveLength(1)
     expect(result[0].url).toBe('https://arxiv.org/abs/2301.12345')
   })
+
+  it('rejects n.d pseudo-domain source', () => {
+    const result = normalizeSourcesList([{ url: 'n.d', title: 'n.d' }])
+    expect(result).toEqual([])
+  })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -216,6 +221,16 @@ describe('normalizeGoogleGrounding', () => {
     expect(result).toHaveLength(2)
     expect(result[0].citedText).toBe('First claim')
     expect(result[1].citedText).toBe('Second claim')
+  })
+
+  it('rejects n.d pseudo-domain chunk', () => {
+    const metadata = {
+      groundingChunks: [
+        { web: { uri: 'n.d', title: 'n.d' } },
+      ],
+    }
+    const result = normalizeGoogleGrounding(metadata)
+    expect(result).toEqual([])
   })
 })
 

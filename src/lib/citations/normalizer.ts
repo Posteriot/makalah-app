@@ -16,6 +16,7 @@ import type {
   GoogleGroundingSupport,
 } from './types'
 import { isBlockedSourceDomain } from '@/lib/ai/blocked-domains'
+import { isValidCitationUrl } from './url-validation'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Shared Helpers
@@ -25,13 +26,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
 const isValidUrl = (value: unknown): value is string => {
-  if (typeof value !== 'string' || value.trim().length === 0) return false
-  try {
-    new URL(value)
-    return true
-  } catch {
-    return value.includes('.') && !value.includes(' ')
-  }
+  return isValidCitationUrl(value)
 }
 
 const isValidNumber = (value: unknown): value is number =>
