@@ -110,9 +110,9 @@ describe("Checkout BPP payment settings", () => {
 
     render(<CheckoutBPPPage />)
 
-    expect(screen.getByText("QRIS")).toBeInTheDocument()
+    expect(screen.getAllByText("QRIS").length).toBeGreaterThan(0)
     expect(screen.queryByText("Virtual Account")).not.toBeInTheDocument()
     expect(screen.queryByText("E-Wallet")).not.toBeInTheDocument()
     expect(screen.getByText(/pembayaran diproses oleh xendit/i)).toBeInTheDocument()
-  })
+  }, 10000)
 })

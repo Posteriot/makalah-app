@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { ChatInput } from "@/components/chat/ChatInput"
 import type { AttachedFileMeta } from "@/lib/types/attached-file"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 vi.mock("@/components/chat/FileUploadButton", () => ({
   FileUploadButton: ({ label }: { label?: string }) => (
@@ -67,16 +68,18 @@ describe("chat input desktop layout", () => {
 
   it("menampilkan konteks desktop sebagai strip horizontal, bukan tray blok besar", () => {
     render(
-      <ChatInput
-        input="halo"
-        isLoading={false}
-        conversationId="conv-1"
-        attachedFiles={[]}
-        contextFiles={contextFiles}
-        onClearAttachmentContext={vi.fn()}
-        onContextFileRemoved={vi.fn()}
-        {...baseProps}
-      />
+      <TooltipProvider>
+        <ChatInput
+          input="halo"
+          isLoading={false}
+          conversationId="conv-1"
+          attachedFiles={[]}
+          contextFiles={contextFiles}
+          onClearAttachmentContext={vi.fn()}
+          onContextFileRemoved={vi.fn()}
+          {...baseProps}
+        />
+      </TooltipProvider>
     )
 
     const scrollStrip = screen.getByTestId("desktop-context-scroll")

@@ -86,7 +86,7 @@ TECHNICAL CONSTRAINT:
 
 IF FACTUAL DATA/REFERENCES ARE NEEDED:
 - Ask user to explicitly request a search.
-- Example: "Kalau lo mau, gue bisa cari referensi tambahan untuk memperkuat bagian ini."
+- Example: "If you want, I can search for additional references to strengthen this section."
 - Do NOT fabricate/hallucinate references — this is FORBIDDEN.
 ═══════════════════════════════════════════════════════════════════`
 
@@ -103,7 +103,7 @@ STATUS: ${requirement}
 
 MANDATORY INSTRUCTIONS:
 1. If the user explicitly requests references, literature, journals, or factual search, perform web search immediately in this turn
-2. If the user has NOT explicitly requested search yet, recommend search clearly and ask for confirmation first
+2. If the user has NOT explicitly requested search yet, Express your intent to search clearly and ask for confirmation first
 3. Do NOT say "please wait" and do NOT imply search will happen automatically without a user request
 4. Do NOT continue factual discussion as if the missing references already exist
 5. Do NOT fabricate/hallucinate references — this is FORBIDDEN

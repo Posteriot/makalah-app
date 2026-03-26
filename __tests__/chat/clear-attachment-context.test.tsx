@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { ChatInput } from "@/components/chat/ChatInput"
 import type { AttachedFileMeta } from "@/lib/types/attached-file"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 vi.mock("@/components/chat/FileUploadButton", () => ({
   FileUploadButton: () => <button type="button">mock upload</button>,
@@ -21,17 +22,19 @@ describe("clear attachment context button", () => {
     } as AttachedFileMeta
 
     render(
-      <ChatInput
-        input="teks"
-        onInputChange={vi.fn()}
-        onSubmit={vi.fn()}
-        isLoading={false}
-        conversationId="conv-1"
-        attachedFiles={[attachedDoc]}
-        onFileAttached={vi.fn()}
-        onFileRemoved={vi.fn()}
-        onClearAttachmentContext={onClearAttachmentContext}
-      />
+      <TooltipProvider>
+        <ChatInput
+          input="teks"
+          onInputChange={vi.fn()}
+          onSubmit={vi.fn()}
+          isLoading={false}
+          conversationId="conv-1"
+          attachedFiles={[attachedDoc]}
+          onFileAttached={vi.fn()}
+          onFileRemoved={vi.fn()}
+          onClearAttachmentContext={onClearAttachmentContext}
+        />
+      </TooltipProvider>
     )
 
     const clearButtons = screen.getAllByRole("button", { name: "Hapus semua" })
@@ -43,18 +46,20 @@ describe("clear attachment context button", () => {
 
   it("shows clear button when active context exists even if draft composer is empty", () => {
     render(
-      <ChatInput
-        input="teks"
-        onInputChange={vi.fn()}
-        onSubmit={vi.fn()}
-        isLoading={false}
-        conversationId="conv-1"
-        attachedFiles={[]}
-        onFileAttached={vi.fn()}
-        onFileRemoved={vi.fn()}
-        onClearAttachmentContext={vi.fn()}
-        hasActiveAttachmentContext
-      />
+      <TooltipProvider>
+        <ChatInput
+          input="teks"
+          onInputChange={vi.fn()}
+          onSubmit={vi.fn()}
+          isLoading={false}
+          conversationId="conv-1"
+          attachedFiles={[]}
+          onFileAttached={vi.fn()}
+          onFileRemoved={vi.fn()}
+          onClearAttachmentContext={vi.fn()}
+          hasActiveAttachmentContext
+        />
+      </TooltipProvider>
     )
 
     const clearButtons = screen.getAllByRole("button", { name: "Hapus semua" })

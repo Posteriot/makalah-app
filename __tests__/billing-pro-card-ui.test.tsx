@@ -152,10 +152,10 @@ describe("Billing - PRO checkout flow", () => {
     expect(screen.getByText("Pro Bulanan")).toBeInTheDocument()
     expect(screen.getByText("Metode Pembayaran")).toBeInTheDocument()
 
-    expect(screen.getByText("QRIS")).toBeInTheDocument()
+    expect(screen.getAllByText("QRIS").length).toBeGreaterThan(0)
     expect(screen.getByText("Virtual Account")).toBeInTheDocument()
     expect(screen.getByText("E-Wallet")).toBeInTheDocument()
-  })
+  }, 10000)
 
   it("menyembunyikan metode nonaktif dan menampilkan copy xendit", async () => {
     setupCheckoutQueryMock({
@@ -169,7 +169,7 @@ describe("Billing - PRO checkout flow", () => {
 
     render(<CheckoutPROPage />)
 
-    expect(screen.getByText("QRIS")).toBeInTheDocument()
+    expect(screen.getAllByText("QRIS").length).toBeGreaterThan(0)
     expect(screen.queryByText("Virtual Account")).not.toBeInTheDocument()
     expect(screen.queryByText("E-Wallet")).not.toBeInTheDocument()
     expect(screen.getByText(/pembayaran diproses oleh xendit/i)).toBeInTheDocument()

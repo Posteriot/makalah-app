@@ -84,7 +84,7 @@ type ChatSource = {
 }
 
 type ReferenceInventoryPayload = {
-    responseMode?: "synthesis"
+    responseMode?: "synthesis" | "reference_inventory" | "mixed"
     introText?: string
     items?: ChatSource[]
 }
@@ -416,7 +416,11 @@ export function MessageBubble({
             if (maybeDataPart.type !== "data-reference-inventory") continue
             const data = maybeDataPart.data as ReferenceInventoryPayload | null
             if (!data || typeof data !== "object") continue
-            if (data.responseMode !== "synthesis") {
+            if (
+                data.responseMode !== "synthesis"
+                && data.responseMode !== "reference_inventory"
+                && data.responseMode !== "mixed"
+            ) {
                 continue
             }
             if (!Array.isArray(data.items)) return null
@@ -704,6 +708,7 @@ export function MessageBubble({
     }).annotations?.find((annotation) => annotation.type === "sources")?.sources
     const citedSources = extractCitedSources(message)
     const referenceInventory = extractReferenceInventory(message)
+    const hasReferenceInventory = Boolean(referenceInventory && referenceInventory.items && referenceInventory.items.length > 0)
     const messageSources = (message as { sources?: { url: string; title: string; publishedAt?: number | null }[] }).sources
     const referenceInventorySources = referenceInventory?.items ?? []
     const persistedOrStreamedSources = citedSources || sourcesFromAnnotation || messageSources || []
@@ -779,8 +784,32 @@ export function MessageBubble({
             anchors: [],
         })
     })()
-    const displayMarkdown = normalizedLegacyCitedText ?? publicDisplayText
-    const quickActionsContent = displayMarkdown || content
+    const referenceInventoryIntro = hasReferenceInventory
+        ? (referenceInventory?.introText?.trim() || publicDisplayText.trim())
+        : ""
+    const referenceInventoryCopyText = hasReferenceInventory
+        ? [
+            referenceInventoryIntro,
+            ...referenceInventorySources.map((item, index) => {
+                const lines = [`${index + 1}. ${item.title}`]
+                lines.push(`URL: ${item.url ?? "tidak tersedia"}`)
+                if (!item.url) {
+                    lines.push("Status: URL tidak tersedia")
+                } else if (item.verificationStatus === "verified_content") {
+                    lines.push("Status: Konten terverifikasi")
+                } else if (item.verificationStatus === "unverified_link") {
+                    lines.push("Status: Tautan belum diverifikasi")
+                } else {
+                    lines.push("Status: Tautan tersedia")
+                }
+                return lines.join("\n")
+            }),
+          ].filter(Boolean).join("\n\n")
+        : ""
+    const displayMarkdown = hasReferenceInventory ? "" : (normalizedLegacyCitedText ?? publicDisplayText)
+    const quickActionsContent = hasReferenceInventory
+        ? referenceInventoryCopyText
+        : (displayMarkdown || content)
 
     // Get timestamp from allMessages if available
 
@@ -1047,6 +1076,30 @@ export function MessageBubble({
                         )
                     ) : (
                         <div className="space-y-3">
+                            {hasReferenceInventory && (
+                                <div className="space-y-3" data-testid="reference-inventory-body">
+                                    {referenceInventoryIntro ? (
+                                        <div className="text-sm leading-relaxed text-[var(--chat-foreground)]">
+                                            {referenceInventoryIntro}
+                                        </div>
+                                    ) : null}
+                                    <div className="space-y-3">
+                                        {referenceInventorySources.map((item, index) => (
+                                            <div
+                                                key={item.sourceId ?? item.url ?? `${item.title}-${index}`}
+                                                className="rounded-action border border-[color:var(--chat-border)] px-3 py-2"
+                                            >
+                                                <div className="text-sm font-medium text-[var(--chat-foreground)]">
+                                                    {item.title}
+                                                </div>
+                                                <div className="mt-1 text-xs font-mono text-[var(--chat-muted-foreground)]">
+                                                    {item.url ?? "URL tidak tersedia"}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                             {displayMarkdown.trim().length > 0 && (
                                 <MarkdownRenderer
                                     markdown={displayMarkdown}

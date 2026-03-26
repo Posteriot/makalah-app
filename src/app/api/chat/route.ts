@@ -222,6 +222,11 @@ export async function POST(req: Request) {
         })
 
         const effectiveFileIds = attachmentResolution.effectiveFileIds as Id<"files">[]
+        console.info("[ATTACH-DIAG][route] effective fileIds", {
+            requestFileIds,
+            effectiveFileIds,
+            resolutionReason: attachmentResolution.reason,
+        })
         const requestedAttachmentModeNormalized = normalizeRequestedAttachmentMode(requestedAttachmentMode)
         const requestFileIdsLength = Array.isArray(requestFileIds) ? requestFileIds.length : 0
         const hasAttachmentSignal =
@@ -539,6 +544,8 @@ export async function POST(req: Request) {
                 }
             }
         }
+        const fileContextLength = fileContext.length
+        console.info("[ATTACH-DIAG][route] fileContextLength", fileContextLength)
         if (hasAttachmentSignal) {
             const health = classifyAttachmentHealth({
                 effectiveFileIdsLength: effectiveFileIds.length,

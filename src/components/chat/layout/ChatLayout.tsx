@@ -18,13 +18,18 @@ import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
 // SSR-safe viewport detection — prevents dual ChatWindow mount.
 // md breakpoint = 768px (Tailwind default)
 const MD_BREAKPOINT = 768
-const mediaQuery = typeof window !== "undefined" ? window.matchMedia(`(min-width: ${MD_BREAKPOINT}px)`) : null
+const getMediaQuery = () => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return null
+  return window.matchMedia(`(min-width: ${MD_BREAKPOINT}px)`)
+}
 
 function subscribeViewport(callback: () => void) {
+  const mediaQuery = getMediaQuery()
   mediaQuery?.addEventListener("change", callback)
   return () => mediaQuery?.removeEventListener("change", callback)
 }
 function getIsDesktop() {
+  const mediaQuery = getMediaQuery()
   return mediaQuery?.matches ?? true // SSR: assume desktop
 }
 

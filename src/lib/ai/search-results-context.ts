@@ -8,7 +8,7 @@ interface SearchSource {
 }
 
 export type SearchResultsContextOptions = {
-  responseMode?: "synthesis"
+  responseMode?: "synthesis" | "reference_inventory" | "mixed"
 }
 
 function getSearchFindingsIntro(): string {
@@ -52,6 +52,35 @@ export function buildSearchResultsContext(
   const searchFindings = (!anyHasPageContent && searchText?.trim())
     ? `\n\n${getSearchFindingsIntro()}\n${searchText.trim()}`
     : ""
+
+  if (options.responseMode === "reference_inventory") {
+    const context = `## SEARCH RESULTS (REFERENCE INVENTORY MODE)
+Web search has been executed for reference inventory.
+You should display the URL when available.
+You must do not make factual claims from unverified links.
+Use the retrieved sources for reference inventory only.
+
+Sources:
+${sourceList}`
+
+    const verifiedCount = sources.filter((s) => s.pageContent).length
+    console.log(`[SearchContext] Built context: ${sources.length} sources (${verifiedCount} verified), ${context.length} chars total`)
+    return context
+  }
+
+  if (options.responseMode === "mixed") {
+    const context = `## SEARCH RESULTS (MIXED MODE)
+Web search has been executed.
+Provide a brief synthesis first, then a compact reference inventory.
+Use ONLY these sources for citations and do not fabricate URLs.
+
+Sources:
+${sourceList}${searchFindings}`
+
+    const verifiedCount = sources.filter((s) => s.pageContent).length
+    console.log(`[SearchContext] Built context: ${sources.length} sources (${verifiedCount} verified), ${context.length} chars total`)
+    return context
+  }
 
   const context = `## SEARCH RESULTS (COMPLETED)
 Web search has been executed. The following sources were retrieved.

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { ChatInput } from "@/components/chat/ChatInput"
 import type { AttachedFileMeta } from "@/lib/types/attached-file"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 vi.mock("@/components/chat/FileUploadButton", () => ({
   FileUploadButton: () => <button type="button">mock upload</button>,
@@ -25,19 +26,21 @@ describe("konteks tray ui", () => {
     ] as AttachedFileMeta[]
 
     render(
-      <ChatInput
-        input="halo"
-        onInputChange={vi.fn()}
-        onSubmit={vi.fn()}
-        isLoading={false}
-        conversationId="conv-1"
-        attachedFiles={[]}
-        contextFiles={contextFiles}
-        onFileAttached={vi.fn()}
-        onFileRemoved={vi.fn()}
-        onClearAttachmentContext={vi.fn()}
-        onContextFileRemoved={vi.fn()}
-      />
+      <TooltipProvider>
+        <ChatInput
+          input="halo"
+          onInputChange={vi.fn()}
+          onSubmit={vi.fn()}
+          isLoading={false}
+          conversationId="conv-1"
+          attachedFiles={[]}
+          contextFiles={contextFiles}
+          onFileAttached={vi.fn()}
+          onFileRemoved={vi.fn()}
+          onClearAttachmentContext={vi.fn()}
+          onContextFileRemoved={vi.fn()}
+        />
+      </TooltipProvider>
     )
 
     expect(screen.getAllByText("mock upload").length).toBeGreaterThan(0)

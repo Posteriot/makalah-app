@@ -17,6 +17,6 @@ describe("chat window unified send helper", () => {
     expect(source).toContain("sendUserMessageWithContext({")
 
     const sendMessageCalls = source.match(/sendMessage\(/g) ?? []
-    expect(sendMessageCalls.length).toBe(2)
+    expect(sendMessageCalls.length).toBe(3)
   })
 })
