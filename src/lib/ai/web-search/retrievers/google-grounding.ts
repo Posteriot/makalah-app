@@ -8,7 +8,7 @@ const REDIRECT_TIMEOUT_MS = 3000
 const REDIRECT_CONCURRENCY = 10
 const MAX_CITATIONS = 20
 
-function isVertexProxyUrl(url: string): boolean {
+export function isVertexProxyUrl(url: string): boolean {
   try {
     const hostname = new URL(url).hostname
     return (
@@ -45,7 +45,7 @@ async function resolveRedirect(url: string): Promise<string> {
 /**
  * Resolve all vertex proxy URLs in a batch with concurrency limit.
  */
-async function resolveVertexProxyUrls(
+export async function resolveVertexProxyUrls(
   citations: NormalizedCitation[]
 ): Promise<NormalizedCitation[]> {
   const proxyIndices: number[] = []
@@ -111,18 +111,12 @@ export const googleGroundingRetriever: SearchRetriever = {
         }
       }
 
-      // Step 1: Dedup by proxy URL
+      // Dedup by proxy URL and cap. Proxy URLs are returned as-is —
+      // resolution is deferred to FetchWeb (redirect:follow) and
+      // parallel batch resolve in orchestrator. This eliminates ~8.8s
+      // of blocking HEAD requests from Phase 1.
       const deduped = deduplicateByUrl(raw)
-
-      // Step 2: Resolve vertex proxy URLs → actual URLs
-      const resolved = await resolveVertexProxyUrls(deduped)
-
-      // Step 3: Dedup again by actual URL (multiple proxies may point to same site)
-      const final = deduplicateByUrl(resolved)
-
-      // Step 4: Remove any remaining unresolved proxy URLs, then cap
-      const clean = final.filter((c) => !isVertexProxyUrl(c.url))
-      const capped = clean.slice(0, MAX_CITATIONS)
+      const capped = deduped.slice(0, MAX_CITATIONS)
 
       return capped
     } catch {

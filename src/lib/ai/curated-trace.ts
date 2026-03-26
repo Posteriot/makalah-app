@@ -38,6 +38,10 @@ export interface PersistedCuratedTraceSnapshot {
   headline: string
   traceMode: "curated" | "transparent"
   completedAt: number
+  /** Total request duration in seconds (for rehydrate after reload). */
+  durationSeconds?: number
+  /** Raw reasoning text from model (for consistent rehydrate — same text before and after reload). */
+  rawReasoning?: string
   steps: Array<{
     stepKey: CuratedTraceStepKey
     label: string
@@ -139,7 +143,7 @@ export interface ReasoningSegmentation {
 
 export function segmentReasoning(
   rawReasoning: string,
-  fallbackMode: "normal" | "paper" | "websearch" = "normal"
+  _fallbackMode: "normal" | "paper" | "websearch" = "normal"
 ): ReasoningSegmentation {
   const sentences = splitIntoSentences(rawReasoning)
   const buckets: Record<CuratedTraceStepKey, string[]> = {
@@ -182,7 +186,7 @@ export function segmentReasoning(
 
   const headline = sentences.length > 0
     ? sentences[sentences.length - 1].slice(0, 120)
-    : `Proses ${fallbackMode === "paper" ? "paper" : fallbackMode === "websearch" ? "pencarian" : "chat"} selesai.`
+    : ""
 
   return { stepThoughts, stepLabels, headline }
 }
@@ -191,29 +195,38 @@ function nowTs() {
   return Date.now()
 }
 
-function lowerFirst(input: string) {
-  if (!input) return input
-  return input.charAt(0).toLowerCase() + input.slice(1)
-}
-
 function buildHeadlineFromSteps(steps: Record<CuratedTraceStepKey, InternalStep>): string {
   const allSteps = Object.values(steps)
+
+  // Prefer raw model thinking (non-template labels or thoughts) over hardcoded text
+  const findRawContent = (step: InternalStep): string | null => {
+    if (step.label !== STEP_LABELS[step.key]) return step.label
+    if (step.meta?.note && step.meta.note !== STEP_LABELS[step.key]) return step.meta.note
+    return null
+  }
+
   const running = allSteps.find((step) => step.status === "running")
-  if (running) return `Agen lagi ${lowerFirst(running.label)}...`
+  if (running) {
+    const raw = findRawContent(running)
+    if (raw) return raw
+  }
 
   const errored = allSteps.find((step) => step.status === "error")
-  if (errored) return `Agen ketemu kendala saat ${lowerFirst(errored.label)}.`
+  if (errored) {
+    const raw = findRawContent(errored)
+    if (raw) return raw
+  }
 
-  const composeStep = steps["response-compose"]
-  if (composeStep.status === "done") return "Agen sudah selesai nyusun jawaban."
-  if (composeStep.status === "skipped") return "Proses penyusunan jawaban dihentikan."
-
+  // Use last completed step's raw content
   const completedByProgress = allSteps
     .filter((step) => step.status === "done")
-    .sort((a, b) => b.progress - a.progress)[0]
+    .sort((a, b) => b.progress - a.progress)
+  for (const step of completedByProgress) {
+    const raw = findRawContent(step)
+    if (raw) return raw
+  }
 
-  if (completedByProgress) return `${completedByProgress.label} selesai.`
-  return "Agen lagi nyusun jawaban..."
+  return ""
 }
 
 function normalizeErrorNote(errorNote?: string) {
@@ -228,7 +241,9 @@ function normalizeErrorNote(errorNote?: string) {
 
 function buildPersistedSnapshot(
   steps: Record<CuratedTraceStepKey, InternalStep>,
-  traceMode: "curated" | "transparent" = "curated"
+  traceMode: "curated" | "transparent" = "curated",
+  rawReasoning?: string,
+  durationSeconds?: number,
 ): PersistedCuratedTraceSnapshot {
   const hasThoughts = traceMode === "transparent"
   return {
@@ -236,6 +251,10 @@ function buildPersistedSnapshot(
     headline: buildHeadlineFromSteps(steps),
     traceMode,
     completedAt: nowTs(),
+    ...(typeof durationSeconds === "number" && Number.isFinite(durationSeconds)
+      ? { durationSeconds }
+      : {}),
+    ...(rawReasoning ? { rawReasoning } : {}),
     steps: STEP_ORDER.map((key) => {
       const step = steps[key]
       return {
@@ -369,6 +388,7 @@ export function createCuratedTraceController(options: {
   mode: "normal" | "paper" | "websearch"
   stage?: string
   webSearchEnabled: boolean
+  startedAt?: number
 }): CuratedTraceController {
   if (!options.enabled) {
     return {
@@ -390,7 +410,13 @@ export function createCuratedTraceController(options: {
   }
 
   const steps = createSteps(options)
+  const startedAt =
+    typeof options.startedAt === "number" && Number.isFinite(options.startedAt)
+      ? options.startedAt
+      : nowTs()
   let sourceSeenCount = 0
+  let capturedRawReasoning = ""
+  let finalizedAt: number | null = null
 
   const initialEvents = STEP_ORDER.map((key) => buildEvent(options.traceId, steps[key]))
 
@@ -419,6 +445,7 @@ export function createCuratedTraceController(options: {
     },
     populateFromReasoning: (rawReasoning: string) => {
       if (!rawReasoning || rawReasoning.trim().length === 0) return []
+      capturedRawReasoning = rawReasoning
 
       const segmentation = segmentReasoning(rawReasoning, options.mode)
       const events: CuratedTraceDataPart[] = []
@@ -447,6 +474,7 @@ export function createCuratedTraceController(options: {
       return events
     },
     finalize: ({ outcome, sourceCount, errorNote }) => {
+      finalizedAt = nowTs()
       const events: CuratedTraceDataPart[] = []
 
       if (options.webSearchEnabled) {
@@ -528,7 +556,14 @@ export function createCuratedTraceController(options: {
     },
     getPersistedSnapshot: () => {
       const isTransparent = STEP_ORDER.some((key) => steps[key].label !== STEP_LABELS[key])
-      return buildPersistedSnapshot(steps, isTransparent ? "transparent" : "curated")
+      const completedAt = finalizedAt ?? nowTs()
+      const durationSeconds = Math.max(0, (completedAt - startedAt) / 1000)
+      return buildPersistedSnapshot(
+        steps,
+        isTransparent ? "transparent" : "curated",
+        capturedRawReasoning || undefined,
+        durationSeconds
+      )
     },
   }
 }

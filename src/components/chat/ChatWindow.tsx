@@ -9,6 +9,7 @@ import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 import { SourcesPanel } from "./SourcesPanel"
 import type { ReasoningTraceStep, ReasoningTraceStatus } from "./ReasoningTracePanel"
+import { stripMarkdown } from "@/lib/ai/reasoning-sanitizer"
 import { useMessages } from "@/lib/hooks/useMessages"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
@@ -29,6 +30,9 @@ import { QuotaWarningBanner } from "./QuotaWarningBanner"
 import { MobileEditDeleteSheet } from "./mobile/MobileEditDeleteSheet"
 import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
+import { buildChoiceInteractionEvent, buildChoiceSyntheticText } from "@/lib/chat/choice-submit"
+import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
+import { SPEC_DATA_PART_TYPE } from "@json-render/core"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import {
   buildChatQuotaOfferFromError,
@@ -52,6 +56,16 @@ interface ConversationArtifact {
   messageId?: Id<"messages">
   parentId?: Id<"artifacts">
   type: string
+}
+
+type ChatSourceForSheet = {
+  sourceId?: string
+  url: string | null
+  title: string
+  publishedAt?: number | null
+  verificationStatus?: "verified_content" | "unverified_link" | "unavailable"
+  documentKind?: "html" | "pdf" | "unknown"
+  note?: string
 }
 
 interface ChatWindowProps {
@@ -197,6 +211,8 @@ interface PersistedReasoningTraceStepRaw {
 interface PersistedReasoningTraceRaw {
   headline?: unknown
   steps?: unknown
+  durationSeconds?: unknown
+  rawReasoning?: unknown
 }
 
 function parseReasoningMeta(meta: unknown): ReasoningTraceStep["meta"] | undefined {
@@ -330,6 +346,36 @@ function extractLiveThought(uiMessage: UIMessage): string | null {
   return lastThought
 }
 
+export function extractReasoningDurationSeconds(uiMessage: UIMessage): number | undefined {
+  for (const part of uiMessage.parts ?? []) {
+    if (!part || typeof part !== "object") continue
+    const dataPart = part as { type?: unknown; data?: unknown }
+    if (dataPart.type !== "data-reasoning-duration") continue
+    if (!dataPart.data || typeof dataPart.data !== "object") continue
+
+    const data = dataPart.data as { seconds?: unknown }
+    if (typeof data.seconds === "number" && Number.isFinite(data.seconds)) {
+      return data.seconds
+    }
+  }
+
+  const persistedTrace = (uiMessage as unknown as { reasoningTrace?: { durationSeconds?: number } }).reasoningTrace
+  return typeof persistedTrace?.durationSeconds === "number" && Number.isFinite(persistedTrace.durationSeconds)
+    ? persistedTrace.durationSeconds
+    : undefined
+}
+
+export function resolveProcessElapsedSeconds(
+  liveElapsedSeconds: number,
+  persistedDurationSeconds?: number
+): number {
+  if (typeof persistedDurationSeconds === "number" && Number.isFinite(persistedDurationSeconds)) {
+    return persistedDurationSeconds
+  }
+
+  return liveElapsedSeconds
+}
+
 const TEMPLATE_LABELS = new Set([
   "Memahami kebutuhan user",
   "Memeriksa konteks paper aktif",
@@ -363,23 +409,34 @@ function extractReasoningHeadline(uiMessage: UIMessage, steps: ReasoningTraceSte
 
   if (steps.length === 0) return null
 
+  // Prefer non-template labels (raw model thinking) over hardcoded text
   const running = steps.find((step) => step.status === "running")
   if (running) {
-    if (isTemplateLabel(running.label)) return "Berpikir..."
-    return running.label
+    if (!isTemplateLabel(running.label)) return running.label
+    // Template label — check if any step has a thought we can use
+    const withThought = steps.find((s) => s.thought && s.thought.trim())
+    if (withThought?.thought) return withThought.thought.trim()
+    return null // let caller fall back to liveThought or other sources
   }
 
   const errored = steps.find((step) => step.status === "error")
-  if (errored) return `Terjadi kendala saat ${lowerFirst(errored.label)}.`
+  if (errored) {
+    if (!isTemplateLabel(errored.label)) return errored.label
+    if (errored.thought) return errored.thought.trim()
+    return null
+  }
 
-  return "Selesai menyusun jawaban."
+  // Completed — use last non-template label or thought
+  const lastWithContent = [...steps].reverse().find((s) =>
+    !isTemplateLabel(s.label) || (s.thought && s.thought.trim())
+  )
+  if (lastWithContent) {
+    if (!isTemplateLabel(lastWithContent.label)) return lastWithContent.label
+    if (lastWithContent.thought) return lastWithContent.thought.trim()
+  }
+
+  return null
 }
-
-function lowerFirst(input: string) {
-  if (!input) return input
-  return input.charAt(0).toLowerCase() + input.slice(1)
-}
-
 function PendingAssistantLaneIndicator() {
   return (
     <div
@@ -419,6 +476,9 @@ export function ChatWindow({
     }
   }, [currentUser])
 
+  // Ref for DOM visibility check — ChatLayout renders children twice (mobile + desktop).
+  // Only the visible instance should consume pending starter prompts.
+  const rootElRef = useRef<HTMLDivElement>(null)
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const scrollRafRef = useRef<number | null>(null)
   const pendingScrollToBottomRef = useRef(false)
@@ -434,11 +494,12 @@ export function ChatWindow({
   const [pendingRewindTarget, setPendingRewindTarget] = useState<PaperStageId | null>(null)
   const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
+  const [submittedChoiceKeys, setSubmittedChoiceKeys] = useState<Set<string>>(new Set())
   const [chatViewportNode, setChatViewportNode] = useState<HTMLDivElement | null>(null)
   const [chatViewportWidth, setChatViewportWidth] = useState(0)
   type ActiveSheet = "proses" | "sources" | null
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null)
-  const [sourcesForSheet, setSourcesForSheet] = useState<{ url: string; title: string; publishedAt?: number | null }[]>([])
+  const [sourcesForSheet, setSourcesForSheet] = useState<ChatSourceForSheet[]>([])
 
   const [processUi, setProcessUi] = useState<{
     visible: boolean
@@ -454,6 +515,8 @@ export function ChatWindow({
   const processIntervalRef = useRef<number | null>(null)
   const processHideTimeoutRef = useRef<number | null>(null)
   const processStartedAtRef = useRef<number | null>(null)
+  const pendingRequestStartedAtRef = useRef<number | null>(null)
+  const staleStreamingTimeoutRef = useRef<number | null>(null)
   const sourceFocusTimeoutRef = useRef<number | null>(null)
   const previousStatusRef = useRef<string>("ready")
   const stoppedManuallyRef = useRef(false)
@@ -936,7 +999,11 @@ export function ChatWindow({
       replaceAttachmentContext?: boolean
       inheritAttachmentContext?: boolean
       clearAttachmentContext?: boolean
+      requestStartedAt?: number
     } = {}
+    const requestStartedAt = Date.now()
+    pendingRequestStartedAtRef.current = requestStartedAt
+    body.requestStartedAt = requestStartedAt
 
     if (mode === "clear") {
       body.attachmentMode = "inherit"
@@ -1001,6 +1068,58 @@ export function ChatWindow({
     sendUserMessageWithContext,
   ])
 
+  const handleChoiceSubmit = useCallback(async (params: {
+    sourceMessageId: string
+    choicePartId: string
+    payload: JsonRendererChoicePayload
+    selectedOptionId: string
+    customText?: string
+  }) => {
+    const submissionKey = `${params.sourceMessageId}::${params.choicePartId}`
+    setSubmittedChoiceKeys((prev) => new Set([...prev, submissionKey]))
+
+    // V3 YAML: payload is { spec } — extract label from spec elements, stage from session
+    const specAny = params.payload as unknown as { spec?: { elements?: Record<string, { props?: { label?: string; optionId?: string } }> } }
+    const elements = specAny?.spec?.elements ?? {}
+    const matchedElement = Object.values(elements).find(
+      (el) => el?.props?.optionId === params.selectedOptionId
+    )
+    const selectedLabel = matchedElement?.props?.label ?? params.selectedOptionId
+
+    // Use current paper stage from session (spec doesn't carry stage info)
+    const currentStage = (paperSession?.currentStage ?? "gagasan") as PaperStageId
+
+    const event = buildChoiceInteractionEvent({
+      conversationId: conversationId ?? "",
+      sourceMessageId: params.sourceMessageId,
+      choicePartId: params.choicePartId,
+      stage: currentStage,
+      kind: "single-select",
+      selectedOptionId: params.selectedOptionId,
+      customText: params.customText,
+    })
+
+    const syntheticText = buildChoiceSyntheticText({
+      stage: currentStage,
+      selectedOptionId: params.selectedOptionId,
+      selectedLabel,
+      customText: params.customText,
+    })
+
+    sendMessage({ text: syntheticText }, { body: { interactionEvent: event } })
+  }, [conversationId, paperSession, sendMessage])
+
+  // Set isAwaitingAssistantStart after mount, only for the visible instance.
+  // ChatLayout renders children twice — only the DOM-visible instance should
+  // show skeleton while waiting for the pending starter prompt to auto-send.
+  useEffect(() => {
+    if (!conversationId) return
+    if (rootElRef.current && rootElRef.current.offsetParent === null) return
+    if (readPendingStarterPrompt(conversationId)) {
+      setIsAwaitingAssistantStart(true)
+    }
+  }, [conversationId])
+
   // Auto-send pending starter prompt after redirect from landing state.
   useEffect(() => {
     if (!conversationId || !isAuthenticated) return
@@ -1009,6 +1128,10 @@ export function ChatWindow({
     if (messages.length > 0) return
     if ((historyMessages?.length ?? 0) > 0) return
 
+    // ChatLayout renders children twice (mobile wrapper + desktop grid), creating
+    // two ChatWindow instances. Only the visible one should consume the prompt.
+    if (rootElRef.current && rootElRef.current.offsetParent === null) return
+
     const pendingPrompt = readPendingStarterPrompt(conversationId)
     if (!pendingPrompt) return
 
@@ -1016,6 +1139,8 @@ export function ChatWindow({
     const lastAttemptAt = starterPromptLastAttemptAtRef.current.get(conversationId) ?? 0
     if (now - lastAttemptAt < 2000) return
 
+    // Clear immediately BEFORE send to prevent React Strict Mode double-invoke
+    clearPendingStarterPrompt(conversationId)
     starterPromptLastAttemptAtRef.current.set(conversationId, now)
     // Avoid syncing empty history snapshot while starter prompt is still optimistic in UI.
     starterPromptPendingHistorySyncRef.current = conversationId
@@ -1027,16 +1152,6 @@ export function ChatWindow({
       composerIntent.mode === "replace"
         ? buildImageFileParts(composerIntent.files)
         : []
-
-    if (process.env.NODE_ENV !== "production") {
-      console.info("[ATTACH-DIAG][starter] sending", {
-        attachedCount: composerIntent.files.length,
-        fileIds: composerIntent.files.map((file) => file.fileId),
-        mode: composerIntent.mode,
-        imageCount: imageFileParts.length,
-        docCount: composerIntent.files.filter((file) => !file.type.startsWith("image/")).length,
-      })
-    }
 
     sendUserMessageWithContext({
       text: pendingPrompt,
@@ -1127,13 +1242,41 @@ export function ChatWindow({
               }))
           : []
 
+        // Rehydrate persisted json-renderer choice as a data-spec part
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rawChoice = (msg as any).jsonRendererChoice as string | undefined
+        const persistedChoiceParts: { type: string; data: { type: string; spec: unknown } }[] = []
+        if (rawChoice && typeof rawChoice === "string") {
+          try {
+            const spec = JSON.parse(rawChoice)
+            persistedChoiceParts.push({
+              type: SPEC_DATA_PART_TYPE,
+              data: { type: "flat", spec },
+            })
+          } catch {
+            // Skip invalid JSON
+          }
+        }
+
         return {
           id: msg._id,
           role: msg.role as "user" | "assistant" | "system" | "data",
           content: msg.content,
           fileIds: msg.fileIds,
           attachmentMode: msg.attachmentMode,
-          parts: [{ type: "text", text: msg.content } as const, ...persistedTraceParts],
+          parts: [
+            { type: "text", text: msg.content } as const,
+            ...persistedTraceParts,
+            ...persistedChoiceParts,
+            // Inject raw reasoning as data-reasoning-thought for consistent headline after reload
+            ...(reasoningTrace && typeof (reasoningTrace as { rawReasoning?: unknown }).rawReasoning === "string" && (reasoningTrace as { rawReasoning?: string }).rawReasoning!.trim()
+              ? [{
+                  type: "data-reasoning-thought" as const,
+                  id: `${traceId}-raw-thought`,
+                  data: { delta: stripMarkdown((reasoningTrace as { rawReasoning?: string }).rawReasoning!), traceId, ts: Date.now() },
+                }]
+              : []),
+          ],
           annotations: msg.fileIds
             ? [
                 {
@@ -1169,6 +1312,80 @@ export function ChatWindow({
     }
   }, [conversationId, historyMessages, isHistoryLoading, setMessages, fileMetaMap])
 
+  useEffect(() => {
+    if (!historyMessages || historyMessages.length === 0) return
+
+    const persistedDurationByUiMessageId = new Map<string, number>()
+    for (const historyMessage of historyMessages) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rawReasoningTrace = (historyMessage as any).reasoningTrace as PersistedReasoningTraceRaw | undefined
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const uiMessageId = (historyMessage as any).uiMessageId as string | undefined
+      if (!uiMessageId) continue
+      const durationSeconds =
+        rawReasoningTrace &&
+        typeof rawReasoningTrace === "object" &&
+        typeof rawReasoningTrace.durationSeconds === "number" &&
+        Number.isFinite(rawReasoningTrace.durationSeconds)
+          ? rawReasoningTrace.durationSeconds
+          : undefined
+      if (durationSeconds === undefined) continue
+      persistedDurationByUiMessageId.set(uiMessageId, durationSeconds)
+    }
+
+    if (persistedDurationByUiMessageId.size === 0) return
+
+    setMessages((prev) => {
+      let changed = false
+      const next = prev.map((message) => {
+        const persistedDurationSeconds = persistedDurationByUiMessageId.get(message.id)
+        if (persistedDurationSeconds === undefined) return message
+
+        const existingReasoningTrace = (message as unknown as { reasoningTrace?: PersistedReasoningTraceRaw }).reasoningTrace
+        if (
+          existingReasoningTrace &&
+          typeof existingReasoningTrace.durationSeconds === "number" &&
+          Number.isFinite(existingReasoningTrace.durationSeconds) &&
+          existingReasoningTrace.durationSeconds === persistedDurationSeconds
+        ) {
+          return message
+        }
+
+        changed = true
+        return {
+          ...message,
+          reasoningTrace: {
+            ...(existingReasoningTrace ?? {}),
+            durationSeconds: persistedDurationSeconds,
+          },
+        }
+      })
+
+      return changed ? next : prev
+    })
+  }, [historyMessages, setMessages])
+
+  // Rehydrate submitted choice keys from history — mark choices that already have a follow-up user message
+  useEffect(() => {
+    if (!historyMessages || historyMessages.length === 0) return
+    const keys = new Set<string>()
+    for (let i = 0; i < historyMessages.length; i++) {
+      const msg = historyMessages[i]
+      if (msg.role === "user" && typeof msg.content === "string" && msg.content.startsWith("[Choice:")) {
+        // Walk backwards to find the assistant message with the choice card
+        for (let j = i - 1; j >= 0; j--) {
+          const prev = historyMessages[j]
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if (prev.role === "assistant" && (prev as any).jsonRendererChoice) {
+            keys.add(`${prev._id}::${prev._id}-choice-spec`)
+            break
+          }
+        }
+      }
+    }
+    if (keys.size > 0) setSubmittedChoiceKeys(keys)
+  }, [historyMessages])
+
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
 
@@ -1199,9 +1416,11 @@ export function ChatWindow({
       const liveThought = extractLiveThought(assistant)
       const headline = liveThought || extractReasoningHeadline(assistant, steps)
       if (steps.length > 0 || headline) {
+        const persistedDurationSeconds = extractReasoningDurationSeconds(assistant)
         return {
           steps,
           headline,
+          persistedDurationSeconds,
         }
       }
     }
@@ -1209,6 +1428,7 @@ export function ChatWindow({
     return {
       steps: [] as ReasoningTraceStep[],
       headline: null as string | null,
+      persistedDurationSeconds: undefined as number | undefined,
     }
   }, [messages])
 
@@ -1270,16 +1490,51 @@ export function ChatWindow({
       window.clearTimeout(processHideTimeoutRef.current)
       processHideTimeoutRef.current = null
     }
+    if (staleStreamingTimeoutRef.current !== null) {
+      clearTimeout(staleStreamingTimeoutRef.current)
+      staleStreamingTimeoutRef.current = null
+    }
   }, [])
+
+  useEffect(() => {
+    const persistedDurationSeconds = activeReasoningState.persistedDurationSeconds
+    if (typeof persistedDurationSeconds !== "number" || !Number.isFinite(persistedDurationSeconds)) return
+
+    clearProcessTimers()
+    processStartedAtRef.current = null
+
+    setProcessUi((prev) => {
+      const elapsedSeconds = resolveProcessElapsedSeconds(prev.elapsedSeconds, persistedDurationSeconds)
+      if (
+        prev.elapsedSeconds === elapsedSeconds &&
+        prev.progress === 100 &&
+        (prev.status === "ready" || prev.status === "stopped")
+      ) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        visible: false,
+        status: prev.status === "stopped" ? "stopped" : "ready",
+        progress: 100,
+        elapsedSeconds,
+      }
+    })
+  }, [activeReasoningState.persistedDurationSeconds, clearProcessTimers])
 
   useEffect(() => {
     if (status === "submitted" || status === "streaming") {
       setIsAwaitingAssistantStart(false)
       return
     }
-    if (status === "ready" || status === "error") {
+    if (status === "error") {
       setIsAwaitingAssistantStart(false)
     }
+    // Note: "ready" intentionally does NOT reset isAwaitingAssistantStart.
+    // The mount useEffect sets it true for visible instances with pending prompts.
+    // Resetting on "ready" would kill it before auto-send fires.
+    // It gets reset when status transitions to "submitted" (message sent).
   }, [status])
 
   useEffect(() => {
@@ -1289,7 +1544,7 @@ export function ChatWindow({
     if (status === "submitted") {
       clearProcessTimers()
       stoppedManuallyRef.current = false
-      processStartedAtRef.current = Date.now()
+      processStartedAtRef.current = pendingRequestStartedAtRef.current ?? Date.now()
       setProcessUi({
         visible: true,
         status: "submitted",
@@ -1299,7 +1554,7 @@ export function ChatWindow({
     } else if (status === "streaming") {
       clearProcessTimers()
       if (processStartedAtRef.current === null) {
-        processStartedAtRef.current = Date.now()
+        processStartedAtRef.current = pendingRequestStartedAtRef.current ?? Date.now()
       }
       setProcessUi((prev) => ({
         visible: true,
@@ -1311,18 +1566,44 @@ export function ChatWindow({
         setProcessUi((prev) => {
           if (!prev.visible) return prev
           const nextProgress = Math.min(prev.progress + (prev.progress < 70 ? 4 : 2), 92)
-          const elapsed = processStartedAtRef.current
-            ? Math.max(1, Math.round((Date.now() - processStartedAtRef.current) / 1000))
-            : Math.max(prev.elapsedSeconds, 1)
+          const elapsedMs = processStartedAtRef.current
+            ? Date.now() - processStartedAtRef.current
+            : 0
+          const elapsed = elapsedMs > 0 ? elapsedMs / 1000 : Math.max(prev.elapsedSeconds, 1)
           return { ...prev, progress: nextProgress, elapsedSeconds: elapsed }
         })
       }, 220)
+      // Stale streaming watchdog: if the UI shell stays in "streaming" for too
+      // long without transitioning, recover the local process UI to avoid a
+      // permanently stuck progress bar. This does NOT repair the underlying
+      // transport; it is only a safety net for the presentation layer.
+      const STALE_STREAMING_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
+      if (staleStreamingTimeoutRef.current !== null) {
+        clearTimeout(staleStreamingTimeoutRef.current)
+      }
+      staleStreamingTimeoutRef.current = window.setTimeout(() => {
+        // Clear all running timers first — prevents the progress interval from
+        // overwriting progress back to 92 after we force it to 100.
+        clearProcessTimers()
+        setProcessUi((prev) => {
+          if (prev.status !== "streaming") return prev
+          console.warn("[WATCHDOG] Stale streaming UI detected -- forcing local ready state after 5 minutes")
+          return {
+            ...prev,
+            visible: true,
+            status: "ready",
+            progress: 100,
+          }
+        })
+      }, STALE_STREAMING_TIMEOUT_MS)
     } else if (status === "ready" && hadGeneratingStatus) {
       clearProcessTimers()
       const wasStoppedManually = stoppedManuallyRef.current
-      const elapsed = processStartedAtRef.current
-        ? Math.max(1, Math.round((Date.now() - processStartedAtRef.current) / 1000))
-        : 1
+      const elapsedMs = processStartedAtRef.current
+        ? Date.now() - processStartedAtRef.current
+        : 0
+      const liveElapsed = elapsedMs > 0 ? elapsedMs / 1000 : 1
+      const elapsed = resolveProcessElapsedSeconds(liveElapsed, activeReasoningState.persistedDurationSeconds)
       setProcessUi({
         visible: true,
         status: wasStoppedManually ? "stopped" : "ready",
@@ -1331,11 +1612,13 @@ export function ChatWindow({
       })
       stoppedManuallyRef.current = false
       processStartedAtRef.current = null
+      pendingRequestStartedAtRef.current = null
     } else if (status === "error" && hadGeneratingStatus) {
       clearProcessTimers()
-      const elapsed = processStartedAtRef.current
-        ? Math.max(1, Math.round((Date.now() - processStartedAtRef.current) / 1000))
-        : 1
+      const elapsedMs = processStartedAtRef.current
+        ? Date.now() - processStartedAtRef.current
+        : 0
+      const elapsed = elapsedMs > 0 ? elapsedMs / 1000 : 1
       setProcessUi({
         visible: true,
         status: "error",
@@ -1347,10 +1630,11 @@ export function ChatWindow({
       }, 1500)
       stoppedManuallyRef.current = false
       processStartedAtRef.current = null
+      pendingRequestStartedAtRef.current = null
     }
 
     previousStatusRef.current = status
-  }, [status, clearProcessTimers])
+  }, [status, clearProcessTimers, conversationId, activeReasoningState.persistedDurationSeconds])
 
   useEffect(() => {
     return () => clearProcessTimers()
@@ -1514,7 +1798,7 @@ export function ChatWindow({
     stop()
   }, [hasPendingAssistantGeneration, stop])
 
-  const handleOpenSources = useCallback((sources: { url: string; title: string; publishedAt?: number | null }[]) => {
+  const handleOpenSources = useCallback((sources: ChatSourceForSheet[]) => {
     setSourcesForSheet(sources)
     setActiveSheet("sources")
   }, [])
@@ -1658,16 +1942,6 @@ export function ChatWindow({
         ? buildImageFileParts(composerIntent.files)
         : []
 
-    if (process.env.NODE_ENV !== "production") {
-      console.info("[ATTACH-DIAG][submit] sending", {
-        attachedCount: composerIntent.files.length,
-        fileIds: composerIntent.files.map((file) => file.fileId),
-        mode: composerIntent.mode,
-        imageCount: imageFileParts.length,
-        docCount: composerIntent.files.filter((file) => !file.type.startsWith("image/")).length,
-      })
-    }
-
     sendUserMessageWithContext({
       text: input,
       mode: composerIntent.mode,
@@ -1713,7 +1987,15 @@ export function ChatWindow({
 
   // Handler for starting new chat from empty state
   const handleStartNewChat = async (initialPrompt?: string) => {
-    if (!userId || isCreatingChat) return
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[EMPTY-STATE] handleStartNewChat ENTERED", { userId: userId ?? "null", isCreatingChat, prompt: initialPrompt?.slice(0, 50) })
+    }
+    if (!userId || isCreatingChat) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[EMPTY-STATE] handleStartNewChat BLOCKED", { userId: userId ?? "null", isCreatingChat })
+      }
+      return
+    }
     const normalizedPrompt = initialPrompt?.trim() ?? ""
     setIsCreatingChat(true)
     try {
@@ -1727,6 +2009,9 @@ export function ChatWindow({
         setPendingStarterPrompt(newId, normalizedPrompt)
       }
 
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[EMPTY-STATE] navigating to", `/chat/${newId}`)
+      }
       // Keep navigation as the final state transition for this component path.
       router.push(`/chat/${newId}`)
       return
@@ -1739,6 +2024,9 @@ export function ChatWindow({
   }
 
   const handleStarterPromptClick = async (promptText: string) => {
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[EMPTY-STATE] template clicked", { promptText: promptText.slice(0, 50), isLoading, isCreatingChat })
+    }
     if (isLoading || isCreatingChat) return
     await handleStartNewChat(promptText)
   }
@@ -1782,8 +2070,11 @@ export function ChatWindow({
   // Landing page empty state (no conversation selected)
   // ChatInput is persistent — always visible at bottom, even in start state
   if (!conversationId) {
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[EMPTY-STATE] rendering empty state", { conversationId, isCreatingChat, isAuthenticated, userId: userId ?? "null" })
+    }
     return (
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div ref={rootElRef} className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile: Same content as desktop, adapted layout */}
         <div className="md:hidden flex-1 flex flex-col min-h-0">
           {/* Header: sidebar expand + theme toggle */}
@@ -1904,7 +2195,7 @@ export function ChatWindow({
   }
 
   return (
-    <div ref={chatViewportRef} className="flex-1 flex flex-col h-full overflow-hidden">
+    <div ref={(node) => { rootElRef.current = node; chatViewportRef(node) }} className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Mobile Header */}
       <div className="md:hidden px-3 pt-[calc(env(safe-area-inset-top,0px)+0.375rem)] bg-[var(--chat-background)]">
         <div className="flex items-center h-11">
@@ -1977,8 +2268,26 @@ export function ChatWindow({
       <div className="flex-1 overflow-hidden p-0 relative flex flex-col">
         {/* Message Container - padding handled at item level for Virtuoso compatibility */}
         <div className="flex-1 overflow-hidden relative py-2">
-          {(isHistoryLoading || isConversationLoading) && messages.length === 0 ? (
-            // Loading skeleton - keep horizontal boundary in sync with ChatInput
+          {(() => {
+            if (process.env.NODE_ENV !== "production" && conversationId) {
+              const showSkeleton = (isHistoryLoading || isConversationLoading || isAwaitingAssistantStart) && messages.length === 0
+              const showTemplate = !showSkeleton && messages.length === 0
+              const showMessages = messages.length > 0
+              if (!showMessages) {
+                console.info("[CHAT-VIEW] conv view", {
+                  branch: showSkeleton ? "SKELETON" : showTemplate ? "TEMPLATE" : "MESSAGES",
+                  msgLen: messages.length,
+                  isHistoryLoading,
+                  isConversationLoading,
+                  isAwaitingAssistantStart,
+                  status,
+                })
+              }
+            }
+            return null
+          })()}
+          {(isHistoryLoading || isConversationLoading || isAwaitingAssistantStart) && messages.length === 0 ? (
+            // Loading skeleton - shown while Convex queries are still resolving.
             <div className="space-y-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
               <div className="flex justify-start">
                 <Skeleton className="h-12 w-[60%] rounded-action" />
@@ -1993,6 +2302,12 @@ export function ChatWindow({
           ) : messages.length === 0 ? (
             // Empty state with horizontal boundary in sync with ChatInput
             <div className="flex flex-col items-center justify-center h-full" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
+              {(() => {
+                if (process.env.NODE_ENV !== "production" && conversationId) {
+                  console.warn("[CHAT-VIEW] TemplateGrid shown IN CONVERSATION VIEW — this is the bug", { conversationId, isAwaitingAssistantStart })
+                }
+                return null
+              })()}
               <TemplateGrid
                 onTemplateSelect={handleTemplateSelect}
                 onSidebarLinkClick={handleSidebarLinkClick}
@@ -2070,6 +2385,8 @@ export function ChatWindow({
                         fileNameMap={fileNameMap}
                         fileMetaMap={fileMetaMap}
                         onOpenSources={handleOpenSources}
+                        isChoiceSubmitted={submittedChoiceKeys.has(`${message.id}::${message.id}-choice-spec`)}
+                        onChoiceSubmit={handleChoiceSubmit}
                       />
                     </div>
                   </div>
@@ -2177,6 +2494,7 @@ export function ChatWindow({
           status={processUi.status}
           progress={processUi.progress}
           elapsedSeconds={processUi.elapsedSeconds}
+          persistedDurationSeconds={activeReasoningState.persistedDurationSeconds}
           reasoningSteps={activeReasoningState.steps}
           reasoningHeadline={activeReasoningState.headline}
           isPanelOpen={activeSheet === "proses"}

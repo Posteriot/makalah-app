@@ -81,4 +81,14 @@ describe("buildSearchResultsContext", () => {
     expect(result).not.toContain("2. Source B — https://b.com\n   Snippet:")
     expect(result).toContain("3. Source C — https://c.com\n   Snippet: Snippet C")
   })
+
+  it("keeps synthesis mode wording when responseMode is omitted", () => {
+    const result = buildSearchResultsContext(
+      [{ url: "https://example.com/a", title: "Example A" }],
+      "Raw search text"
+    )
+
+    expect(result).toContain("MUST synthesize these sources")
+    expect(result).not.toContain("REFERENCE INVENTORY MODE")
+  })
 })

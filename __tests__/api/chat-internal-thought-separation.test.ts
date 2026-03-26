@@ -21,4 +21,28 @@ describe("chat internal-thought separation contract", () => {
     expect(payload.citedText).toBe(streamedText)
     expect(payload.internalThoughtText).toBe("")
   })
+
+  it("returns structured inventory payload without empty links", () => {
+    const payload = buildUserFacingSearchPayload({
+      text: "placeholder",
+      responseMode: "reference_inventory",
+      referenceItems: [
+        {
+          title: "Paper A",
+          url: "https://example.com/a.pdf",
+          verificationStatus: "unverified_link",
+        },
+        {
+          title: "Paper B",
+          url: null,
+          verificationStatus: "unavailable",
+        },
+      ],
+    })
+
+    expect(payload.referenceInventory).toBeDefined()
+    expect(payload.referenceInventory?.items[0].url).toBe("https://example.com/a.pdf")
+    expect(payload.referenceInventory?.items[1].url).toBeNull()
+    expect(payload.citedText).not.toContain("Link:")
+  })
 })

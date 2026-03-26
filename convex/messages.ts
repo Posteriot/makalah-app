@@ -31,6 +31,8 @@ const reasoningTraceValidator = v.object({
     headline: v.string(),
     traceMode: v.union(v.literal("curated"), v.literal("transparent")),
     completedAt: v.number(),
+    durationSeconds: v.optional(v.number()),
+    rawReasoning: v.optional(v.string()),
     steps: v.array(reasoningTraceStepValidator),
 })
 
@@ -97,6 +99,9 @@ export const createMessage = mutation({
             model: v.optional(v.string()),
             tokens: v.optional(v.number()),
             finishReason: v.optional(v.string()),
+            uiMessageId: v.optional(v.string()),
+            // Legacy V1 interaction data (backward compat for existing documents)
+            interaction: v.optional(v.any()),
         })),
         sources: v.optional(v.array(v.object({
             url: v.string(),
@@ -104,6 +109,10 @@ export const createMessage = mutation({
             publishedAt: v.optional(v.number()),
         }))),
         reasoningTrace: v.optional(reasoningTraceValidator),
+        jsonRendererChoice: v.optional(v.string()),
+        // Legacy V1 (backward compat)
+        jsonRendererRecommendation: v.optional(v.string()),
+        uiMessageId: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         await requireConversationOwner(ctx, args.conversationId)

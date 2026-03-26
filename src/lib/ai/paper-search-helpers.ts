@@ -86,7 +86,7 @@ TECHNICAL CONSTRAINT:
 
 IF FACTUAL DATA/REFERENCES ARE NEEDED:
 - Ask user to explicitly request a search.
-- Example: "To continue, I need to search for references. Shall I search for them?"
+- Example: "Kalau lo mau, gue bisa cari referensi tambahan untuk memperkuat bagian ini."
 - Do NOT fabricate/hallucinate references — this is FORBIDDEN.
 ═══════════════════════════════════════════════════════════════════`
 
@@ -102,10 +102,10 @@ ATTENTION: STAGE "${stage.toUpperCase()}" RESEARCH INCOMPLETE
 STATUS: ${requirement}
 
 MANDATORY INSTRUCTIONS:
-1. Express your intent to search for relevant references in your response
-2. ASK the user to confirm — search executes on the NEXT user turn
-3. Do NOT say "please wait" — the user MUST send a message for search to run
-4. Do NOT continue discussion without requesting a search first
+1. If the user explicitly requests references, literature, journals, or factual search, perform web search immediately in this turn
+2. If the user has NOT explicitly requested search yet, recommend search clearly and ask for confirmation first
+3. Do NOT say "please wait" and do NOT imply search will happen automatically without a user request
+4. Do NOT continue factual discussion as if the missing references already exist
 5. Do NOT fabricate/hallucinate references — this is FORBIDDEN
 6. After search results arrive, discuss findings with user
 

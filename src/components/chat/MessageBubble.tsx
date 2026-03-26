@@ -22,6 +22,10 @@ import { formatFileSize, isImageType, splitFileName } from "@/lib/types/attached
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { extractLegacySourcesFromText } from "@/lib/citations/legacy-source-extractor"
 import { splitInternalThought } from "@/lib/ai/internal-thought-separator"
+import { JsonRendererChoiceBlock } from "./json-renderer/JsonRendererChoiceBlock"
+import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
+import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
+import type { Spec, JsonPatch } from "@json-render/core"
 
 // Types for paper permission checking
 interface StageDataEntry {
@@ -63,6 +67,22 @@ interface PersistedArtifact {
     parentId?: Id<"artifacts">
 }
 
+type ChatSource = {
+    sourceId?: string
+    title: string
+    url: string | null
+    publishedAt?: number | null
+    verificationStatus?: "verified_content" | "unverified_link" | "unavailable"
+    documentKind?: "html" | "pdf" | "unknown"
+    note?: string
+}
+
+type ReferenceInventoryPayload = {
+    responseMode?: "synthesis"
+    introText?: string
+    items?: ChatSource[]
+}
+
 interface MessageBubbleProps {
     message: UIMessage
     onEdit?: (payload: {
@@ -90,7 +110,17 @@ interface MessageBubbleProps {
     /** File metadata lookup map (fileId → name/size/type) for history messages */
     fileMetaMap?: Map<string, { name: string; size: number; type: string }>
     /** Callback to open the Sources sheet with the given sources */
-    onOpenSources?: (sources: { url: string; title: string; publishedAt?: number | null }[]) => void
+    onOpenSources?: (sources: ChatSource[]) => void
+    /** Whether the choice card for this message has already been submitted */
+    isChoiceSubmitted?: boolean
+    /** Callback when user submits a choice card selection */
+    onChoiceSubmit?: (params: {
+        sourceMessageId: string
+        choicePartId: string
+        payload: JsonRendererChoicePayload
+        selectedOptionId: string
+        customText?: string
+    }) => void | Promise<void>
 }
 
 export function MessageBubble({
@@ -107,6 +137,8 @@ export function MessageBubble({
     fileNameMap,
     fileMetaMap,
     onOpenSources,
+    isChoiceSubmitted,
+    onChoiceSubmit,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
@@ -315,7 +347,7 @@ export function MessageBubble({
         return null
     }
 
-    const extractCitedSources = (uiMessage: UIMessage): { url: string; title: string; publishedAt?: number | null }[] | null => {
+    const extractCitedSources = (uiMessage: UIMessage): ChatSource[] | null => {
         for (const part of uiMessage.parts ?? []) {
             if (!part || typeof part !== "object") continue
             const maybeDataPart = part as unknown as { type?: string; data?: unknown }
@@ -325,18 +357,88 @@ export function MessageBubble({
             if (!Array.isArray(data.sources)) return null
             const out = data.sources
                 .map((s) => {
-                    const src = s as { url?: unknown; title?: unknown; publishedAt?: unknown }
+                    const src = s as {
+                        sourceId?: unknown
+                        url?: unknown
+                        title?: unknown
+                        publishedAt?: unknown
+                        verificationStatus?: unknown
+                        documentKind?: unknown
+                        note?: unknown
+                    }
                     if (typeof src?.url !== "string" || typeof src?.title !== "string") return null
                     const publishedAt = typeof src.publishedAt === "number" && Number.isFinite(src.publishedAt) ? src.publishedAt : null
                     return {
+                        ...(typeof src.sourceId === "string" ? { sourceId: src.sourceId } : {}),
                         url: src.url,
                         title: src.title,
                         ...(publishedAt ? { publishedAt } : {}),
+                        ...(src.verificationStatus === "verified_content" || src.verificationStatus === "unverified_link" || src.verificationStatus === "unavailable"
+                            ? { verificationStatus: src.verificationStatus }
+                            : {}),
+                        ...(src.documentKind === "html" || src.documentKind === "pdf" || src.documentKind === "unknown"
+                            ? { documentKind: src.documentKind }
+                            : {}),
+                        ...(typeof src.note === "string" ? { note: src.note } : {}),
                     }
                 })
-                .filter(Boolean) as { url: string; title: string; publishedAt?: number | null }[]
+                .filter(Boolean) as ChatSource[]
             return out.length > 0 ? out : null
         }
+        return null
+    }
+
+    const extractReferenceInventory = (uiMessage: UIMessage): ReferenceInventoryPayload | null => {
+        for (const part of uiMessage.parts ?? []) {
+            if (!part || typeof part !== "object") continue
+            const maybeDataPart = part as unknown as { type?: string; data?: unknown }
+            if (maybeDataPart.type !== "data-reference-inventory") continue
+            const data = maybeDataPart.data as ReferenceInventoryPayload | null
+            if (!data || typeof data !== "object") continue
+            if (data.responseMode !== "synthesis") {
+                continue
+            }
+            if (!Array.isArray(data.items)) return null
+            const items = data.items
+                .map((item) => {
+                    if (!item || typeof item !== "object") return null
+                    const src = item as {
+                        sourceId?: unknown
+                        title?: unknown
+                        url?: unknown
+                        publishedAt?: unknown
+                        verificationStatus?: unknown
+                        documentKind?: unknown
+                        note?: unknown
+                    }
+
+                    if (typeof src.title !== "string") return null
+
+                    return {
+                        ...(typeof src.sourceId === "string" ? { sourceId: src.sourceId } : {}),
+                        title: src.title,
+                        url: src.url === null ? null : (typeof src.url === "string" ? src.url : null),
+                        ...(typeof src.publishedAt === "number" && Number.isFinite(src.publishedAt)
+                            ? { publishedAt: src.publishedAt }
+                            : {}),
+                        ...(src.verificationStatus === "verified_content" || src.verificationStatus === "unverified_link" || src.verificationStatus === "unavailable"
+                            ? { verificationStatus: src.verificationStatus }
+                            : {}),
+                        ...(src.documentKind === "html" || src.documentKind === "pdf" || src.documentKind === "unknown"
+                            ? { documentKind: src.documentKind }
+                            : {}),
+                        ...(typeof src.note === "string" ? { note: src.note } : {}),
+                    } satisfies ChatSource
+                })
+                .filter(Boolean) as ChatSource[]
+
+            return {
+                responseMode: data.responseMode,
+                ...(typeof data.introText === "string" ? { introText: data.introText } : {}),
+                items,
+            }
+        }
+
         return null
     }
 
@@ -354,8 +456,44 @@ export function MessageBubble({
         return null
     }
 
+    const extractChoiceSpec = (uiMessage: UIMessage): Spec | null => {
+        let spec: Spec | null = null
+        for (const part of uiMessage.parts ?? []) {
+            if (!part || typeof part !== "object") continue
+            const dataPart = part as unknown as { type?: string; data?: unknown }
+            if (dataPart.type !== SPEC_DATA_PART_TYPE) continue
+            const data = dataPart.data as { type?: string; spec?: Spec; patch?: unknown } | null
+            if (!data || typeof data !== "object") continue
+            if (data.type === "flat" && data.spec) {
+                spec = data.spec
+            } else if (data.type === "patch" && data.patch) {
+                // Initialize empty spec on first patch — pipeYamlRender only emits patches during streaming
+                if (!spec) spec = {} as Spec
+                // pipeYamlRender emits single patch per chunk (not array)
+                const patches = Array.isArray(data.patch) ? data.patch : [data.patch]
+                for (const p of patches) {
+                    try { spec = applySpecPatch(spec, p as JsonPatch) } catch { /* skip invalid patch */ }
+                }
+            }
+        }
+        // Only return spec if fully formed and safe to render
+        if (!spec) return null
+        const s = spec as unknown as Record<string, unknown>
+        if (!s.root || typeof s.root !== "string") return null
+        const elements = s.elements as Record<string, Record<string, unknown>> | undefined
+        if (!elements || typeof elements !== "object") return null
+        // Root element must exist
+        if (!elements[s.root]) return null
+        // ALL elements must have valid props object (prevents resolveBindings crash on null/undefined)
+        for (const el of Object.values(elements)) {
+            if (!el || typeof el !== "object" || !el.props || typeof el.props !== "object") return null
+        }
+        return spec
+    }
+
     const searchStatus = extractSearchStatus(message)
     const citedText = extractCitedText(message)
+    const choiceSpec = extractChoiceSpec(message)
 
     const startEditing = () => {
         setIsEditing(true)
@@ -544,15 +682,22 @@ export function MessageBubble({
         annotations?: { type?: string; sources?: { url: string; title: string; publishedAt?: number | null }[] }[]
     }).annotations?.find((annotation) => annotation.type === "sources")?.sources
     const citedSources = extractCitedSources(message)
+    const referenceInventory = extractReferenceInventory(message)
     const messageSources = (message as { sources?: { url: string; title: string; publishedAt?: number | null }[] }).sources
+    const referenceInventorySources = referenceInventory?.items ?? []
     const persistedOrStreamedSources = citedSources || sourcesFromAnnotation || messageSources || []
     const sourceExtractionText = citedText && citedText.trim().length > 0 ? citedText : content
     const legacyExtractedSources = isAssistant && persistedOrStreamedSources.length === 0
         ? extractLegacySourcesFromText(sourceExtractionText)
         : []
-    const sources = persistedOrStreamedSources.length > 0
+    const sources = referenceInventorySources.length > 0
+        ? referenceInventorySources
+        : persistedOrStreamedSources.length > 0
         ? persistedOrStreamedSources
         : legacyExtractedSources
+    const sourcesWithUrls = sources.filter((source): source is ChatSource & { url: string } => {
+        return typeof source.url === "string" && source.url.trim().length > 0
+    })
     const hasArtifactSignals = isAssistant && artifactSignals.length > 0 && Boolean(onArtifactSelect)
     const hasSources = isAssistant && sources.length > 0
     const hasQuickActions = !isEditing && isAssistant
@@ -586,7 +731,7 @@ export function MessageBubble({
             })
 
         const sourceHosts = Array.from(new Set(
-            sources
+            sourcesWithUrls
                 .map((source) => {
                     try {
                         return new URL(source.url).hostname.replace(/^www\./i, "").toLowerCase()
@@ -609,11 +754,12 @@ export function MessageBubble({
 
         return formatParagraphEndCitations({
             text: publicDisplayText,
-            sources,
+            sources: sourcesWithUrls,
             anchors: [],
         })
     })()
     const displayMarkdown = normalizedLegacyCitedText ?? publicDisplayText
+    const quickActionsContent = displayMarkdown || content
 
     // Get timestamp from allMessages if available
 
@@ -867,7 +1013,7 @@ export function MessageBubble({
                                 <MarkdownRenderer
                                     markdown={displayMarkdown}
                                     className="space-y-2 text-sm leading-relaxed text-[var(--chat-foreground)]"
-                                    sources={sources}
+                                    sources={sourcesWithUrls}
                                     context="chat"
                                 />
                             )}
@@ -882,8 +1028,8 @@ export function MessageBubble({
                         </div>
                     )}
 
-                    {/* Assistant follow-up blocks: artifact output -> sources -> quick actions */}
-                    {isAssistant && !isEditing && (hasArtifactSignals || hasSources || hasQuickActions) && (
+                    {/* Assistant follow-up blocks: artifact output -> sources -> choice card -> quick actions */}
+                    {isAssistant && !isEditing && (hasArtifactSignals || hasSources || hasQuickActions || choiceSpec) && (
                         <div className="mt-3 space-y-3">
                             {hasArtifactSignals && (
                                 <section className="space-y-2 pt-2" aria-label="Hasil artifak">
@@ -908,7 +1054,30 @@ export function MessageBubble({
                                 </section>
                             )}
 
-                            {hasQuickActions && <QuickActions content={displayMarkdown || content} />}
+                            {choiceSpec && (
+                                <JsonRendererChoiceBlock
+                                    payload={{
+                                        spec: choiceSpec,
+                                        initialState: (choiceSpec as any).state ?? { selection: { selectedOptionId: null, customText: "" } },
+                                    } as any}
+                                    isSubmitted={isChoiceSubmitted}
+                                    onSubmit={
+                                        onChoiceSubmit
+                                            ? async ({ selectedOptionId, customText }) => {
+                                                  await onChoiceSubmit?.({
+                                                      sourceMessageId: message.id,
+                                                      choicePartId: `${message.id}-choice-spec`,
+                                                      payload: { spec: choiceSpec } as any,
+                                                      selectedOptionId,
+                                                      customText,
+                                                  })
+                                              }
+                                            : undefined
+                                    }
+                                />
+                            )}
+
+                            {hasQuickActions && <QuickActions content={quickActionsContent} />}
                         </div>
                     )}
                 </div>

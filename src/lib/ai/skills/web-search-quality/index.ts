@@ -129,6 +129,11 @@ export const webSearchQualitySkill: WebSearchSkill = {
       parts.push(`## INFORMATION SUFFICIENCY\n\n${informationSufficiency}`)
     }
 
+    const verbatimQuotingTools = parsed.sections.get("VERBATIM QUOTING TOOLS")
+    if (verbatimQuotingTools) {
+      parts.push(`## VERBATIM QUOTING TOOLS\n\n${verbatimQuotingTools}`)
+    }
+
     // Add stage-specific guidance
     if (context.isPaperMode && context.currentStage) {
       const stageGuide =

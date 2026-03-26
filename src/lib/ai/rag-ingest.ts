@@ -41,20 +41,21 @@ export async function ingestToRag(input: IngestInput): Promise<{
   }
 
   // Chunk
+  const chunkStart = Date.now()
   const chunks = chunkContent(input.content)
   if (chunks.length === 0) {
     console.log(`[RAG Ingest] Skip — no chunks produced for: ${input.sourceId}`)
     return { status: "skipped", reason: "no_chunks" }
   }
-
-  console.log(`[RAG Ingest] Chunked ${input.sourceId}: ${chunks.length} chunks`)
+  const chunkElapsed = Date.now() - chunkStart
 
   // Embed
+  const embedStart = Date.now()
   const embeddings = await embedTexts(chunks.map((c) => c.content))
-
-  console.log(`[RAG Ingest] Embedded ${embeddings.length} chunks for ${input.sourceId}`)
+  const embedElapsed = Date.now() - embedStart
 
   // Store
+  const storeStart = Date.now()
   const chunksWithEmbeddings = chunks.map((chunk, i) => ({
     chunkIndex: chunk.chunkIndex,
     content: chunk.content,
@@ -75,8 +76,9 @@ export async function ingestToRag(input: IngestInput): Promise<{
     },
     convexOptions,
   )
+  const storeElapsed = Date.now() - storeStart
 
-  console.log(`[RAG Ingest] Stored ${chunksWithEmbeddings.length} chunks for ${input.sourceId}`)
+  console.log(`[⏱ LATENCY] RAG ingest source=${input.sourceId.slice(0, 60)} chunks=${chunks.length} chunk=${chunkElapsed}ms embed=${embedElapsed}ms store=${storeElapsed}ms total=${chunkElapsed + embedElapsed + storeElapsed}ms contentChars=${input.content.length}`)
 
   return { status: "ingested", chunks: chunksWithEmbeddings.length }
 }

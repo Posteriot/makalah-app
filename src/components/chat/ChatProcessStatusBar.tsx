@@ -8,11 +8,22 @@ import { type ReasoningTraceStep } from "./ReasoningTracePanel"
 
 type ChatProcessStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
 
+const TEMPLATE_LABELS = new Set([
+  "Memahami kebutuhan user",
+  "Memeriksa konteks paper aktif",
+  "Menentukan kebutuhan pencarian web",
+  "Memvalidasi sumber referensi",
+  "Menyusun jawaban final",
+  "Menjalankan aksi pendukung",
+])
+
 interface ChatProcessStatusBarProps {
   visible: boolean
   status: ChatProcessStatus
   progress: number
   elapsedSeconds: number
+  /** Duration from persisted trace (for rehydrate after reload). */
+  persistedDurationSeconds?: number
   reasoningSteps?: ReasoningTraceStep[]
   reasoningHeadline?: string | null
   /** External control for the reasoning panel open state */
@@ -25,6 +36,7 @@ export function ChatProcessStatusBar({
   status,
   progress,
   elapsedSeconds,
+  persistedDurationSeconds,
   reasoningSteps = [],
   reasoningHeadline,
   isPanelOpen,
@@ -33,41 +45,55 @@ export function ChatProcessStatusBar({
   const [internalPanelOpen, setInternalPanelOpen] = useState(false)
   const isPanelOpenValue = isPanelOpen ?? internalPanelOpen
   const setPanelOpen = onPanelOpenChange ?? setInternalPanelOpen
+  const [completedExpanded, setCompletedExpanded] = useState(false)
 
   const safeProgress = Math.max(0, Math.min(100, Math.round(progress)))
   const isProcessing = status === "submitted" || status === "streaming"
   const isError = status === "error"
 
-  const traceDurationSec = useMemo(() => {
-    const timestamps = reasoningSteps
-      .map((step) => step.ts)
-      .filter((ts): ts is number => typeof ts === "number" && Number.isFinite(ts))
-      .sort((a, b) => a - b)
+  // Live: elapsedSeconds from processStartedAtRef timer.
+  // Rehydrate: persistedDurationSeconds from _creationTime diff (elapsedSeconds is 0 after reload).
+  const durationSeconds = persistedDurationSeconds ?? (
+    elapsedSeconds > 0.5
+      ? elapsedSeconds
+      : null
+  )
 
-    if (timestamps.length < 2) return null
-    return Math.max(1, Math.round((timestamps[timestamps.length - 1] - timestamps[0]) / 1000))
-  }, [reasoningSteps])
-
-  const durationSeconds = isProcessing
-    ? Math.max(1, elapsedSeconds)
-    : traceDurationSec ?? Math.max(1, elapsedSeconds || Math.round((safeProgress / 100) * 90))
-
+  // Don't show duration at all if we have no data yet (prevents 0.1s flash)
+  const showDuration = durationSeconds !== null
   // Headline naratif dari reasoning trace (isi pikiran model)
   const narrativeHeadline = useMemo(() => {
+    // Priority 1: raw model thinking from live stream
     if (reasoningHeadline && reasoningHeadline.trim()) return reasoningHeadline
+
     if (reasoningSteps.length === 0) return null
 
+    // Priority 2: non-template step labels (transparent/raw)
     const running = reasoningSteps.find((step) => step.status === "running")
-    if (running) return running.label
+    if (running) {
+      if (!TEMPLATE_LABELS.has(running.label)) return running.label
+      if (running.thought) return running.thought.trim()
+    }
 
     const errored = reasoningSteps.find((step) => step.status === "error")
-    if (errored) return `Terjadi kendala saat ${lowerFirst(errored.label)}.`
+    if (errored) {
+      if (!TEMPLATE_LABELS.has(errored.label)) return errored.label
+      if (errored.thought) return errored.thought.trim()
+    }
 
-    const lastStep = reasoningSteps[reasoningSteps.length - 1]
-    return lastStep?.label ?? null
+    // Priority 3: any step with raw content
+    const withContent = [...reasoningSteps].reverse().find((s) =>
+      !TEMPLATE_LABELS.has(s.label) || (s.thought && s.thought.trim())
+    )
+    if (withContent) {
+      if (!TEMPLATE_LABELS.has(withContent.label)) return withContent.label
+      if (withContent.thought) return withContent.thought.trim()
+    }
+
+    return null
   }, [reasoningHeadline, reasoningSteps])
 
-  const shouldShow = Boolean(narrativeHeadline) || (visible && reasoningSteps.length > 0)
+  const shouldShow = Boolean(narrativeHeadline) || (visible && reasoningSteps.length > 0) || isPanelOpenValue
   if (!shouldShow) return null
 
   const hasSteps = reasoningSteps.length > 0
@@ -78,7 +104,7 @@ export function ChatProcessStatusBar({
       <div className="pb-2" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
         {isProcessing ? (
           /* ── Processing mode: headline naratif + progress bar ── */
-          <div role="status" aria-live="polite" aria-label={narrativeHeadline ?? "Memproses..."}>
+          <div role="status" aria-live="polite" aria-label={narrativeHeadline ?? undefined}>
             <button
               type="button"
               onClick={openPanel}
@@ -92,7 +118,7 @@ export function ChatProcessStatusBar({
                 className="flex min-w-0 items-baseline gap-1 truncate font-mono text-[11px] leading-snug text-[var(--chat-foreground)]"
                 style={{ opacity: 0.92 }}
               >
-                <span className="truncate">{narrativeHeadline ?? "Memproses"}</span>
+                {narrativeHeadline && <span className="truncate">{narrativeHeadline}</span>}
                 <ThinkingDots />
               </span>
               <span
@@ -117,33 +143,55 @@ export function ChatProcessStatusBar({
             </div>
           </div>
         ) : (
-          /* ── Completed mode: "Memproses Xm Yd >" ChatGPT style ── */
-          <button
-            type="button"
-            onClick={openPanel}
-            className={cn(
-              "group flex items-center py-1 text-left transition-opacity",
-              hasSteps ? "cursor-pointer hover:opacity-80" : "cursor-default"
+          /* ── Completed mode: collapsed=duration only, expanded=full reasoning ── */
+          <div role="status" aria-live="polite">
+            <button
+              type="button"
+              onClick={() => {
+                if (narrativeHeadline) {
+                  setCompletedExpanded((prev) => !prev)
+                } else if (hasSteps) {
+                  openPanel()
+                }
+              }}
+              className={cn(
+                "group flex items-center py-1 text-left transition-opacity",
+                (narrativeHeadline || hasSteps) ? "cursor-pointer hover:opacity-80" : "cursor-default"
+              )}
+              disabled={!narrativeHeadline && !hasSteps}
+            >
+              <span className={cn(
+                "font-mono text-[11px] leading-snug",
+                isError
+                  ? "text-[var(--chat-destructive)]"
+                  : "text-[var(--chat-muted-foreground)] opacity-60"
+              )}>
+                {showDuration ? formatDuration(durationSeconds) : ""}
+              </span>
+              {(narrativeHeadline || hasSteps) && (
+                <NavArrowRight className={cn(
+                  "ml-1 h-3 w-3 text-[var(--chat-muted-foreground)] opacity-60 transition-all group-hover:text-[var(--chat-foreground)] group-hover:opacity-100",
+                  completedExpanded && "rotate-90"
+                )} />
+              )}
+            </button>
+            {completedExpanded && narrativeHeadline && (
+              <div className="pb-1">
+                <p className="font-mono text-[11px] leading-relaxed text-[var(--chat-muted-foreground)] opacity-60">
+                  {narrativeHeadline}
+                </p>
+                {hasSteps && (
+                  <button
+                    type="button"
+                    onClick={openPanel}
+                    className="mt-1 font-mono text-[10px] text-[var(--chat-muted-foreground)] opacity-40 transition-opacity hover:opacity-80"
+                  >
+                    Detail &rarr;
+                  </button>
+                )}
+              </div>
             )}
-            role="status"
-            aria-live="polite"
-            aria-label={hasSteps ? "Buka aktivitas berpikir Agen" : "Aktivitas Agen"}
-            disabled={!hasSteps}
-          >
-            <span className={cn(
-              "font-mono text-[11px] leading-snug",
-              isError
-                ? "text-[var(--chat-destructive)]"
-                : "text-[var(--chat-muted-foreground)] opacity-60"
-            )}>
-              {isError
-                ? `Ada kendala setelah ${formatDuration(durationSeconds)}`
-                : `Memproses ${formatDuration(durationSeconds)}`}
-            </span>
-            {hasSteps && (
-              <NavArrowRight className="ml-1 h-3 w-3 text-[var(--chat-muted-foreground)] opacity-60 transition-colors group-hover:text-[var(--chat-foreground)] group-hover:opacity-100" />
-            )}
-          </button>
+          </div>
         )}
       </div>
 
@@ -175,14 +223,13 @@ function ThinkingDots() {
   )
 }
 
-function lowerFirst(input: string) {
-  if (!input) return input
-  return input.charAt(0).toLowerCase() + input.slice(1)
-}
-
 function formatDuration(totalSeconds: number): string {
-  const safeSeconds = Math.max(0, Math.round(totalSeconds))
-  const minutes = Math.floor(safeSeconds / 60)
-  const seconds = safeSeconds % 60
-  return `${minutes}m ${seconds}d`
+  const safe = Math.max(0, totalSeconds)
+  if (safe < 60) {
+    // Under 1 minute: show seconds with 1 decimal
+    return `${safe.toFixed(1)}s`
+  }
+  const minutes = Math.floor(safe / 60)
+  const seconds = safe - minutes * 60
+  return `${minutes}m ${seconds.toFixed(0)}s`
 }

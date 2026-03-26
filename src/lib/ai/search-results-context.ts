@@ -7,9 +7,18 @@ interface SearchSource {
   pageContent?: string // actual page content in markdown
 }
 
+export type SearchResultsContextOptions = {
+  responseMode?: "synthesis"
+}
+
+function getSearchFindingsIntro(): string {
+  return "Search findings (raw, for your synthesis — do NOT copy verbatim, rewrite with your own analysis):"
+}
+
 export function buildSearchResultsContext(
   sources: SearchSource[],
   searchText?: string,
+  options: SearchResultsContextOptions = {},
 ): string {
   if (sources.length === 0) {
     return `## SEARCH RESULTS\nNo sources found from web search. Answer based on your knowledge and inform the user that no web sources were available.`
@@ -41,12 +50,13 @@ export function buildSearchResultsContext(
   // When NO page content is available (FetchWeb failed), keep searchText as
   // fallback — same as pre-FetchWeb behavior.
   const searchFindings = (!anyHasPageContent && searchText?.trim())
-    ? `\n\nSearch findings (raw, for your synthesis — do NOT copy verbatim, rewrite with your own analysis):\n${searchText.trim()}`
+    ? `\n\n${getSearchFindingsIntro()}\n${searchText.trim()}`
     : ""
 
   const context = `## SEARCH RESULTS (COMPLETED)
 Web search has been executed. The following sources were retrieved.
-You MUST synthesize these sources in your response. Use ONLY these sources for citations. Do not fabricate or guess URLs.
+You MUST synthesize these sources in your response.
+Use ONLY these sources for citations. Do not fabricate or guess URLs.
 
 Sources:
 ${sourceList}${searchFindings}`

@@ -43,6 +43,16 @@ import { getSearchSkill, composeSkillInstructions, type SkillContext } from "@/l
 import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
 // buildUserFacingSearchPayload now handled by orchestrator
+import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
+import { pipeYamlRender } from "@json-render/yaml"
+import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
+import type { Spec, JsonPatch } from "@json-render/core"
+import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
+import {
+    parseOptionalChoiceInteractionEvent,
+    validateChoiceInteractionEvent,
+    buildChoiceContextNote,
+} from "@/lib/chat/choice-request"
 import { resolveEffectiveFileIds } from "@/lib/chat/effective-file-ids"
 import {
     classifyAttachmentHealth,
@@ -55,6 +65,15 @@ import {
     resolveSearchExecutionMode,
     type SearchExecutionMode,
 } from "@/lib/ai/web-search"
+import {
+    buildDeterministicExactSourcePrepareStep,
+    buildExactSourceInspectionRouterNote,
+    buildExactSourceInspectionSystemMessage,
+    buildSourceInventoryContext,
+    buildSourceProvenanceSystemMessage,
+    shouldIncludeRawSourcesContextForExactFollowup,
+} from "@/lib/ai/exact-source-guardrails"
+import { resolveExactSourceFollowup, type ExactSourceConversationMessage } from "@/lib/ai/exact-source-followup"
 
 export async function POST(req: Request) {
     try {
@@ -105,21 +124,19 @@ export async function POST(req: Request) {
             replaceAttachmentContext,
             inheritAttachmentContext,
             clearAttachmentContext,
+            requestStartedAt: rawRequestStartedAt,
         } = body
-        const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-        if (process.env.NODE_ENV !== "production") {
-            console.info("[ATTACH-DIAG][route] request body", {
-                conversationId,
-                fileIdsIsArray: Array.isArray(requestFileIds),
-                fileIdsLength: Array.isArray(requestFileIds) ? requestFileIds.length : null,
-                fileIdsPreview: Array.isArray(requestFileIds) ? requestFileIds.slice(0, 5) : null,
-                requestedAttachmentMode,
-                replaceAttachmentContext: replaceAttachmentContext === true,
-                inheritAttachmentContext: inheritAttachmentContext !== false,
-                clearAttachmentContext: clearAttachmentContext === true,
-                messageCount: Array.isArray(messages) ? messages.length : null,
-            })
+        const requestStartedAt =
+            typeof rawRequestStartedAt === "number" &&
+            Number.isFinite(rawRequestStartedAt) &&
+            rawRequestStartedAt > 0
+                ? rawRequestStartedAt
+                : undefined
+        const choiceInteractionEvent = parseOptionalChoiceInteractionEvent(body)
+        if (choiceInteractionEvent) {
+            console.info(`[CHOICE-CARD][event-received] type=${choiceInteractionEvent.type} stage=${choiceInteractionEvent.stage} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
         }
+        const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 
         // 3. Get Convex User ID
         const userId = await fetchQueryWithToken(api.chatHelpers.getMyUserId, {})
@@ -230,17 +247,6 @@ export async function POST(req: Request) {
             )
         }
 
-        if (process.env.NODE_ENV !== "production") {
-            console.info("[ATTACH-DIAG][route] effective fileIds", {
-                reason: attachmentResolution.reason,
-                requestFileIdsLength: Array.isArray(requestFileIds) ? requestFileIds.length : null,
-                contextFileIdsLength: attachmentContext?.activeFileIds?.length ?? 0,
-                effectiveFileIdsLength: effectiveFileIds.length,
-                effectiveFileIdsPreview: effectiveFileIds.slice(0, 5),
-                replaceAttachmentContext: replaceAttachmentContext === true,
-            })
-        }
-
         // Background Title Generation (Fire and Forget)
         if (isNewConversation && firstUserContent) {
             // We don't await this to avoid blocking the response
@@ -347,6 +353,18 @@ export async function POST(req: Request) {
             paperSession && paperSession.currentStage !== "completed"
                 ? (paperSession.currentStage as PaperStageId)
                 : undefined
+        const isDraftingStage = !!paperStageScope && paperSession?.stageStatus === "drafting"
+
+        let choiceContextNote: string | undefined
+        if (choiceInteractionEvent) {
+            validateChoiceInteractionEvent({
+                event: choiceInteractionEvent,
+                conversationId: currentConversationId,
+                currentStage: paperStageScope ?? null,
+                isPaperMode: !!paperModePrompt,
+            })
+            choiceContextNote = buildChoiceContextNote(choiceInteractionEvent)
+        }
 
         // Update billing context with paper session info
         if (paperSession) {
@@ -376,6 +394,31 @@ export async function POST(req: Request) {
         const normalizedLastUserContent =
             typeof lastUserContent === "string" ? lastUserContent.trim() : ""
         const normalizedLastUserContentLower = normalizedLastUserContent.toLowerCase()
+        const recentConversationMessagesForExactSource: ExactSourceConversationMessage[] = messages
+            .slice(0, -1)
+            .map((message: {
+                role?: string
+                content?: string
+                parts?: Array<{ type?: string; text?: string }>
+            }) => {
+                const extractedContent = typeof message?.content === "string"
+                    ? message.content
+                    : message?.parts?.find((part) => part.type === "text")?.text
+
+                if ((message?.role !== "user" && message?.role !== "assistant") || !extractedContent?.trim()) {
+                    return null
+                }
+
+                return {
+                    role: message.role,
+                    content: extractedContent.trim(),
+                }
+            })
+            .filter(
+                (
+                    message: ExactSourceConversationMessage | null
+                ): message is ExactSourceConversationMessage => message !== null
+            )
 
         let paperWorkflowReminder = ""
         if (!paperModePrompt && lastUserContent && hasPaperWritingIntent(lastUserContent)) {
@@ -384,37 +427,18 @@ export async function POST(req: Request) {
         const userMessageCount = Array.isArray(messages)
             ? messages.filter((message: { role?: string }) => message?.role === "user").length
             : 0
-        const isAttachmentProbePrompt = (() => {
-            if (!normalizedLastUserContentLower) return true
-            if (normalizedLastUserContentLower === "." || normalizedLastUserContentLower.length <= 2) return true
-
-            const probePatterns = [
-                /^apa ini\??$/,
-                /^ini apa\??$/,
-                /^jelaskan( isi)?( file| dokumen)?( ini)?\??$/,
-                /^ringkas(kan)?( isi)?( file| dokumen)?( ini)?\??$/,
-                /^analisis(kan)?( isi)?( file| dokumen)?( ini)?\??$/,
-                /^tolong jelaskan( ini)?\??$/,
-            ]
-            return probePatterns.some((pattern) => pattern.test(normalizedLastUserContentLower))
-        })()
+        // Attachment first-response: structural check only (file present + first message + short text).
+        // No regex probe patterns — the model can judge user intent from the message itself.
+        // The instruction tells the model HOW to respond when files are attached, not IF.
         const shouldForceAttachmentFirstResponse =
             effectiveFileIds.length > 0 &&
             requestedAttachmentMode === "explicit" &&
             !paperModePrompt &&
-            (isAttachmentProbePrompt || (userMessageCount <= 1 && normalizedLastUserContent.length <= 64))
+            userMessageCount <= 1 &&
+            normalizedLastUserContent.length <= 64
         const attachmentFirstResponseInstruction = shouldForceAttachmentFirstResponse
             ? "Pengguna baru saja melampirkan file secara eksplisit. Jawaban pertama WAJIB langsung mengulas isi file terlampir. DILARANG membuka dengan perkenalan umum, profil asisten, atau daftar kemampuan. Kalimat pertama harus langsung menjelaskan inti isi dokumen yang dilampirkan."
             : ""
-        if (process.env.NODE_ENV !== "production") {
-            console.info("[ATTACH-DIAG][route] attachment-first-response", {
-                shouldForceAttachmentFirstResponse,
-                requestedAttachmentMode,
-                userMessageCount,
-                normalizedLastUserContent,
-            })
-        }
-
         const getStageSearchPolicy = (stage: PaperStageId | "completed" | undefined | null) => {
             if (!stage || stage === "completed") return "none"
             if (ACTIVE_SEARCH_STAGES.includes(stage)) return "active"
@@ -515,14 +539,6 @@ export async function POST(req: Request) {
                 }
             }
         }
-        if (process.env.NODE_ENV !== "production") {
-            console.info("[ATTACH-DIAG][route] context result", {
-                fileIdsLength: effectiveFileIds.length,
-                fileContextLength: fileContext.length,
-                fileContextPreview: fileContext.slice(0, 180),
-            })
-        }
-
         if (hasAttachmentSignal) {
             const health = classifyAttachmentHealth({
                 effectiveFileIdsLength: effectiveFileIds.length,
@@ -646,8 +662,19 @@ export async function POST(req: Request) {
         // This enables AI to pass sources to createArtifact tool
         // ════════════════════════════════════════════════════════════════
         let sourcesContext = ""
+        let sourceInventoryContext = ""
         let hasRecentSourcesInDb = false
         let recentSourcesList: Array<{ url: string; title: string; publishedAt?: number }> = []
+        let availableExactSources: Array<{
+            sourceId: string
+            originalUrl: string
+            resolvedUrl: string
+            title?: string
+            siteName?: string
+            author?: string
+            publishedAt?: string
+            documentKind?: "html" | "pdf" | "unknown"
+        }> = []
         try {
             const recentSources = await fetchQueryWithToken(api.messages.getRecentSources, {
                 conversationId: currentConversationId as Id<"conversations">,
@@ -666,6 +693,36 @@ ${sourcesJson}`
             // Non-blocking - continue without sources context
         }
 
+        try {
+            const exactSources = await fetchQueryWithToken(
+                api.sourceDocuments.listSourceSummariesByConversation,
+                {
+                    conversationId: currentConversationId as Id<"conversations">,
+                }
+            )
+
+            if (Array.isArray(exactSources) && exactSources.length > 0) {
+                availableExactSources = exactSources
+            }
+        } catch (exactSourcesError) {
+            console.error("[route] Failed to fetch exact source summaries:", exactSourcesError)
+        }
+        const exactSourceResolution = resolveExactSourceFollowup({
+            lastUserMessage: normalizedLastUserContent,
+            recentMessages: recentConversationMessagesForExactSource,
+            availableExactSources,
+        })
+        const shouldIncludeRawSourcesContext =
+            shouldIncludeRawSourcesContextForExactFollowup(exactSourceResolution)
+        const shouldIncludeExactInspectionSystemMessage =
+            exactSourceResolution.mode !== "clarify"
+        const shouldIncludeRecentSourceSkillInstructions =
+            hasRecentSourcesInDb && shouldIncludeRawSourcesContext
+        sourceInventoryContext = buildSourceInventoryContext({
+            recentSources: recentSourcesList,
+            exactSources: availableExactSources,
+        })
+
         // Task 6.4: Inject file context BEFORE user messages
         // Task Group 3: Inject paper mode prompt if paper session exists
         // Flow Detection: Inject paper workflow reminder if intent detected but no session
@@ -683,17 +740,30 @@ ${sourcesJson}`
             ...(attachmentFirstResponseInstruction
                 ? [{ role: "system" as const, content: attachmentFirstResponseInstruction }]
                 : []),
-            ...(sourcesContext
+            ...(sourcesContext && shouldIncludeRawSourcesContext
                 ? [{ role: "system" as const, content: sourcesContext }]
                 : []),
+            ...(sourceInventoryContext
+                ? [{ role: "system" as const, content: sourceInventoryContext }]
+                : []),
+            ...(shouldIncludeExactInspectionSystemMessage
+                ? [buildExactSourceInspectionSystemMessage()]
+                : []),
+            buildSourceProvenanceSystemMessage(),
             ...(() => {
-                if (!hasRecentSourcesInDb) return []
+                if (!shouldIncludeRecentSourceSkillInstructions) return []
                 const instr = composeSkillInstructions(buildSkillContext({
                     hasRecentSources: true,
                     availableSources: recentSourcesList,
                 }))
                 return instr ? [{ role: "system" as const, content: instr }] : []
             })(),
+            ...(choiceContextNote
+                ? [{ role: "system" as const, content: choiceContextNote }]
+                : []),
+            ...(isDraftingStage
+                ? [{ role: "system" as const, content: CHOICE_YAML_SYSTEM_PROMPT }]
+                : []),
             ...trimmedModelMessages,
         ]
 
@@ -991,11 +1061,8 @@ Stage policy rules (MUST follow):
 - If research is INCOMPLETE and no search has been done, strongly prefer enableWebSearch=true.
 ${options.ragChunksAvailable ? `
 RAG SOURCE CHUNKS AVAILABLE:
-Stored source content from previous searches is available via RAG tools (quoteFromSource, searchAcrossSources).
-The model can retrieve verbatim quotes and specific passages WITHOUT a new web search.
-Set enableWebSearch=false when the user asks about previously cited sources, requests quotes,
-asks for author/date/details from earlier results, or references information from prior search responses.
-Only set enableWebSearch=true when the user explicitly asks for NEW/ADDITIONAL sources on a NEW topic.` : ""}`
+Stored source content from previous searches is available for follow-up inspection without a new web search.
+${buildExactSourceInspectionRouterNote(options.ragChunksAvailable).trimStart()}` : ""}`
                 : ""
 
             const routerPrompt = `You are a "router" that decides whether the response to the user MUST use web search.
@@ -1265,11 +1332,17 @@ JSON schema:
             return {
                 version: trace.version === 2 ? 2 : 1,
                 headline: sanitizeReasoningText(
-                    trace.headline || "Agen lagi memproses jawaban...",
-                    "Agen lagi memproses jawaban."
+                    trace.headline || "",
+                    ""
                 ),
                 traceMode: trace.traceMode === "transparent" ? "transparent" : "curated",
                 completedAt: Number.isFinite(trace.completedAt) ? trace.completedAt : Date.now(),
+                ...(typeof trace.durationSeconds === "number" && Number.isFinite(trace.durationSeconds)
+                    ? { durationSeconds: trace.durationSeconds }
+                    : {}),
+                ...(typeof trace.rawReasoning === "string" && trace.rawReasoning.trim()
+                    ? { rawReasoning: trace.rawReasoning }
+                    : {}),
                 steps,
             }
         }
@@ -1278,8 +1351,11 @@ JSON schema:
             content: string,
             sources?: { url: string; title: string; publishedAt?: number | null }[],
             usedModel?: string, // Model name from config (primary or fallback)
-            reasoningTrace?: PersistedCuratedTraceSnapshot
+            reasoningTrace?: PersistedCuratedTraceSnapshot,
+            jsonRendererChoice?: JsonRendererChoicePayload | Spec,
+            uiMessageId?: string
         ) => {
+            const sanitizedReasoningTrace = sanitizeReasoningTraceForPersistence(reasoningTrace)
             const normalizedSources = sources
                 ?.map((source) => ({
                     url: source.url,
@@ -1296,9 +1372,14 @@ JSON schema:
                     content: content,
                     metadata: {
                         model: usedModel ?? modelNames.primary.model, // From database config
+                        ...(uiMessageId ? { uiMessageId } : {}),
                     },
                     sources: normalizedSources && normalizedSources.length > 0 ? normalizedSources : undefined,
-                    reasoningTrace: sanitizeReasoningTraceForPersistence(reasoningTrace),
+                    reasoningTrace: sanitizedReasoningTrace,
+                    ...(jsonRendererChoice
+                        ? { jsonRendererChoice: JSON.stringify(jsonRendererChoice) }
+                        : {}),
+                    ...(uiMessageId ? { uiMessageId } : {}),
                 }),
                 "messages.createMessage(assistant)"
             )
@@ -1846,11 +1927,24 @@ Aturan:
             let isSyncRequest = false
             let isSaveSubmitIntent = false
 
-            // --- Pre-router guardrails (deterministic, structural) ---
+            // --- Pre-router guardrails (structural state only, NO regex intent detection) ---
+            // Intent detection is the LLM router's job. Regex cannot scale to language
+            // variation (Indonesian, Javanese, English, slang, etc.) and will miss edge
+            // cases that cause users to lose search functionality silently.
+
             if (forcePaperToolsMode) {
+                // No paper session yet — block search so model calls startPaperSession first.
+                // Search will be available on the next turn once session is created.
+                // Do NOT try to regex-detect "does user want search" — let the session
+                // creation happen first, then the router handles search on the next turn.
                 searchRequestedByPolicy = false
                 activeStageSearchReason = "force_paper_tools_mode"
-                console.log("[SearchDecision] Force paper tools: no session yet")
+                console.log("[SearchDecision] Force paper tools: no session yet, blocking search until session created")
+            } else if (!paperModePrompt && userMessageCount <= 1 && !searchAlreadyDone) {
+                // Fast path: first message in chat mode → always search (skip LLM router)
+                searchRequestedByPolicy = true
+                activeStageSearchReason = "first_message_chat_mode"
+                console.log("[SearchDecision] Fast path: first chat message, skip router")
             } else {
                 // --- Unified LLM router for ALL stages (ACTIVE + PASSIVE + chat) ---
                 const { incomplete, requirement } = paperSession
@@ -1860,6 +1954,7 @@ Aturan:
                       )
                     : { incomplete: false, requirement: undefined }
 
+                const routerStart = Date.now()
                 const webSearchDecision = await decideWebSearchMode({
                     model,
                     recentMessages: recentForRouter,
@@ -1871,6 +1966,7 @@ Aturan:
                     ragChunksAvailable,
                     researchStatus: { incomplete, requirement },
                 })
+                console.log(`[⏱ LATENCY] searchRouter=${Date.now() - routerStart}ms decision=${webSearchDecision.enableWebSearch ? "SEARCH" : "NO-SEARCH"} intent=${webSearchDecision.intentType} confidence=${webSearchDecision.confidence}`)
 
                 // Trust the router decision. Router prompt handles stage policy rules.
                 // PASSIVE stages: router prompt says "ONLY if user EXPLICITLY requests."
@@ -1930,25 +2026,6 @@ Aturan:
                 isSaveSubmitIntent = !!paperModePrompt
                     && webSearchDecision.intentType === "save_submit"
 
-                // Post-router RAG override: if RAG chunks exist and router still wants search,
-                // check if user is asking about existing sources (not requesting new ones).
-                // Deterministic fallback — router prompt alone isn't reliable enough.
-                if (searchRequestedByPolicy && ragChunksAvailable && searchAlreadyDone) {
-                    const lastUserMsg = (recentForRouter
-                        .filter((m: { role?: string }) => m.role === "user")
-                        .pop() as { content?: string } | undefined)?.content ?? ""
-                    const msgLower = typeof lastUserMsg === "string" ? lastUserMsg.toLowerCase() : ""
-
-                    // Explicit new-search triggers — user wants NEW sources
-                    const wantsNewSearch = /\b(cari\s+(lagi|lebih|baru|tentang)|tambah\s+sumber|search\s+(again|for|more)|referensi\s+(baru|tambahan)|sumber\s+(baru|lain))\b/i.test(msgLower)
-
-                    if (!wantsNewSearch) {
-                        searchRequestedByPolicy = false
-                        activeStageSearchReason = "rag_chunks_available"
-                        activeStageSearchNote = getFunctionToolsModeNote("RAG tools available for existing sources")
-                        console.log("[SearchDecision] RAG override: chunks available, no explicit new-search trigger → enableWebSearch=false")
-                    }
-                }
             }
 
             // Build retriever chain once — reused for both mode resolution and execution
@@ -2035,9 +2112,7 @@ Aturan:
             const primaryReasoningProviderOptions = buildReasoningProviderOptions({
                 settings: reasoningSettings,
                 target: "primary",
-                profile: enableWebSearch || shouldForceSubmitValidation || shouldForceGetCurrentPaperState
-                    ? "tool-heavy"
-                    : "narrative",
+                profile: "narrative",
             })
 
             const fullMessagesGateway = enableWebSearch
@@ -2088,6 +2163,21 @@ Aturan:
                     return undefined
                 }
                 : undefined
+            const shouldApplyDeterministicExactSourceRouting =
+                !enableWebSearch &&
+                !shouldForceGetCurrentPaperState &&
+                !shouldForceSubmitValidation &&
+                availableExactSources.length > 0
+            const primaryExactSourceRoutePlan = shouldApplyDeterministicExactSourceRouting
+                ? buildDeterministicExactSourcePrepareStep({
+                    messages: fullMessagesGateway as Array<{ role: "system" | "user" | "assistant"; content: string }>,
+                    resolution: exactSourceResolution,
+                })
+                : {
+                    messages: fullMessagesGateway,
+                    prepareStep: undefined,
+                    maxToolSteps: undefined as number | undefined,
+                }
             let primaryReasoningTraceController: ReturnType<typeof createCuratedTraceController> | null = null
             let primaryReasoningTraceSnapshot: PersistedCuratedTraceSnapshot | undefined
             let primaryReasoningSourceCount = 0
@@ -2113,23 +2203,37 @@ Aturan:
                     })
                 }
 
+                // Resolve fallback compose model (non-fatal — compose still works without inner failover)
+                let fallbackComposeModel: Awaited<ReturnType<typeof getOpenRouterModel>> | undefined
+                try {
+                    fallbackComposeModel = await getOpenRouterModel({ enableWebSearch: false })
+                } catch {
+                    // Non-fatal: websearch compose still works, just without inner failover
+                }
+
                 return await executeWebSearch({
+                    requestId,
                     conversationId: currentConversationId as string,
                     retrieverChain,
                     tavilyApiKey: process.env.TAVILY_API_KEY,
+                    convexToken: convexToken ?? undefined,
                     messages: fullMessagesGateway,
                     composeMessages: trimmedModelMessages,
                     composeModel: model,
+                    fallbackComposeModel,
                     systemPrompt,
                     paperModePrompt: paperModePrompt || undefined,
                     paperWorkflowReminder: paperWorkflowReminder || undefined,
                     currentStage: paperStageScope ?? undefined,
                     fileContext: fileContext || undefined,
                     samplingOptions,
+                    retrieverMaxTokens: 4096,
                     reasoningTraceEnabled,
                     isTransparentReasoning,
                     reasoningProviderOptions: primaryReasoningProviderOptions ?? undefined,
                     traceMode: getTraceModeLabel(!!paperModePrompt, true),
+                    requestStartedAt,
+                    isDraftingStage,
                     onFinish: async (result) => {
                         const retrieverModelName = result.retrieverName || "unknown"
                         const combinedModelName = `${retrieverModelName}+${modelNames.primary.model}`
@@ -2139,45 +2243,48 @@ Aturan:
                             result.text,
                             result.sources.length > 0 ? result.sources : undefined,
                             combinedModelName,
+                            result.reasoningSnapshot,
+                            result.capturedChoiceSpec ?? undefined,
                         )
 
-                        // ──── Auto-persist search references to paper stageData ────
+                        // ──── Non-critical ops: fire-and-forget (don't block response close) ────
+
+                        // Auto-persist search references to paper stageData
                         if (paperSession && result.sources.length > 0) {
-                            try {
-                                await fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
-                                    sessionId: paperSession._id,
-                                    references: result.sources.map(s => ({
-                                        url: s.url,
-                                        title: s.title,
-                                        ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
-                                            ? { publishedAt: s.publishedAt }
-                                            : {}),
-                                    })),
-                                })
+                            void fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
+                                sessionId: paperSession._id,
+                                references: result.sources.map(s => ({
+                                    url: s.url,
+                                    title: s.title,
+                                    ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
+                                        ? { publishedAt: s.publishedAt }
+                                        : {}),
+                                })),
+                            }).then(() => {
                                 console.log(`[Paper] Auto-persisted ${result.sources.length} search refs to stageData`)
-                            } catch (err) {
+                            }).catch(err => {
                                 Sentry.captureException(err, { tags: { subsystem: "paper" } })
                                 console.error("[Paper] Failed to auto-persist search references:", err)
-                            }
+                            })
                         }
 
-                        // ──── Auto-title generation ────
+                        // Auto-title generation
                         const minPairsForFinalTitle = Number.parseInt(
                             process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
                             10
                         )
-                        await maybeUpdateTitleFromAI({
+                        void maybeUpdateTitleFromAI({
                             assistantText: result.text,
                             minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
                                 ? minPairsForFinalTitle
                                 : 3,
-                        })
+                        }).catch(err => Sentry.captureException(err, { tags: { subsystem: "title" } }))
 
-                        // ──── BILLING: Record combined search + compose tokens ────
+                        // BILLING: Record combined search + compose tokens
                         const combinedInputTokens = result.usage?.inputTokens ?? 0
                         const combinedOutputTokens = result.usage?.outputTokens ?? 0
                         if (combinedInputTokens > 0 || combinedOutputTokens > 0) {
-                            await recordUsageAfterOperation({
+                            void recordUsageAfterOperation({
                                 userId: billingContext.userId,
                                 conversationId: currentConversationId as Id<"conversations">,
                                 sessionId: paperSession?._id,
@@ -2221,15 +2328,18 @@ Aturan:
                 })
             }
 
+            const primaryMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+            let capturedChoiceSpec: Spec | null = null
+
             const result = streamText({
                 model,
-                messages: fullMessagesGateway,
+                messages: primaryExactSourceRoutePlan.messages,
                 tools,
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
                 toolChoice: forcedToolChoice,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                prepareStep: deterministicSyncPrepareStep as any,
-                stopWhen: stepCountIs(maxToolSteps),
+                prepareStep: (primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
+                stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
                 onFinish: async ({ text, providerMetadata, usage }) => {
                         let sources: { url: string; title: string; publishedAt?: number | null }[] | undefined
@@ -2254,7 +2364,13 @@ Aturan:
                                 .filter(Boolean) as { url: string; title: string; publishedAt?: number | null }[]
                         }
 
-                        const normalizedText = typeof text === "string" ? text.trim() : ""
+                        const rawText = typeof text === "string" ? text.trim() : ""
+                        // Strip yaml-spec fences from persisted text — pipeYamlRender strips
+                        // them from the stream but onFinish receives raw model output
+                        const normalizedText = rawText.replace(
+                            /```yaml-spec[\s\S]*?```/g,
+                            ""
+                        ).replace(/\n{3,}/g, "\n\n").trim()
                         const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
                         const persistedContent = shouldPersistForcedSyncFallback
                             ? buildForcedSyncStatusMessage(paperSession)
@@ -2270,21 +2386,26 @@ Aturan:
                         if (persistedContent.length > 0) {
                             const persistedReasoningTrace = (() => {
                                 if (!reasoningTraceEnabled) return undefined
-                                if (primaryReasoningTraceSnapshot) return primaryReasoningTraceSnapshot
                                 if (!primaryReasoningTraceController?.enabled) return undefined
-                                primaryReasoningTraceController.finalize({
-                                    outcome: "done",
-                                    sourceCount: primaryReasoningSourceCount,
-                                })
+                                if (!primaryReasoningTraceSnapshot) {
+                                    primaryReasoningTraceController.finalize({
+                                        outcome: "done",
+                                        sourceCount: primaryReasoningSourceCount,
+                                    })
+                                }
                                 capturePrimaryReasoningSnapshot()
                                 return primaryReasoningTraceSnapshot
                             })()
+
+
 
                             await saveAssistantMessage(
                                 persistedContent,
                                 normalizedText.length > 0 ? sources : undefined,
                                 modelNames.primary.model,
-                                persistedReasoningTrace
+                                persistedReasoningTrace,
+                                capturedChoiceSpec && capturedChoiceSpec.root ? capturedChoiceSpec : undefined,
+                                primaryMessageId
                             )
                         }
 
@@ -2339,7 +2460,7 @@ Aturan:
             })
 
             {
-                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                const messageId = primaryMessageId
                 const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
                 const reasoningTrace = createCuratedTraceController({
                     enabled: reasoningTraceEnabled,
@@ -2347,6 +2468,7 @@ Aturan:
                     mode: getTraceModeLabel(!!paperModePrompt, false),
                     stage: currentStage && currentStage !== "completed" ? currentStage : undefined,
                     webSearchEnabled: false,
+                    startedAt: requestStartedAt,
                 })
                 primaryReasoningTraceController = reasoningTrace
 
@@ -2371,6 +2493,21 @@ Aturan:
                             }
                         }
 
+                        const emitDurationPart = () => {
+                            if (!reasoningTrace.enabled) return
+                            const snapshot = reasoningTrace.getPersistedSnapshot()
+                            if (typeof snapshot.durationSeconds !== "number" || !Number.isFinite(snapshot.durationSeconds)) return
+                            ensureStart()
+                            writer.write({
+                                type: "data-reasoning-duration",
+                                id: `${traceId}-duration`,
+                                data: {
+                                    traceId,
+                                    seconds: snapshot.durationSeconds,
+                                },
+                            })
+                        }
+
                         const reasoningAccumulator = createReasoningAccumulator({
                             traceId,
                             writer,
@@ -2380,11 +2517,48 @@ Aturan:
 
                         emitTrace(reasoningTrace.initialEvents)
 
-                        for await (const chunk of result.toUIMessageStream({
+                        const uiStream = result.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
                             sendReasoning: isTransparentReasoning,
-                        })) {
+                        })
+                        const yamlTransformedStream = isDraftingStage
+                            ? pipeYamlRender(uiStream)
+                            : uiStream
+
+                        // ReadableStream from pipeYamlRender may not have [Symbol.asyncIterator]
+                        // in all runtimes, so use a reader-based async generator
+                        async function* iterateStream<T>(stream: ReadableStream<T>): AsyncGenerator<T> {
+                            const reader = stream.getReader()
+                            try {
+                                while (true) {
+                                    const { done, value } = await reader.read()
+                                    if (done) break
+                                    yield value
+                                }
+                            } finally {
+                                reader.releaseLock()
+                            }
+                        }
+
+                        for await (const chunk of iterateStream(yamlTransformedStream)) {
+                            // Capture data-spec parts emitted by pipeYamlRender for DB persistence
+                            if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
+                                try {
+                                    const data = (chunk as { data?: { type?: string; patch?: JsonPatch; spec?: Spec } }).data
+                                    if (data?.type === "patch" && data.patch) {
+                                        // Accumulate patches into a running spec
+                                        if (!capturedChoiceSpec) {
+                                            capturedChoiceSpec = { root: "", elements: {} } as Spec
+                                        }
+                                        applySpecPatch(capturedChoiceSpec, data.patch)
+                                    } else if (data?.type === "flat" && data.spec) {
+                                        // If a flat spec is emitted, use it directly
+                                        capturedChoiceSpec = data.spec
+                                    }
+                                } catch { /* spec capture error — non-critical */ }
+                            }
+
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
                                 if (chunk.type === "reasoning-delta") {
                                     reasoningAccumulator.onReasoningDelta(
@@ -2409,6 +2583,11 @@ Aturan:
 
 
                             if (chunk.type === "finish") {
+                                // Log captured YAML spec for persistence
+                                if (capturedChoiceSpec && capturedChoiceSpec.root) {
+                                    console.info(`[CHOICE-CARD][yaml-capture] primary stage=${paperStageScope} specKeys=${Object.keys(capturedChoiceSpec).join(",")}`)
+                                }
+
                                 if (reasoningAccumulator.hasReasoning()) {
                                     emitTrace(reasoningTrace.populateFromReasoning(
                                         reasoningAccumulator.getFullReasoning()
@@ -2418,6 +2597,7 @@ Aturan:
                                     outcome: "done",
                                     sourceCount,
                                 }))
+                                emitDurationPart()
                                 writer.write(chunk)
                                 break
                             }
@@ -2428,6 +2608,7 @@ Aturan:
                                     sourceCount,
                                     errorNote: "primary-stream-error",
                                 }))
+                                emitDurationPart()
                                 writer.write(chunk)
                                 break
                             }
@@ -2437,6 +2618,7 @@ Aturan:
                                     outcome: "stopped",
                                     sourceCount,
                                 }))
+                                emitDurationPart()
                                 writer.write(chunk)
                                 break
                             }
@@ -2495,6 +2677,7 @@ Aturan:
                 let fallbackReasoningTraceController: ReturnType<typeof createCuratedTraceController> | null = null
                 let fallbackReasoningTraceSnapshot: PersistedCuratedTraceSnapshot | undefined
                 let fallbackReasoningSourceCount = 0
+                let fallbackCapturedChoiceSpec: Spec | null = null
                 const captureFallbackReasoningSnapshot = () => {
                     if (!fallbackReasoningTraceController?.enabled) return
                     fallbackReasoningTraceSnapshot = fallbackReasoningTraceController.getPersistedSnapshot()
@@ -2524,24 +2707,48 @@ Aturan:
                         return undefined
                     }
                     : undefined
+                const shouldApplyFallbackDeterministicExactSourceRouting =
+                    !enableWebSearch &&
+                    !shouldForceGetCurrentPaperState &&
+                    !shouldForceSubmitValidation &&
+                    availableExactSources.length > 0
+                const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                const fallbackBaseMessages = missingArtifactNote
+                    ? [
+                        fullMessagesBase[0],
+                        { role: "system" as const, content: missingArtifactNote },
+                        ...fullMessagesBase.slice(1),
+                    ]
+                    : fullMessagesBase
+                const fallbackExactSourceRoutePlan = shouldApplyFallbackDeterministicExactSourceRouting
+                    ? buildDeterministicExactSourcePrepareStep({
+                        messages: fallbackBaseMessages as Array<{ role: "system" | "user" | "assistant"; content: string }>,
+                        resolution: exactSourceResolution,
+                    })
+                    : {
+                        messages: fallbackBaseMessages,
+                        prepareStep: undefined,
+                        maxToolSteps: undefined as number | undefined,
+                    }
+
                 const result = streamText({
                     model: fallbackModel,
-                    messages: missingArtifactNote
-                        ? [
-                            fullMessagesBase[0],
-                            { role: "system" as const, content: missingArtifactNote },
-                            ...fullMessagesBase.slice(1),
-                        ]
-                        : fullMessagesBase,
+                    messages: fallbackExactSourceRoutePlan.messages,
                     tools,
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    prepareStep: fallbackDeterministicSyncPrepareStep as any,
-                    stopWhen: stepCountIs(fallbackMaxToolSteps),
+                    prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
+                    stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {
-                        const normalizedText = typeof text === "string" ? text.trim() : ""
+                        const rawText = typeof text === "string" ? text.trim() : ""
+                        // Strip yaml-spec fences from persisted text — pipeYamlRender strips
+                        // them from the stream but onFinish receives raw model output
+                        const normalizedText = rawText.replace(
+                            /```yaml-spec[\s\S]*?```/g,
+                            ""
+                        ).replace(/\n{3,}/g, "\n\n").trim()
                         const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
                         const persistedContent = shouldPersistForcedSyncFallback
                             ? buildForcedSyncStatusMessage(paperSession)
@@ -2550,12 +2757,13 @@ Aturan:
                         if (persistedContent.length > 0) {
                             const persistedReasoningTrace = (() => {
                                 if (!reasoningTraceEnabled) return undefined
-                                if (fallbackReasoningTraceSnapshot) return fallbackReasoningTraceSnapshot
                                 if (!fallbackReasoningTraceController?.enabled) return undefined
-                                fallbackReasoningTraceController.finalize({
-                                    outcome: "done",
-                                    sourceCount: fallbackReasoningSourceCount,
-                                })
+                                if (!fallbackReasoningTraceSnapshot) {
+                                    fallbackReasoningTraceController.finalize({
+                                        outcome: "done",
+                                        sourceCount: fallbackReasoningSourceCount,
+                                    })
+                                }
                                 captureFallbackReasoningSnapshot()
                                 return fallbackReasoningTraceSnapshot
                             })()
@@ -2564,7 +2772,9 @@ Aturan:
                                 persistedContent,
                                 undefined,
                                 modelNames.fallback.model,
-                                persistedReasoningTrace
+                                persistedReasoningTrace,
+                                fallbackCapturedChoiceSpec && fallbackCapturedChoiceSpec.root ? fallbackCapturedChoiceSpec : undefined,
+                                fallbackMessageId
                             )
                         }
                         if (normalizedText.length > 0) {
@@ -2616,7 +2826,7 @@ Aturan:
                         // ═════════════════════════════════════════════════
                     },
                 })
-                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                const messageId = fallbackMessageId
                 const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
                 const reasoningTrace = createCuratedTraceController({
                     enabled: reasoningTraceEnabled,
@@ -2626,6 +2836,7 @@ Aturan:
                         ? paperSession.currentStage
                         : undefined,
                     webSearchEnabled: false,
+                    startedAt: requestStartedAt,
                 })
                 fallbackReasoningTraceController = reasoningTrace
 
@@ -2650,6 +2861,21 @@ Aturan:
                             }
                         }
 
+                        const emitDurationPart = () => {
+                            if (!reasoningTrace.enabled) return
+                            const snapshot = reasoningTrace.getPersistedSnapshot()
+                            if (typeof snapshot.durationSeconds !== "number" || !Number.isFinite(snapshot.durationSeconds)) return
+                            ensureStart()
+                            writer.write({
+                                type: "data-reasoning-duration",
+                                id: `${traceId}-duration`,
+                                data: {
+                                    traceId,
+                                    seconds: snapshot.durationSeconds,
+                                },
+                            })
+                        }
+
                         const fallbackTransparent = isTransparentReasoning && reasoningSettings.fallback.supported
                         const reasoningAccumulator = createReasoningAccumulator({
                             traceId,
@@ -2660,11 +2886,45 @@ Aturan:
 
                         emitTrace(reasoningTrace.initialEvents)
 
-                        for await (const chunk of result.toUIMessageStream({
+                        const fallbackUiStream = result.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
                             sendReasoning: fallbackTransparent,
-                        })) {
+                        })
+                        const fallbackYamlStream = isDraftingStage
+                            ? pipeYamlRender(fallbackUiStream)
+                            : fallbackUiStream
+
+                        // ReadableStream from pipeYamlRender may not have [Symbol.asyncIterator]
+                        async function* iterateFallbackStream<T>(stream: ReadableStream<T>): AsyncGenerator<T> {
+                            const reader = stream.getReader()
+                            try {
+                                while (true) {
+                                    const { done, value } = await reader.read()
+                                    if (done) break
+                                    yield value
+                                }
+                            } finally {
+                                reader.releaseLock()
+                            }
+                        }
+
+                        for await (const chunk of iterateFallbackStream(fallbackYamlStream)) {
+                            // Capture data-spec parts emitted by pipeYamlRender for DB persistence
+                            if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
+                                try {
+                                    const data = (chunk as { data?: { type?: string; patch?: JsonPatch; spec?: Spec } }).data
+                                    if (data?.type === "patch" && data.patch) {
+                                        if (!fallbackCapturedChoiceSpec) {
+                                            fallbackCapturedChoiceSpec = { root: "", elements: {} } as Spec
+                                        }
+                                        applySpecPatch(fallbackCapturedChoiceSpec, data.patch)
+                                    } else if (data?.type === "flat" && data.spec) {
+                                        fallbackCapturedChoiceSpec = data.spec
+                                    }
+                                } catch { /* spec capture error — non-critical */ }
+                            }
+
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
                                 if (chunk.type === "reasoning-delta") {
                                     reasoningAccumulator.onReasoningDelta(
@@ -2689,6 +2949,11 @@ Aturan:
 
 
                             if (chunk.type === "finish") {
+                                // Log captured YAML spec for persistence
+                                if (fallbackCapturedChoiceSpec && fallbackCapturedChoiceSpec.root) {
+                                    console.info(`[CHOICE-CARD][yaml-capture] fallback stage=${paperStageScope} specKeys=${Object.keys(fallbackCapturedChoiceSpec).join(",")}`)
+                                }
+
                                 if (reasoningAccumulator.hasReasoning()) {
                                     emitTrace(reasoningTrace.populateFromReasoning(
                                         reasoningAccumulator.getFullReasoning()
@@ -2698,6 +2963,7 @@ Aturan:
                                     outcome: "done",
                                     sourceCount,
                                 }))
+                                emitDurationPart()
                                 writer.write(chunk)
                                 break
                             }
@@ -2708,6 +2974,7 @@ Aturan:
                                     sourceCount,
                                     errorNote: "fallback-stream-error",
                                 }))
+                                emitDurationPart()
                                 writer.write(chunk)
                                 break
                             }
@@ -2717,6 +2984,7 @@ Aturan:
                                     outcome: "stopped",
                                     sourceCount,
                                 }))
+                                emitDurationPart()
                                 writer.write(chunk)
                                 break
                             }

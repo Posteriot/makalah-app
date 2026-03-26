@@ -130,6 +130,8 @@ export default defineSchema({
       model: v.optional(v.string()),
       tokens: v.optional(v.number()),
       finishReason: v.optional(v.string()),
+      uiMessageId: v.optional(v.string()),
+      // Legacy V1 interaction data (backward compat for existing documents)
       interaction: v.optional(v.any()),
     })),
     sources: v.optional(v.array(v.object({
@@ -143,6 +145,8 @@ export default defineSchema({
       headline: v.string(),
       traceMode: v.union(v.literal("curated"), v.literal("transparent")),
       completedAt: v.number(),
+      durationSeconds: v.optional(v.number()),
+      rawReasoning: v.optional(v.string()),
       steps: v.array(v.object({
         stepKey: v.string(),
         label: v.string(),
@@ -165,6 +169,12 @@ export default defineSchema({
         })),
       })),
     })),
+    // Json Renderer V2: persisted choice card payload (JSON string)
+    jsonRendererChoice: v.optional(v.string()),
+    // Legacy V1: persisted recommendation payload (backward compat)
+    jsonRendererRecommendation: v.optional(v.string()),
+    // UI message ID for history rehydration
+    uiMessageId: v.optional(v.string()),
   })
     .index("by_conversation", ["conversationId", "createdAt"])
     .index("by_conversation_role", ["conversationId", "role", "createdAt"]),
@@ -220,6 +230,31 @@ export default defineSchema({
       dimensions: 768,
       filterFields: ["conversationId", "sourceType", "sourceId"],
     }),
+
+  sourceDocuments: defineTable({
+    conversationId: v.id("conversations"),
+    sourceId: v.string(),
+    originalUrl: v.string(),
+    resolvedUrl: v.string(),
+    title: v.optional(v.string()),
+    author: v.optional(v.string()),
+    publishedAt: v.optional(v.string()),
+    siteName: v.optional(v.string()),
+    documentKind: v.optional(v.union(
+      v.literal("html"),
+      v.literal("pdf"),
+      v.literal("unknown"),
+    )),
+    paragraphs: v.array(v.object({
+      index: v.number(),
+      text: v.string(),
+    })),
+    documentText: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_conversation", ["conversationId", "createdAt"])
+    .index("by_source", ["conversationId", "sourceId"]),
 
   // Style Constitutions for Refrasa tool (admin-managed)
   // Two-layer architecture: Layer 1 (Naturalness) and Layer 2 (Style) both editable via this table

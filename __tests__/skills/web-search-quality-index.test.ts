@@ -74,6 +74,23 @@ describe("web-search-quality skill", () => {
     expect(result).toContain("Kompas")
   })
 
+  it("includes exact-source inspection and narrative guardrails in instructions", () => {
+    const result = webSearchQualitySkill.getInstructions({
+      isPaperMode: false,
+      currentStage: null,
+      hasRecentSources: true,
+      availableSources: [{ url: "https://example.com/article", title: "Test" }],
+    })
+
+    expect(result).not.toBeNull()
+    expect(result).toContain("VERBATIM QUOTING TOOLS")
+    expect(result).toContain("inspectSourceDocument")
+    expect(result).toContain("quoteFromSource")
+    expect(result).toContain("exact title, exact author, exact published date, exact paragraph number, verbatim quote from a known source")
+    expect(result).toContain("does NOT require exact paragraph numbering or exact metadata")
+    expect(result).toContain("Never mention internal tools, RAG, retrieval, fetch pipelines, available web sources, or search tool names to the user")
+  })
+
   it("includes PRIORITY SOURCES section in paper mode instructions", () => {
     const result = webSearchQualitySkill.getInstructions({
       isPaperMode: true,
