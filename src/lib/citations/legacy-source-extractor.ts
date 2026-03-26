@@ -1,24 +1,84 @@
+import { normalizeHttpishUrlCandidate } from "./url-validation"
+
 export type LegacyExtractedSource = {
   url: string
   title: string
 }
 
-const BARE_URL_REGEX = /\bhttps?:\/\/[^\s<>()\[\]{}"']+/gi
-const DOMAIN_REGEX = /\b(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+){1,}(?:\/[^\s<>()\[\]{}"']*)?\b/gi
+const WHITESPACE_CHARS = new Set([" ", "\n", "\r", "\t"])
+const LEADING_WRAPPER_CHARS = new Set(["(", "[", "{", "<", "\"", "'", "`"])
+const TRAILING_WRAPPER_CHARS = new Set([")", "]", "}", ">", "\"", "'", "`", ".", ",", ";", ":", "!", "?", "؟"])
 
-const normalizeCandidateUrl = (raw: string): string | null => {
-  const trimmed = raw.trim().replace(/[.,;:!?]+$/g, "")
-  if (!trimmed) return null
-  const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+function tokenizeByWhitespace(text: string): string[] {
+  const tokens: string[] = []
+  let start = -1
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index]
+    if (WHITESPACE_CHARS.has(char)) {
+      if (start >= 0) {
+        tokens.push(text.slice(start, index))
+        start = -1
+      }
+      continue
+    }
+
+    if (start < 0) start = index
+  }
+
+  if (start >= 0) {
+    tokens.push(text.slice(start))
+  }
+
+  return tokens
+}
+
+function trimCandidateWrappers(raw: string): string {
+  let start = 0
+  let end = raw.length
+
+  while (start < end && LEADING_WRAPPER_CHARS.has(raw[start])) {
+    start += 1
+  }
+
+  while (end > start && TRAILING_WRAPPER_CHARS.has(raw[end - 1])) {
+    end -= 1
+  }
+
+  return raw.slice(start, end).trim()
+}
+
+function hasHttpScheme(value: string): boolean {
+  const lower = value.toLowerCase()
+  return lower.startsWith("http://") || lower.startsWith("https://")
+}
+
+function isAsciiAlpha(value: string): boolean {
+  if (!value) return false
+  for (const char of value) {
+    const lower = char.toLowerCase()
+    if (lower < "a" || lower > "z") return false
+  }
+  return true
+}
+
+function shouldRejectAmbiguousBareDomainCandidate(rawCandidate: string, normalizedUrl: string): boolean {
+  const trimmed = rawCandidate.trim().toLowerCase()
+  if (!trimmed || hasHttpScheme(trimmed) || trimmed.startsWith("www.")) return false
+  if (trimmed.includes("/") || trimmed.includes("?") || trimmed.includes("#")) return false
 
   try {
-    const parsed = new URL(candidate)
-    if (!["http:", "https:"].includes(parsed.protocol)) return null
-    if (!parsed.hostname.includes(".")) return null
-    parsed.hash = ""
-    return parsed.toString()
+    const parsed = new URL(normalizedUrl)
+    const labels = parsed.hostname.toLowerCase().split(".")
+    if (labels.length !== 2) return false
+
+    const [firstLabel, tld] = labels
+    if (!isAsciiAlpha(firstLabel) || !isAsciiAlpha(tld)) return false
+    if (firstLabel.length > 2 || tld.length > 3) return false
+
+    return true
   } catch {
-    return null
+    return false
   }
 }
 
@@ -26,7 +86,7 @@ const canonicalSourceKey = (url: string) => {
   try {
     const parsed = new URL(url)
     parsed.searchParams.forEach((_value, key) => {
-      if (/^utm_/i.test(key)) parsed.searchParams.delete(key)
+      if (key.toLowerCase().startsWith("utm_")) parsed.searchParams.delete(key)
     })
     const out = parsed.toString()
     return out.endsWith("/") ? out.slice(0, -1) : out
@@ -38,7 +98,8 @@ const canonicalSourceKey = (url: string) => {
 const displayTitleFromUrl = (url: string) => {
   try {
     const parsed = new URL(url)
-    return parsed.hostname.replace(/^www\./i, "")
+    const hostname = parsed.hostname
+    return hostname.toLowerCase().startsWith("www.") ? hostname.slice(4) : hostname
   } catch {
     return url
   }
@@ -47,15 +108,17 @@ const displayTitleFromUrl = (url: string) => {
 export function extractLegacySourcesFromText(text: string): LegacyExtractedSource[] {
   if (!text || !text.trim()) return []
 
-  const matches = [
-    ...Array.from(text.matchAll(BARE_URL_REGEX), (match) => match[0]),
-    ...Array.from(text.matchAll(DOMAIN_REGEX), (match) => match[0]),
-  ]
-
   const deduped = new Map<string, LegacyExtractedSource>()
-  for (const match of matches) {
-    const normalized = normalizeCandidateUrl(match)
+  const candidates = tokenizeByWhitespace(text)
+
+  for (const candidate of candidates) {
+    const trimmedCandidate = trimCandidateWrappers(candidate)
+    if (!trimmedCandidate) continue
+
+    const normalized = normalizeHttpishUrlCandidate(trimmedCandidate)
     if (!normalized) continue
+    if (shouldRejectAmbiguousBareDomainCandidate(trimmedCandidate, normalized)) continue
+
     const key = canonicalSourceKey(normalized)
     if (deduped.has(key)) continue
     deduped.set(key, {
@@ -66,4 +129,3 @@ export function extractLegacySourcesFromText(text: string): LegacyExtractedSourc
 
   return Array.from(deduped.values())
 }
-
