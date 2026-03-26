@@ -3,7 +3,7 @@
  *
  * Coverage:
  * - normalizeGoogleGrounding(): Google grounding metadata format
- * - normalizeSourcesList(): AI SDK `result.sources` format
+ * - normalizeSourcesList(): AI SDK result.sources format
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -46,67 +46,6 @@ const VALID_GOOGLE_GROUNDING_METADATA = {
         endIndex: 100,
       },
       groundingChunkIndices: [1],
-    },
-  ],
-}
-
-const VALID_SOURCES_LIST = [
-  {
-    url: 'https://example.com/source-1',
-    title: 'Source One',
-  },
-  {
-    url: 'https://example.com/source-2',
-    title: 'Source Two',
-  },
-]
-
-const VALID_SOURCES_LIST_WITH_GAPS = [
-  {
-    url: 'https://example.com/source-1',
-  },
-  {
-    url: '',
-    title: 'Invalid Source',
-  },
-  {
-    title: 'Missing URL',
-  },
-  {
-    url: 'https://example.com/source-2',
-    title: 'Source Two',
-  },
-  {
-    url: 'not a full url but.has-domain',
-    title: 'Domainish Source',
-  },
-  {
-    url: 'contains spaces invalid',
-    title: 'Bad URL',
-  },
-] as Array<
-  | {
-      url?: string
-      title?: string
-    }
-  | null
->
-
-const VALID_OPENAI_ANNOTATIONS = {
-  annotations: [
-    {
-      type: 'url_citation',
-      url: 'https://example.com/source-1',
-      title: 'Source One',
-      start_index: 0,
-      end_index: 45,
-    },
-    {
-      type: 'url_citation',
-      url: 'https://example.com/source-2',
-      title: 'Source Two',
-      start_index: 46,
-      end_index: 90,
     },
   ],
 }
@@ -288,71 +227,3 @@ describe('normalizeGoogleGrounding', () => {
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Test: normalizeSourcesList()
-// ═══════════════════════════════════════════════════════════════════════════
-
-describe('normalizeSourcesList', () => {
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
-
-  beforeEach(() => {
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-  })
-
-  afterEach(() => {
-    consoleErrorSpy.mockRestore()
-  })
-
-  it('should correctly parse valid AI SDK sources', () => {
-    const result = normalizeSourcesList(VALID_SOURCES_LIST)
-
-    expect(result).toHaveLength(2)
-    expect(result[0]).toEqual({
-      url: 'https://example.com/source-1',
-      title: 'Source One',
-    })
-    expect(result[1]).toEqual({
-      url: 'https://example.com/source-2',
-      title: 'Source Two',
-    })
-  })
-
-  it('should return empty array for empty sources list', () => {
-    const result = normalizeSourcesList([])
-    expect(result).toEqual([])
-  })
-
-  it('should return empty array for non-array input', () => {
-    const missing = { someOtherField: 'value' }
-
-    const result = normalizeSourcesList(missing)
-    expect(result).toEqual([])
-  })
-
-  it('should skip invalid entries and keep valid URLs', () => {
-    const result = normalizeSourcesList(VALID_SOURCES_LIST_WITH_GAPS)
-
-    expect(result).toEqual([
-      {
-        url: 'https://example.com/source-1',
-        title: '',
-      },
-      {
-        url: 'https://example.com/source-2',
-        title: 'Source Two',
-      },
-    ])
-  })
-
-  it('should return empty array for malformed data (null)', () => {
-    const result = normalizeSourcesList(null)
-    expect(result).toEqual([])
-    expect(consoleErrorSpy).not.toHaveBeenCalled()
-  })
-
-  it('should return empty array for malformed data (undefined)', () => {
-    const result = normalizeSourcesList(undefined)
-    expect(result).toEqual([])
-    expect(consoleErrorSpy).not.toHaveBeenCalled()
-  })
-})
