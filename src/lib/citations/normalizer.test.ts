@@ -191,6 +191,18 @@ describe('normalizeGoogleGrounding', () => {
     expect(result[0].url).toBe('https://valid.com')
   })
 
+  it('should reject n.d pseudo-domain in grounding chunks', () => {
+    const invalidNd = {
+      groundingChunks: [
+        { web: { uri: 'n.d', title: 'n.d' } },
+      ],
+      groundingSupports: [],
+    }
+
+    const result = normalizeGoogleGrounding(invalidNd)
+    expect(result).toEqual([])
+  })
+
   it('should use URL as title when title is missing', () => {
     const noTitle = {
       groundingChunks: [
@@ -227,3 +239,9 @@ describe('normalizeGoogleGrounding', () => {
   })
 })
 
+describe('normalizeSourcesList', () => {
+  it('should reject n.d pseudo-domain from AI SDK sources', () => {
+    const result = normalizeSourcesList([{ url: 'n.d', title: 'n.d' }])
+    expect(result).toEqual([])
+  })
+})

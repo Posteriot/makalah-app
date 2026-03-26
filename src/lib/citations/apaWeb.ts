@@ -1,3 +1,5 @@
+import { normalizeHttpishUrlCandidate } from './url-validation'
+
 export interface WebSource {
   url: string
   title?: string | null
@@ -28,15 +30,13 @@ const ID_MULTI_TLDS = [
 function tryParseAbsoluteUrl(input: string): URL | null {
   const trimmed = input.trim()
   if (!trimmed) return null
+  const normalizedCandidate = normalizeHttpishUrlCandidate(trimmed)
+  if (!normalizedCandidate) return null
 
   try {
-    return new URL(trimmed)
+    return new URL(normalizedCandidate)
   } catch {
-    try {
-      return new URL(`https://${trimmed}`)
-    } catch {
-      return null
-    }
+    return null
   }
 }
 
