@@ -640,7 +640,7 @@ async function fetchAndParse(
         paragraphs,
         documentText,
       }
-    } catch (error) {
+    } catch (_error) {
       if (controller.signal.aborted) {
         const failure = makeFetchFailure(url, routeKind, "timeout")
         logPrimaryOutcome({

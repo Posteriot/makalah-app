@@ -23,7 +23,11 @@ import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-
 import { extractLegacySourcesFromText } from "@/lib/citations/legacy-source-extractor"
 import { splitInternalThought } from "@/lib/ai/internal-thought-separator"
 import { JsonRendererChoiceBlock } from "./json-renderer/JsonRendererChoiceBlock"
-import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
+import {
+    choiceSpecSchema,
+    type JsonRendererChoiceRenderPayload,
+    type JsonRendererChoiceSpec,
+} from "@/lib/json-render/choice-payload"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 
@@ -84,9 +88,41 @@ type ChatSource = {
 }
 
 type ReferenceInventoryPayload = {
-    responseMode?: "synthesis"
+    responseMode?: "synthesis" | "reference_inventory" | "mixed"
     introText?: string
     items?: ChatSource[]
+}
+
+function getReferenceInventoryStatusLabel(source: ChatSource): string {
+    if (typeof source.url === "string" && source.url.trim().length > 0) {
+        return source.verificationStatus === "verified_content"
+            ? "Terverifikasi"
+            : "Tautan belum diverifikasi"
+    }
+
+    return "URL tidak tersedia"
+}
+
+function buildReferenceInventoryQuickActionsContent(params: {
+    introText: string
+    items: ChatSource[]
+}): string {
+    const introLine = params.introText.trim()
+    const itemLines = params.items.map((item, index) => {
+        const lines = [
+            `${index + 1}. ${item.title}`,
+            `URL: ${typeof item.url === "string" && item.url.trim().length > 0 ? item.url : "Tidak tersedia"}`,
+            `Status: ${getReferenceInventoryStatusLabel(item)}`,
+        ]
+
+        if (typeof item.note === "string" && item.note.trim().length > 0) {
+            lines.push(`Catatan: ${item.note.trim()}`)
+        }
+
+        return lines.join("\n")
+    })
+
+    return [introLine, ...itemLines].filter((line) => line.trim().length > 0).join("\n\n").trim()
 }
 
 interface MessageBubbleProps {
@@ -123,7 +159,7 @@ interface MessageBubbleProps {
     onChoiceSubmit?: (params: {
         sourceMessageId: string
         choicePartId: string
-        payload: JsonRendererChoicePayload
+        payload: JsonRendererChoiceRenderPayload
         selectedOptionId: string
         customText?: string
     }) => void | Promise<void>
@@ -416,7 +452,12 @@ export function MessageBubble({
             if (maybeDataPart.type !== "data-reference-inventory") continue
             const data = maybeDataPart.data as ReferenceInventoryPayload | null
             if (!data || typeof data !== "object") continue
-            if (data.responseMode !== "synthesis") {
+            if (
+                data.responseMode !== undefined &&
+                data.responseMode !== "synthesis" &&
+                data.responseMode !== "reference_inventory" &&
+                data.responseMode !== "mixed"
+            ) {
                 continue
             }
             if (!Array.isArray(data.items)) return null
@@ -477,7 +518,7 @@ export function MessageBubble({
         return null
     }
 
-    const extractChoiceSpec = (uiMessage: UIMessage): Spec | null => {
+    const extractChoiceSpec = (uiMessage: UIMessage): JsonRendererChoiceSpec | null => {
         let spec: Spec | null = null
         for (const part of uiMessage.parts ?? []) {
             if (!part || typeof part !== "object") continue
@@ -497,24 +538,33 @@ export function MessageBubble({
                 }
             }
         }
-        // Only return spec if fully formed and safe to render
+
         if (!spec) return null
-        const s = spec as unknown as Record<string, unknown>
-        if (!s.root || typeof s.root !== "string") return null
-        const elements = s.elements as Record<string, Record<string, unknown>> | undefined
-        if (!elements || typeof elements !== "object") return null
-        // Root element must exist
-        if (!elements[s.root]) return null
-        // ALL elements must have valid props object (prevents resolveBindings crash on null/undefined)
-        for (const el of Object.values(elements)) {
-            if (!el || typeof el !== "object" || !el.props || typeof el.props !== "object") return null
-        }
-        return spec
+
+        const parsedSpec = choiceSpecSchema.safeParse(spec)
+        return parsedSpec.success ? (spec as JsonRendererChoiceSpec) : null
     }
 
     const searchStatus = extractSearchStatus(message)
     const citedText = extractCitedText(message)
     const choiceSpec = extractChoiceSpec(message)
+    const choiceBlockPayload = useMemo<JsonRendererChoiceRenderPayload | null>(() => {
+        if (!choiceSpec) return null
+
+        const specWithState = choiceSpec as JsonRendererChoiceSpec & {
+            state?: JsonRendererChoiceRenderPayload["initialState"]
+        }
+
+        return {
+            spec: choiceSpec,
+            initialState: specWithState.state ?? {
+                selection: {
+                    selectedOptionId: null,
+                    customText: "",
+                },
+            },
+        }
+    }, [choiceSpec])
 
     const startEditing = () => {
         setIsEditing(true)
@@ -779,8 +829,26 @@ export function MessageBubble({
             anchors: [],
         })
     })()
-    const displayMarkdown = normalizedLegacyCitedText ?? publicDisplayText
-    const quickActionsContent = displayMarkdown || content
+    const referenceInventoryIntroText = (() => {
+        if (!referenceInventory) return null
+        if (typeof referenceInventory.introText === "string" && referenceInventory.introText.trim().length > 0) {
+            return referenceInventory.introText.trim()
+        }
+        if (citedText && citedText.trim().length > 0) {
+            return citedText.trim()
+        }
+        return "Berikut inventaris referensi yang ditemukan."
+    })()
+    const displayMarkdown = referenceInventoryIntroText ?? normalizedLegacyCitedText ?? publicDisplayText
+    const referenceInventoryItems = Array.isArray(referenceInventory?.items)
+        ? referenceInventory.items
+        : null
+    const quickActionsContent = referenceInventoryItems && referenceInventoryItems.length > 0 && referenceInventoryIntroText
+        ? buildReferenceInventoryQuickActionsContent({
+            introText: referenceInventoryIntroText,
+            items: referenceInventoryItems,
+        })
+        : (displayMarkdown || content)
 
     // Get timestamp from allMessages if available
 
@@ -1048,12 +1116,39 @@ export function MessageBubble({
                     ) : (
                         <div className="space-y-3">
                             {displayMarkdown.trim().length > 0 && (
-                                <MarkdownRenderer
-                                    markdown={displayMarkdown}
-                                    className="space-y-2 text-sm leading-relaxed text-[var(--chat-foreground)]"
-                                    sources={sourcesWithUrls}
-                                    context="chat"
-                                />
+                                <div data-testid={referenceInventoryIntroText ? "reference-inventory-body" : undefined}>
+                                    <MarkdownRenderer
+                                        markdown={displayMarkdown}
+                                        className="space-y-2 text-sm leading-relaxed text-[var(--chat-foreground)]"
+                                        sources={sourcesWithUrls}
+                                        context="chat"
+                                    />
+                                </div>
+                            )}
+                            {referenceInventoryItems && referenceInventoryItems.length > 0 && (
+                                <div className="space-y-2" aria-label="Inventaris referensi">
+                                    {referenceInventoryItems.map((item, index) => (
+                                        <div
+                                            key={item.sourceId ?? `${item.title}-${index}`}
+                                            className="rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-card)] px-3 py-2.5"
+                                        >
+                                            <div className="text-sm font-medium text-[var(--chat-foreground)]">
+                                                {item.title}
+                                            </div>
+                                            <div className="mt-1 space-y-1 text-xs font-mono text-[var(--chat-muted-foreground)]">
+                                                {typeof item.url === "string" && item.url.trim().length > 0 ? (
+                                                    <div>{item.url}</div>
+                                                ) : (
+                                                    <div>URL tidak tersedia</div>
+                                                )}
+                                                <div>{getReferenceInventoryStatusLabel(item)}</div>
+                                                {typeof item.note === "string" && item.note.trim().length > 0 && (
+                                                    <div>{item.note.trim()}</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             )}
                             {isAssistant && internalThoughtContent.trim().length > 0 && (
                                 <div
@@ -1092,12 +1187,9 @@ export function MessageBubble({
                                 </section>
                             )}
 
-                            {choiceSpec && (
+                            {choiceSpec && choiceBlockPayload && (
                                 <JsonRendererChoiceBlock
-                                    payload={{
-                                        spec: choiceSpec,
-                                        initialState: (choiceSpec as any).state ?? { selection: { selectedOptionId: null, customText: "" } },
-                                    } as any}
+                                    payload={choiceBlockPayload}
                                     isSubmitted={isChoiceSubmitted}
                                     onSubmit={
                                         onChoiceSubmit
@@ -1105,7 +1197,7 @@ export function MessageBubble({
                                                   await onChoiceSubmit?.({
                                                       sourceMessageId: message.id,
                                                       choicePartId: `${message.id}-choice-spec`,
-                                                      payload: { spec: choiceSpec } as any,
+                                                      payload: choiceBlockPayload,
                                                       selectedOptionId,
                                                       customText,
                                                   })

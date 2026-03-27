@@ -40,10 +40,6 @@ interface ChatContainerProps {
  */
 export function ChatContainer({ conversationId }: ChatContainerProps) {
   const containerRenderCount = useRef(0)
-  containerRenderCount.current++
-  if (process.env.NODE_ENV !== "production") {
-    console.info(`[CONTAINER] render #${containerRenderCount.current} conversationId=${conversationId ?? "null"}`)
-  }
   const { user } = useCurrentUser()
   const { data: session, isPending: isSessionPending } = useSession()
   const searchParams = useSearchParams()
@@ -92,6 +88,13 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
       : "skip"
   )
   const artifactCount = artifacts?.length ?? 0
+
+  useEffect(() => {
+    containerRenderCount.current += 1
+    if (process.env.NODE_ENV !== "production") {
+      console.info(`[CONTAINER] render #${containerRenderCount.current} conversationId=${conversationId ?? "null"}`)
+    }
+  })
 
   // Sync tab titles when Convex artifact data updates (fixes stale "Loading..." titles)
   useEffect(() => {

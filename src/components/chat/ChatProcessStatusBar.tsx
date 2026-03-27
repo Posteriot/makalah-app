@@ -40,7 +40,7 @@ export function ChatProcessStatusBar({
   persistedDurationSeconds,
   reasoningSteps = [],
   reasoningHeadline,
-  reasoningTraceMode,
+  reasoningTraceMode: _reasoningTraceMode,
   isPanelOpen,
   onPanelOpenChange,
 }: ChatProcessStatusBarProps) {
