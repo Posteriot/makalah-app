@@ -31,7 +31,7 @@ import { MobileEditDeleteSheet } from "./mobile/MobileEditDeleteSheet"
 import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 import { buildChoiceInteractionEvent, buildChoiceSyntheticText } from "@/lib/chat/choice-submit"
-import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
+import type { JsonRendererChoiceRenderPayload } from "@/lib/json-render/choice-payload"
 import { SPEC_DATA_PART_TYPE } from "@json-render/core"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import {
@@ -1136,7 +1136,7 @@ export function ChatWindow({
   const handleChoiceSubmit = useCallback(async (params: {
     sourceMessageId: string
     choicePartId: string
-    payload: JsonRendererChoicePayload
+    payload: JsonRendererChoiceRenderPayload
     selectedOptionId: string
     customText?: string
   }) => {

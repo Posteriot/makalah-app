@@ -1,9 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { fetchPageContent } from "@/lib/ai/web-search/content-fetcher"
+import { fetchPageContent, type FetchedContent, type FetchRouteKind } from "@/lib/ai/web-search/content-fetcher"
+
+type FetchFailureResult = FetchedContent & {
+  failureReason?: string
+  routeKind?: FetchRouteKind
+  statusCode?: number
+  contentType?: string | null
+}
 
 describe("classifyFetchRoute", () => {
   it("classifies PDF, academic-wall, and proxy-like URLs", async () => {
-    const { classifyFetchRoute } = await import("@/lib/ai/web-search/content-fetcher") as any
+    const { classifyFetchRoute } = await import("@/lib/ai/web-search/content-fetcher") as {
+      classifyFetchRoute: (url: string) => FetchRouteKind
+    }
 
     expect(classifyFetchRoute("https://example.com/files/paper.pdf")).toBe("pdf_or_download")
     expect(classifyFetchRoute("https://arxiv.org/pdf/2507.00181")).toBe("pdf_or_download")
@@ -283,8 +292,9 @@ describe("fetchPageContent", () => {
     expect(results[0].fullContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
     expect(results[0].documentKind).toBe("unknown")
-    expect((results[0] as any).failureReason).toBe("http_non_ok")
-    expect((results[0] as any).statusCode).toBe(404)
+    const failure = results[0] as FetchFailureResult
+    expect(failure.failureReason).toBe("http_non_ok")
+    expect(failure.statusCode).toBe(404)
   })
 
   it("logs enriched requestId and route details for primary successes and failures", async () => {
@@ -348,12 +358,13 @@ describe("fetchPageContent", () => {
       throw new Error("fetch should not be called for pdf_or_download without Tavily")
     })
     const results = await fetchPageContent(["https://example.com/files/paper.pdf"])
+    const failure = results[0] as FetchFailureResult
 
     expect(results[0].pageContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
-    expect((results[0] as any).routeKind).toBe("pdf_or_download")
-    expect((results[0] as any).failureReason).toBe("pdf_unsupported")
-    expect((results[0] as any).contentType).toBeNull()
+    expect(failure.routeKind).toBe("pdf_or_download")
+    expect(failure.failureReason).toBe("pdf_unsupported")
+    expect(failure.contentType).toBeNull()
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
@@ -379,10 +390,11 @@ describe("fetchPageContent", () => {
 
     await vi.advanceTimersByTimeAsync(2100)
     const results = await pending
+    const failure = results[0] as FetchFailureResult
 
     expect(results[0].pageContent).toContain("Academic Extract")
     expect(results[0].fetchMethod).toBe("tavily")
-    expect((results[0] as any).routeKind).toBe("academic_wall_risk")
+    expect(failure.routeKind).toBe("academic_wall_risk")
     expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 
@@ -394,11 +406,12 @@ describe("fetchPageContent", () => {
 
     await vi.advanceTimersByTimeAsync(2100)
     const results = await pending
+    const failure = results[0] as FetchFailureResult
 
     expect(results[0].pageContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
-    expect((results[0] as any).routeKind).toBe("academic_wall_risk")
-    expect((results[0] as any).failureReason).toBe("timeout")
+    expect(failure.routeKind).toBe("academic_wall_risk")
+    expect(failure.failureReason).toBe("timeout")
     expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 
@@ -410,11 +423,12 @@ describe("fetchPageContent", () => {
 
     await vi.advanceTimersByTimeAsync(900)
     const results = await pending
+    const failure = results[0] as FetchFailureResult
 
     expect(results[0].pageContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
-    expect((results[0] as any).routeKind).toBe("proxy_or_redirect_like")
-    expect((results[0] as any).failureReason).toBe("timeout")
+    expect(failure.routeKind).toBe("proxy_or_redirect_like")
+    expect(failure.failureReason).toBe("timeout")
     expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 
@@ -427,11 +441,12 @@ describe("fetchPageContent", () => {
     )
 
     const results = await fetchPageContent(["https://doi.org/10.1234/example"])
+    const failure = results[0] as FetchFailureResult
 
     expect(results[0].pageContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
-    expect((results[0] as any).routeKind).toBe("proxy_or_redirect_like")
-    expect((results[0] as any).failureReason).toBe("proxy_unresolved")
+    expect(failure.routeKind).toBe("proxy_or_redirect_like")
+    expect(failure.failureReason).toBe("proxy_unresolved")
   })
 
   it("salvages proxy-like URLs that resolve to PDF through Tavily when available", async () => {
@@ -466,7 +481,8 @@ describe("fetchPageContent", () => {
     expect(results[0].fetchMethod).toBe("tavily")
     expect(results[0].documentKind).toBe("pdf")
     expect(results[0].pageContent).toContain("Proxy PDF")
-    expect((results[0] as any).failureReason).toBeUndefined()
+    const success = results[0] as FetchFailureResult
+    expect(success.failureReason).toBeUndefined()
   })
 
   it("handles multiple URLs in parallel", async () => {
@@ -526,11 +542,12 @@ describe("fetchPageContent", () => {
     )
 
     const results = await fetchPageContent(["https://slow.com"], { timeoutMs: 100 })
+    const failure = results[0] as FetchFailureResult
 
     expect(results[0].pageContent).toBeNull()
     expect(results[0].fullContent).toBeNull()
     expect(results[0].fetchMethod).toBeNull()
-    expect((results[0] as any).failureReason).toBe("timeout")
+    expect(failure.failureReason).toBe("timeout")
   })
 })
 
@@ -767,12 +784,13 @@ describe("fetchPageContent — Tavily fallback", () => {
 
     await vi.advanceTimersByTimeAsync(1000)
     const results = await pending
+    const failure = results[1] as FetchFailureResult
 
     expect(results[0].fetchMethod).toBe("tavily")
     expect(results[0].pageContent).toContain("PDF A")
     expect(extractSpy).toHaveBeenCalledTimes(2)
     expect(results[1].fetchMethod).toBeNull()
-    expect((results[1] as any).failureReason).toBe("timeout")
+    expect(failure.failureReason).toBe("timeout")
   })
 
   it("skips Tavily when no API key provided", async () => {

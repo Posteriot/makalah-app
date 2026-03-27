@@ -5,12 +5,12 @@ import { JSONUIProvider, Renderer } from "@json-render/react"
 import type { Spec } from "@json-render/core"
 import {
   cloneSpecWithReadOnlyState,
-  type JsonRendererChoicePayload,
+  type JsonRendererChoiceRenderPayload,
 } from "@/lib/json-render/choice-payload"
 import { choiceRegistry } from "./registry"
 
 interface JsonRendererChoiceBlockProps {
-  payload: JsonRendererChoicePayload
+  payload: JsonRendererChoiceRenderPayload
   isSubmitted?: boolean
   onSubmit?: (params: {
     selectedOptionId: string
