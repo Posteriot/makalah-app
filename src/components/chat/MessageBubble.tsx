@@ -23,7 +23,11 @@ import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-
 import { extractLegacySourcesFromText } from "@/lib/citations/legacy-source-extractor"
 import { splitInternalThought } from "@/lib/ai/internal-thought-separator"
 import { JsonRendererChoiceBlock } from "./json-renderer/JsonRendererChoiceBlock"
-import type { JsonRendererChoiceRenderPayload } from "@/lib/json-render/choice-payload"
+import {
+    choiceSpecSchema,
+    type JsonRendererChoiceRenderPayload,
+    type JsonRendererChoiceSpec,
+} from "@/lib/json-render/choice-payload"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 
@@ -514,7 +518,7 @@ export function MessageBubble({
         return null
     }
 
-    const extractChoiceSpec = (uiMessage: UIMessage): Spec | null => {
+    const extractChoiceSpec = (uiMessage: UIMessage): JsonRendererChoiceSpec | null => {
         let spec: Spec | null = null
         for (const part of uiMessage.parts ?? []) {
             if (!part || typeof part !== "object") continue
@@ -534,19 +538,11 @@ export function MessageBubble({
                 }
             }
         }
-        // Only return spec if fully formed and safe to render
+
         if (!spec) return null
-        const s = spec as unknown as Record<string, unknown>
-        if (!s.root || typeof s.root !== "string") return null
-        const elements = s.elements as Record<string, Record<string, unknown>> | undefined
-        if (!elements || typeof elements !== "object") return null
-        // Root element must exist
-        if (!elements[s.root]) return null
-        // ALL elements must have valid props object (prevents resolveBindings crash on null/undefined)
-        for (const el of Object.values(elements)) {
-            if (!el || typeof el !== "object" || !el.props || typeof el.props !== "object") return null
-        }
-        return spec
+
+        const parsedSpec = choiceSpecSchema.safeParse(spec)
+        return parsedSpec.success ? (spec as JsonRendererChoiceSpec) : null
     }
 
     const searchStatus = extractSearchStatus(message)
@@ -555,7 +551,7 @@ export function MessageBubble({
     const choiceBlockPayload = useMemo<JsonRendererChoiceRenderPayload | null>(() => {
         if (!choiceSpec) return null
 
-        const specWithState = choiceSpec as Spec & {
+        const specWithState = choiceSpec as JsonRendererChoiceSpec & {
             state?: JsonRendererChoiceRenderPayload["initialState"]
         }
 
@@ -844,10 +840,13 @@ export function MessageBubble({
         return "Berikut inventaris referensi yang ditemukan."
     })()
     const displayMarkdown = referenceInventoryIntroText ?? normalizedLegacyCitedText ?? publicDisplayText
-    const quickActionsContent = referenceInventory && referenceInventory.items.length > 0 && referenceInventoryIntroText
+    const referenceInventoryItems = Array.isArray(referenceInventory?.items)
+        ? referenceInventory.items
+        : null
+    const quickActionsContent = referenceInventoryItems && referenceInventoryItems.length > 0 && referenceInventoryIntroText
         ? buildReferenceInventoryQuickActionsContent({
             introText: referenceInventoryIntroText,
-            items: referenceInventory.items,
+            items: referenceInventoryItems,
         })
         : (displayMarkdown || content)
 
@@ -1126,9 +1125,9 @@ export function MessageBubble({
                                     />
                                 </div>
                             )}
-                            {referenceInventory && referenceInventory.items.length > 0 && (
+                            {referenceInventoryItems && referenceInventoryItems.length > 0 && (
                                 <div className="space-y-2" aria-label="Inventaris referensi">
-                                    {referenceInventory.items.map((item, index) => (
+                                    {referenceInventoryItems.map((item, index) => (
                                         <div
                                             key={item.sourceId ?? `${item.title}-${index}`}
                                             className="rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-card)] px-3 py-2.5"
