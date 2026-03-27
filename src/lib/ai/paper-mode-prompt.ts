@@ -1,9 +1,10 @@
 import { fetchQuery } from "convex/nextjs";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { STAGE_ORDER, getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants";
+import { STAGE_ORDER, getStageLabel, getStageNumber, type PaperStageId } from "../../../convex/paperSessions/constants";
 import { getStageInstructions, formatStageData, formatArtifactSummaries } from "./paper-stages";
 import { resolveStageInstructions } from "./stage-skill-resolver";
+import { deriveTaskList } from "@/lib/paper/task-derivation";
 
 type StageStatus = "drafting" | "pending_validation" | "approved" | "revision";
 
@@ -62,6 +63,27 @@ IMPORTANT INSTRUCTIONS:
 - These artifacts already exist but need updating because the user rewound to a previous stage
 - Ensure new content is consistent with decisions made at the rewound stage
 `;
+}
+
+/**
+ * Build plan context string for system prompt injection.
+ * Shows current stage's task progress to give the model awareness.
+ */
+function buildPlanContext(
+    currentStage: PaperStageId | "completed",
+    stageData: Record<string, unknown>
+): string {
+    if (currentStage === "completed") return "";
+    const tasks = deriveTaskList(currentStage, stageData);
+    if (!tasks.tasks.length) return "";
+
+    const lines = tasks.tasks.map(t => {
+        const icon = t.status === "complete" ? "✓" : t.status === "active" ? "→" : "·";
+        const suffix = t.status === "active" ? " (active)" : "";
+        return `  ${icon} ${t.label}${suffix}`;
+    });
+
+    return `\nCURRENT PLAN CONTEXT (internal awareness only — DO NOT reference or mention these tasks in your response to the user):\nStage: ${tasks.stageLabel} (${getStageNumber(currentStage)}/${STAGE_ORDER.length})\nTasks: ${tasks.completed}/${tasks.total} complete\n${lines.join("\n")}\n`;
 }
 
 /**
@@ -270,6 +292,8 @@ export const getPaperModeSystemPrompt = async (
             ? "\n⚠️ SYNC CONTRACT: Stage data is not yet synced. If user asks to sync or continue from state, you MUST explain that the update cannot be finalized until the user requests a revision first.\n"
             : "";
 
+        const planContext = buildPlanContext(stage, session.stageData as Record<string, unknown>);
+
         logPaperPromptLatency("paperPrompt.total", paperPromptStart, {
             hasPrompt: true,
             stage,
@@ -279,7 +303,7 @@ export const getPaperModeSystemPrompt = async (
 ---
 [PAPER WRITING MODE]
 Tahap: ${stageLabel} (${stage}) | Status: ${status}
-${revisionNote}${pendingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}
+${revisionNote}${pendingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}${planContext}
 GENERAL RULES:
 - DISCUSS FIRST before drafting — do not immediately generate full output
 - When guiding, recommending, or presenting directions to the user, write an interactive card using a yaml-spec code fence — it is your visual language alongside text. Never write options as numbered lists or bullet points when the card is available.

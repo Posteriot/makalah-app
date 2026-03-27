@@ -12,6 +12,10 @@ import Image from "next/image"
 import { Id } from "../../../convex/_generated/dataModel"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { isEditAllowed } from "@/lib/utils/paperPermissions"
+import { TaskProgress } from "./TaskProgress"
+import { ChainOfThought } from "./ChainOfThought"
+import { deriveTaskList } from "@/lib/paper/task-derivation"
+import type { PaperStageId } from "../../../convex/paperSessions/constants"
 import {
     Tooltip,
     TooltipContent,
@@ -109,6 +113,7 @@ interface MessageBubbleProps {
     currentStageStartIndex?: number
     allMessages?: PermissionMessage[]
     stageData?: Record<string, StageDataEntry>
+    currentStage?: string
     /** Persisted artifacts matched to this message (survives page refresh) */
     persistedArtifacts?: PersistedArtifact[]
     /** File name lookup map (fileId → fileName) for history messages */
@@ -139,6 +144,7 @@ export function MessageBubble({
     currentStageStartIndex = 0,
     allMessages = [],
     stageData,
+    currentStage,
     persistedArtifacts,
     fileNameMap,
     fileMetaMap,
@@ -211,6 +217,24 @@ export function MessageBubble({
             stageData,
         })
     }, [message.role, allMessages, messageIndex, isPaperMode, currentStageStartIndex, stageData])
+
+    // Derive task summary for TaskProgress (paper mode only)
+    const taskSummary = useMemo(() => {
+        if (!isPaperMode || !stageData || !currentStage || currentStage === "completed") return null
+        return deriveTaskList(currentStage as PaperStageId, stageData)
+    }, [isPaperMode, stageData, currentStage])
+
+    // Check if this is the last assistant message (only show TaskProgress on latest)
+    const isLastAssistantMessage = useMemo(() => {
+        if (!isPaperMode || !isAssistant) return false
+        // Find the last assistant message index in allMessages
+        for (let i = allMessages.length - 1; i >= 0; i--) {
+            if (allMessages[i].role === "assistant") {
+                return messageIndex === i
+            }
+        }
+        return false
+    }, [isPaperMode, isAssistant, allMessages, messageIndex])
 
     const extractArtifactSignals = (uiMessage: UIMessage): ArtifactSignal[] => {
         const signals: ArtifactSignal[] = []
@@ -919,8 +943,28 @@ export function MessageBubble({
                         return null
                     })}
 
+                    {/* Plan/Task Progress + Chain of Thought — paper mode only */}
+                    {isPaperMode && isAssistant && taskSummary && isLastAssistantMessage && (
+                        <div className="mb-3 space-y-1.5">
+                            <TaskProgress
+                                stageId={taskSummary.stageId}
+                                stageLabel={taskSummary.stageLabel}
+                                tasks={taskSummary.tasks}
+                                completed={taskSummary.completed}
+                                total={taskSummary.total}
+                            />
+                            {(searchStatus || internalThoughtContent || nonSearchTools.length > 0) && (
+                                <ChainOfThought
+                                    searchStatus={searchStatus}
+                                    internalThought={internalThoughtContent}
+                                    toolCalls={nonSearchTools}
+                                />
+                            )}
+                        </div>
+                    )}
+
                     {/* Process Indicators - fixed slot above assistant content to prevent jumping */}
-                    {shouldShowProcessIndicators && (
+                    {shouldShowProcessIndicators && !isPaperMode && (
                         <div className="mb-3 space-y-2">
                             {nonSearchTools.map((tool, index) => (
                                 <ToolStateIndicator
