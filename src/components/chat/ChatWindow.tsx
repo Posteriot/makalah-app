@@ -366,6 +366,24 @@ function extractLiveThought(uiMessage: UIMessage): string | null {
   return lastThought
 }
 
+export function extractLiveReasoningSnapshot(uiMessage: UIMessage): string | null {
+  let lastSnapshot: string | null = null
+
+  for (const part of uiMessage.parts ?? []) {
+    if (!part || typeof part !== "object") continue
+    const dataPart = part as { type?: unknown; data?: unknown }
+    if (dataPart.type !== "data-reasoning-live") continue
+    if (!dataPart.data || typeof dataPart.data !== "object") continue
+
+    const data = dataPart.data as { text?: unknown }
+    if (typeof data.text === "string" && data.text.trim()) {
+      lastSnapshot = data.text.trim()
+    }
+  }
+
+  return lastSnapshot
+}
+
 export function extractReasoningDurationSeconds(uiMessage: UIMessage): number | undefined {
   for (const part of uiMessage.parts ?? []) {
     if (!part || typeof part !== "object") continue
@@ -1433,7 +1451,9 @@ export function ChatWindow({
     const assistants = [...messages].reverse().filter((msg) => msg.role === "assistant")
     for (const assistant of assistants) {
       const steps = extractReasoningTraceSteps(assistant)
-      const liveThought = extractLiveThought(assistant)
+      const liveReasoningSnapshot = extractLiveReasoningSnapshot(assistant)
+      const legacyLiveThought = extractLiveThought(assistant)
+      const liveThought = liveReasoningSnapshot || legacyLiveThought
       const traceMode = extractReasoningTraceMode(assistant, steps, liveThought)
       const headline = liveThought || extractReasoningHeadline(assistant, steps)
       if (steps.length > 0 || headline) {

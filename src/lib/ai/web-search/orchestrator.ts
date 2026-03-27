@@ -35,11 +35,12 @@ import { pipeYamlRender } from "@json-render/yaml"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
-import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
 import {
   createCuratedTraceController,
+  type ReasoningLiveDataPart,
   type PersistedCuratedTraceSnapshot,
 } from "@/lib/ai/curated-trace"
+import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 import { ingestToRag } from "@/lib/ai/rag-ingest"
 import { isVertexProxyUrl, resolveVertexProxyUrls } from "./retrievers/google-grounding"
 
@@ -566,11 +567,9 @@ export async function executeWebSearch(
       console.log(`[⏱ LATENCY][${reqId}] Phase2 contextBuild=${Date.now() - contextBuildStart}ms sysMsgCount=${composeSystemMessages.length} totalMsgCount=${composeMessages.length}`)
 
       // ── Reasoning trace: live step emission (bar + panel) + persistence ──
-      // Headline driven by data-reasoning-thought (transparent thinking text).
+      // Headline driven by data-reasoning-live (transparent thinking text).
       // Step events driven by CuratedTraceController → data-reasoning-trace (timeline panel).
       // Same controller used for DB persistence snapshot at finish.
-      let reasoningBuffer = ""
-
       const reasoningTrace = createCuratedTraceController({
         enabled: config.reasoningTraceEnabled,
         traceId: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-ws-trace`,
@@ -636,9 +635,12 @@ export async function executeWebSearch(
         }
       }
 
-      // Reasoning accumulator: convert raw reasoning chunks to data-reasoning-thought
-      // events that the client UI expects (same pattern as non-search path in route.ts)
       const reasoningTraceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
+      const createComposeReasoningAccumulator = () => createReasoningLiveAccumulator({
+        traceId: reasoningTraceId,
+        enabled: config.isTransparentReasoning,
+      })
+      let liveReasoningAccumulator = createComposeReasoningAccumulator()
       let reasoningChunkCount = 0
       let firstTokenTime = 0
       let textChunkCount = 0
@@ -647,6 +649,18 @@ export async function executeWebSearch(
       let gapsOver500ms = 0
       let reasoningBetweenTextCount = 0
       let lastChunkWasReasoning = false
+
+      const emitCompatThought = (part: ReasoningLiveDataPart) => {
+        writer.write({
+          type: "data-reasoning-thought",
+          id: `${part.id}-compat`,
+          data: {
+            traceId: part.data.traceId,
+            delta: part.data.text,
+            ts: part.data.ts,
+          },
+        })
+      }
 
       // Deferred persistence payload — set inside finish handler, consumed after compose loop
       let postFinishWork: {
@@ -671,7 +685,7 @@ export async function executeWebSearch(
           } catch { /* spec capture error — non-critical */ }
         }
 
-        // Convert reasoning chunks to data-reasoning-thought events for UI
+        // Convert reasoning chunks to data-reasoning-live events for UI.
         if (
           chunk.type === "reasoning-start" ||
           chunk.type === "reasoning-delta" ||
@@ -682,20 +696,11 @@ export async function executeWebSearch(
           if (chunk.type === "reasoning-delta") {
             reasoningChunkCount += 1
             lastChunkWasReasoning = true
-            const sanitized = sanitizeReasoningDelta(chunk.delta ?? "")
-            // Accumulate ALL raw deltas for persistence (not just sampled ones)
-            reasoningBuffer += chunk.delta ?? ""
-            if (sanitized.trim() && (reasoningChunkCount === 1 || reasoningChunkCount % 3 === 0 || sanitized.length > 100)) {
-              writer.write({
-                type: "data-reasoning-thought",
-                id: `${reasoningTraceId}-thought-${reasoningChunkCount}`,
-                data: {
-                  traceId: reasoningTraceId,
-                  delta: sanitized,
-                  ts: Date.now(),
-                },
-              })
-            }
+            const livePart = liveReasoningAccumulator.onReasoningDelta(chunk.delta ?? "")
+            if (!livePart) return "continue"
+
+            writer.write(livePart)
+            emitCompatThought(livePart)
           }
           return "continue"
         }
@@ -706,6 +711,11 @@ export async function executeWebSearch(
           if (textChunkCount === 0 && canFailover) {
             console.warn(`[COMPOSE-DIAG][${reqId}] returning retry — will attempt fallback compose`)
             return "retry"
+          }
+          const finalLivePart = liveReasoningAccumulator.finalize()
+          if (finalLivePart) {
+            writer.write(finalLivePart)
+            emitCompatThought(finalLivePart)
           }
           // Text already sent — forward and break (can't retry)
           writer.write(chunk)
@@ -852,11 +862,17 @@ export async function executeWebSearch(
             // ── Finalize reasoning trace: emit final step events + build persistence snapshot ──
             let reasoningSnapshot: PersistedCuratedTraceSnapshot | undefined
             if (reasoningTrace.enabled) {
+              const finalLivePart = liveReasoningAccumulator.finalize()
+              if (finalLivePart) {
+                writer.write(finalLivePart)
+                emitCompatThought(finalLivePart)
+              }
               // Populate step labels from reasoning buffer (transparent mode) —
               // consistent with non-websearch path. ReasoningTracePanel filters
               // out template-only steps in transparent mode automatically.
-              if (reasoningBuffer.length > 0) {
-                emitTrace(reasoningTrace.populateFromReasoning(reasoningBuffer))
+              const fullReasoning = liveReasoningAccumulator.getFullReasoning()
+              if (fullReasoning.length > 0) {
+                emitTrace(reasoningTrace.populateFromReasoning(fullReasoning))
               }
               emitTrace(reasoningTrace.finalize({
                 outcome: "done",
@@ -948,7 +964,7 @@ export async function executeWebSearch(
 
         // Reset compose-local state only — no user-visible text has been emitted yet
         composedText = ""
-        reasoningBuffer = ""
+        liveReasoningAccumulator = createComposeReasoningAccumulator()
         reasoningChunkCount = 0
         textChunkCount = 0
         firstTokenTime = 0
