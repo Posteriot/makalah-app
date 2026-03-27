@@ -721,7 +721,7 @@ export function MessageBubble({
     })
     const hasArtifactSignals = isAssistant && artifactSignals.length > 0 && Boolean(onArtifactSelect)
     const hasSources = isAssistant && sources.length > 0
-    const hasQuickActions = !isEditing && isAssistant
+    const hasQuickActions = !isEditing && isAssistant && !persistProcessIndicators
     const rawDisplayText = citedText ?? content
     const streamedInternalThought = extractInternalThoughtData(message)
     const fallbackSplitContent = splitInternalThought(rawDisplayText)
