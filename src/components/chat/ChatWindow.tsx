@@ -210,9 +210,29 @@ interface PersistedReasoningTraceStepRaw {
 
 interface PersistedReasoningTraceRaw {
   headline?: unknown
+  traceMode?: unknown
   steps?: unknown
   durationSeconds?: unknown
   rawReasoning?: unknown
+}
+
+function extractReasoningTraceMode(
+  uiMessage: UIMessage,
+  steps: ReasoningTraceStep[],
+  liveThought?: string | null
+): "curated" | "transparent" | undefined {
+  const persistedTrace = (uiMessage as unknown as { reasoningTrace?: PersistedReasoningTraceRaw }).reasoningTrace
+  if (persistedTrace?.traceMode === "curated" || persistedTrace?.traceMode === "transparent") {
+    return persistedTrace.traceMode
+  }
+
+  if (liveThought?.trim()) return "transparent"
+  if (steps.some((step) => !isTemplateLabel(step.label) || step.thought?.trim())) {
+    return "transparent"
+  }
+  if (steps.length > 0) return "curated"
+
+  return undefined
 }
 
 function parseReasoningMeta(meta: unknown): ReasoningTraceStep["meta"] | undefined {
@@ -1414,12 +1434,14 @@ export function ChatWindow({
     for (const assistant of assistants) {
       const steps = extractReasoningTraceSteps(assistant)
       const liveThought = extractLiveThought(assistant)
+      const traceMode = extractReasoningTraceMode(assistant, steps, liveThought)
       const headline = liveThought || extractReasoningHeadline(assistant, steps)
       if (steps.length > 0 || headline) {
         const persistedDurationSeconds = extractReasoningDurationSeconds(assistant)
         return {
           steps,
           headline,
+          traceMode,
           persistedDurationSeconds,
         }
       }
@@ -1428,6 +1450,7 @@ export function ChatWindow({
     return {
       steps: [] as ReasoningTraceStep[],
       headline: null as string | null,
+      traceMode: undefined as "curated" | "transparent" | undefined,
       persistedDurationSeconds: undefined as number | undefined,
     }
   }, [messages])
@@ -2497,6 +2520,7 @@ export function ChatWindow({
           persistedDurationSeconds={activeReasoningState.persistedDurationSeconds}
           reasoningSteps={activeReasoningState.steps}
           reasoningHeadline={activeReasoningState.headline}
+          reasoningTraceMode={activeReasoningState.traceMode}
           isPanelOpen={activeSheet === "proses"}
           onPanelOpenChange={(open) => handleSheetChange(open ? "proses" : null)}
         />

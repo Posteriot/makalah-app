@@ -1,0 +1,58 @@
+import { fireEvent, render, screen } from "@testing-library/react"
+import { describe, expect, it, vi } from "vitest"
+import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
+
+const mockReasoningActivityPanel = vi.fn(() => null)
+
+vi.mock("./ReasoningActivityPanel", () => ({
+  ReasoningActivityPanel: (props: unknown) => {
+    mockReasoningActivityPanel(props)
+    return null
+  },
+}))
+
+describe("ChatProcessStatusBar transparent mode", () => {
+  it("tetap menampilkan raw thought dan masih menyediakan drill-down timeline saat transparent", () => {
+    render(
+      <ChatProcessStatusBar
+        visible
+        status="ready"
+        progress={100}
+        elapsedSeconds={12.4}
+        reasoningHeadline="Sedang memilah temuan paling relevan untuk jawaban akhir."
+        reasoningSteps={[
+          {
+            traceId: "trace-1",
+            stepKey: "response-compose",
+            label: "Sedang memilah temuan paling relevan untuk jawaban akhir.",
+            status: "done",
+            progress: 100,
+            thought: "Sedang memilah temuan paling relevan untuk jawaban akhir.",
+          },
+        ]}
+        reasoningTraceMode="transparent"
+      />
+    )
+
+    fireEvent.click(screen.getByRole("button"))
+
+    expect(
+      screen.getByText("Sedang memilah temuan paling relevan untuk jawaban akhir.")
+    ).toBeInTheDocument()
+    const detailButton = screen.getByText("Detail →")
+    expect(detailButton).toBeInTheDocument()
+    expect(mockReasoningActivityPanel).toHaveBeenCalled()
+
+    fireEvent.click(detailButton)
+
+    expect(
+      mockReasoningActivityPanel.mock.calls.some(
+        ([props]) =>
+          Boolean(props) &&
+          typeof props === "object" &&
+          "open" in (props as Record<string, unknown>) &&
+          (props as { open?: boolean }).open === true
+      )
+    ).toBe(true)
+  })
+})

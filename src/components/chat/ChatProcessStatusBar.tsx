@@ -26,6 +26,7 @@ interface ChatProcessStatusBarProps {
   persistedDurationSeconds?: number
   reasoningSteps?: ReasoningTraceStep[]
   reasoningHeadline?: string | null
+  reasoningTraceMode?: "curated" | "transparent"
   /** External control for the reasoning panel open state */
   isPanelOpen?: boolean
   onPanelOpenChange?: (open: boolean) => void
@@ -39,6 +40,7 @@ export function ChatProcessStatusBar({
   persistedDurationSeconds,
   reasoningSteps = [],
   reasoningHeadline,
+  reasoningTraceMode,
   isPanelOpen,
   onPanelOpenChange,
 }: ChatProcessStatusBarProps) {
@@ -97,7 +99,8 @@ export function ChatProcessStatusBar({
   if (!shouldShow) return null
 
   const hasSteps = reasoningSteps.length > 0
-  const openPanel = () => hasSteps && setPanelOpen(true)
+  const canOpenPanel = hasSteps
+  const openPanel = () => canOpenPanel && setPanelOpen(true)
 
   return (
     <>
@@ -110,9 +113,9 @@ export function ChatProcessStatusBar({
               onClick={openPanel}
               className={cn(
                 "group mb-1.5 flex w-full items-center justify-between text-left",
-                hasSteps ? "cursor-pointer" : "cursor-default"
+                canOpenPanel ? "cursor-pointer" : "cursor-default"
               )}
-              disabled={!hasSteps}
+              disabled={!canOpenPanel}
             >
               <span
                 className="flex min-w-0 items-baseline gap-1 truncate font-mono text-[11px] leading-snug text-[var(--chat-foreground)]"
@@ -150,15 +153,15 @@ export function ChatProcessStatusBar({
               onClick={() => {
                 if (narrativeHeadline) {
                   setCompletedExpanded((prev) => !prev)
-                } else if (hasSteps) {
+                } else if (canOpenPanel) {
                   openPanel()
                 }
               }}
               className={cn(
                 "group flex items-center py-1 text-left transition-opacity",
-                (narrativeHeadline || hasSteps) ? "cursor-pointer hover:opacity-80" : "cursor-default"
+                (narrativeHeadline || canOpenPanel) ? "cursor-pointer hover:opacity-80" : "cursor-default"
               )}
-              disabled={!narrativeHeadline && !hasSteps}
+              disabled={!narrativeHeadline && !canOpenPanel}
             >
               <span className={cn(
                 "font-mono text-[11px] leading-snug",
@@ -168,7 +171,7 @@ export function ChatProcessStatusBar({
               )}>
                 {showDuration ? formatDuration(durationSeconds) : ""}
               </span>
-              {(narrativeHeadline || hasSteps) && (
+              {(narrativeHeadline || canOpenPanel) && (
                 <NavArrowRight className={cn(
                   "ml-1 h-3 w-3 text-[var(--chat-muted-foreground)] opacity-60 transition-all group-hover:text-[var(--chat-foreground)] group-hover:opacity-100",
                   completedExpanded && "rotate-90"
@@ -180,7 +183,7 @@ export function ChatProcessStatusBar({
                 <p className="font-mono text-[11px] leading-relaxed text-[var(--chat-muted-foreground)] opacity-60">
                   {narrativeHeadline}
                 </p>
-                {hasSteps && (
+                {canOpenPanel && (
                   <button
                     type="button"
                     onClick={openPanel}
@@ -195,7 +198,7 @@ export function ChatProcessStatusBar({
         )}
       </div>
 
-      {hasSteps && (
+      {canOpenPanel && (
         <ReasoningActivityPanel
           open={isPanelOpenValue}
           onOpenChange={setPanelOpen}
