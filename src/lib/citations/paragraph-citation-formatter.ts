@@ -116,6 +116,7 @@ const normalizeSpacing = (input: string) => {
       .replace(/\s{2,}/g, " ")
       .replace(/\(\s+/g, "(")
       .replace(/\s+\)/g, ")")
+      .replace(/\s*\([,;\s]*\)\.?/g, "")
       .trimEnd()
   })
   return normalizedLines.join("\n")
