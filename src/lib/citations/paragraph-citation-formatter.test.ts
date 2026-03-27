@@ -119,6 +119,21 @@ describe("formatParagraphEndCitations", () => {
     expect(output).toContain("itb.ac.id")
   })
 
+  it("removes empty parenthetical artifacts left after hostname stripping", () => {
+    const text =
+      "Adopsi AI di sekolah meningkat pesat (schoolai.com,) menurut laporan terbaru."
+    const output = formatParagraphEndCitations({
+      text,
+      sources: [{ url: "https://schoolai.com/report/2025" }],
+      anchors: [{ position: text.indexOf("meningkat"), sourceNumbers: [1] }],
+    })
+
+    expect(output).not.toContain("(,)")
+    expect(output).not.toContain("()")
+    expect(output).toContain("meningkat pesat")
+    expect(output).toContain("[1]")
+  })
+
   it("moves heading-line citations to the nearest content line", () => {
     const text = [
       "Aspek-aspek Penting: [1]",
