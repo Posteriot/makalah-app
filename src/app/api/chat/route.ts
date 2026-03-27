@@ -397,7 +397,6 @@ export async function POST(req: Request) {
             : ""
         const normalizedLastUserContent =
             typeof lastUserContent === "string" ? lastUserContent.trim() : ""
-        const normalizedLastUserContentLower = normalizedLastUserContent.toLowerCase()
         const recentConversationMessagesForExactSource: ExactSourceConversationMessage[] = messages
             .slice(0, -1)
             .map((message: {
