@@ -55,4 +55,37 @@ describe("ChatProcessStatusBar transparent mode", () => {
       )
     ).toBe(true)
   })
+
+  it("tetap mempertahankan drill-down timeline pada mode curated", () => {
+    render(
+      <ChatProcessStatusBar
+        visible
+        status="ready"
+        progress={100}
+        elapsedSeconds={9.1}
+        reasoningSteps={[
+          {
+            traceId: "trace-curated",
+            stepKey: "response-compose",
+            label: "Menyusun jawaban final",
+            status: "done",
+            progress: 100,
+          },
+        ]}
+        reasoningTraceMode="curated"
+      />
+    )
+
+    fireEvent.click(screen.getByRole("button"))
+
+    expect(
+      (mockReasoningActivityPanel.mock.calls as Array<[unknown]>).some(
+        ([props]) =>
+          Boolean(props) &&
+          typeof props === "object" &&
+          "open" in (props as Record<string, unknown>) &&
+          (props as { open?: boolean }).open === true
+      )
+    ).toBe(true)
+  })
 })

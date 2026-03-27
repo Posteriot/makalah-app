@@ -216,7 +216,7 @@ interface PersistedReasoningTraceRaw {
   rawReasoning?: unknown
 }
 
-function extractReasoningTraceMode(
+export function extractReasoningTraceMode(
   uiMessage: UIMessage,
   steps: ReasoningTraceStep[],
   liveThought?: string | null
@@ -382,6 +382,10 @@ export function extractLiveReasoningSnapshot(uiMessage: UIMessage): string | nul
   }
 
   return lastSnapshot
+}
+
+export function resolveLiveReasoningHeadline(uiMessage: UIMessage): string | null {
+  return extractLiveReasoningSnapshot(uiMessage) || extractLiveThought(uiMessage)
 }
 
 export function extractReasoningDurationSeconds(uiMessage: UIMessage): number | undefined {
@@ -1451,9 +1455,7 @@ export function ChatWindow({
     const assistants = [...messages].reverse().filter((msg) => msg.role === "assistant")
     for (const assistant of assistants) {
       const steps = extractReasoningTraceSteps(assistant)
-      const liveReasoningSnapshot = extractLiveReasoningSnapshot(assistant)
-      const legacyLiveThought = extractLiveThought(assistant)
-      const liveThought = liveReasoningSnapshot || legacyLiveThought
+      const liveThought = resolveLiveReasoningHeadline(assistant)
       const traceMode = extractReasoningTraceMode(assistant, steps, liveThought)
       const headline = liveThought || extractReasoningHeadline(assistant, steps)
       if (steps.length > 0 || headline) {
