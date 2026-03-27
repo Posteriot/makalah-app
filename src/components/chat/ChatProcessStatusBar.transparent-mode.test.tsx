@@ -12,6 +12,33 @@ vi.mock("./ReasoningActivityPanel", () => ({
 }))
 
 describe("ChatProcessStatusBar transparent mode", () => {
+  it("menahan headline transparent saat status masih streaming agar tidak jatuh ke dots-only", () => {
+    render(
+      <ChatProcessStatusBar
+        visible
+        status="streaming"
+        progress={48}
+        elapsedSeconds={6.8}
+        reasoningHeadline="Sedang membandingkan dua jalur penalaran yang paling kuat."
+        reasoningSteps={[
+          {
+            traceId: "trace-streaming",
+            stepKey: "response-compose",
+            label: "Menyusun jawaban final",
+            status: "running",
+            progress: 48,
+          },
+        ]}
+        reasoningTraceMode="transparent"
+      />
+    )
+
+    expect(
+      screen.getByText("Sedang membandingkan dua jalur penalaran yang paling kuat.")
+    ).toBeInTheDocument()
+    expect(screen.getByText("48%")).toBeInTheDocument()
+  })
+
   it("tetap menampilkan raw thought dan masih menyediakan drill-down timeline saat transparent", () => {
     render(
       <ChatProcessStatusBar

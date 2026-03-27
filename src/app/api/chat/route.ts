@@ -2629,6 +2629,7 @@ Aturan:
                             }
 
                             if (chunk.type === "abort") {
+                                reasoningAccumulator.finalize()
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "stopped",
                                     sourceCount,
@@ -2997,6 +2998,7 @@ Aturan:
                             }
 
                             if (chunk.type === "abort") {
+                                reasoningAccumulator.finalize()
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "stopped",
                                     sourceCount,

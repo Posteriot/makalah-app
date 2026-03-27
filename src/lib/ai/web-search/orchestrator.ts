@@ -40,7 +40,7 @@ import {
   type ReasoningLiveDataPart,
   type PersistedCuratedTraceSnapshot,
 } from "@/lib/ai/curated-trace"
-import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
+import { createReasoningLiveAccumulator, createReasoningLiveResetPart } from "@/lib/ai/reasoning-live-stream"
 import { ingestToRag } from "@/lib/ai/rag-ingest"
 import { isVertexProxyUrl, resolveVertexProxyUrls } from "./retrievers/google-grounding"
 
@@ -209,6 +209,20 @@ export async function persistExactSourceDocuments(params: {
       `[⏱ LATENCY] ${reqTag}Exact source persist ALL DONE total=${Date.now() - exactStart}ms sources=${exactSourceCount}`
     )
   }
+}
+
+export function emitTransparentReasoningResetForRetry(params: {
+  isTransparentReasoning: boolean
+  hasReasoning: boolean
+  traceId: string
+  writer: { write: (chunk: ReasoningLiveDataPart) => void }
+}) {
+  if (!params.isTransparentReasoning || !params.hasReasoning) {
+    return false
+  }
+
+  params.writer.write(createReasoningLiveResetPart({ traceId: params.traceId }))
+  return true
 }
 
 /**
@@ -709,6 +723,12 @@ export async function executeWebSearch(
         if (chunk.type === "error" || chunk.type === "abort") {
           console.warn(`[COMPOSE-DIAG][${reqId}] ${chunk.type} chunk received, textChunkCount=${textChunkCount} canFailover=${canFailover}`)
           if (textChunkCount === 0 && canFailover) {
+            emitTransparentReasoningResetForRetry({
+              isTransparentReasoning: config.isTransparentReasoning,
+              hasReasoning: liveReasoningAccumulator.hasReasoning(),
+              traceId: reasoningTraceId,
+              writer,
+            })
             console.warn(`[COMPOSE-DIAG][${reqId}] returning retry — will attempt fallback compose`)
             return "retry"
           }

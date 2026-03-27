@@ -67,6 +67,7 @@ export interface ReasoningLiveDataPart {
     text: string
     ts: number
     done?: boolean
+    reset?: boolean
   }
 }
 

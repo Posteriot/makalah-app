@@ -11,6 +11,24 @@ export interface ReasoningLiveAccumulator {
   hasReasoning: () => boolean
 }
 
+export function createReasoningLiveResetPart(options: {
+  traceId: string
+  now?: () => number
+}): ReasoningLiveDataPart {
+  const ts = (options.now ?? Date.now)()
+
+  return {
+    type: "data-reasoning-live",
+    id: `${options.traceId}-live-reset-${ts}`,
+    data: {
+      traceId: options.traceId,
+      text: "",
+      ts,
+      reset: true,
+    },
+  }
+}
+
 export function createReasoningLiveAccumulator(options: {
   traceId: string
   enabled: boolean

@@ -348,9 +348,54 @@ function extractReasoningTraceSteps(uiMessage: UIMessage): ReasoningTraceStep[] 
   return ordered
 }
 
-function extractLiveThought(uiMessage: UIMessage): string | null {
-  let lastThought: string | null = null
+export function extractLiveReasoningSnapshot(uiMessage: UIMessage): string | null {
+  let lastSnapshot: string | null = null
 
+  for (const part of uiMessage.parts ?? []) {
+    if (!part || typeof part !== "object") continue
+    const dataPart = part as { type?: unknown; data?: unknown }
+    if (dataPart.type !== "data-reasoning-live") continue
+    if (!dataPart.data || typeof dataPart.data !== "object") continue
+
+    const data = dataPart.data as { text?: unknown; reset?: unknown }
+    if (data.reset === true) {
+      lastSnapshot = null
+      continue
+    }
+    if (typeof data.text === "string" && data.text.trim()) {
+      lastSnapshot = data.text.trim()
+    }
+  }
+
+  return lastSnapshot
+}
+
+export function resolveLiveReasoningHeadline(uiMessage: UIMessage): string | null {
+  let lastSnapshot: string | null = null
+  let sawLiveSignal = false
+
+  for (const part of uiMessage.parts ?? []) {
+    if (!part || typeof part !== "object") continue
+    const dataPart = part as { type?: unknown; data?: unknown }
+    if (!dataPart.data || typeof dataPart.data !== "object") continue
+
+    if (dataPart.type === "data-reasoning-live") {
+      const data = dataPart.data as { text?: unknown; reset?: unknown }
+      sawLiveSignal = true
+      if (data.reset === true) {
+        lastSnapshot = null
+        continue
+      }
+      if (typeof data.text === "string" && data.text.trim()) {
+        lastSnapshot = data.text.trim()
+      }
+    }
+  }
+
+  if (lastSnapshot) return lastSnapshot
+  if (sawLiveSignal) return null
+
+  let lastThought: string | null = null
   for (const part of uiMessage.parts ?? []) {
     if (!part || typeof part !== "object") continue
     const dataPart = part as { type?: unknown; data?: unknown }
@@ -364,28 +409,6 @@ function extractLiveThought(uiMessage: UIMessage): string | null {
   }
 
   return lastThought
-}
-
-export function extractLiveReasoningSnapshot(uiMessage: UIMessage): string | null {
-  let lastSnapshot: string | null = null
-
-  for (const part of uiMessage.parts ?? []) {
-    if (!part || typeof part !== "object") continue
-    const dataPart = part as { type?: unknown; data?: unknown }
-    if (dataPart.type !== "data-reasoning-live") continue
-    if (!dataPart.data || typeof dataPart.data !== "object") continue
-
-    const data = dataPart.data as { text?: unknown }
-    if (typeof data.text === "string" && data.text.trim()) {
-      lastSnapshot = data.text.trim()
-    }
-  }
-
-  return lastSnapshot
-}
-
-export function resolveLiveReasoningHeadline(uiMessage: UIMessage): string | null {
-  return extractLiveReasoningSnapshot(uiMessage) || extractLiveThought(uiMessage)
 }
 
 export function extractReasoningDurationSeconds(uiMessage: UIMessage): number | undefined {

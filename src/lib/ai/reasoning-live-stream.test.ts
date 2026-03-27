@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { createReasoningLiveAccumulator } from "./reasoning-live-stream"
+import { createReasoningLiveAccumulator, createReasoningLiveResetPart } from "./reasoning-live-stream"
 
 describe("createReasoningLiveAccumulator", () => {
   it("mengirim snapshot live dari buffer penuh dan menandai akhir stream", () => {
@@ -40,5 +40,23 @@ describe("createReasoningLiveAccumulator", () => {
     expect(finalPart?.type).toBe("data-reasoning-live")
     expect(finalPart?.data.text).toBe(secondPart?.data.text)
     expect(finalPart?.data.done).toBe(true)
+  })
+
+  it("bisa membuat part reset untuk membersihkan snapshot live lama saat failover", () => {
+    const resetPart = createReasoningLiveResetPart({
+      traceId: "trace-reset",
+      now: () => 2_000,
+    })
+
+    expect(resetPart).toEqual({
+      type: "data-reasoning-live",
+      id: "trace-reset-live-reset-2000",
+      data: {
+        traceId: "trace-reset",
+        text: "",
+        ts: 2_000,
+        reset: true,
+      },
+    })
   })
 })
