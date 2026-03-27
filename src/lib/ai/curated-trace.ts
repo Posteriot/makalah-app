@@ -59,6 +59,17 @@ export interface CuratedTraceDataPart {
   data: CuratedTraceStepData
 }
 
+export interface ReasoningLiveDataPart {
+  type: "data-reasoning-live"
+  id: string
+  data: {
+    traceId: string
+    text: string
+    ts: number
+    done?: boolean
+  }
+}
+
 export interface ReasoningThoughtDataPart {
   type: "data-reasoning-thought"
   id: string

@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 
-const mockReasoningActivityPanel = vi.fn(() => null)
+const mockReasoningActivityPanel = vi.fn((..._args: unknown[]) => null)
 
 vi.mock("./ReasoningActivityPanel", () => ({
   ReasoningActivityPanel: (props: unknown) => {
@@ -46,7 +46,7 @@ describe("ChatProcessStatusBar transparent mode", () => {
     fireEvent.click(detailButton)
 
     expect(
-      mockReasoningActivityPanel.mock.calls.some(
+      (mockReasoningActivityPanel.mock.calls as Array<[unknown]>).some(
         ([props]) =>
           Boolean(props) &&
           typeof props === "object" &&
