@@ -13,6 +13,9 @@ const SENSITIVE_PATTERNS = [
   /\{[\s\S]{100,}\}/g,
 ]
 
+const MAX_REASONING_DELTA_CHARS = 500
+const MAX_REASONING_SNAPSHOT_CHARS = 800
+
 export function stripMarkdown(text: string): string {
   return text
     .replace(/#{1,6}\s+/g, "")
@@ -31,15 +34,42 @@ export function stripMarkdown(text: string): string {
     .trim()
 }
 
-export function sanitizeReasoningDelta(delta: string): string {
-  if (!delta) return delta
+function sanitizeReasoningText(
+  text: string,
+  options: {
+    maxChars: number
+    keepTail?: boolean
+  }
+): string {
+  if (!text) return text
 
-  let sanitized = delta
+  let sanitized = text
   for (const pattern of SENSITIVE_PATTERNS) {
     sanitized = sanitized.replace(pattern, "")
   }
 
-  return stripMarkdown(sanitized).slice(0, 500)
+  const clean = stripMarkdown(sanitized).trim()
+  if (clean.length <= options.maxChars) {
+    return clean
+  }
+
+  if (options.keepTail) {
+    const tailChars = Math.max(0, options.maxChars - 3)
+    return `...${clean.slice(-tailChars)}`
+  }
+
+  return clean.slice(0, options.maxChars)
+}
+
+export function sanitizeReasoningDelta(delta: string): string {
+  return sanitizeReasoningText(delta, { maxChars: MAX_REASONING_DELTA_CHARS })
+}
+
+export function sanitizeReasoningSnapshot(reasoning: string): string {
+  return sanitizeReasoningText(reasoning, {
+    maxChars: MAX_REASONING_SNAPSHOT_CHARS,
+    keepTail: true,
+  })
 }
 
 export function sanitizeStepThought(thought: string): string {

@@ -274,6 +274,7 @@ describe("ChatWindow mobile workspace alignment", () => {
 
   it("tetap merehydrate semua history messages saat ada reasoning trace tersimpan", () => {
     const persistedReasoningTrace = Object.freeze({
+      traceMode: "transparent",
       headline: "Menelusuri sumber",
       steps: [
         {
@@ -331,5 +332,7 @@ describe("ChatWindow mobile workspace alignment", () => {
       content: "Ini hasil pencariannya.",
       reasoningTrace: persistedReasoningTrace,
     })
+
+    expect(mappedMessages[1].reasoningTrace.traceMode).toBe("transparent")
   })
 })

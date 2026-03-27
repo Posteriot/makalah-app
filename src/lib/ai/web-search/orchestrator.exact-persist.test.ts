@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { fetchMutation } from "convex/nextjs"
-import { persistExactSourceDocuments } from "./orchestrator"
+import { emitTransparentReasoningResetForRetry, persistExactSourceDocuments } from "./orchestrator"
 import type { FetchedContent } from "./content-fetcher"
 
 vi.mock("convex/nextjs", () => ({
@@ -96,5 +96,44 @@ describe("persistExactSourceDocuments", () => {
       }),
       undefined
     )
+  })
+})
+
+describe("emitTransparentReasoningResetForRetry", () => {
+  it("mengirim reset live reasoning sebelum retry bila transparent reasoning sudah sempat tampil", () => {
+    const write = vi.fn()
+
+    const emitted = emitTransparentReasoningResetForRetry({
+      isTransparentReasoning: true,
+      hasReasoning: true,
+      traceId: "trace-retry",
+      writer: { write },
+    })
+
+    expect(emitted).toBe(true)
+    expect(write).toHaveBeenCalledWith({
+      type: "data-reasoning-live",
+      id: expect.stringMatching(/^trace-retry-live-reset-/),
+      data: {
+        traceId: "trace-retry",
+        text: "",
+        ts: expect.any(Number),
+        reset: true,
+      },
+    })
+  })
+
+  it("tidak mengirim reset bila tidak ada reasoning yang perlu dibersihkan", () => {
+    const write = vi.fn()
+
+    const emitted = emitTransparentReasoningResetForRetry({
+      isTransparentReasoning: true,
+      hasReasoning: false,
+      traceId: "trace-noop",
+      writer: { write },
+    })
+
+    expect(emitted).toBe(false)
+    expect(write).not.toHaveBeenCalled()
   })
 })

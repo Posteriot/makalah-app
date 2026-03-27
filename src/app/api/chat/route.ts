@@ -40,8 +40,12 @@ import {
 } from "@/lib/billing/enforcement"
 import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
 import { getSearchSkill, composeSkillInstructions, type SkillContext } from "@/lib/ai/skills"
-import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
-import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
+import {
+    createCuratedTraceController,
+    type PersistedCuratedTraceSnapshot,
+    type ReasoningLiveDataPart,
+} from "@/lib/ai/curated-trace"
+import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 // buildUserFacingSearchPayload now handled by orchestrator
 import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
 import { pipeYamlRender } from "@json-render/yaml"
@@ -393,7 +397,6 @@ export async function POST(req: Request) {
             : ""
         const normalizedLastUserContent =
             typeof lastUserContent === "string" ? lastUserContent.trim() : ""
-        const normalizedLastUserContentLower = normalizedLastUserContent.toLowerCase()
         const recentConversationMessagesForExactSource: ExactSourceConversationMessage[] = messages
             .slice(0, -1)
             .map((message: {
@@ -1792,7 +1795,7 @@ Aturan:
             return undefined
         }
 
-        // Helper: accumulate reasoning deltas and emit progressive thought events
+        // Helper: accumulate reasoning deltas and emit progressive live reasoning events
         function createReasoningAccumulator(opts: {
             traceId: string
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1800,33 +1803,42 @@ Aturan:
             ensureStart: () => void
             enabled: boolean
         }) {
-            let buffer = ""
-            let chunkCount = 0
+            const liveAccumulator = createReasoningLiveAccumulator({
+                traceId: opts.traceId,
+                enabled: opts.enabled,
+            })
+
+            const emitCompatThought = (part: ReasoningLiveDataPart) => {
+                opts.writer.write({
+                    type: "data-reasoning-thought",
+                    id: `${part.id}-compat`,
+                    data: {
+                        traceId: part.data.traceId,
+                        delta: part.data.text,
+                        ts: part.data.ts,
+                    },
+                })
+            }
 
             return {
                 onReasoningDelta: (delta: string) => {
-                    if (!opts.enabled || !delta) return
-                    buffer += delta
-                    chunkCount += 1
+                    const livePart = liveAccumulator.onReasoningDelta(delta)
+                    if (!livePart) return
 
-                    if (chunkCount % 3 === 0 || delta.length > 100) {
-                        const sanitized = sanitizeReasoningDelta(delta)
-                        if (sanitized.trim()) {
-                            opts.ensureStart()
-                            opts.writer.write({
-                                type: "data-reasoning-thought",
-                                id: `${opts.traceId}-thought-${chunkCount}`,
-                                data: {
-                                    traceId: opts.traceId,
-                                    delta: sanitized,
-                                    ts: Date.now(),
-                                },
-                            })
-                        }
-                    }
+                    opts.ensureStart()
+                    opts.writer.write(livePart)
+                    emitCompatThought(livePart)
                 },
-                getFullReasoning: () => buffer,
-                hasReasoning: () => buffer.length > 0,
+                finalize: () => {
+                    const livePart = liveAccumulator.finalize()
+                    if (!livePart) return
+
+                    opts.ensureStart()
+                    opts.writer.write(livePart)
+                    emitCompatThought(livePart)
+                },
+                getFullReasoning: () => liveAccumulator.getFullReasoning(),
+                hasReasoning: () => liveAccumulator.hasReasoning(),
             }
         }
 
@@ -2593,6 +2605,7 @@ Aturan:
                                         reasoningAccumulator.getFullReasoning()
                                     ))
                                 }
+                                reasoningAccumulator.finalize()
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "done",
                                     sourceCount,
@@ -2603,6 +2616,7 @@ Aturan:
                             }
 
                             if (chunk.type === "error") {
+                                reasoningAccumulator.finalize()
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "error",
                                     sourceCount,
@@ -2614,6 +2628,7 @@ Aturan:
                             }
 
                             if (chunk.type === "abort") {
+                                reasoningAccumulator.finalize()
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "stopped",
                                     sourceCount,
@@ -2959,6 +2974,7 @@ Aturan:
                                         reasoningAccumulator.getFullReasoning()
                                     ))
                                 }
+                                reasoningAccumulator.finalize()
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "done",
                                     sourceCount,
@@ -2969,6 +2985,7 @@ Aturan:
                             }
 
                             if (chunk.type === "error") {
+                                reasoningAccumulator.finalize()
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "error",
                                     sourceCount,
@@ -2980,6 +2997,7 @@ Aturan:
                             }
 
                             if (chunk.type === "abort") {
+                                reasoningAccumulator.finalize()
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "stopped",
                                     sourceCount,
