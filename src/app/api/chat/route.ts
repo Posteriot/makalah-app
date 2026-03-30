@@ -70,6 +70,10 @@ import {
     type SearchExecutionMode,
 } from "@/lib/ai/web-search"
 import {
+    buildStoredReferenceInventoryItems,
+    inferSearchResponseMode,
+} from "@/lib/ai/web-search/reference-presentation"
+import {
     buildDeterministicExactSourcePrepareStep,
     buildExactSourceInspectionRouterNote,
     buildExactSourceInspectionSystemMessage,
@@ -1902,6 +1906,67 @@ Aturan:
             return createUIMessageStreamResponse({ stream })
         }
 
+        const createStoredReferenceInventoryResponse = async (input: {
+            introText: string
+            items: Array<{
+                sourceId?: string
+                title: string
+                url: string | null
+                verificationStatus: "verified_content" | "unverified_link" | "unavailable"
+                documentKind?: "html" | "pdf" | "unknown"
+            }>
+            usedModel: string
+        }) => {
+            const normalizedSources = input.items
+                .filter((item) => typeof item.url === "string" && item.url.trim().length > 0)
+                .map((item) => ({
+                    url: item.url as string,
+                    title: item.title,
+                }))
+
+            await saveAssistantMessage(
+                input.introText,
+                normalizedSources.length > 0 ? normalizedSources : undefined,
+                input.usedModel,
+            )
+
+            const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+            const citedTextId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-text`
+            const citedSourcesId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-sources`
+            const referenceInventoryId =
+                globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-reference-inventory`
+
+            const stream = createUIMessageStream({
+                execute: async ({ writer }) => {
+                    writer.write({ type: "start", messageId })
+                    writer.write({
+                        type: "data-cited-text",
+                        id: citedTextId,
+                        data: { text: input.introText },
+                    })
+                    writer.write({
+                        type: "data-reference-inventory",
+                        id: referenceInventoryId,
+                        data: {
+                            responseMode: "reference_inventory",
+                            introText: input.introText,
+                            items: input.items,
+                        },
+                    })
+                    if (normalizedSources.length > 0) {
+                        writer.write({
+                            type: "data-cited-sources",
+                            id: citedSourcesId,
+                            data: { sources: normalizedSources },
+                        })
+                    }
+                    writer.write({ type: "finish", finishReason: "stop" })
+                },
+            })
+
+            return createUIMessageStreamResponse({ stream })
+        }
+
         try {
             const model = await getGatewayModel()
 
@@ -1938,6 +2003,7 @@ Aturan:
             let searchRequestedByPolicy = false
             let isSyncRequest = false
             let isSaveSubmitIntent = false
+            let isCompileBibliographyIntent = false
 
             // --- Pre-router guardrails (structural state only, NO regex intent detection) ---
             // Intent detection is the LLM router's job. Regex cannot scale to language
@@ -2028,6 +2094,7 @@ Aturan:
                     && webSearchDecision.intentType === "compile_daftar_pustaka"
 
                 if (isCompileIntent) {
+                    isCompileBibliographyIntent = true
                     searchRequestedByPolicy = false
                     activeStageSearchReason = "compile_daftar_pustaka"
                     activeStageSearchNote = getFunctionToolsModeNote("Compile bibliography")
@@ -2081,6 +2148,30 @@ Aturan:
 
             if (!enableWebSearch && paperModePrompt && !activeStageSearchNote) {
                 activeStageSearchNote = PAPER_TOOLS_ONLY_NOTE
+            }
+
+            const requestedResponseMode = inferSearchResponseMode({
+                lastUserMessage: normalizedLastUserContent,
+            })
+            const shouldServeStoredReferenceInventory =
+                requestedResponseMode === "reference_inventory" &&
+                hasRecentSourcesInDb &&
+                !enableWebSearch &&
+                !isSyncRequest &&
+                !isSaveSubmitIntent &&
+                !isCompileBibliographyIntent
+
+            if (shouldServeStoredReferenceInventory) {
+                const inventoryItems = buildStoredReferenceInventoryItems({
+                    recentSources: recentSourcesList,
+                    exactSources: availableExactSources,
+                })
+
+                return createStoredReferenceInventoryResponse({
+                    introText: "Berikut semua sumber yang sudah tersimpan dari penelusuran sebelumnya.",
+                    items: inventoryItems,
+                    usedModel: modelNames.primary.model,
+                })
             }
 
             if (searchUnavailableReasonCode) {

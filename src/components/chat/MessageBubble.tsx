@@ -829,8 +829,9 @@ export function MessageBubble({
             anchors: [],
         })
     })()
+    const isInlineReferenceInventory = referenceInventory?.responseMode === "reference_inventory"
     const referenceInventoryIntroText = (() => {
-        if (!referenceInventory) return null
+        if (!isInlineReferenceInventory || !referenceInventory) return null
         if (typeof referenceInventory.introText === "string" && referenceInventory.introText.trim().length > 0) {
             return referenceInventory.introText.trim()
         }
@@ -840,7 +841,7 @@ export function MessageBubble({
         return "Berikut inventaris referensi yang ditemukan."
     })()
     const displayMarkdown = referenceInventoryIntroText ?? normalizedLegacyCitedText ?? publicDisplayText
-    const referenceInventoryItems = Array.isArray(referenceInventory?.items)
+    const referenceInventoryItems = isInlineReferenceInventory && Array.isArray(referenceInventory?.items)
         ? referenceInventory.items
         : null
     const quickActionsContent = referenceInventoryItems && referenceInventoryItems.length > 0 && referenceInventoryIntroText
@@ -1137,7 +1138,14 @@ export function MessageBubble({
                                             </div>
                                             <div className="mt-1 space-y-1 text-xs font-mono text-[var(--chat-muted-foreground)]">
                                                 {typeof item.url === "string" && item.url.trim().length > 0 ? (
-                                                    <div>{item.url}</div>
+                                                    <a
+                                                        href={item.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-block break-all text-[var(--chat-info)] underline-offset-2 hover:underline"
+                                                    >
+                                                        {item.url}
+                                                    </a>
                                                 ) : (
                                                     <div>URL tidak tersedia</div>
                                                 )}
