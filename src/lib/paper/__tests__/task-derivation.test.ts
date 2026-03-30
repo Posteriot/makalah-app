@@ -124,19 +124,20 @@ describe("deriveTaskList — fully filled stageData", () => {
 
 describe("deriveTaskList — partially filled", () => {
   it("gagasan with 2/4 fields: tasks[0-1] complete, tasks[2] active, tasks[3] pending", () => {
+    // Order: ideKasar, referensiAwal, analisis, angle
     const result = deriveTaskList("gagasan", {
       gagasan: {
         ideKasar: "Ide tentang AI",
-        analisis: "Feasible",
+        referensiAwal: [{ title: "Paper 1" }],
       },
     })
 
     expect(result.completed).toBe(2)
     expect(result.total).toBe(4)
-    expect(result.tasks[0].status).toBe("complete")
-    expect(result.tasks[1].status).toBe("complete")
-    expect(result.tasks[2].status).toBe("active")
-    expect(result.tasks[3].status).toBe("pending")
+    expect(result.tasks[0].status).toBe("complete")  // ideKasar
+    expect(result.tasks[1].status).toBe("complete")  // referensiAwal
+    expect(result.tasks[2].status).toBe("active")    // analisis
+    expect(result.tasks[3].status).toBe("pending")   // angle
   })
 })
 
