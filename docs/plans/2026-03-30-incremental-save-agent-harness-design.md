@@ -1,7 +1,7 @@
-# Incremental Save Agent Harness Design
+# Incremental Save Agent Harness Design (v1)
 
-> Upgrade paper-mode harness from "model decides when to save" to "harness enforces
-> incremental per-field save with per-step context injection."
+> Harness-driven incremental draft saves for paper-mode stages.
+> v1 scope: gagasan + topik only. No auto-submit. No global schema changes.
 
 ## Principle
 
@@ -9,27 +9,30 @@
 *which field* to save. The model decides the *content* of that field. A per-turn
 system note gives the model context so it generates meaningful output.
 
-## Decisions (from brainstorming)
+## Decisions (from brainstorming + review)
 
 | Decision | Choice | Why |
 |----------|--------|-----|
-| Narration style | Mix — natural discussion, harness saves in background | A too noisy, B loses transparency, C natural |
-| Save granularity | Strict per-field — one updateStageData per turn | Whole point is incremental visibility |
+| Narration style | Mix — natural discussion, harness saves incrementally | A too noisy, B loses transparency, C natural |
+| Save granularity | Strict per-field — one `saveStageDraft` per turn | Whole point is incremental visibility |
 | Enforcement trigger | Every function-tools turn — check next empty field | Trigger-based reliable, conditional fragile, lazy permissive |
-| ringkasan timing | Optional on save, required on submit | Separation: draft save vs finalization |
+| Draft vs mature save | **Separate tool: `saveStageDraft`** — `updateStageData` stays strict | Preserves existing contract across all 14 stages |
+| ringkasan | **Unchanged** — required in `updateStageData`, absent from `saveStageDraft` | No global blast radius |
 | Prompt changes | Minimal — remove "save after mature", add "system will prompt" | Prompt-only has ~50% compliance; harness enforces |
-| Artifact flow | Final turn chains: updateStageData + createArtifact + submitStageForValidation | No extra turn, approval panel appears immediately |
-| Stage scope | Generic from the start — reads task-derivation.ts per stage | Same logic all stages, no hardcoding |
+| Artifact + submit | **User-initiated** — no auto-submit in v1 | Preserves explicit approval contract per foundation.ts |
+| Stage scope | **gagasan + topik only** in v1 | Other stages have complex fields (array, enum, nested) needing richer metadata |
 
 ## Architecture
 
-### Flow (gagasan example, generic for all stages)
+### Flow (gagasan example)
 
 ```
 Turn 1 (search): referensiAwal auto-persist → 1/4
-Turn 2 (func-tools): harness force ideKasar → 2/4, model free text
-Turn 3 (func-tools): harness force analisis → 3/4, model free text
-Turn 4 (func-tools): harness force angle+ringkasan → 4/4, createArtifact, submitStageForValidation
+Turn 2 (func-tools): harness force saveStageDraft(ideKasar) → 2/4, model free text
+Turn 3 (func-tools): harness force saveStageDraft(analisis) → 3/4, model free text
+Turn 4 (func-tools): harness force saveStageDraft(angle) → 4/4, model free text
+Turn N (user-initiated): model calls updateStageData(ringkasan + all) + createArtifact
+Turn N+1 (user confirms): submitStageForValidation
 ```
 
 ### prepareStep Priority Chain
@@ -38,9 +41,68 @@ Turn 4 (func-tools): harness force angle+ringkasan → 4/4, createArtifact, subm
 1. Exact source routing      (highest — safety critical)
 2. Sync request              (getCurrentPaperState)
 3. Save/submit intent        (user explicitly asks)
-4. Incremental save  ← NEW   (harness-driven per-field save)
+4. Incremental save  ← NEW   (harness-driven per-field draft save)
 5. Default undefined          (model decides)
 ```
+
+## New Tool: `saveStageDraft`
+
+### Semantics
+
+| Aspect | `saveStageDraft` (NEW) | `updateStageData` (UNCHANGED) |
+|--------|------------------------|-------------------------------|
+| Purpose | Draft checkpoint — one field per call | Mature save — all fields + ringkasan |
+| ringkasan | Not in schema | Required (as today) |
+| Invoked by | Harness via prepareStep only | Model, after discussion matures |
+| Backend | Reuses `paperSessions.updateStageData` mutation | Same as today |
+| Prompt mention | **Not mentioned** in stage instructions | Documented in stage instructions |
+| Scope | gagasan + topik only (v1) | All 14 stages |
+
+### Schema
+
+```typescript
+const DRAFT_SAVE_ALLOWED_FIELDS = {
+  gagasan: ["ideKasar", "analisis", "angle"] as const,
+  topik: ["definitif", "angleSpesifik", "argumentasiKebaruan", "researchGap"] as const,
+} as const
+
+saveStageDraft: tool({
+    description:
+        "Save a single draft field for the current stage. "
+        + "System-driven incremental checkpoint — do not call unless instructed by the system.",
+    inputSchema: z.object({
+        field: z.enum([
+            "ideKasar", "analisis", "angle",
+            "definitif", "angleSpesifik", "argumentasiKebaruan", "researchGap",
+        ]).describe("The field to save. Must be from the current stage's allowed fields."),
+        value: z.string().min(1).describe(
+            "The field content. Must be non-empty meaningful text based on discussion so far."
+        ),
+    }),
+    execute: async ({ field, value }) => {
+        // 1. Fetch session, get currentStage
+        // 2. Validate field allowed for this stage via isAllowedDraftField()
+        // 3. Call paperSessions.updateStageData mutation with { [field]: value }
+        // 4. Filter "Ringkasan not provided." warning (expected noise)
+        // 5. Pass through all other warnings (unknown keys, URL validation)
+    }
+})
+```
+
+### Shared Helpers
+
+```typescript
+// Used by both paper-tools.ts (saveStageDraft) and incremental-save-harness.ts
+export function isDraftSaveSupportedStage(stage: string): boolean
+export function isAllowedDraftField(stage: string, field: string): boolean
+```
+
+### Warning Filter
+
+Backend always returns `"Ringkasan not provided. This stage CANNOT be approved..."` on
+saves without ringkasan (paperSessions.ts:738-741). For `saveStageDraft`, this is
+expected noise — filter by exact prefix `startsWith("Ringkasan not provided.")`,
+not substring match. Other warnings (unknown keys, URL validation) pass through.
 
 ## Core Function: `buildIncrementalSavePrepareStep()`
 
@@ -48,14 +110,11 @@ Turn 4 (func-tools): harness force angle+ringkasan → 4/4, createArtifact, subm
 
 ```typescript
 function buildIncrementalSavePrepareStep(opts: {
-  paperSession: PaperSession
-  currentStage: PaperStageId
+  currentStage: string
+  stageData: Record<string, unknown>
+  stageStatus: string
   enableWebSearch: boolean
-}): {
-  prepareStep: PrepareStepFunction | undefined
-  maxToolSteps: number
-  systemNote: string
-} | undefined
+}): IncrementalSaveConfig | undefined
 ```
 
 ### Decision Tree
@@ -63,59 +122,46 @@ function buildIncrementalSavePrepareStep(opts: {
 ```
 1. Guard: enableWebSearch === true? → return undefined
 2. Guard: stageStatus !== "drafting"? → return undefined
-3. Get task definitions for currentStage from task-derivation.ts
-4. Get current stageData fields
-5. Find FIRST incomplete field (skip auto-persist fields)
-6. No incomplete field? → return undefined
-7. Is this the LAST incomplete field?
-   YES → "final turn":
-     step 0: force updateStageData (field + ringkasan)
-     step 1: force createArtifact
-     step 2: force submitStageForValidation
-     maxToolSteps: 3
-   NO → "incremental":
-     step 0: force updateStageData (field only)
-     step 1: toolChoice "none" (free text)
+3. Guard: !isDraftSaveSupportedStage(currentStage)? → return undefined
+4. Get task definitions for currentStage from task-derivation.ts
+5. Get current stageData fields
+6. Find FIRST incomplete field (skip auto-persist fields)
+7. No incomplete field? → return undefined
+8. Return incremental config:
+     step 0: force saveStageDraft, activeTools: ["saveStageDraft"]
+     step 1: toolChoice "none", activeTools: []
      maxToolSteps: 2
 ```
 
+### Harness-Only Enforcement
+
+`saveStageDraft` is registered in the global tools object (required by streamText),
+but is NOT mentioned in stage instructions or prompts. The harness controls access:
+
+- When incremental step is active: `prepareStep` sets `activeTools: ["saveStageDraft"]`
+- Outside incremental mode: model has no prompt guidance to call it
+- `prepareStep` step 1 immediately sets `toolChoice: "none"` — model cannot call it twice
+
 ### Auto-Persist Field Skip
 
-Fields saved server-side without model cooperation are skipped:
-
 ```typescript
-const AUTO_PERSIST_FIELDS: Record<string, string[]> = {
+const AUTO_PERSIST_FIELDS: Partial<Record<string, string[]>> = {
   gagasan: ["referensiAwal"],
   topik: ["referensiPendukung"],
 }
 ```
 
-For gagasan, harness enforces 3 fields: ideKasar → analisis → angle.
-
-### System Note Injection
+### System Note
 
 Per-turn note injected into messages (same pattern as getFunctionToolsModeNote):
 
-**Incremental mode:**
 ```
 ══════════════════════════════════════════════════════════════
 MODE: INCREMENTAL_SAVE | Field: ideKasar
-INSTRUCTION: Save your "ideKasar" (rough idea exploration) now.
+INSTRUCTION: Save your "ideKasar" (Eksplorasi ide) now using saveStageDraft.
 Base it on the discussion and references so far.
 If discussion hasn't covered this yet, provide your best draft
-based on available referensiAwal.
-══════════════════════════════════════════════════════════════
-```
-
-**Final turn mode:**
-```
-══════════════════════════════════════════════════════════════
-MODE: FINAL_SAVE_AND_SUBMIT | Field: angle
-INSTRUCTION: This is the final field. You MUST:
-1. Call updateStageData with "angle" + "ringkasan"
-2. Call createArtifact with full paper content
-3. Call submitStageForValidation
-All three calls in this turn.
+based on available references.
 ══════════════════════════════════════════════════════════════
 ```
 
@@ -123,59 +169,42 @@ All three calls in this turn.
 
 | Layer | File | Change |
 |-------|------|--------|
-| Tool schema | `paper-tools.ts` | `ringkasan` → `.optional()` |
-| Harness logic | `route.ts` (new function, likely extracted) | `buildIncrementalSavePrepareStep()` |
+| New tool | `paper-tools.ts` | Add `saveStageDraft` with allowlisted fields |
+| Shared helpers | `incremental-save-harness.ts` | `isDraftSaveSupportedStage()`, `isAllowedDraftField()`, `DRAFT_SAVE_ALLOWED_FIELDS` |
+| Harness logic | `incremental-save-harness.ts` | `buildIncrementalSavePrepareStep()` — targets `saveStageDraft` |
+| Route integration | `route.ts` | Build config, inject note, wire prepareStep/stopWhen (primary + fallback) |
 | Prompt | `paper-mode-prompt.ts` | Remove "save after mature", add "system will prompt incremental save" |
-| Submit guard | `paper-tools.ts` (submitStageForValidation) | Reject if ringkasan missing from stageData |
-| Task derivation | `task-derivation.ts` | No change — data source for harness |
-| Convex backend | `paperSessions.ts` | No change — merge-based already supports partial save |
+| Tool schema | `paper-tools.ts` (`updateStageData`) | **No change** — ringkasan stays required |
+| Stage instructions | `foundation.ts` | **No change** — `saveStageDraft` not mentioned |
+| Submit flow | `route.ts` (`shouldForceSubmitValidation`) | **No change** — user-initiated |
+| Convex backend | `paperSessions.ts` | **No change** — reuses existing mutation |
 | UI | No change | UnifiedProcessCard auto-reflects stageData via subscription |
-
-## Integration in route.ts
-
-```typescript
-const incrementalSave = (
-  !enableWebSearch
-  && paperModePrompt
-  && !shouldForceGetCurrentPaperState
-  && !shouldForceSubmitValidation
-)
-  ? buildIncrementalSavePrepareStep({ paperSession, currentStage, enableWebSearch })
-  : undefined
-
-// prepareStep priority chain:
-prepareStep: (
-  primaryExactSourceRoutePlan.prepareStep
-  ?? deterministicSyncPrepareStep
-  ?? incrementalSave?.prepareStep
-) as any,
-
-// maxToolSteps:
-stopWhen: stepCountIs(
-  primaryExactSourceRoutePlan.maxToolSteps
-  ?? (shouldForceGetCurrentPaperState ? 2 : undefined)
-  ?? incrementalSave?.maxToolSteps
-  ?? 5
-),
-
-// System note injection into messages (if incrementalSave active)
-```
 
 ## Edge Cases
 
 | Scenario | Handling |
 |----------|----------|
-| User hasn't discussed field yet | Model generates best draft from referensi; draft save, user can revise |
-| Model generates garbage | No quality gate by design (tools = simple executors); user revises |
+| User hasn't discussed field yet | Model generates best draft from referensi; draft save, user can revise via discussion |
+| Model generates garbage in saveStageDraft | No quality gate by design (tools = simple executors); field gets overwritten on next draft or mature save |
 | Exact source routing active | Priority chain: exact source wins, incremental skipped this turn |
 | User explicitly asks save/submit | shouldForceSubmitValidation wins in priority chain |
-| Stage transition mid-flow | Reads currentStage fresh every turn; auto-switches task definitions |
-| All fields complete, not submitted | Returns undefined; model free to act or user triggers |
+| Stage is not gagasan/topik | isDraftSaveSupportedStage returns false, harness returns undefined, no enforcement |
+| All fields complete, not submitted | Returns undefined; model proceeds to mature save naturally |
+| Model tries saveStageDraft with wrong field for stage | isAllowedDraftField rejects, returns error |
+| saveStageDraft called outside harness | Possible but harmless — saves valid field, no contract violation |
+
+## What This Design Does NOT Do (v1 boundaries)
+
+- Does NOT change `updateStageData` schema (ringkasan stays required)
+- Does NOT auto-submit (approval remains user-initiated)
+- Does NOT cover stages beyond gagasan/topik
+- Does NOT change stage instructions in foundation.ts
+- Does NOT add ordering semantics to task-derivation.ts (ordering lives in harness only)
 
 ## Terminology
 
 This design implements an **agent harness** pattern — specifically the **loop control**
-and **per-step context engineering** aspects. The harness (buildIncrementalSavePrepareStep)
+and **per-step context engineering** aspects. The harness (`buildIncrementalSavePrepareStep`)
 controls tool dispatch timing; the model (via prompt context) controls content quality.
 
 Reference: Anthropic "Effective harnesses for long-running agents" (2025).

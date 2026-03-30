@@ -1,162 +1,308 @@
-# Incremental Save Agent Harness — Implementation Plan
+# Incremental Save Agent Harness — Implementation Plan (v1)
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Make AI model save stageData fields incrementally (one per turn) via harness-enforced prepareStep, so UnifiedProcessCard shows real-time progress instead of bulk jumps.
+**Goal:** Make AI model save stageData fields incrementally (one per turn) via harness-enforced `saveStageDraft` tool, so UnifiedProcessCard shows real-time progress instead of bulk jumps. Scope: gagasan + topik stages only.
 
-**Architecture:** `buildIncrementalSavePrepareStep()` reads task-derivation definitions, checks which fields are incomplete, and returns a prepareStep config that forces the model to save the next empty field. Final turn chains updateStageData + createArtifact + submitStageForValidation.
+**Architecture:** New `saveStageDraft` tool for draft checkpoints (separate from `updateStageData` which stays strict). `buildIncrementalSavePrepareStep()` reads task-derivation definitions, checks which fields are incomplete, and returns a prepareStep config that forces the model to call `saveStageDraft` for the next empty field. No auto-submit — approval stays user-initiated.
 
 **Tech Stack:** TypeScript, Zod, Vercel AI SDK (prepareStep/stopWhen), Convex, Vitest
 
 ---
 
-### Task 1: Make `ringkasan` optional in `updateStageData` schema
+### Task 1: Create shared helpers for draft save allowlist
 
 **Files:**
-- Modify: `src/lib/ai/paper-tools.ts:147-150`
+- Create: `src/lib/ai/draft-save-fields.ts`
+- Test: `src/lib/ai/__tests__/draft-save-fields.test.ts` (create)
 
-**Step 1: Change the Zod schema**
+**Step 1: Write the failing tests**
 
-In `src/lib/ai/paper-tools.ts`, find line 147:
-
-```typescript
-ringkasan: z.string().max(280).describe(
-    "REQUIRED! The main decision AGREED upon with the user for this stage. Max 280 characters. " +
-    "Example: 'Agreed angle: AI impact on Indonesian higher education, gap: no studies on private universities'"
-),
-```
-
-Replace with:
+Create `src/lib/ai/__tests__/draft-save-fields.test.ts`:
 
 ```typescript
-ringkasan: z.string().max(280).optional().describe(
-    "Summary of the main decision agreed with user for this stage. Max 280 chars. " +
-    "Required before submitStageForValidation, but optional for incremental saves. " +
-    "Example: 'Agreed angle: AI impact on Indonesian higher education, gap: no studies on private universities'"
-),
-```
+import { describe, it, expect } from "vitest"
+import {
+  isDraftSaveSupportedStage,
+  isAllowedDraftField,
+  getDraftSaveAllowedFields,
+} from "../draft-save-fields"
 
-**Step 2: Verify no type errors**
-
-Run: `npx tsc --noEmit 2>&1 | head -30`
-Expected: No errors related to `ringkasan`
-
-**Step 3: Commit**
-
-```bash
-git add src/lib/ai/paper-tools.ts
-git commit -m "feat: make ringkasan optional in updateStageData for incremental saves"
-```
-
----
-
-### Task 2: Add ringkasan guard to `submitStageForValidation`
-
-**Files:**
-- Modify: `src/lib/ai/paper-tools.ts:382-414`
-- Test: `src/lib/ai/__tests__/paper-tools.submitValidation.test.ts` (create)
-
-**Step 1: Write the failing test**
-
-Create `src/lib/ai/__tests__/paper-tools.submitValidation.test.ts`:
-
-```typescript
-import { describe, it, expect, vi } from "vitest"
-
-/**
- * These tests verify the ringkasan guard logic that will be added
- * to submitStageForValidation. We test the guard function in isolation
- * since the tool's execute() depends on Convex network calls.
- */
-
-// Extract the guard logic into a testable function
-import { validateStageReadyForSubmit } from "../paper-tools-validation"
-
-describe("validateStageReadyForSubmit", () => {
-  it("returns error when ringkasan is missing", () => {
-    const stageData = { ideKasar: "some idea", analisis: "ok" }
-    const result = validateStageReadyForSubmit(stageData)
-    expect(result.ready).toBe(false)
-    expect(result.error).toContain("ringkasan")
+describe("isDraftSaveSupportedStage", () => {
+  it("returns true for gagasan", () => {
+    expect(isDraftSaveSupportedStage("gagasan")).toBe(true)
   })
 
-  it("returns error when ringkasan is empty string", () => {
-    const stageData = { ringkasan: "", ideKasar: "some idea" }
-    const result = validateStageReadyForSubmit(stageData)
-    expect(result.ready).toBe(false)
-    expect(result.error).toContain("ringkasan")
+  it("returns true for topik", () => {
+    expect(isDraftSaveSupportedStage("topik")).toBe(true)
   })
 
-  it("returns ready when ringkasan exists", () => {
-    const stageData = { ringkasan: "Valid summary of decisions" }
-    const result = validateStageReadyForSubmit(stageData)
-    expect(result.ready).toBe(true)
+  it("returns false for outline (not in v1)", () => {
+    expect(isDraftSaveSupportedStage("outline")).toBe(false)
+  })
+
+  it("returns false for unknown stage", () => {
+    expect(isDraftSaveSupportedStage("nonexistent")).toBe(false)
+  })
+})
+
+describe("isAllowedDraftField", () => {
+  it("allows ideKasar for gagasan", () => {
+    expect(isAllowedDraftField("gagasan", "ideKasar")).toBe(true)
+  })
+
+  it("allows analisis for gagasan", () => {
+    expect(isAllowedDraftField("gagasan", "analisis")).toBe(true)
+  })
+
+  it("rejects referensiAwal for gagasan (auto-persist, not draft-save)", () => {
+    expect(isAllowedDraftField("gagasan", "referensiAwal")).toBe(false)
+  })
+
+  it("rejects ringkasan for gagasan (belongs to updateStageData)", () => {
+    expect(isAllowedDraftField("gagasan", "ringkasan")).toBe(false)
+  })
+
+  it("allows definitif for topik", () => {
+    expect(isAllowedDraftField("topik", "definitif")).toBe(true)
+  })
+
+  it("rejects any field for unsupported stage", () => {
+    expect(isAllowedDraftField("outline", "sections")).toBe(false)
+  })
+})
+
+describe("getDraftSaveAllowedFields", () => {
+  it("returns 3 fields for gagasan", () => {
+    expect(getDraftSaveAllowedFields("gagasan")).toEqual(["ideKasar", "analisis", "angle"])
+  })
+
+  it("returns 4 fields for topik", () => {
+    expect(getDraftSaveAllowedFields("topik")).toEqual([
+      "definitif", "angleSpesifik", "argumentasiKebaruan", "researchGap",
+    ])
+  })
+
+  it("returns empty for unsupported stage", () => {
+    expect(getDraftSaveAllowedFields("outline")).toEqual([])
   })
 })
 ```
 
 **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run src/lib/ai/__tests__/paper-tools.submitValidation.test.ts`
-Expected: FAIL — module `paper-tools-validation` not found
+Run: `npx vitest run src/lib/ai/__tests__/draft-save-fields.test.ts`
+Expected: FAIL — module not found
 
-**Step 3: Create the validation helper**
+**Step 3: Implement the helpers**
 
-Create `src/lib/ai/paper-tools-validation.ts`:
+Create `src/lib/ai/draft-save-fields.ts`:
 
 ```typescript
 /**
- * Validates whether a stage's stageData is ready for submission.
- * Extracted for testability — used by submitStageForValidation tool.
+ * Allowlist of fields that saveStageDraft can write, per stage.
+ * v1: gagasan + topik only. Excludes auto-persist fields (referensiAwal, referensiPendukung)
+ * and mature-save-only fields (ringkasan, ringkasanDetail, novelty).
  */
-export function validateStageReadyForSubmit(
-  stageData: Record<string, unknown> | undefined
-): { ready: true } | { ready: false; error: string } {
-  const ringkasan = stageData?.ringkasan
-  if (!ringkasan || (typeof ringkasan === "string" && ringkasan.trim().length === 0)) {
-    return {
-      ready: false,
-      error: "Cannot submit: ringkasan is required. Call updateStageData with ringkasan first.",
-    }
-  }
-  return { ready: true }
+export const DRAFT_SAVE_ALLOWED_FIELDS: Record<string, readonly string[]> = {
+  gagasan: ["ideKasar", "analisis", "angle"],
+  topik: ["definitif", "angleSpesifik", "argumentasiKebaruan", "researchGap"],
+} as const
+
+export function isDraftSaveSupportedStage(stage: string): boolean {
+  return stage in DRAFT_SAVE_ALLOWED_FIELDS
+}
+
+export function isAllowedDraftField(stage: string, field: string): boolean {
+  const allowed = DRAFT_SAVE_ALLOWED_FIELDS[stage]
+  return allowed?.includes(field) ?? false
+}
+
+export function getDraftSaveAllowedFields(stage: string): readonly string[] {
+  return DRAFT_SAVE_ALLOWED_FIELDS[stage] ?? []
 }
 ```
 
 **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run src/lib/ai/__tests__/paper-tools.submitValidation.test.ts`
-Expected: PASS
+Run: `npx vitest run src/lib/ai/__tests__/draft-save-fields.test.ts`
+Expected: All PASS
 
-**Step 5: Wire guard into submitStageForValidation tool**
+**Step 5: Commit**
 
-In `src/lib/ai/paper-tools.ts`, inside `submitStageForValidation.execute()`, add before the mutation call (after session fetch, around line 393):
+```bash
+git add src/lib/ai/draft-save-fields.ts src/lib/ai/__tests__/draft-save-fields.test.ts
+git commit -m "feat: add draft save field allowlist helpers for gagasan/topik"
+```
+
+---
+
+### Task 2: Create `saveStageDraft` tool
+
+**Files:**
+- Modify: `src/lib/ai/paper-tools.ts` (add tool to existing registry)
+- Test: `src/lib/ai/__tests__/save-stage-draft.test.ts` (create)
+
+**Step 1: Write the failing tests**
+
+Create `src/lib/ai/__tests__/save-stage-draft.test.ts`:
 
 ```typescript
-import { validateStageReadyForSubmit } from "./paper-tools-validation"
+import { describe, it, expect } from "vitest"
+import { filterDraftSaveWarnings } from "../paper-tools-draft-save"
 
-// Inside execute(), after session fetch:
-if (!session) return { success: false, error: "Paper session not found." };
+describe("filterDraftSaveWarnings", () => {
+  it("filters ringkasan-not-provided warning", () => {
+    const warning =
+      "Ringkasan not provided. This stage CANNOT be approved without ringkasan. " +
+      "Call updateStageData again with the 'ringkasan' field containing the agreed key decisions (max 280 characters)."
+    expect(filterDraftSaveWarnings(warning)).toBeUndefined()
+  })
 
-// NEW: Check ringkasan before submitting
-const currentStageKey = session.currentStage as string
-const currentStageData = (session.stageData as Record<string, Record<string, unknown>>)?.[currentStageKey]
-const readyCheck = validateStageReadyForSubmit(currentStageData)
-if (!readyCheck.ready) {
-  return { success: false, error: readyCheck.error }
+  it("preserves unknown-keys warning", () => {
+    const warning = "Unknown keys stripped: foo, bar. Use keys matching the schema for stage gagasan."
+    expect(filterDraftSaveWarnings(warning)).toBe(warning)
+  })
+
+  it("preserves URL validation warning", () => {
+    const warning = "ANTI-HALLUCINATION: 2 of 3 references in field 'referensiAwal' do NOT have a URL."
+    expect(filterDraftSaveWarnings(warning)).toBe(warning)
+  })
+
+  it("filters ringkasan warning but keeps others in combined warning", () => {
+    const combined =
+      "Unknown keys stripped: foo. Use keys matching the schema for stage gagasan. | " +
+      "Ringkasan not provided. This stage CANNOT be approved without ringkasan. " +
+      "Call updateStageData again with the 'ringkasan' field containing the agreed key decisions (max 280 characters)."
+    const result = filterDraftSaveWarnings(combined)
+    expect(result).toContain("Unknown keys stripped")
+    expect(result).not.toContain("Ringkasan not provided")
+  })
+
+  it("returns undefined for undefined input", () => {
+    expect(filterDraftSaveWarnings(undefined)).toBeUndefined()
+  })
+})
+```
+
+**Step 2: Run test to verify it fails**
+
+Run: `npx vitest run src/lib/ai/__tests__/save-stage-draft.test.ts`
+Expected: FAIL — module not found
+
+**Step 3: Create the warning filter helper**
+
+Create `src/lib/ai/paper-tools-draft-save.ts`:
+
+```typescript
+/**
+ * Filters backend warnings for saveStageDraft tool.
+ * "Ringkasan not provided." is expected noise for draft saves — filter it out.
+ * All other warnings (unknown keys, URL validation) pass through.
+ */
+export function filterDraftSaveWarnings(warning: string | undefined): string | undefined {
+  if (!warning) return undefined
+
+  const filtered = warning
+    .split(" | ")
+    .filter((w) => !w.startsWith("Ringkasan not provided."))
+    .join(" | ")
+
+  return filtered.length > 0 ? filtered : undefined
 }
 ```
 
-**Step 6: Run all paper-tools tests**
+**Step 4: Run test to verify it passes**
+
+Run: `npx vitest run src/lib/ai/__tests__/save-stage-draft.test.ts`
+Expected: All PASS
+
+**Step 5: Add `saveStageDraft` tool to paper-tools.ts**
+
+In `src/lib/ai/paper-tools.ts`, add the tool to the returned tools object (after `updateStageData`, before `createArtifact`). Use the same `context`, `retryQuery`, `retryMutation`, `fetchQuery`, `fetchMutation`, `convexOptions`, and `api` references already in scope.
+
+```typescript
+import { isAllowedDraftField, getDraftSaveAllowedFields } from "./draft-save-fields"
+import { filterDraftSaveWarnings } from "./paper-tools-draft-save"
+
+// Inside the tools object:
+saveStageDraft: tool({
+    description:
+        "Save a single draft field for the current stage. " +
+        "System-driven incremental checkpoint — do not call unless instructed by the system.",
+    inputSchema: z.object({
+        field: z.enum([
+            "ideKasar", "analisis", "angle",
+            "definitif", "angleSpesifik", "argumentasiKebaruan", "researchGap",
+        ]).describe("The field to save. Must be from the current stage's allowed fields."),
+        value: z.string().min(1).describe(
+            "The field content. Must be non-empty meaningful text based on discussion so far."
+        ),
+    }),
+    execute: async ({ field, value }) => {
+        try {
+            const session = await retryQuery(
+                () => fetchQuery(api.paperSessions.getByConversation, {
+                    conversationId: context.conversationId
+                }, convexOptions),
+                "paperSessions.getByConversation"
+            )
+            if (!session) return { success: false, error: "Paper session not found." }
+
+            const currentStage = session.currentStage as string
+
+            if (!isAllowedDraftField(currentStage, field)) {
+                const allowed = getDraftSaveAllowedFields(currentStage)
+                return {
+                    success: false,
+                    error: `Field "${field}" is not allowed for draft save in stage "${currentStage}". ` +
+                        (allowed.length > 0
+                            ? `Allowed: ${allowed.join(", ")}`
+                            : `Stage "${currentStage}" does not support draft saves.`),
+                }
+            }
+
+            const result = await retryMutation(
+                () => fetchMutation(api.paperSessions.updateStageData, {
+                    sessionId: session._id,
+                    stage: currentStage,
+                    data: { [field]: value },
+                }, convexOptions),
+                "paperSessions.updateStageData"
+            )
+
+            return {
+                success: true,
+                stage: currentStage,
+                field,
+                ...(filterDraftSaveWarnings(result.warning)
+                    ? { warning: filterDraftSaveWarnings(result.warning) }
+                    : {}),
+            }
+        } catch (error) {
+            console.error("Error in saveStageDraft tool:", error)
+            const errorMessage = error instanceof Error ? error.message : "Failed to save draft field."
+            return { success: false, error: errorMessage }
+        }
+    },
+}),
+```
+
+**Step 6: Verify type check**
+
+Run: `npx tsc --noEmit 2>&1 | head -30`
+Expected: No type errors
+
+**Step 7: Run all paper-tools tests**
 
 Run: `npx vitest run src/lib/ai/`
 Expected: All PASS
 
-**Step 7: Commit**
+**Step 8: Commit**
 
 ```bash
-git add src/lib/ai/paper-tools-validation.ts src/lib/ai/__tests__/paper-tools.submitValidation.test.ts src/lib/ai/paper-tools.ts
-git commit -m "feat: add ringkasan guard to submitStageForValidation"
+git add src/lib/ai/paper-tools.ts src/lib/ai/paper-tools-draft-save.ts src/lib/ai/__tests__/save-stage-draft.test.ts
+git commit -m "feat: add saveStageDraft tool with allowlist validation and warning filter"
 ```
 
 ---
@@ -215,6 +361,16 @@ describe("buildIncrementalSavePrepareStep", () => {
       expect(result).toBeUndefined()
     })
 
+    it("returns undefined when stage is not supported (outline)", () => {
+      const result = buildIncrementalSavePrepareStep({
+        currentStage: "outline",
+        stageData: {},
+        stageStatus: "drafting",
+        enableWebSearch: false,
+      })
+      expect(result).toBeUndefined()
+    })
+
     it("returns undefined when all fields are complete", () => {
       const result = buildIncrementalSavePrepareStep({
         currentStage: "gagasan",
@@ -226,7 +382,7 @@ describe("buildIncrementalSavePrepareStep", () => {
     })
   })
 
-  describe("incremental mode (non-final field)", () => {
+  describe("incremental mode", () => {
     it("targets ideKasar when only referensiAwal is filled", () => {
       const result = buildIncrementalSavePrepareStep({
         currentStage: "gagasan",
@@ -238,7 +394,6 @@ describe("buildIncrementalSavePrepareStep", () => {
       })
       expect(result).toBeDefined()
       expect(result!.targetField).toBe("ideKasar")
-      expect(result!.mode).toBe("incremental")
       expect(result!.maxToolSteps).toBe(2)
     })
 
@@ -251,26 +406,9 @@ describe("buildIncrementalSavePrepareStep", () => {
       })
       expect(result).toBeDefined()
       expect(result!.targetField).toBe("analisis")
-      expect(result!.mode).toBe("incremental")
     })
 
-    it("prepareStep forces updateStageData at step 0, none at step 1", () => {
-      const result = buildIncrementalSavePrepareStep({
-        currentStage: "gagasan",
-        stageData: PARTIAL_GAGASAN_DATA,
-        stageStatus: "drafting",
-        enableWebSearch: false,
-      })
-      const step0 = result!.prepareStep({ stepNumber: 0 })
-      expect(step0!.toolChoice).toEqual({ type: "tool", toolName: "updateStageData" })
-
-      const step1 = result!.prepareStep({ stepNumber: 1 })
-      expect(step1!.toolChoice).toBe("none")
-    })
-  })
-
-  describe("final turn mode (last field)", () => {
-    it("targets angle as final field with mode final", () => {
+    it("targets angle when analisis is filled", () => {
       const result = buildIncrementalSavePrepareStep({
         currentStage: "gagasan",
         stageData: ALMOST_COMPLETE_GAGASAN_DATA,
@@ -279,25 +417,22 @@ describe("buildIncrementalSavePrepareStep", () => {
       })
       expect(result).toBeDefined()
       expect(result!.targetField).toBe("angle")
-      expect(result!.mode).toBe("final")
-      expect(result!.maxToolSteps).toBe(3)
     })
 
-    it("prepareStep chains: updateStageData → createArtifact → submitStageForValidation", () => {
+    it("prepareStep forces saveStageDraft at step 0, none at step 1", () => {
       const result = buildIncrementalSavePrepareStep({
         currentStage: "gagasan",
-        stageData: ALMOST_COMPLETE_GAGASAN_DATA,
+        stageData: PARTIAL_GAGASAN_DATA,
         stageStatus: "drafting",
         enableWebSearch: false,
       })
       const step0 = result!.prepareStep({ stepNumber: 0 })
-      expect(step0!.toolChoice).toEqual({ type: "tool", toolName: "updateStageData" })
+      expect(step0!.toolChoice).toEqual({ type: "tool", toolName: "saveStageDraft" })
+      expect(step0!.activeTools).toEqual(["saveStageDraft"])
 
       const step1 = result!.prepareStep({ stepNumber: 1 })
-      expect(step1!.toolChoice).toEqual({ type: "tool", toolName: "createArtifact" })
-
-      const step2 = result!.prepareStep({ stepNumber: 2 })
-      expect(step2!.toolChoice).toEqual({ type: "tool", toolName: "submitStageForValidation" })
+      expect(step1!.toolChoice).toBe("none")
+      expect(step1!.activeTools).toEqual([])
     })
   })
 
@@ -309,13 +444,22 @@ describe("buildIncrementalSavePrepareStep", () => {
         stageStatus: "drafting",
         enableWebSearch: false,
       })
-      // Should target ideKasar, NOT referensiAwal
       expect(result!.targetField).toBe("ideKasar")
+    })
+
+    it("skips referensiPendukung for topik", () => {
+      const result = buildIncrementalSavePrepareStep({
+        currentStage: "topik",
+        stageData: {},
+        stageStatus: "drafting",
+        enableWebSearch: false,
+      })
+      expect(result!.targetField).toBe("definitif")
     })
   })
 
   describe("system note", () => {
-    it("includes field name in incremental note", () => {
+    it("includes field name and INCREMENTAL_SAVE", () => {
       const result = buildIncrementalSavePrepareStep({
         currentStage: "gagasan",
         stageData: { referensiAwal: [{ title: "t" }] },
@@ -324,23 +468,12 @@ describe("buildIncrementalSavePrepareStep", () => {
       })
       expect(result!.systemNote).toContain("ideKasar")
       expect(result!.systemNote).toContain("INCREMENTAL_SAVE")
-    })
-
-    it("includes FINAL_SAVE_AND_SUBMIT in final note", () => {
-      const result = buildIncrementalSavePrepareStep({
-        currentStage: "gagasan",
-        stageData: ALMOST_COMPLETE_GAGASAN_DATA,
-        stageStatus: "drafting",
-        enableWebSearch: false,
-      })
-      expect(result!.systemNote).toContain("FINAL_SAVE_AND_SUBMIT")
-      expect(result!.systemNote).toContain("ringkasan")
-      expect(result!.systemNote).toContain("createArtifact")
+      expect(result!.systemNote).toContain("saveStageDraft")
     })
   })
 
-  describe("generic stage support", () => {
-    it("works for topik stage", () => {
+  describe("topik stage support", () => {
+    it("works for topik stage with correct first field", () => {
       const result = buildIncrementalSavePrepareStep({
         currentStage: "topik",
         stageData: {},
@@ -348,7 +481,6 @@ describe("buildIncrementalSavePrepareStep", () => {
         enableWebSearch: false,
       })
       expect(result).toBeDefined()
-      // topik first non-auto-persist field is definitif
       expect(result!.targetField).toBe("definitif")
     })
   })
@@ -366,13 +498,13 @@ Create `src/lib/ai/incremental-save-harness.ts`:
 
 ```typescript
 import { deriveTaskList } from "@/lib/paper/task-derivation"
-import type { PaperStageId } from "../../convex/paperSessions/constants"
+import { isDraftSaveSupportedStage } from "./draft-save-fields"
 
 /**
  * Fields auto-persisted server-side (appendSearchReferences).
  * Harness skips these — they don't need model cooperation.
  */
-const AUTO_PERSIST_FIELDS: Partial<Record<PaperStageId, string[]>> = {
+const AUTO_PERSIST_FIELDS: Record<string, string[]> = {
   gagasan: ["referensiAwal"],
   topik: ["referensiPendukung"],
 }
@@ -387,7 +519,6 @@ export type IncrementalSaveConfig = {
   maxToolSteps: number
   systemNote: string
   targetField: string
-  mode: "incremental" | "final"
 }
 
 export function buildIncrementalSavePrepareStep(opts: {
@@ -396,21 +527,16 @@ export function buildIncrementalSavePrepareStep(opts: {
   stageStatus: string
   enableWebSearch: boolean
 }): IncrementalSaveConfig | undefined {
-  // Guard: only in function-tools turns
   if (opts.enableWebSearch) return undefined
-
-  // Guard: only when drafting
   if (opts.stageStatus !== "drafting") return undefined
+  if (!isDraftSaveSupportedStage(opts.currentStage)) return undefined
 
-  // Get task list for current stage
-  const stageId = opts.currentStage as PaperStageId
-  const taskSummary = deriveTaskList(stageId, { [stageId]: opts.stageData })
+  const stageId = opts.currentStage
+  const taskSummary = deriveTaskList(stageId as any, { [stageId]: opts.stageData })
   if (!taskSummary || taskSummary.tasks.length === 0) return undefined
 
-  // Get auto-persist fields to skip
   const skipFields = AUTO_PERSIST_FIELDS[stageId] ?? []
 
-  // Find first incomplete field that isn't auto-persisted
   const pendingTasks = taskSummary.tasks.filter(
     (t) => t.status === "pending" && !skipFields.includes(t.field)
   )
@@ -418,48 +544,16 @@ export function buildIncrementalSavePrepareStep(opts: {
   if (pendingTasks.length === 0) return undefined
 
   const targetTask = pendingTasks[0]
-  const isFinal = pendingTasks.length === 1
-
-  if (isFinal) {
-    return {
-      targetField: targetTask.field,
-      mode: "final",
-      maxToolSteps: 3,
-      systemNote: buildFinalTurnNote(targetTask.field, targetTask.label),
-      prepareStep: ({ stepNumber }) => {
-        if (stepNumber === 0) {
-          return {
-            toolChoice: { type: "tool", toolName: "updateStageData" } as const,
-            activeTools: ["updateStageData"],
-          }
-        }
-        if (stepNumber === 1) {
-          return {
-            toolChoice: { type: "tool", toolName: "createArtifact" } as const,
-            activeTools: ["createArtifact"],
-          }
-        }
-        if (stepNumber === 2) {
-          return {
-            toolChoice: { type: "tool", toolName: "submitStageForValidation" } as const,
-            activeTools: ["submitStageForValidation"],
-          }
-        }
-        return undefined
-      },
-    }
-  }
 
   return {
     targetField: targetTask.field,
-    mode: "incremental",
     maxToolSteps: 2,
     systemNote: buildIncrementalNote(targetTask.field, targetTask.label),
     prepareStep: ({ stepNumber }) => {
       if (stepNumber === 0) {
         return {
-          toolChoice: { type: "tool", toolName: "updateStageData" } as const,
-          activeTools: ["updateStageData"],
+          toolChoice: { type: "tool", toolName: "saveStageDraft" } as const,
+          activeTools: ["saveStageDraft"],
         }
       }
       if (stepNumber === 1) {
@@ -477,23 +571,10 @@ function buildIncrementalNote(field: string, label: string): string {
   return `
 ══════════════════════════════════════════════════════════════
 MODE: INCREMENTAL_SAVE | Field: ${field}
-INSTRUCTION: Save your "${field}" (${label}) now.
+INSTRUCTION: Save your "${field}" (${label}) now using saveStageDraft.
 Base it on the discussion and references so far.
 If discussion hasn't covered this yet, provide your best draft
 based on available references.
-Do NOT include ringkasan — it is only needed in the final save.
-══════════════════════════════════════════════════════════════`
-}
-
-function buildFinalTurnNote(field: string, label: string): string {
-  return `
-══════════════════════════════════════════════════════════════
-MODE: FINAL_SAVE_AND_SUBMIT | Field: ${field}
-INSTRUCTION: This is the final field. You MUST complete these 3 calls in order:
-1. Call updateStageData with "${field}" (${label}) + "ringkasan" (summary of agreed decision, max 280 chars)
-2. Call createArtifact with full paper content for this stage
-3. Call submitStageForValidation to trigger user approval
-All three calls happen in this turn. Do not skip any.
 ══════════════════════════════════════════════════════════════`
 }
 ```
@@ -512,7 +593,7 @@ Expected: All PASS, no regressions
 
 ```bash
 git add src/lib/ai/incremental-save-harness.ts src/lib/ai/__tests__/incremental-save-harness.test.ts
-git commit -m "feat: add buildIncrementalSavePrepareStep harness logic with tests"
+git commit -m "feat: add buildIncrementalSavePrepareStep targeting saveStageDraft"
 ```
 
 ---
@@ -520,9 +601,9 @@ git commit -m "feat: add buildIncrementalSavePrepareStep harness logic with test
 ### Task 4: Integrate harness into route.ts
 
 **Files:**
-- Modify: `src/app/api/chat/route.ts:2186-2200` (guard conditions)
-- Modify: `src/app/api/chat/route.ts:2221-2240` (message injection)
-- Modify: `src/app/api/chat/route.ts:2437-2445` (prepareStep/stopWhen)
+- Modify: `src/app/api/chat/route.ts`
+
+**Context:** route.ts has two streamText calls: primary provider (~line 2437) and fallback provider (~line 2830). Both need identical incremental save integration.
 
 **Step 1: Add import**
 
@@ -534,10 +615,11 @@ import { buildIncrementalSavePrepareStep } from "@/lib/ai/incremental-save-harne
 
 **Step 2: Build incremental save config after existing guards**
 
-After `shouldForceSubmitValidation` and `missingArtifactNote` (around line 2207), add:
+After `missingArtifactNote` (around line 2207), add:
 
 ```typescript
-// Incremental save harness: force per-field save in function-tools turns
+// Incremental save harness: force per-field draft save in function-tools turns
+// Only active for supported stages (gagasan/topik in v1)
 const incrementalSaveConfig = (
     !enableWebSearch
     && !!paperModePrompt
@@ -552,20 +634,26 @@ const incrementalSaveConfig = (
         enableWebSearch,
     })
     : undefined
+
+if (incrementalSaveConfig) {
+    console.log(
+        `[IncrementalSave] targetField=${incrementalSaveConfig.targetField}, ` +
+        `maxToolSteps=${incrementalSaveConfig.maxToolSteps}`
+    )
+}
 ```
 
 **Step 3: Inject system note into messages**
 
-In the `fullMessagesGateway` construction (non-search branch, around line 2231), add the incremental save note injection:
+In the `fullMessagesGateway` construction, `!enableWebSearch` branch (around line 2231), add after `missingArtifactNote` injection:
 
 ```typescript
-// In the !enableWebSearch branch, after missingArtifactNote injection:
 ...(incrementalSaveConfig?.systemNote
     ? [{ role: "system" as const, content: incrementalSaveConfig.systemNote }]
     : []),
 ```
 
-**Step 4: Wire prepareStep priority chain**
+**Step 4: Wire prepareStep priority chain — primary provider**
 
 At line ~2444, change:
 
@@ -579,42 +667,30 @@ prepareStep: (primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepar
 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? (shouldForceGetCurrentPaperState ? 2 : undefined) ?? incrementalSaveConfig?.maxToolSteps ?? 5),
 ```
 
-Note: `maxToolSteps` variable is currently `shouldForceGetCurrentPaperState ? 2 : 5`. We need to break this apart so incremental save's maxToolSteps (2 or 3) can slot in. Replace the original `maxToolSteps` variable (line 2247) with:
+Remove or inline the `maxToolSteps` variable (line ~2247) since its value is now computed inline.
+
+**Step 5: Wire prepareStep priority chain — fallback provider**
+
+At the fallback streamText (~line 2847), apply same pattern:
 
 ```typescript
-// Remove the old maxToolSteps variable and inline into stopWhen above
-```
+// BEFORE:
+prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
+stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
 
-**Step 5: Apply same changes to fallback provider block**
-
-The fallback provider (around line 2793-2860) has a duplicate prepareStep/stopWhen. Apply the same pattern:
-
-```typescript
-// Fallback block — same incremental save integration
+// AFTER:
 prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep ?? incrementalSaveConfig?.prepareStep) as any,
 stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? (shouldForceGetCurrentPaperState ? 2 : undefined) ?? incrementalSaveConfig?.maxToolSteps ?? 5),
 ```
 
-**Step 6: Add telemetry log**
+Remove or inline `fallbackMaxToolSteps` similarly.
 
-After the `incrementalSaveConfig` construction, add:
-
-```typescript
-if (incrementalSaveConfig) {
-    console.log(
-        `[IncrementalSave] mode=${incrementalSaveConfig.mode}, ` +
-        `targetField=${incrementalSaveConfig.targetField}, ` +
-        `maxToolSteps=${incrementalSaveConfig.maxToolSteps}`
-    )
-}
-```
-
-**Step 7: Verify type check**
+**Step 6: Verify type check**
 
 Run: `npx tsc --noEmit 2>&1 | head -30`
 Expected: No type errors
 
-**Step 8: Commit**
+**Step 7: Commit**
 
 ```bash
 git add src/app/api/chat/route.ts
@@ -670,19 +746,22 @@ Expected: No type errors
 
 **Step 3: Run lint**
 
-Run: `npx eslint src/lib/ai/incremental-save-harness.ts src/lib/ai/paper-tools-validation.ts src/lib/ai/paper-tools.ts src/app/api/chat/route.ts src/lib/ai/paper-mode-prompt.ts`
+Run: `npx eslint src/lib/ai/draft-save-fields.ts src/lib/ai/paper-tools-draft-save.ts src/lib/ai/incremental-save-harness.ts src/lib/ai/paper-tools.ts src/app/api/chat/route.ts src/lib/ai/paper-mode-prompt.ts`
 Expected: No errors
 
 **Step 4: Manual verification checklist**
 
 Verify in dev mode (paper mode, gagasan stage):
-1. Start new paper session → send topic
+1. Start new paper session, send topic
 2. After search completes (1/4), respond to model
-3. Verify model is forced to call updateStageData (check console for `[IncrementalSave]` log)
-4. Verify UnifiedProcessCard shows 2/4 after model responds
-5. Continue conversation → verify 3/4 appears next turn
-6. Continue → verify 4/4 + artifact + approval panel appears in final turn
-7. Verify ringkasan is present in the final updateStageData call
+3. Check console for `[IncrementalSave] targetField=ideKasar` log
+4. Verify model calls `saveStageDraft` (not `updateStageData`)
+5. Verify UnifiedProcessCard shows 2/4
+6. Continue conversation → verify 3/4 next turn (analisis)
+7. Continue → verify 4/4 next turn (angle)
+8. Verify model can still call `updateStageData` with ringkasan for mature save
+9. Verify `submitStageForValidation` only triggers on user intent, not automatically
+10. Verify no behavior change for stages outside gagasan/topik (e.g. outline)
 
 **Step 5: Commit any fixes from verification**
 
