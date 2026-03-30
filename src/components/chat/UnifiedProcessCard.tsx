@@ -1,0 +1,228 @@
+"use client"
+
+import { useState, useMemo } from "react"
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@/components/ui/collapsible"
+import { cn } from "@/lib/utils"
+import { ToolStateIndicator, getToolLabel } from "./ToolStateIndicator"
+import { SearchStatusIndicator } from "./SearchStatusIndicator"
+import type { SearchStatus } from "./SearchStatusIndicator"
+import type { TaskItem } from "@/lib/paper/task-derivation"
+
+// --- Types ---
+
+interface TaskSummaryData {
+  stageId: string
+  stageLabel: string
+  tasks: TaskItem[]
+  completed: number
+  total: number
+}
+
+interface ProcessTool {
+  toolName: string
+  state: string
+  errorText?: string
+}
+
+interface SearchStatusData {
+  status: SearchStatus
+  message?: string
+  sourceCount?: number
+}
+
+interface UnifiedProcessCardProps {
+  taskSummary: TaskSummaryData | null
+  processTools: ProcessTool[]
+  searchStatus: SearchStatusData | null
+  persistProcessIndicators: boolean
+  defaultOpen?: boolean
+}
+
+// --- Constants (ported from TaskProgress.tsx) ---
+
+const STATUS_ICON: Record<string, string> = {
+  complete: "✅",
+  pending: "○",
+}
+
+const STAGE_DESCRIPTIONS: Record<string, string> = {
+  gagasan: "Eksplorasi ide awal, analisis kelayakan, dan tentukan angle penelitian yang unik.",
+  topik: "Definisikan judul, spesifikasi angle, dan identifikasi research gap.",
+  outline: "Susun struktur paper lengkap dengan estimasi panjang tiap bagian.",
+  abstrak: "Sintesis gagasan dan topik menjadi ringkasan penelitian dengan keywords.",
+  pendahuluan: "Bangun latar belakang, rumusan masalah, dan tujuan penelitian.",
+  tinjauan_literatur: "Susun kerangka teoretis, review literatur, dan analisis gap.",
+  metodologi: "Tentukan desain penelitian, metode pengumpulan data, dan teknik analisis.",
+  hasil: "Identifikasi temuan utama dan tentukan format penyajian data.",
+  diskusi: "Interpretasi temuan, bandingkan dengan literatur, dan analisis implikasi.",
+  kesimpulan: "Ringkas hasil, jawab rumusan masalah, dan susun saran.",
+  pembaruan_abstrak: "Perbarui abstrak berdasarkan seluruh konten paper yang sudah ditulis.",
+  daftar_pustaka: "Kompilasi seluruh referensi dari semua tahap dalam format APA.",
+  lampiran: "Susun material pendukung (tabel, instrumen, data mentah).",
+  judul: "Evaluasi opsi judul berdasarkan cakupan keyword dan pilih yang terbaik.",
+}
+
+// --- Component ---
+
+export function UnifiedProcessCard({
+  taskSummary,
+  processTools,
+  searchStatus,
+  persistProcessIndicators,
+  defaultOpen = false,
+}: UnifiedProcessCardProps) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  const hasTaskData = taskSummary !== null && taskSummary.tasks.length > 0
+  const hasProcessData = processTools.length > 0 || searchStatus !== null
+
+  // Nothing to show
+  if (!hasTaskData && !hasProcessData) return null
+
+  // --- Header label logic ---
+  const activeProcessLabel = useMemo(() => {
+    // Priority 1: active search
+    if (searchStatus && searchStatus.status !== "done" && searchStatus.status !== "off") {
+      return searchStatus.message ?? "Mencari..."
+    }
+    // Priority 2: first active tool (stable — doesn't flicker)
+    const activeTool = processTools.find(
+      (t) => t.state !== "result" && t.state !== "output-available"
+    )
+    if (activeTool) {
+      return getToolLabel(activeTool.toolName)
+    }
+    // Priority 3: search done with source count
+    if (searchStatus?.status === "done" && searchStatus.sourceCount) {
+      return `Pencarian selesai (${searchStatus.sourceCount} sumber)`
+    }
+    // Priority 4: last completed tool (when persisting indicators)
+    if (persistProcessIndicators && processTools.length > 0) {
+      const lastTool = processTools[processTools.length - 1]
+      return getToolLabel(lastTool.toolName)
+    }
+    return null
+  }, [processTools, searchStatus, persistProcessIndicators])
+
+  const description = hasTaskData ? (STAGE_DESCRIPTIONS[taskSummary.stageId] ?? "") : ""
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <div
+        className={cn(
+          "rounded-action border border-[color:var(--chat-border)]",
+          "bg-[var(--chat-muted)]",
+          "overflow-hidden"
+        )}
+      >
+        {/* Header — always visible */}
+        <CollapsibleTrigger asChild>
+          <button
+            className={cn(
+              "flex w-full items-center justify-between gap-2 px-3 py-2",
+              "text-left transition-colors",
+              "hover:bg-[var(--chat-accent)]"
+            )}
+          >
+            <div className="flex-1 min-w-0 flex items-center gap-1.5">
+              {hasTaskData ? (
+                <>
+                  <span className="text-xs shrink-0">📋</span>
+                  <span className="text-xs font-mono font-semibold text-[var(--chat-foreground)] truncate">
+                    {taskSummary.stageLabel}
+                  </span>
+                  <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] shrink-0">
+                    {taskSummary.completed}/{taskSummary.total}
+                  </span>
+                  {activeProcessLabel && (
+                    <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] truncate ml-auto mr-1">
+                      {activeProcessLabel}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="text-xs font-mono text-[var(--chat-foreground)] truncate">
+                  {activeProcessLabel ?? "Memproses..."}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] text-[var(--chat-muted-foreground)] shrink-0">
+              {open ? "▴" : "▾"}
+            </span>
+          </button>
+        </CollapsibleTrigger>
+
+        {/* Content — collapsible detail */}
+        <CollapsibleContent>
+          <div className="px-3 pb-2 pt-1 border-t border-[color:var(--chat-border)]">
+            {/* Description */}
+            {description && (
+              <p className="text-[11px] font-sans text-[var(--chat-muted-foreground)] leading-relaxed mb-2">
+                {description}
+              </p>
+            )}
+
+            {/* LANGKAH section */}
+            {hasTaskData && (
+              <div className="mb-2">
+                <div className="text-[10px] font-mono font-semibold text-[var(--chat-muted-foreground)] uppercase tracking-wider mb-1.5">
+                  Langkah
+                </div>
+                <div className="space-y-0.5">
+                  {taskSummary.tasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className={cn(
+                        "flex items-center gap-2 py-0.5 text-xs font-mono",
+                        task.status === "complete" && "text-[var(--chat-muted-foreground)]",
+                        task.status === "pending" && "text-[var(--chat-muted-foreground)] opacity-50"
+                      )}
+                    >
+                      <span className="w-4 text-center shrink-0">
+                        {STATUS_ICON[task.status]}
+                      </span>
+                      <span>{task.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* PROSES section */}
+            {hasProcessData && (
+              <div>
+                {hasTaskData && (
+                  <div className="text-[10px] font-mono font-semibold text-[var(--chat-muted-foreground)] uppercase tracking-wider mb-1.5">
+                    Proses
+                  </div>
+                )}
+                <div className="space-y-0.5">
+                  {(persistProcessIndicators || searchStatus?.status === "error") && searchStatus && (
+                    <SearchStatusIndicator
+                      status={searchStatus.status}
+                      message={searchStatus.message}
+                      sourceCount={searchStatus.sourceCount}
+                    />
+                  )}
+                  {processTools.map((tool, index) => (
+                    <ToolStateIndicator
+                      key={`tool-${tool.toolName}-${index}`}
+                      toolName={tool.toolName}
+                      state={tool.state}
+                      errorText={tool.errorText}
+                      persistUntilDone={persistProcessIndicators}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  )
+}

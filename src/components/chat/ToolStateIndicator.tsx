@@ -45,7 +45,7 @@ const STATE_LABEL_MAP: Record<string, string> = {
 
 const toFallbackLabel = (value: string) => value.replace(/[_-]+/g, " ").trim().toLowerCase()
 
-const getToolLabel = (toolName: string) => TOOL_LABEL_MAP[toolName] ?? toFallbackLabel(toolName)
+export const getToolLabel = (toolName: string) => TOOL_LABEL_MAP[toolName] ?? toFallbackLabel(toolName)
 
 const getStateLabel = (state: string) => STATE_LABEL_MAP[state] ?? toFallbackLabel(state)
 
