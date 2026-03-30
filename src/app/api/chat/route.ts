@@ -2214,11 +2214,13 @@ Aturan:
 
             // Incremental save harness: force per-field draft save in function-tools turns
             // Only active for supported stages (gagasan/topik in v1)
+            // Disabled when exact-source routing would take priority (availableExactSources > 0)
             incrementalSaveConfig = (
                 !enableWebSearch
                 && !!paperModePrompt
                 && !shouldForceGetCurrentPaperState
                 && !shouldForceSubmitValidation
+                && availableExactSources.length === 0
                 && paperSession
             )
                 ? buildIncrementalSavePrepareStep({
@@ -2304,6 +2306,7 @@ Aturan:
                 !shouldForceGetCurrentPaperState &&
                 !shouldForceSubmitValidation &&
                 availableExactSources.length > 0
+
             const primaryExactSourceRoutePlan = shouldApplyDeterministicExactSourceRouting
                 ? buildDeterministicExactSourcePrepareStep({
                     messages: fullMessagesGateway as Array<{ role: "system" | "user" | "assistant"; content: string }>,
@@ -2804,6 +2807,14 @@ Aturan:
             // (Web search failover is now handled by the orchestrator's retriever chain)
             // ════════════════════════════════════════════════════════════════
 
+            // Disable incremental save for fallback — primary may have partially saved,
+            // reusing stale config risks double-save or overwrite with different content
+            const fallbackIncrementalSaveConfig = undefined as typeof incrementalSaveConfig
+            if (incrementalSaveConfig) {
+                draftSaveGate.active = false
+                console.log("[IncrementalSave] Disabled for fallback provider — avoiding stale config reuse")
+            }
+
             const fallbackTelemetryContext = skillTelemetryContext
             const fallbackReasoningProviderOptions = buildReasoningProviderOptions({
                 settings: reasoningSettings,
@@ -2851,14 +2862,14 @@ Aturan:
                     !shouldForceSubmitValidation &&
                     availableExactSources.length > 0
                 const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
-                const fallbackBaseMessages = (missingArtifactNote || incrementalSaveConfig?.systemNote)
+                const fallbackBaseMessages = (missingArtifactNote || fallbackIncrementalSaveConfig?.systemNote)
                     ? [
                         fullMessagesBase[0],
                         ...(missingArtifactNote
                             ? [{ role: "system" as const, content: missingArtifactNote }]
                             : []),
-                        ...(incrementalSaveConfig?.systemNote
-                            ? [{ role: "system" as const, content: incrementalSaveConfig.systemNote }]
+                        ...(fallbackIncrementalSaveConfig?.systemNote
+                            ? [{ role: "system" as const, content: fallbackIncrementalSaveConfig.systemNote }]
                             : []),
                         ...fullMessagesBase.slice(1),
                     ]
@@ -2881,8 +2892,8 @@ Aturan:
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep ?? incrementalSaveConfig?.prepareStep) as any,
-                    stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? (shouldForceGetCurrentPaperState ? 2 : undefined) ?? incrementalSaveConfig?.maxToolSteps ?? 5),
+                    prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep ?? fallbackIncrementalSaveConfig?.prepareStep) as any,
+                    stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? (shouldForceGetCurrentPaperState ? 2 : undefined) ?? fallbackIncrementalSaveConfig?.maxToolSteps ?? 5),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {
                         const rawText = typeof text === "string" ? text.trim() : ""
