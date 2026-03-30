@@ -113,26 +113,19 @@ export function UnifiedProcessCard({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div
-        className={cn(
-          "rounded-action border border-[color:var(--chat-border)]",
-          "bg-[var(--chat-muted)]",
-          "overflow-hidden"
-        )}
-      >
+      <div className="overflow-hidden">
         {/* Header — always visible */}
         <CollapsibleTrigger asChild>
           <button
             className={cn(
-              "flex w-full items-center justify-between gap-2 px-3 py-2",
+              "flex w-full items-center justify-between gap-2 py-2",
               "text-left transition-colors",
-              "hover:bg-[var(--chat-accent)]"
+              "hover:bg-[var(--chat-accent)] rounded-action"
             )}
           >
             <div className="flex-1 min-w-0 flex items-center gap-1.5">
               {hasTaskData ? (
                 <>
-                  <span className="text-xs shrink-0">📋</span>
                   <span className="text-xs font-mono font-semibold text-[var(--chat-foreground)] truncate">
                     {taskSummary.stageLabel}
                   </span>
@@ -159,7 +152,7 @@ export function UnifiedProcessCard({
 
         {/* Content — collapsible detail */}
         <CollapsibleContent>
-          <div className="px-3 pb-2 pt-1 border-t border-[color:var(--chat-border)]">
+          <div className="pb-2 pt-1">
             {/* Description */}
             {description && (
               <p className="text-[11px] font-sans text-[var(--chat-muted-foreground)] leading-relaxed mb-2">

@@ -1009,7 +1009,7 @@ export function MessageBubble({
                     })}
 
                     {showUnifiedCard && (
-                        <div className="mb-3">
+                        <div className="mb-4">
                             <UnifiedProcessCard
                                 taskSummary={taskSummary}
                                 processTools={visibleProcessTools}

@@ -2559,7 +2559,7 @@ export function ChatWindow({
         </div>
 
         <ChatProcessStatusBar
-          visible={processUi.visible}
+          visible={processUi.visible && !isPaperMode}
           status={processUi.status}
           progress={processUi.progress}
           elapsedSeconds={processUi.elapsedSeconds}
