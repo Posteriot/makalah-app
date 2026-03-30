@@ -37,6 +37,53 @@ vi.mock("@/components/ui/sheet", () => ({
 }))
 
 describe("MessageBubble reference inventory", () => {
+  it("does not render inline inventory for synthesis mode", () => {
+    const onOpenSources = vi.fn()
+    const message = {
+      id: "m-synth-inventory",
+      role: "assistant",
+      parts: [
+        {
+          type: "data-cited-text",
+          data: {
+            text: "Ini ringkasannya.",
+          },
+        },
+        {
+          type: "data-reference-inventory",
+          data: {
+            responseMode: "synthesis",
+            introText: "Inventori ini tidak boleh tampil inline.",
+            items: [
+              {
+                sourceId: "s1",
+                title: "Paper A",
+                url: "https://example.com/a.pdf",
+                verificationStatus: "unverified_link",
+                documentKind: "pdf",
+              },
+            ],
+          },
+        },
+        {
+          type: "data-cited-sources",
+          data: {
+            sources: [
+              { url: "https://example.com/a.pdf", title: "Paper A" },
+            ],
+          },
+        },
+      ],
+    } as unknown as UIMessage
+
+    render(<MessageBubble message={message} onOpenSources={onOpenSources} />)
+
+    expect(screen.queryByLabelText("Inventaris referensi")).not.toBeInTheDocument()
+    expect(screen.getByTestId("sources-indicator")).toBeInTheDocument()
+    expect(screen.getByText("Ini ringkasannya.")).toBeInTheDocument()
+    expect(screen.queryByText("https://example.com/a.pdf")).not.toBeInTheDocument()
+  })
+
   it("renders reference inventory items from streamed payload", () => {
     const onOpenSources = vi.fn()
     const message = {
@@ -81,7 +128,9 @@ describe("MessageBubble reference inventory", () => {
     render(<MessageBubble message={message} onOpenSources={onOpenSources} />)
 
     expect(screen.getByText("Paper A")).toBeInTheDocument()
-    expect(screen.getByText("https://example.com/a.pdf")).toBeInTheDocument()
+    const inventoryLink = screen.getByRole("link", { name: "https://example.com/a.pdf" })
+    expect(inventoryLink).toBeInTheDocument()
+    expect(inventoryLink).toHaveAttribute("href", "https://example.com/a.pdf")
     expect(screen.queryByText(/^Link:\s*$/i)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId("sources-indicator"))
@@ -139,7 +188,9 @@ describe("MessageBubble reference inventory", () => {
     expect(screen.getByTestId("reference-inventory-body")).toHaveTextContent(
       "Berikut inventaris referensi yang ditemukan."
     )
-    expect(screen.getByText("https://example.com/a.pdf")).toBeInTheDocument()
+    expect(
+      screen.getByRole("link", { name: "https://example.com/a.pdf" })
+    ).toHaveAttribute("href", "https://example.com/a.pdf")
   })
 
   it("renders the same source contract in the Rujukan panel", () => {

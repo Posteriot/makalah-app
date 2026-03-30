@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import Image from "next/image"
+import { useSyncExternalStore } from "react"
 import { OpenNewWindow } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet"
@@ -35,21 +36,30 @@ function faviconUrl(url: string): string {
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`
 }
 
+function subscribeMobileViewport(callback: () => void) {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return () => undefined
+  }
+
+  const media = window.matchMedia("(max-width: 767px)")
+  media.addEventListener("change", callback)
+  return () => media.removeEventListener("change", callback)
+}
+
+function getIsMobileViewport() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false
+  }
+
+  return window.matchMedia("(max-width: 767px)").matches
+}
+
 export function SourcesPanel({ open, onOpenChange, sources }: SourcesPanelProps) {
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") {
-      setIsMobile(false)
-      return
-    }
-
-    const media = window.matchMedia("(max-width: 767px)")
-    const sync = () => setIsMobile(media.matches)
-    sync()
-    media.addEventListener("change", sync)
-    return () => media.removeEventListener("change", sync)
-  }, [])
+  const isMobile = useSyncExternalStore(
+    subscribeMobileViewport,
+    getIsMobileViewport,
+    () => false,
+  )
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -113,13 +123,14 @@ function SourceCard({ source }: { source: Source }) {
         className="group flex gap-3 py-3 transition-colors hover:bg-muted/50"
       >
         {/* Favicon */}
-        <img
+        <Image
           src={faviconUrl(parts.url)}
           alt=""
           width={16}
           height={16}
           className="mt-0.5 h-4 w-4 flex-shrink-0 rounded-sm"
           loading="lazy"
+          unoptimized
         />
 
         {/* Content */}

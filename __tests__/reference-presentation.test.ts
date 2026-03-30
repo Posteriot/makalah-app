@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildStoredReferenceInventoryItems,
   buildReferencePresentationSources,
   inferSearchResponseMode,
   type ReferencePresentationSource,
@@ -69,6 +70,12 @@ describe("reference presentation contract", () => {
   it("recognizes common inventory phrasing as reference inventory mode", () => {
     expect(
       inferSearchResponseMode({ lastUserMessage: "tampilkan sumbernya" })
+    ).toBe("reference_inventory")
+    expect(
+      inferSearchResponseMode({ lastUserMessage: "tampilkan lagi seluruh sumber" })
+    ).toBe("reference_inventory")
+    expect(
+      inferSearchResponseMode({ lastUserMessage: "kasih semua sumber yang tadi" })
     ).toBe("reference_inventory")
     expect(
       inferSearchResponseMode({ lastUserMessage: "kasih rujukan yang dipakai" })
@@ -151,5 +158,39 @@ describe("reference presentation contract", () => {
 
     expect(result.referencePresentation?.responseMode).toBe("reference_inventory")
     expect(result.referencePresentation?.sources).toHaveLength(0)
+  })
+
+  it("builds stored inventory items from prior sources with exact verification metadata", () => {
+    const items = buildStoredReferenceInventoryItems({
+      recentSources: [
+        { url: "https://example.com/paper.pdf?utm_source=newsletter", title: "Paper PDF" },
+        { url: "https://example.com/article", title: "Article HTML" },
+      ],
+      exactSources: [
+        {
+          sourceId: "https://example.com/paper.pdf",
+          originalUrl: "https://example.com/paper.pdf",
+          resolvedUrl: "https://example.com/paper.pdf",
+          documentKind: "pdf",
+        },
+      ],
+    })
+
+    expect(items).toEqual([
+      {
+        sourceId: "https://example.com/paper.pdf",
+        title: "Paper PDF",
+        url: "https://example.com/paper.pdf",
+        verificationStatus: "verified_content",
+        documentKind: "pdf",
+      },
+      {
+        sourceId: "https://example.com/article",
+        title: "Article HTML",
+        url: "https://example.com/article",
+        verificationStatus: "unverified_link",
+        documentKind: "html",
+      },
+    ])
   })
 })

@@ -40,8 +40,12 @@ import {
 } from "@/lib/billing/enforcement"
 import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
 import { getSearchSkill, composeSkillInstructions, type SkillContext } from "@/lib/ai/skills"
-import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
-import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
+import {
+    createCuratedTraceController,
+    type PersistedCuratedTraceSnapshot,
+    type ReasoningLiveDataPart,
+} from "@/lib/ai/curated-trace"
+import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 // buildUserFacingSearchPayload now handled by orchestrator
 import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
 import { pipeYamlRender } from "@json-render/yaml"
@@ -65,6 +69,10 @@ import {
     resolveSearchExecutionMode,
     type SearchExecutionMode,
 } from "@/lib/ai/web-search"
+import {
+    buildStoredReferenceInventoryItems,
+    inferSearchResponseMode,
+} from "@/lib/ai/web-search/reference-presentation"
 import {
     buildDeterministicExactSourcePrepareStep,
     buildExactSourceInspectionRouterNote,
@@ -393,7 +401,6 @@ export async function POST(req: Request) {
             : ""
         const normalizedLastUserContent =
             typeof lastUserContent === "string" ? lastUserContent.trim() : ""
-        const normalizedLastUserContentLower = normalizedLastUserContent.toLowerCase()
         const recentConversationMessagesForExactSource: ExactSourceConversationMessage[] = messages
             .slice(0, -1)
             .map((message: {
@@ -1792,7 +1799,7 @@ Aturan:
             return undefined
         }
 
-        // Helper: accumulate reasoning deltas and emit progressive thought events
+        // Helper: accumulate reasoning deltas and emit progressive live reasoning events
         function createReasoningAccumulator(opts: {
             traceId: string
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1800,33 +1807,42 @@ Aturan:
             ensureStart: () => void
             enabled: boolean
         }) {
-            let buffer = ""
-            let chunkCount = 0
+            const liveAccumulator = createReasoningLiveAccumulator({
+                traceId: opts.traceId,
+                enabled: opts.enabled,
+            })
+
+            const emitCompatThought = (part: ReasoningLiveDataPart) => {
+                opts.writer.write({
+                    type: "data-reasoning-thought",
+                    id: `${part.id}-compat`,
+                    data: {
+                        traceId: part.data.traceId,
+                        delta: part.data.text,
+                        ts: part.data.ts,
+                    },
+                })
+            }
 
             return {
                 onReasoningDelta: (delta: string) => {
-                    if (!opts.enabled || !delta) return
-                    buffer += delta
-                    chunkCount += 1
+                    const livePart = liveAccumulator.onReasoningDelta(delta)
+                    if (!livePart) return
 
-                    if (chunkCount % 3 === 0 || delta.length > 100) {
-                        const sanitized = sanitizeReasoningDelta(delta)
-                        if (sanitized.trim()) {
-                            opts.ensureStart()
-                            opts.writer.write({
-                                type: "data-reasoning-thought",
-                                id: `${opts.traceId}-thought-${chunkCount}`,
-                                data: {
-                                    traceId: opts.traceId,
-                                    delta: sanitized,
-                                    ts: Date.now(),
-                                },
-                            })
-                        }
-                    }
+                    opts.ensureStart()
+                    opts.writer.write(livePart)
+                    emitCompatThought(livePart)
                 },
-                getFullReasoning: () => buffer,
-                hasReasoning: () => buffer.length > 0,
+                finalize: () => {
+                    const livePart = liveAccumulator.finalize()
+                    if (!livePart) return
+
+                    opts.ensureStart()
+                    opts.writer.write(livePart)
+                    emitCompatThought(livePart)
+                },
+                getFullReasoning: () => liveAccumulator.getFullReasoning(),
+                hasReasoning: () => liveAccumulator.hasReasoning(),
             }
         }
 
@@ -1890,6 +1906,67 @@ Aturan:
             return createUIMessageStreamResponse({ stream })
         }
 
+        const createStoredReferenceInventoryResponse = async (input: {
+            introText: string
+            items: Array<{
+                sourceId?: string
+                title: string
+                url: string | null
+                verificationStatus: "verified_content" | "unverified_link" | "unavailable"
+                documentKind?: "html" | "pdf" | "unknown"
+            }>
+            usedModel: string
+        }) => {
+            const normalizedSources = input.items
+                .filter((item) => typeof item.url === "string" && item.url.trim().length > 0)
+                .map((item) => ({
+                    url: item.url as string,
+                    title: item.title,
+                }))
+
+            await saveAssistantMessage(
+                input.introText,
+                normalizedSources.length > 0 ? normalizedSources : undefined,
+                input.usedModel,
+            )
+
+            const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+            const citedTextId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-text`
+            const citedSourcesId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-sources`
+            const referenceInventoryId =
+                globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-reference-inventory`
+
+            const stream = createUIMessageStream({
+                execute: async ({ writer }) => {
+                    writer.write({ type: "start", messageId })
+                    writer.write({
+                        type: "data-cited-text",
+                        id: citedTextId,
+                        data: { text: input.introText },
+                    })
+                    writer.write({
+                        type: "data-reference-inventory",
+                        id: referenceInventoryId,
+                        data: {
+                            responseMode: "reference_inventory",
+                            introText: input.introText,
+                            items: input.items,
+                        },
+                    })
+                    if (normalizedSources.length > 0) {
+                        writer.write({
+                            type: "data-cited-sources",
+                            id: citedSourcesId,
+                            data: { sources: normalizedSources },
+                        })
+                    }
+                    writer.write({ type: "finish", finishReason: "stop" })
+                },
+            })
+
+            return createUIMessageStreamResponse({ stream })
+        }
+
         try {
             const model = await getGatewayModel()
 
@@ -1926,6 +2003,7 @@ Aturan:
             let searchRequestedByPolicy = false
             let isSyncRequest = false
             let isSaveSubmitIntent = false
+            let isCompileBibliographyIntent = false
 
             // --- Pre-router guardrails (structural state only, NO regex intent detection) ---
             // Intent detection is the LLM router's job. Regex cannot scale to language
@@ -2016,6 +2094,7 @@ Aturan:
                     && webSearchDecision.intentType === "compile_daftar_pustaka"
 
                 if (isCompileIntent) {
+                    isCompileBibliographyIntent = true
                     searchRequestedByPolicy = false
                     activeStageSearchReason = "compile_daftar_pustaka"
                     activeStageSearchNote = getFunctionToolsModeNote("Compile bibliography")
@@ -2069,6 +2148,30 @@ Aturan:
 
             if (!enableWebSearch && paperModePrompt && !activeStageSearchNote) {
                 activeStageSearchNote = PAPER_TOOLS_ONLY_NOTE
+            }
+
+            const requestedResponseMode = inferSearchResponseMode({
+                lastUserMessage: normalizedLastUserContent,
+            })
+            const shouldServeStoredReferenceInventory =
+                requestedResponseMode === "reference_inventory" &&
+                hasRecentSourcesInDb &&
+                !enableWebSearch &&
+                !isSyncRequest &&
+                !isSaveSubmitIntent &&
+                !isCompileBibliographyIntent
+
+            if (shouldServeStoredReferenceInventory) {
+                const inventoryItems = buildStoredReferenceInventoryItems({
+                    recentSources: recentSourcesList,
+                    exactSources: availableExactSources,
+                })
+
+                return createStoredReferenceInventoryResponse({
+                    introText: "Berikut semua sumber yang sudah tersimpan dari penelusuran sebelumnya.",
+                    items: inventoryItems,
+                    usedModel: modelNames.primary.model,
+                })
             }
 
             if (searchUnavailableReasonCode) {
@@ -2593,6 +2696,7 @@ Aturan:
                                         reasoningAccumulator.getFullReasoning()
                                     ))
                                 }
+                                reasoningAccumulator.finalize()
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "done",
                                     sourceCount,
@@ -2603,6 +2707,7 @@ Aturan:
                             }
 
                             if (chunk.type === "error") {
+                                reasoningAccumulator.finalize()
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "error",
                                     sourceCount,
@@ -2614,6 +2719,7 @@ Aturan:
                             }
 
                             if (chunk.type === "abort") {
+                                reasoningAccumulator.finalize()
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "stopped",
                                     sourceCount,
@@ -2959,6 +3065,7 @@ Aturan:
                                         reasoningAccumulator.getFullReasoning()
                                     ))
                                 }
+                                reasoningAccumulator.finalize()
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "done",
                                     sourceCount,
@@ -2969,6 +3076,7 @@ Aturan:
                             }
 
                             if (chunk.type === "error") {
+                                reasoningAccumulator.finalize()
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "error",
                                     sourceCount,
@@ -2980,6 +3088,7 @@ Aturan:
                             }
 
                             if (chunk.type === "abort") {
+                                reasoningAccumulator.finalize()
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "stopped",
                                     sourceCount,

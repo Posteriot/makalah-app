@@ -224,6 +224,10 @@ export const choicePayloadSchema = z.object({
 })
 
 export type JsonRendererChoicePayload = z.infer<typeof choicePayloadSchema>
+export type JsonRendererChoiceRenderPayload = Pick<
+  JsonRendererChoicePayload,
+  "spec" | "initialState"
+>
 
 // ---------------------------------------------------------------------------
 // Parse function

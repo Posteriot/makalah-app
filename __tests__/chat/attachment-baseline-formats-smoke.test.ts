@@ -22,7 +22,9 @@ describe("attachment baseline smoke guards", () => {
     expect(route).toContain("const attachmentResolution = resolveEffectiveFileIds({")
     expect(route).toContain("const effectiveFileIds = attachmentResolution.effectiveFileIds")
     expect(route).toContain("if (effectiveFileIds.length > 0)")
-    expect(route).toContain("fileContextLength")
+    expect(route).toContain("const runtimeEnv = resolveAttachmentRuntimeEnv({")
+    expect(route).toContain("docFileCount")
+    expect(route).toContain("imageFileCount")
   })
 
   it("chat history mapping still exposes file_ids annotation for chip rendering", () => {

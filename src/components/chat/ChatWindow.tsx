@@ -31,7 +31,7 @@ import { MobileEditDeleteSheet } from "./mobile/MobileEditDeleteSheet"
 import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 import { buildChoiceInteractionEvent, buildChoiceSyntheticText } from "@/lib/chat/choice-submit"
-import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
+import type { JsonRendererChoiceRenderPayload } from "@/lib/json-render/choice-payload"
 import { SPEC_DATA_PART_TYPE } from "@json-render/core"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import {
@@ -210,9 +210,29 @@ interface PersistedReasoningTraceStepRaw {
 
 interface PersistedReasoningTraceRaw {
   headline?: unknown
+  traceMode?: unknown
   steps?: unknown
   durationSeconds?: unknown
   rawReasoning?: unknown
+}
+
+export function extractReasoningTraceMode(
+  uiMessage: UIMessage,
+  steps: ReasoningTraceStep[],
+  liveThought?: string | null
+): "curated" | "transparent" | undefined {
+  const persistedTrace = (uiMessage as unknown as { reasoningTrace?: PersistedReasoningTraceRaw }).reasoningTrace
+  if (persistedTrace?.traceMode === "curated" || persistedTrace?.traceMode === "transparent") {
+    return persistedTrace.traceMode
+  }
+
+  if (liveThought?.trim()) return "transparent"
+  if (steps.some((step) => !isTemplateLabel(step.label) || step.thought?.trim())) {
+    return "transparent"
+  }
+  if (steps.length > 0) return "curated"
+
+  return undefined
 }
 
 function parseReasoningMeta(meta: unknown): ReasoningTraceStep["meta"] | undefined {
@@ -328,9 +348,54 @@ function extractReasoningTraceSteps(uiMessage: UIMessage): ReasoningTraceStep[] 
   return ordered
 }
 
-function extractLiveThought(uiMessage: UIMessage): string | null {
-  let lastThought: string | null = null
+export function extractLiveReasoningSnapshot(uiMessage: UIMessage): string | null {
+  let lastSnapshot: string | null = null
 
+  for (const part of uiMessage.parts ?? []) {
+    if (!part || typeof part !== "object") continue
+    const dataPart = part as { type?: unknown; data?: unknown }
+    if (dataPart.type !== "data-reasoning-live") continue
+    if (!dataPart.data || typeof dataPart.data !== "object") continue
+
+    const data = dataPart.data as { text?: unknown; reset?: unknown }
+    if (data.reset === true) {
+      lastSnapshot = null
+      continue
+    }
+    if (typeof data.text === "string" && data.text.trim()) {
+      lastSnapshot = data.text.trim()
+    }
+  }
+
+  return lastSnapshot
+}
+
+export function resolveLiveReasoningHeadline(uiMessage: UIMessage): string | null {
+  let lastSnapshot: string | null = null
+  let sawLiveSignal = false
+
+  for (const part of uiMessage.parts ?? []) {
+    if (!part || typeof part !== "object") continue
+    const dataPart = part as { type?: unknown; data?: unknown }
+    if (!dataPart.data || typeof dataPart.data !== "object") continue
+
+    if (dataPart.type === "data-reasoning-live") {
+      const data = dataPart.data as { text?: unknown; reset?: unknown }
+      sawLiveSignal = true
+      if (data.reset === true) {
+        lastSnapshot = null
+        continue
+      }
+      if (typeof data.text === "string" && data.text.trim()) {
+        lastSnapshot = data.text.trim()
+      }
+    }
+  }
+
+  if (lastSnapshot) return lastSnapshot
+  if (sawLiveSignal) return null
+
+  let lastThought: string | null = null
   for (const part of uiMessage.parts ?? []) {
     if (!part || typeof part !== "object") continue
     const dataPart = part as { type?: unknown; data?: unknown }
@@ -1071,7 +1136,7 @@ export function ChatWindow({
   const handleChoiceSubmit = useCallback(async (params: {
     sourceMessageId: string
     choicePartId: string
-    payload: JsonRendererChoicePayload
+    payload: JsonRendererChoiceRenderPayload
     selectedOptionId: string
     customText?: string
   }) => {
@@ -1413,13 +1478,15 @@ export function ChatWindow({
     const assistants = [...messages].reverse().filter((msg) => msg.role === "assistant")
     for (const assistant of assistants) {
       const steps = extractReasoningTraceSteps(assistant)
-      const liveThought = extractLiveThought(assistant)
+      const liveThought = resolveLiveReasoningHeadline(assistant)
+      const traceMode = extractReasoningTraceMode(assistant, steps, liveThought)
       const headline = liveThought || extractReasoningHeadline(assistant, steps)
       if (steps.length > 0 || headline) {
         const persistedDurationSeconds = extractReasoningDurationSeconds(assistant)
         return {
           steps,
           headline,
+          traceMode,
           persistedDurationSeconds,
         }
       }
@@ -1428,6 +1495,7 @@ export function ChatWindow({
     return {
       steps: [] as ReasoningTraceStep[],
       headline: null as string | null,
+      traceMode: undefined as "curated" | "transparent" | undefined,
       persistedDurationSeconds: undefined as number | undefined,
     }
   }, [messages])
@@ -2498,6 +2566,7 @@ export function ChatWindow({
           persistedDurationSeconds={activeReasoningState.persistedDurationSeconds}
           reasoningSteps={activeReasoningState.steps}
           reasoningHeadline={activeReasoningState.headline}
+          reasoningTraceMode={activeReasoningState.traceMode}
           isPanelOpen={activeSheet === "proses"}
           onPanelOpenChange={(open) => handleSheetChange(open ? "proses" : null)}
         />

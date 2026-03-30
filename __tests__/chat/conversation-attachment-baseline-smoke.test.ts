@@ -10,7 +10,7 @@ describe("conversation attachment baseline smoke", () => {
     const routeSource = read("src/app/api/chat/route.ts")
 
     expect(routeSource).toContain("const attachmentResolution = resolveEffectiveFileIds")
-    expect(routeSource).toContain("[ATTACH-DIAG][route] effective fileIds")
+    expect(routeSource).toContain("const effectiveFileIds = attachmentResolution.effectiveFileIds")
     expect(routeSource).toContain("if (effectiveFileIds.length > 0)")
     expect(routeSource).toContain("fileContext += `[File: ${file.name}]\\n`")
   })

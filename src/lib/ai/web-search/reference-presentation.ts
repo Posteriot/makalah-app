@@ -1,7 +1,7 @@
 import type { NormalizedCitation } from "@/lib/citations/types"
 import type { FetchedContent, FetchRouteKind } from "./content-fetcher"
 
-export type SearchResponseMode = "synthesis"
+export type SearchResponseMode = "synthesis" | "reference_inventory" | "mixed"
 
 export type ReferenceVerificationStatus =
   | "verified_content"
@@ -205,9 +205,32 @@ function createBaseSource(params: {
   }
 }
 
-export function inferSearchResponseMode(_params: {
+export function inferSearchResponseMode(params: {
   lastUserMessage: string
 }): SearchResponseMode {
+  const message = params.lastUserMessage.trim().toLowerCase()
+
+  const referenceInventoryPatterns = [
+    /\blink\b/,
+    /\bpdf\b/,
+    /\bsumbernya\b/,
+    /\bseluruh\s+sumber\b/,
+    /\bsemua\s+sumber\b/,
+    /\bdaftar\s+sumber\b/,
+    /\btampilkan(?:\s+lagi)?(?:\s+\w+){0,4}\s+sumber\b/,
+    /\btunjukkan(?:\s+lagi)?(?:\s+\w+){0,4}\s+sumber\b/,
+    /\bkasih(?:kan)?(?:\s+lagi)?(?:\s+\w+){0,4}\s+sumber\b/,
+    /\brujukan\b/,
+    /\bdaftar pustaka\b/,
+    /\breferensi\b/,
+    /\bcitation\b/,
+    /\bcitations\b/,
+  ]
+
+  if (referenceInventoryPatterns.some((pattern) => pattern.test(message))) {
+    return "reference_inventory"
+  }
+
   return "synthesis"
 }
 
@@ -305,4 +328,56 @@ export function buildReferencePresentationSources(params: {
   }
 
   return sources
+}
+
+export function buildStoredReferenceInventoryItems(params: {
+  recentSources: Array<{ url: string; title: string; publishedAt?: number }>
+  exactSources: Array<{
+    sourceId: string
+    originalUrl: string
+    resolvedUrl: string
+    documentKind?: "html" | "pdf" | "unknown"
+  }>
+}): Array<{
+  sourceId: string
+  title: string
+  url: string | null
+  verificationStatus: ReferenceVerificationStatus | "unavailable"
+  documentKind: "html" | "pdf" | "unknown"
+}> {
+  const exactByUrl = new Map<string, {
+    sourceId: string
+    originalUrl: string
+    resolvedUrl: string
+    documentKind?: "html" | "pdf" | "unknown"
+  }>()
+
+  for (const exactSource of params.exactSources) {
+    const keys = [
+      canonicalUrlKey(exactSource.sourceId),
+      canonicalUrlKey(exactSource.originalUrl),
+      canonicalUrlKey(exactSource.resolvedUrl),
+    ].filter((key): key is string => typeof key === "string" && key.length > 0)
+
+    for (const key of keys) {
+      if (!exactByUrl.has(key)) {
+        exactByUrl.set(key, exactSource)
+      }
+    }
+  }
+
+  return params.recentSources.map((recentSource) => {
+    const normalizedUrl = normalizeUrl(recentSource.url)
+    const exactSource =
+      exactByUrl.get(canonicalUrlKey(recentSource.url) ?? recentSource.url) ??
+      exactByUrl.get(canonicalUrlKey(normalizedUrl) ?? normalizedUrl ?? recentSource.url)
+
+    return {
+      sourceId: exactSource?.sourceId ?? normalizedUrl ?? recentSource.url,
+      title: recentSource.title,
+      url: normalizedUrl ?? recentSource.url,
+      verificationStatus: exactSource ? "verified_content" : "unverified_link",
+      documentKind: exactSource?.documentKind ?? inferDocumentKindFromUrl(normalizedUrl ?? recentSource.url),
+    }
+  })
 }

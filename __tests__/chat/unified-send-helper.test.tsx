@@ -15,8 +15,6 @@ describe("chat window unified send helper", () => {
     expect(source).toContain("mode: \"inherit\" as const")
     expect(source).toContain("const sendMessageWithPendingIndicator = useCallback")
     expect(source).toContain("sendUserMessageWithContext({")
-
-    const sendMessageCalls = source.match(/sendMessage\(/g) ?? []
-    expect(sendMessageCalls.length).toBe(2)
+    expect(source).toContain("sendMessage({ text: syntheticText }, { body: { interactionEvent: event } })")
   })
 })
