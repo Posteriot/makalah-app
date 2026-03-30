@@ -19,6 +19,7 @@ export interface ReferenceInventoryItem {
   title: string
   url: string | null
   verificationStatus: ReferenceVerificationStatus | "unavailable"
+  documentKind?: "html" | "pdf" | "unknown"
   note?: string
 }
 
