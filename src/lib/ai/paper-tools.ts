@@ -5,6 +5,8 @@ import { fetchQuery, fetchMutation, fetchAction } from "convex/nextjs"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { retryMutation, retryQuery } from "../convex/retry"
+import { isAllowedDraftField, getDraftSaveAllowedFields } from "./draft-save-fields"
+import { filterDraftSaveWarnings } from "./paper-tools-draft-save"
 
 type ExactSourceParagraph = {
     index: number
@@ -38,6 +40,7 @@ export const createPaperTools = (context: {
     convexToken?: string
     availableSources?: Array<{ url: string; title: string; publishedAt?: number }>
     hasRecentSources?: boolean
+    draftSaveGate?: { active: boolean }
 }) => {
     const convexOptions = context.convexToken ? { token: context.convexToken } : undefined
     return {
@@ -409,6 +412,75 @@ The tool will:
                         ? error.message
                         : "Failed to submit validation signal.";
                     return { success: false, error: errorMessage };
+                }
+            },
+        }),
+
+        saveStageDraft: tool({
+            description:
+                "Save a single draft field for the current stage. " +
+                "System-driven incremental checkpoint — do not call unless instructed by the system.",
+            inputSchema: z.object({
+                field: z.enum([
+                    "ideKasar", "analisis", "angle",
+                    "definitif", "angleSpesifik", "argumentasiKebaruan", "researchGap",
+                ]).describe("The field to save. Must be from the current stage's allowed fields."),
+                value: z.string().min(1).describe(
+                    "The field content. Must be non-empty meaningful text based on discussion so far."
+                ),
+            }),
+            execute: async ({ field, value }) => {
+                try {
+                    // Hard-gate: reject if not in incremental save mode
+                    if (!context.draftSaveGate?.active) {
+                        return {
+                            success: false,
+                            error: "saveStageDraft is only available during incremental save mode.",
+                        }
+                    }
+
+                    const session = await retryQuery(
+                        () => fetchQuery(api.paperSessions.getByConversation, {
+                            conversationId: context.conversationId
+                        }, convexOptions),
+                        "paperSessions.getByConversation"
+                    )
+                    if (!session) return { success: false, error: "Paper session not found." }
+
+                    const currentStage = session.currentStage as string
+
+                    if (!isAllowedDraftField(currentStage, field)) {
+                        const allowed = getDraftSaveAllowedFields(currentStage)
+                        return {
+                            success: false,
+                            error: `Field "${field}" is not allowed for draft save in stage "${currentStage}". ` +
+                                (allowed.length > 0
+                                    ? `Allowed: ${allowed.join(", ")}`
+                                    : `Stage "${currentStage}" does not support draft saves.`),
+                        }
+                    }
+
+                    const result = await retryMutation(
+                        () => fetchMutation(api.paperSessions.updateStageData, {
+                            sessionId: session._id,
+                            stage: currentStage,
+                            data: { [field]: value },
+                        }, convexOptions),
+                        "paperSessions.updateStageData"
+                    )
+
+                    const filteredWarning = filterDraftSaveWarnings(result.warning)
+
+                    return {
+                        success: true,
+                        stage: currentStage,
+                        field,
+                        ...(filteredWarning ? { warning: filteredWarning } : {}),
+                    }
+                } catch (error) {
+                    console.error("Error in saveStageDraft tool:", error)
+                    const errorMessage = error instanceof Error ? error.message : "Failed to save draft field."
+                    return { success: false, error: errorMessage }
                 }
             },
         }),
