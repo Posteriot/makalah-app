@@ -1015,6 +1015,7 @@ export function MessageBubble({
                                 processTools={visibleProcessTools}
                                 searchStatus={searchStatus}
                                 persistProcessIndicators={persistProcessIndicators}
+                                isStreaming={persistProcessIndicators}
                                 defaultOpen={false}
                             />
                         </div>

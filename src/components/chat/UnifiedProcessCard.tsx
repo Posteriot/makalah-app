@@ -40,6 +40,7 @@ interface UnifiedProcessCardProps {
   processTools: ProcessTool[]
   searchStatus: SearchStatusData | null
   persistProcessIndicators: boolean
+  isStreaming?: boolean
   defaultOpen?: boolean
 }
 
@@ -74,6 +75,7 @@ export function UnifiedProcessCard({
   processTools,
   searchStatus,
   persistProcessIndicators,
+  isStreaming = false,
   defaultOpen = false,
 }: UnifiedProcessCardProps) {
   const [open, setOpen] = useState(defaultOpen)
@@ -109,8 +111,8 @@ export function UnifiedProcessCard({
 
   const description = hasTaskData ? (STAGE_DESCRIPTIONS[taskSummary.stageId] ?? "") : ""
 
-  // Nothing to show
-  if (!hasTaskData && !hasProcessData) return null
+  // Nothing to show (but always show when streaming — instant feedback)
+  if (!hasTaskData && !hasProcessData && !isStreaming) return null
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -133,11 +135,6 @@ export function UnifiedProcessCard({
                   <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] shrink-0">
                     {taskSummary.completed}/{taskSummary.total}
                   </span>
-                  {activeProcessLabel && (
-                    <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] truncate ml-auto mr-1">
-                      {activeProcessLabel}
-                    </span>
-                  )}
                 </>
               ) : (
                 <span className="text-xs font-mono text-[var(--chat-muted-foreground)] truncate">
@@ -145,10 +142,24 @@ export function UnifiedProcessCard({
                 </span>
               )}
             </div>
-            {open
-              ? <NavArrowUp className="h-3.5 w-3.5 text-[var(--chat-muted-foreground)] shrink-0" />
-              : <NavArrowDown className="h-3.5 w-3.5 text-[var(--chat-muted-foreground)] shrink-0" />
-            }
+            <div className="flex items-center gap-2 shrink-0">
+              {(activeProcessLabel || isStreaming) && (
+                <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] truncate max-w-[200px]">
+                  {activeProcessLabel ?? "Memproses..."}
+                </span>
+              )}
+              {isStreaming && (
+                <span className="flex items-center gap-0.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--chat-muted-foreground)] animate-pulse" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--chat-muted-foreground)] animate-pulse [animation-delay:150ms]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--chat-muted-foreground)] animate-pulse [animation-delay:300ms]" />
+                </span>
+              )}
+              {open
+                ? <NavArrowUp className="h-3.5 w-3.5 text-[var(--chat-muted-foreground)]" />
+                : <NavArrowDown className="h-3.5 w-3.5 text-[var(--chat-muted-foreground)]" />
+              }
+            </div>
           </button>
         </CollapsibleTrigger>
 
