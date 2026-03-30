@@ -74,9 +74,13 @@ function buildIncrementalNote(field: string, label: string): string {
   return `
 ══════════════════════════════════════════════════════════════
 MODE: INCREMENTAL_SAVE | Field: ${field}
-INSTRUCTION: Save your "${field}" (${label}) now using saveStageDraft.
-Base it on the discussion and references so far.
-If discussion hasn't covered this yet, provide your best draft
-based on available references.
+STEP 1: Call saveStageDraft to save "${field}" (${label}).
+  Base it on the discussion and references so far.
+  If discussion hasn't covered this yet, provide your best draft
+  based on available references.
+STEP 2: After saving, continue the conversation NATURALLY.
+  Follow your normal stage instructions — discuss, recommend,
+  and present options using yaml-spec interactive cards as usual.
+  Do NOT just summarize what you saved.
 ══════════════════════════════════════════════════════════════`
 }
