@@ -37,6 +37,53 @@ vi.mock("@/components/ui/sheet", () => ({
 }))
 
 describe("MessageBubble reference inventory", () => {
+  it("does not render inline inventory for synthesis mode", () => {
+    const onOpenSources = vi.fn()
+    const message = {
+      id: "m-synth-inventory",
+      role: "assistant",
+      parts: [
+        {
+          type: "data-cited-text",
+          data: {
+            text: "Ini ringkasannya.",
+          },
+        },
+        {
+          type: "data-reference-inventory",
+          data: {
+            responseMode: "synthesis",
+            introText: "Inventori ini tidak boleh tampil inline.",
+            items: [
+              {
+                sourceId: "s1",
+                title: "Paper A",
+                url: "https://example.com/a.pdf",
+                verificationStatus: "unverified_link",
+                documentKind: "pdf",
+              },
+            ],
+          },
+        },
+        {
+          type: "data-cited-sources",
+          data: {
+            sources: [
+              { url: "https://example.com/a.pdf", title: "Paper A" },
+            ],
+          },
+        },
+      ],
+    } as unknown as UIMessage
+
+    render(<MessageBubble message={message} onOpenSources={onOpenSources} />)
+
+    expect(screen.queryByLabelText("Inventaris referensi")).not.toBeInTheDocument()
+    expect(screen.getByTestId("sources-indicator")).toBeInTheDocument()
+    expect(screen.getByText("Ini ringkasannya.")).toBeInTheDocument()
+    expect(screen.queryByText("https://example.com/a.pdf")).not.toBeInTheDocument()
+  })
+
   it("renders reference inventory items from streamed payload", () => {
     const onOpenSources = vi.fn()
     const message = {

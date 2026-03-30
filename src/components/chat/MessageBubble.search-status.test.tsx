@@ -162,6 +162,57 @@ describe("MessageBubble search status", () => {
     expect(screen.queryByText(/^Link:\s*$/i)).not.toBeInTheDocument()
   })
 
+  it("keeps search status visible without rendering inline inventory for synthesis payload", () => {
+    const message = {
+      id: "m-search-synthesis-inventory",
+      role: "assistant",
+      parts: [
+        {
+          type: "data-search",
+          data: {
+            status: "error",
+            message: "Tool pencarian tidak tersedia",
+          },
+        },
+        {
+          type: "data-cited-text",
+          data: {
+            text: "Ini fallback jawaban tanpa inventori inline.",
+          },
+        },
+        {
+          type: "data-reference-inventory",
+          data: {
+            responseMode: "synthesis",
+            introText: "Inventori tidak boleh tampil inline.",
+            items: [
+              {
+                sourceId: "s1",
+                title: "Paper A",
+                url: "https://example.com/a.pdf",
+                verificationStatus: "unverified_link",
+                documentKind: "pdf",
+              },
+            ],
+          },
+        },
+        {
+          type: "data-cited-sources",
+          data: {
+            sources: [{ url: "https://example.com/a.pdf", title: "Paper A" }],
+          },
+        },
+      ],
+    } as unknown as UIMessage
+
+    render(<MessageBubble message={message} persistProcessIndicators />)
+
+    expect(screen.getByText("Tool pencarian tidak tersedia")).toBeInTheDocument()
+    expect(screen.queryByLabelText("Inventaris referensi")).not.toBeInTheDocument()
+    expect(screen.getByText("Ini fallback jawaban tanpa inventori inline.")).toBeInTheDocument()
+    expect(screen.queryByText("https://example.com/a.pdf")).not.toBeInTheDocument()
+  })
+
   it("renders inventory intro from cited text fallback when stream omits introText", () => {
     const message = {
       id: "m-search-inventory-fallback",
