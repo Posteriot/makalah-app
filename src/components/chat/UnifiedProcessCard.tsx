@@ -78,7 +78,8 @@ export function UnifiedProcessCard({
   const [open, setOpen] = useState(defaultOpen)
 
   const hasTaskData = taskSummary !== null && taskSummary.tasks.length > 0
-  const hasProcessData = processTools.length > 0 || searchStatus !== null
+  const showSearch = (persistProcessIndicators || searchStatus?.status === "error") && searchStatus != null
+  const hasProcessData = processTools.length > 0 || showSearch
 
   // --- Header label logic (must be before early return — hooks cannot be conditional) ---
   const activeProcessLabel = useMemo(() => {
@@ -201,7 +202,7 @@ export function UnifiedProcessCard({
                   </div>
                 )}
                 <div className="space-y-0.5">
-                  {(persistProcessIndicators || searchStatus?.status === "error") && searchStatus && (
+                  {showSearch && searchStatus && (
                     <SearchStatusIndicator
                       status={searchStatus.status}
                       message={searchStatus.message}
