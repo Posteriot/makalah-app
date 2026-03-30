@@ -2214,13 +2214,13 @@ Aturan:
 
             // Incremental save harness: force per-field draft save in function-tools turns
             // Only active for supported stages (gagasan/topik in v1)
-            // Disabled when exact-source routing would take priority (availableExactSources > 0)
+            // Note: exact-source routing coexists safely — prepareStep priority chain
+            // ensures exact-source wins when active (exactSource > sync > incremental)
             incrementalSaveConfig = (
                 !enableWebSearch
                 && !!paperModePrompt
                 && !shouldForceGetCurrentPaperState
                 && !shouldForceSubmitValidation
-                && availableExactSources.length === 0
                 && paperSession
             )
                 ? buildIncrementalSavePrepareStep({
