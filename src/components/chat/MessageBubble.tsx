@@ -11,7 +11,7 @@ import { useState, useRef, useMemo, useEffect } from "react"
 import Image from "next/image"
 import { Id } from "../../../convex/_generated/dataModel"
 import { MarkdownRenderer } from "./MarkdownRenderer"
-import { isEditAllowed } from "@/lib/utils/paperPermissions"
+import { isEditAllowed, getMessageStage } from "@/lib/utils/paperPermissions"
 import { TaskProgress } from "./TaskProgress"
 import { ChainOfThought } from "./ChainOfThought"
 import { deriveTaskList } from "@/lib/paper/task-derivation"
@@ -218,11 +218,18 @@ export function MessageBubble({
         })
     }, [message.role, allMessages, messageIndex, isPaperMode, currentStageStartIndex, stageData])
 
-    // Derive task summary for TaskProgress (paper mode only)
+    // Derive task summary for TaskProgress — use per-message stage, not global currentStage
     const taskSummary = useMemo(() => {
         if (!isPaperMode || !stageData || !currentStage || currentStage === "completed") return null
-        return deriveTaskList(currentStage as PaperStageId, stageData)
-    }, [isPaperMode, stageData, currentStage])
+
+        // Determine which stage THIS message belongs to
+        const messageCreatedAt = allMessages[messageIndex]?.createdAt ?? 0
+        const messageStage = messageCreatedAt > 0
+            ? getMessageStage(messageCreatedAt, stageData)
+            : currentStage  // Streaming message (no createdAt yet) → use current stage
+
+        return deriveTaskList(messageStage as PaperStageId, stageData)
+    }, [isPaperMode, stageData, currentStage, allMessages, messageIndex])
 
 
     const extractArtifactSignals = (uiMessage: UIMessage): ArtifactSignal[] => {
