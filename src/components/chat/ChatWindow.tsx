@@ -45,6 +45,7 @@ import {
   shouldShowTechnicalReportTrigger,
 } from "@/lib/technical-report/chatSnapshot"
 import { resolveTechnicalReportSearchStatus } from "@/lib/technical-report/searchStatus"
+import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import * as Sentry from "@sentry/nextjs"
 
 /** Minimal artifact shape from Convex query (only fields we need for signal reconstruction) */
@@ -132,6 +133,36 @@ export function resolveArtifactSourceFocusTarget(
   }
 
   return null
+}
+
+function extractMessageTextForIntent(uiMessage: UIMessage): string {
+  const partsText = uiMessage.parts
+    ?.filter((part): part is Extract<UIMessage["parts"][number], { type: "text" }> => part.type === "text")
+    .map((part) => part.text)
+    .join("")
+    .trim()
+
+  if (partsText && partsText.length > 0) return partsText
+  return ""
+}
+
+export function shouldPreferUnifiedPaperLoadingUi(params: {
+  isPaperMode: boolean
+  hasPendingAssistantGeneration: boolean
+  messages: UIMessage[]
+}): boolean {
+  if (params.isPaperMode || !params.hasPendingAssistantGeneration) return false
+
+  const latestUserMessage = [...params.messages]
+    .reverse()
+    .find((message) => message.role === "user")
+
+  if (!latestUserMessage) return false
+
+  const latestUserText = extractMessageTextForIntent(latestUserMessage)
+  if (!latestUserText) return false
+
+  return hasPaperWritingIntent(latestUserText)
 }
 
 function setPendingStarterPrompt(conversationId: string, prompt: string) {
@@ -1456,9 +1487,19 @@ export function ChatWindow({
   const isGenerating = status === "submitted" || status === "streaming"
 
   const hasPendingAssistantGeneration = isGenerating || isAwaitingAssistantStart
+  const prefersUnifiedPaperLoadingUi = useMemo(
+    () =>
+      shouldPreferUnifiedPaperLoadingUi({
+        isPaperMode,
+        hasPendingAssistantGeneration,
+        messages,
+      }),
+    [hasPendingAssistantGeneration, isPaperMode, messages]
+  )
+  const effectivePaperUiMode = isPaperMode || prefersUnifiedPaperLoadingUi
   const hasStandalonePendingIndicator =
     hasPendingAssistantGeneration &&
-    !isPaperMode &&
+    !effectivePaperUiMode &&
     !isPaperSessionLoading &&
     messages.length > 0 &&
     messages[messages.length - 1]?.role !== "assistant"
@@ -2411,7 +2452,7 @@ export function ChatWindow({
                 } as UIMessage
                 const shouldShowPendingIndicatorBeforeMessage =
                   hasPendingAssistantGeneration &&
-                  !isPaperMode &&
+                  !effectivePaperUiMode &&
                   !isPaperSessionLoading &&
                   index === messages.length - 1 &&
                   message.role === "assistant"
@@ -2564,7 +2605,7 @@ export function ChatWindow({
         </div>
 
         <ChatProcessStatusBar
-          visible={processUi.visible && !isPaperMode}
+          visible={processUi.visible && !effectivePaperUiMode}
           status={processUi.status}
           progress={processUi.progress}
           elapsedSeconds={processUi.elapsedSeconds}
