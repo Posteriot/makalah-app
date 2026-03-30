@@ -57,6 +57,41 @@ Turn N+1 (user confirms): submitStageForValidation
 | Backend | Reuses `paperSessions.updateStageData` mutation | Same as today |
 | Prompt mention | **Not mentioned** in stage instructions | Documented in stage instructions |
 | Scope | gagasan + topik only (v1) | All 14 stages |
+| Access control | **Hard-gated** — execute-time flag blocks calls outside incremental mode | Always available |
+
+### Hard-Gate Mechanism
+
+`saveStageDraft` is registered in the global tools object (required by streamText API),
+but is **functionally gated** via an execute-time flag:
+
+```typescript
+// In route.ts, before createPaperTools():
+const draftSaveGate = { active: false }
+
+// Passed to createPaperTools() via context:
+...createPaperTools({ ..., draftSaveGate })
+
+// Inside saveStageDraft.execute():
+if (!draftSaveGate.active) {
+    return { success: false, error: "saveStageDraft only available during incremental save mode." }
+}
+
+// After incrementalSaveConfig is computed:
+if (incrementalSaveConfig) {
+    draftSaveGate.active = true
+}
+```
+
+**Why execute-time gate instead of conditional inclusion:**
+- `tools` registry is built (~line 1770) before `incrementalSaveConfig` is computed (~line 2207)
+- Restructuring tool build order would require major refactor
+- Execute-time gate is per-request (route handler runs fresh), no stale state risk
+- Defense-in-depth: even if model bypasses `activeTools` restriction, execute blocks
+
+**When incremental step IS active**, harness also constrains via prepareStep:
+- `activeTools: ["saveStageDraft"]` — only this tool visible
+- `toolChoice: { type: "tool", toolName: "saveStageDraft" }` — forced call
+- Next step immediately sets `toolChoice: "none"` — model cannot call twice
 
 ### Schema
 
@@ -74,37 +109,41 @@ saveStageDraft: tool({
         field: z.enum([
             "ideKasar", "analisis", "angle",
             "definitif", "angleSpesifik", "argumentasiKebaruan", "researchGap",
-        ]).describe("The field to save. Must be from the current stage's allowed fields."),
-        value: z.string().min(1).describe(
-            "The field content. Must be non-empty meaningful text based on discussion so far."
-        ),
+        ]),
+        value: z.string().min(1),
     }),
     execute: async ({ field, value }) => {
-        // 1. Fetch session, get currentStage
-        // 2. Validate field allowed for this stage via isAllowedDraftField()
-        // 3. Call paperSessions.updateStageData mutation with { [field]: value }
-        // 4. Filter "Ringkasan not provided." warning (expected noise)
-        // 5. Pass through all other warnings (unknown keys, URL validation)
+        // 1. Check gate — reject if not in incremental mode
+        // 2. Fetch session, get currentStage
+        // 3. Validate field allowed for this stage via isAllowedDraftField()
+        // 4. Call paperSessions.updateStageData mutation with { [field]: value }
+        // 5. Filter "Ringkasan not provided." warning (exact prefix match)
+        // 6. Pass through all other warnings (unknown keys, URL validation)
     }
 })
 ```
 
-### Shared Helpers
+### Shared Helpers (`draft-save-fields.ts`)
 
 ```typescript
-// Used by both paper-tools.ts (saveStageDraft) and incremental-save-harness.ts
 export function isDraftSaveSupportedStage(stage: string): boolean
 export function isAllowedDraftField(stage: string, field: string): boolean
+export function getDraftSaveAllowedFields(stage: string): readonly string[]
 ```
 
-### Warning Filter
+Used by both `paper-tools.ts` (saveStageDraft validation) and
+`incremental-save-harness.ts` (stage support guard).
+
+### Warning Filter (`paper-tools-draft-save.ts`)
 
 Backend always returns `"Ringkasan not provided. This stage CANNOT be approved..."` on
 saves without ringkasan (paperSessions.ts:738-741). For `saveStageDraft`, this is
-expected noise — filter by exact prefix `startsWith("Ringkasan not provided.")`,
-not substring match. Other warnings (unknown keys, URL validation) pass through.
+expected noise. Filter by exact prefix `startsWith("Ringkasan not provided.")`.
+Other warnings (unknown keys, URL validation) pass through.
 
 ## Core Function: `buildIncrementalSavePrepareStep()`
+
+### Location: `incremental-save-harness.ts`
 
 ### Signature
 
@@ -133,19 +172,10 @@ function buildIncrementalSavePrepareStep(opts: {
      maxToolSteps: 2
 ```
 
-### Harness-Only Enforcement
-
-`saveStageDraft` is registered in the global tools object (required by streamText),
-but is NOT mentioned in stage instructions or prompts. The harness controls access:
-
-- When incremental step is active: `prepareStep` sets `activeTools: ["saveStageDraft"]`
-- Outside incremental mode: model has no prompt guidance to call it
-- `prepareStep` step 1 immediately sets `toolChoice: "none"` — model cannot call it twice
-
 ### Auto-Persist Field Skip
 
 ```typescript
-const AUTO_PERSIST_FIELDS: Partial<Record<string, string[]>> = {
+const AUTO_PERSIST_FIELDS: Record<string, string[]> = {
   gagasan: ["referensiAwal"],
   topik: ["referensiPendukung"],
 }
@@ -153,7 +183,7 @@ const AUTO_PERSIST_FIELDS: Partial<Record<string, string[]>> = {
 
 ### System Note
 
-Per-turn note injected into messages (same pattern as getFunctionToolsModeNote):
+Per-turn note injected into messages (same pattern as `getFunctionToolsModeNote`):
 
 ```
 ══════════════════════════════════════════════════════════════
@@ -169,29 +199,59 @@ based on available references.
 
 | Layer | File | Change |
 |-------|------|--------|
-| New tool | `paper-tools.ts` | Add `saveStageDraft` with allowlisted fields |
-| Shared helpers | `incremental-save-harness.ts` | `isDraftSaveSupportedStage()`, `isAllowedDraftField()`, `DRAFT_SAVE_ALLOWED_FIELDS` |
-| Harness logic | `incremental-save-harness.ts` | `buildIncrementalSavePrepareStep()` — targets `saveStageDraft` |
-| Route integration | `route.ts` | Build config, inject note, wire prepareStep/stopWhen (primary + fallback) |
+| Shared helpers | `draft-save-fields.ts` (new) | `isDraftSaveSupportedStage()`, `isAllowedDraftField()`, `getDraftSaveAllowedFields()` |
+| Warning filter | `paper-tools-draft-save.ts` (new) | `filterDraftSaveWarnings()` |
+| New tool | `paper-tools.ts` | Add `saveStageDraft` to `createPaperTools()` return object, with gate |
+| Tool context | `paper-tools.ts` | Accept `draftSaveGate` in context parameter |
+| Harness logic | `incremental-save-harness.ts` (new) | `buildIncrementalSavePrepareStep()` |
+| Route integration | `route.ts` | Create gate, pass to createPaperTools, build config, inject note, wire prepareStep/stopWhen (primary + fallback), activate gate |
 | Prompt | `paper-mode-prompt.ts` | Remove "save after mature", add "system will prompt incremental save" |
-| Tool schema | `paper-tools.ts` (`updateStageData`) | **No change** — ringkasan stays required |
-| Stage instructions | `foundation.ts` | **No change** — `saveStageDraft` not mentioned |
-| Submit flow | `route.ts` (`shouldForceSubmitValidation`) | **No change** — user-initiated |
-| Convex backend | `paperSessions.ts` | **No change** — reuses existing mutation |
+| Tool schema | `paper-tools.ts` (`updateStageData`) | **No change** |
+| Stage instructions | `foundation.ts` | **No change** |
+| Submit flow | `route.ts` | **No change** |
+| Convex backend | `paperSessions.ts` | **No change** |
 | UI | No change | UnifiedProcessCard auto-reflects stageData via subscription |
+
+## Integration in route.ts
+
+```typescript
+// 1. Create gate BEFORE tools are built (~line 1768)
+const draftSaveGate = { active: false }
+
+// 2. Pass gate to createPaperTools (~line 1770)
+...createPaperTools({ ..., draftSaveGate })
+
+// 3. Build config AFTER search router (~line 2207)
+const incrementalSaveConfig = (
+  !enableWebSearch && paperModePrompt
+  && !shouldForceGetCurrentPaperState && !shouldForceSubmitValidation
+  && paperSession
+)
+  ? buildIncrementalSavePrepareStep({ ... })
+  : undefined
+
+// 4. Activate gate
+if (incrementalSaveConfig) {
+    draftSaveGate.active = true
+}
+
+// 5. Inject system note into messages (non-search branch)
+// 6. Wire prepareStep priority chain (primary + fallback providers)
+```
 
 ## Edge Cases
 
 | Scenario | Handling |
 |----------|----------|
 | User hasn't discussed field yet | Model generates best draft from referensi; draft save, user can revise via discussion |
-| Model generates garbage in saveStageDraft | No quality gate by design (tools = simple executors); field gets overwritten on next draft or mature save |
+| Model generates garbage | No quality gate by design (tools = simple executors); field gets overwritten on next draft or mature save |
 | Exact source routing active | Priority chain: exact source wins, incremental skipped this turn |
 | User explicitly asks save/submit | shouldForceSubmitValidation wins in priority chain |
-| Stage is not gagasan/topik | isDraftSaveSupportedStage returns false, harness returns undefined, no enforcement |
+| Stage is not gagasan/topik | isDraftSaveSupportedStage returns false, harness returns undefined |
 | All fields complete, not submitted | Returns undefined; model proceeds to mature save naturally |
-| Model tries saveStageDraft with wrong field for stage | isAllowedDraftField rejects, returns error |
-| saveStageDraft called outside harness | Possible but harmless — saves valid field, no contract violation |
+| Model tries saveStageDraft with wrong field | isAllowedDraftField rejects with error |
+| Model calls saveStageDraft outside incremental mode | **Hard-gated**: execute-time flag returns error |
+| Model calls saveStageDraft in search turn | Gate inactive + enableWebSearch prevents harness activation |
 
 ## What This Design Does NOT Do (v1 boundaries)
 

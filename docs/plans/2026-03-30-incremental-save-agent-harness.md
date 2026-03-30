@@ -4,19 +4,19 @@
 
 **Goal:** Make AI model save stageData fields incrementally (one per turn) via harness-enforced `saveStageDraft` tool, so UnifiedProcessCard shows real-time progress instead of bulk jumps. Scope: gagasan + topik stages only.
 
-**Architecture:** New `saveStageDraft` tool for draft checkpoints (separate from `updateStageData` which stays strict). `buildIncrementalSavePrepareStep()` reads task-derivation definitions, checks which fields are incomplete, and returns a prepareStep config that forces the model to call `saveStageDraft` for the next empty field. No auto-submit — approval stays user-initiated.
+**Architecture:** New `saveStageDraft` tool for draft checkpoints (separate from `updateStageData` which stays strict). `buildIncrementalSavePrepareStep()` reads task-derivation definitions, checks which fields are incomplete, and returns a prepareStep config that forces the model to call `saveStageDraft` for the next empty field. Tool is hard-gated via execute-time flag — blocked outside incremental mode. No auto-submit — approval stays user-initiated.
 
 **Tech Stack:** TypeScript, Zod, Vercel AI SDK (prepareStep/stopWhen), Convex, Vitest
 
 ---
 
-### Task 1: Create shared helpers for draft save allowlist
+## Task 1: Create shared helpers for draft save allowlist
 
 **Files:**
 - Create: `src/lib/ai/draft-save-fields.ts`
-- Test: `src/lib/ai/__tests__/draft-save-fields.test.ts` (create)
+- Test: `src/lib/ai/__tests__/draft-save-fields.test.ts`
 
-**Step 1: Write the failing tests**
+### Step 1: Write the failing tests
 
 Create `src/lib/ai/__tests__/draft-save-fields.test.ts`:
 
@@ -89,12 +89,12 @@ describe("getDraftSaveAllowedFields", () => {
 })
 ```
 
-**Step 2: Run test to verify it fails**
+### Step 2: Run test to verify it fails
 
 Run: `npx vitest run src/lib/ai/__tests__/draft-save-fields.test.ts`
 Expected: FAIL — module not found
 
-**Step 3: Implement the helpers**
+### Step 3: Implement the helpers
 
 Create `src/lib/ai/draft-save-fields.ts`:
 
@@ -123,12 +123,12 @@ export function getDraftSaveAllowedFields(stage: string): readonly string[] {
 }
 ```
 
-**Step 4: Run test to verify it passes**
+### Step 4: Run test to verify it passes
 
 Run: `npx vitest run src/lib/ai/__tests__/draft-save-fields.test.ts`
 Expected: All PASS
 
-**Step 5: Commit**
+### Step 5: Commit
 
 ```bash
 git add src/lib/ai/draft-save-fields.ts src/lib/ai/__tests__/draft-save-fields.test.ts
@@ -137,13 +137,16 @@ git commit -m "feat: add draft save field allowlist helpers for gagasan/topik"
 
 ---
 
-### Task 2: Create `saveStageDraft` tool
+## Task 2: Create `saveStageDraft` tool with hard-gate
 
 **Files:**
-- Modify: `src/lib/ai/paper-tools.ts` (add tool to existing registry)
-- Test: `src/lib/ai/__tests__/save-stage-draft.test.ts` (create)
+- Create: `src/lib/ai/paper-tools-draft-save.ts` (warning filter)
+- Test: `src/lib/ai/__tests__/save-stage-draft.test.ts`
+- Modify: `src/lib/ai/paper-tools.ts` (add tool to `createPaperTools()` return object, add `draftSaveGate` to context)
 
-**Step 1: Write the failing tests**
+**Context:** `createPaperTools()` at `paper-tools.ts:35` is a factory that returns a tools object. The returned object includes `startPaperSession`, `updateStageData`, `compileDaftarPustaka`, `submitStageForValidation`, and `inspectSourceDocument`. `saveStageDraft` is added here. `createArtifact` is NOT in this file — it lives in route.ts tool registry (~line 1398).
+
+### Step 1: Write the failing tests for warning filter
 
 Create `src/lib/ai/__tests__/save-stage-draft.test.ts`:
 
@@ -185,19 +188,19 @@ describe("filterDraftSaveWarnings", () => {
 })
 ```
 
-**Step 2: Run test to verify it fails**
+### Step 2: Run test to verify it fails
 
 Run: `npx vitest run src/lib/ai/__tests__/save-stage-draft.test.ts`
 Expected: FAIL — module not found
 
-**Step 3: Create the warning filter helper**
+### Step 3: Create the warning filter helper
 
 Create `src/lib/ai/paper-tools-draft-save.ts`:
 
 ```typescript
 /**
  * Filters backend warnings for saveStageDraft tool.
- * "Ringkasan not provided." is expected noise for draft saves — filter it out.
+ * "Ringkasan not provided." is expected noise for draft saves — filter by exact prefix.
  * All other warnings (unknown keys, URL validation) pass through.
  */
 export function filterDraftSaveWarnings(warning: string | undefined): string | undefined {
@@ -212,20 +215,38 @@ export function filterDraftSaveWarnings(warning: string | undefined): string | u
 }
 ```
 
-**Step 4: Run test to verify it passes**
+### Step 4: Run test to verify it passes
 
 Run: `npx vitest run src/lib/ai/__tests__/save-stage-draft.test.ts`
 Expected: All PASS
 
-**Step 5: Add `saveStageDraft` tool to paper-tools.ts**
+### Step 5: Add `draftSaveGate` to `createPaperTools` context and add `saveStageDraft` tool
 
-In `src/lib/ai/paper-tools.ts`, add the tool to the returned tools object (after `updateStageData`, before `createArtifact`). Use the same `context`, `retryQuery`, `retryMutation`, `fetchQuery`, `fetchMutation`, `convexOptions`, and `api` references already in scope.
+In `src/lib/ai/paper-tools.ts`:
+
+**5a.** Add `draftSaveGate` to the context parameter type (line ~35):
+
+```typescript
+export const createPaperTools = (context: {
+    userId: Id<"users">,
+    conversationId: Id<"conversations">
+    convexToken?: string
+    availableSources?: Array<{ url: string; title: string; publishedAt?: number }>
+    hasRecentSources?: boolean
+    draftSaveGate?: { active: boolean }  // ← ADD
+}) => {
+```
+
+**5b.** Add imports at top of file:
 
 ```typescript
 import { isAllowedDraftField, getDraftSaveAllowedFields } from "./draft-save-fields"
 import { filterDraftSaveWarnings } from "./paper-tools-draft-save"
+```
 
-// Inside the tools object:
+**5c.** Add `saveStageDraft` tool to the return object, after `submitStageForValidation` (line ~414):
+
+```typescript
 saveStageDraft: tool({
     description:
         "Save a single draft field for the current stage. " +
@@ -241,6 +262,14 @@ saveStageDraft: tool({
     }),
     execute: async ({ field, value }) => {
         try {
+            // Hard-gate: reject if not in incremental save mode
+            if (!context.draftSaveGate?.active) {
+                return {
+                    success: false,
+                    error: "saveStageDraft is only available during incremental save mode.",
+                }
+            }
+
             const session = await retryQuery(
                 () => fetchQuery(api.paperSessions.getByConversation, {
                     conversationId: context.conversationId
@@ -271,13 +300,13 @@ saveStageDraft: tool({
                 "paperSessions.updateStageData"
             )
 
+            const filteredWarning = filterDraftSaveWarnings(result.warning)
+
             return {
                 success: true,
                 stage: currentStage,
                 field,
-                ...(filterDraftSaveWarnings(result.warning)
-                    ? { warning: filterDraftSaveWarnings(result.warning) }
-                    : {}),
+                ...(filteredWarning ? { warning: filteredWarning } : {}),
             }
         } catch (error) {
             console.error("Error in saveStageDraft tool:", error)
@@ -288,33 +317,32 @@ saveStageDraft: tool({
 }),
 ```
 
-**Step 6: Verify type check**
+### Step 6: Verify type check
 
-Run: `npx tsc --noEmit 2>&1 | head -30`
+Run: `npm run typecheck`
 Expected: No type errors
 
-**Step 7: Run all paper-tools tests**
+### Step 7: Run all paper-tools tests
 
 Run: `npx vitest run src/lib/ai/`
 Expected: All PASS
 
-**Step 8: Commit**
+### Step 8: Commit
 
 ```bash
 git add src/lib/ai/paper-tools.ts src/lib/ai/paper-tools-draft-save.ts src/lib/ai/__tests__/save-stage-draft.test.ts
-git commit -m "feat: add saveStageDraft tool with allowlist validation and warning filter"
+git commit -m "feat: add saveStageDraft tool with hard-gate, allowlist, and warning filter"
 ```
 
 ---
 
-### Task 3: Create `buildIncrementalSavePrepareStep()` — core harness logic
+## Task 3: Create `buildIncrementalSavePrepareStep()` — core harness logic
 
 **Files:**
 - Create: `src/lib/ai/incremental-save-harness.ts`
-- Test: `src/lib/ai/__tests__/incremental-save-harness.test.ts` (create)
-- Read: `src/lib/paper/task-derivation.ts` (data source)
+- Test: `src/lib/ai/__tests__/incremental-save-harness.test.ts`
 
-**Step 1: Write the failing tests**
+### Step 1: Write the failing tests
 
 Create `src/lib/ai/__tests__/incremental-save-harness.test.ts`:
 
@@ -437,7 +465,7 @@ describe("buildIncrementalSavePrepareStep", () => {
   })
 
   describe("auto-persist field skipping", () => {
-    it("skips referensiAwal even when empty (auto-persisted)", () => {
+    it("skips referensiAwal even when empty (auto-persisted by server)", () => {
       const result = buildIncrementalSavePrepareStep({
         currentStage: "gagasan",
         stageData: {},
@@ -459,7 +487,7 @@ describe("buildIncrementalSavePrepareStep", () => {
   })
 
   describe("system note", () => {
-    it("includes field name and INCREMENTAL_SAVE", () => {
+    it("includes field name, INCREMENTAL_SAVE, and saveStageDraft", () => {
       const result = buildIncrementalSavePrepareStep({
         currentStage: "gagasan",
         stageData: { referensiAwal: [{ title: "t" }] },
@@ -473,7 +501,7 @@ describe("buildIncrementalSavePrepareStep", () => {
   })
 
   describe("topik stage support", () => {
-    it("works for topik stage with correct first field", () => {
+    it("targets definitif as first field", () => {
       const result = buildIncrementalSavePrepareStep({
         currentStage: "topik",
         stageData: {},
@@ -487,12 +515,12 @@ describe("buildIncrementalSavePrepareStep", () => {
 })
 ```
 
-**Step 2: Run tests to verify they fail**
+### Step 2: Run tests to verify they fail
 
 Run: `npx vitest run src/lib/ai/__tests__/incremental-save-harness.test.ts`
 Expected: FAIL — module not found
 
-**Step 3: Implement `buildIncrementalSavePrepareStep`**
+### Step 3: Implement `buildIncrementalSavePrepareStep`
 
 Create `src/lib/ai/incremental-save-harness.ts`:
 
@@ -579,17 +607,17 @@ based on available references.
 }
 ```
 
-**Step 4: Run tests to verify they pass**
+### Step 4: Run tests to verify they pass
 
 Run: `npx vitest run src/lib/ai/__tests__/incremental-save-harness.test.ts`
 Expected: All PASS
 
-**Step 5: Run full test suite**
+### Step 5: Run full test suite
 
 Run: `npx vitest run src/lib/`
 Expected: All PASS, no regressions
 
-**Step 6: Commit**
+### Step 6: Commit
 
 ```bash
 git add src/lib/ai/incremental-save-harness.ts src/lib/ai/__tests__/incremental-save-harness.test.ts
@@ -598,14 +626,14 @@ git commit -m "feat: add buildIncrementalSavePrepareStep targeting saveStageDraf
 
 ---
 
-### Task 4: Integrate harness into route.ts
+## Task 4: Integrate harness into route.ts
 
 **Files:**
 - Modify: `src/app/api/chat/route.ts`
 
-**Context:** route.ts has two streamText calls: primary provider (~line 2437) and fallback provider (~line 2830). Both need identical incremental save integration.
+**Context:** route.ts has two streamText calls: primary provider (~line 2437) and fallback provider (~line 2830). Both need identical incremental save integration. Tools are built at ~line 1398 via a global registry object, with `createPaperTools()` spread at ~line 1770.
 
-**Step 1: Add import**
+### Step 1: Add import
 
 At the top of `route.ts`, add:
 
@@ -613,7 +641,28 @@ At the top of `route.ts`, add:
 import { buildIncrementalSavePrepareStep } from "@/lib/ai/incremental-save-harness"
 ```
 
-**Step 2: Build incremental save config after existing guards**
+### Step 2: Create gate and pass to createPaperTools
+
+Before the tools registry is built (~line 1768), add:
+
+```typescript
+const draftSaveGate = { active: false }
+```
+
+At the `createPaperTools()` call (~line 1770), add `draftSaveGate`:
+
+```typescript
+...createPaperTools({
+    userId: userId as Id<"users">,
+    conversationId: currentConversationId as Id<"conversations">,
+    convexToken,
+    availableSources: recentSourcesList,
+    hasRecentSources: hasRecentSourcesInDb,
+    draftSaveGate,  // ← ADD
+}),
+```
+
+### Step 3: Build incremental save config after existing guards
 
 After `missingArtifactNote` (around line 2207), add:
 
@@ -635,7 +684,9 @@ const incrementalSaveConfig = (
     })
     : undefined
 
+// Activate gate — saveStageDraft execute() will check this
 if (incrementalSaveConfig) {
+    draftSaveGate.active = true
     console.log(
         `[IncrementalSave] targetField=${incrementalSaveConfig.targetField}, ` +
         `maxToolSteps=${incrementalSaveConfig.maxToolSteps}`
@@ -643,7 +694,7 @@ if (incrementalSaveConfig) {
 }
 ```
 
-**Step 3: Inject system note into messages**
+### Step 4: Inject system note into messages
 
 In the `fullMessagesGateway` construction, `!enableWebSearch` branch (around line 2231), add after `missingArtifactNote` injection:
 
@@ -653,7 +704,7 @@ In the `fullMessagesGateway` construction, `!enableWebSearch` branch (around lin
     : []),
 ```
 
-**Step 4: Wire prepareStep priority chain — primary provider**
+### Step 5: Wire prepareStep priority chain — primary provider
 
 At line ~2444, change:
 
@@ -667,9 +718,9 @@ prepareStep: (primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepar
 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? (shouldForceGetCurrentPaperState ? 2 : undefined) ?? incrementalSaveConfig?.maxToolSteps ?? 5),
 ```
 
-Remove or inline the `maxToolSteps` variable (line ~2247) since its value is now computed inline.
+Remove or inline the `maxToolSteps` variable (line ~2247) since its value is now computed inline in `stopWhen`.
 
-**Step 5: Wire prepareStep priority chain — fallback provider**
+### Step 6: Wire prepareStep priority chain — fallback provider
 
 At the fallback streamText (~line 2847), apply same pattern:
 
@@ -685,26 +736,26 @@ stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? (shouldForceG
 
 Remove or inline `fallbackMaxToolSteps` similarly.
 
-**Step 6: Verify type check**
+### Step 7: Verify type check
 
-Run: `npx tsc --noEmit 2>&1 | head -30`
+Run: `npm run typecheck`
 Expected: No type errors
 
-**Step 7: Commit**
+### Step 8: Commit
 
 ```bash
 git add src/app/api/chat/route.ts
-git commit -m "feat: integrate incremental save harness into route.ts priority chain"
+git commit -m "feat: integrate incremental save harness into route.ts with gate wiring"
 ```
 
 ---
 
-### Task 5: Update prompt instructions
+## Task 5: Update prompt instructions
 
 **Files:**
 - Modify: `src/lib/ai/paper-mode-prompt.ts:~291-294`
 
-**Step 1: Find and replace the save instruction**
+### Step 1: Find and replace the save instruction
 
 Find:
 ```
@@ -716,12 +767,12 @@ Replace with:
 - The system will prompt you to save each field incrementally during the workflow. When prompted, provide meaningful content for the requested field based on your discussion with the user so far. Quality matters — give your best analysis, not placeholder text.
 ```
 
-**Step 2: Verify no lint errors**
+### Step 2: Verify no lint errors
 
 Run: `npx eslint src/lib/ai/paper-mode-prompt.ts`
 Expected: No errors
 
-**Step 3: Commit**
+### Step 3: Commit
 
 ```bash
 git add src/lib/ai/paper-mode-prompt.ts
@@ -730,28 +781,29 @@ git commit -m "feat: update prompt for incremental harness-driven saves"
 
 ---
 
-### Task 6: End-to-end verification
+## Task 6: End-to-end verification
 
 **Files:** None (verification only)
 
-**Step 1: Run all tests**
+### Step 1: Run all tests
 
 Run: `npx vitest run`
 Expected: All tests pass, no regressions
 
-**Step 2: Run type check**
+### Step 2: Run type check (repo contract)
 
-Run: `npx tsc --noEmit`
-Expected: No type errors
+Run: `npm run typecheck`
+Expected: No type errors. This runs `typegen + tsc -p tsconfig.typecheck.json` per package.json:17.
 
-**Step 3: Run lint**
+### Step 3: Run lint
 
 Run: `npx eslint src/lib/ai/draft-save-fields.ts src/lib/ai/paper-tools-draft-save.ts src/lib/ai/incremental-save-harness.ts src/lib/ai/paper-tools.ts src/app/api/chat/route.ts src/lib/ai/paper-mode-prompt.ts`
 Expected: No errors
 
-**Step 4: Manual verification checklist**
+### Step 4: Manual verification checklist
 
 Verify in dev mode (paper mode, gagasan stage):
+
 1. Start new paper session, send topic
 2. After search completes (1/4), respond to model
 3. Check console for `[IncrementalSave] targetField=ideKasar` log
@@ -762,8 +814,9 @@ Verify in dev mode (paper mode, gagasan stage):
 8. Verify model can still call `updateStageData` with ringkasan for mature save
 9. Verify `submitStageForValidation` only triggers on user intent, not automatically
 10. Verify no behavior change for stages outside gagasan/topik (e.g. outline)
+11. Verify saveStageDraft returns error if called in non-incremental turn (gate check)
 
-**Step 5: Commit any fixes from verification**
+### Step 5: Commit any fixes from verification
 
 ```bash
 git commit -m "fix: adjustments from e2e verification"
