@@ -80,10 +80,7 @@ export function UnifiedProcessCard({
   const hasTaskData = taskSummary !== null && taskSummary.tasks.length > 0
   const hasProcessData = processTools.length > 0 || searchStatus !== null
 
-  // Nothing to show
-  if (!hasTaskData && !hasProcessData) return null
-
-  // --- Header label logic ---
+  // --- Header label logic (must be before early return — hooks cannot be conditional) ---
   const activeProcessLabel = useMemo(() => {
     // Priority 1: active search
     if (searchStatus && searchStatus.status !== "done" && searchStatus.status !== "off") {
@@ -109,6 +106,9 @@ export function UnifiedProcessCard({
   }, [processTools, searchStatus, persistProcessIndicators])
 
   const description = hasTaskData ? (STAGE_DESCRIPTIONS[taskSummary.stageId] ?? "") : ""
+
+  // Nothing to show
+  if (!hasTaskData && !hasProcessData) return null
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
