@@ -62,7 +62,9 @@ export function buildIncrementalSavePrepareStep(opts: {
       if (stepNumber === 1) {
         return {
           toolChoice: "none" as const,
-          activeTools: [],
+          // Keep all tools visible so model retains paper workflow context
+          // (yaml-spec generation depends on seeing available tools).
+          // toolChoice: "none" prevents actual calls.
         }
       }
       return undefined

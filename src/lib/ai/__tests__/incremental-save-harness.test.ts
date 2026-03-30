@@ -111,7 +111,8 @@ describe("buildIncrementalSavePrepareStep", () => {
 
       const step1 = result!.prepareStep({ stepNumber: 1 })
       expect(step1!.toolChoice).toBe("none")
-      expect(step1!.activeTools).toEqual([])
+      // activeTools NOT restricted — model needs tool context for yaml-spec generation
+      expect(step1!.activeTools).toBeUndefined()
     })
   })
 
