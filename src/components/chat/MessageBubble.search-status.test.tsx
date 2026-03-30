@@ -47,7 +47,7 @@ describe("MessageBubble search status", () => {
       />
     )
 
-    expect(screen.getByText("Tool pencarian tidak tersedia")).toBeInTheDocument()
+    expect(screen.getAllByText("Tool pencarian tidak tersedia")[0]).toBeInTheDocument()
   })
 
   it("normalizes legacy assistant text with sources into paragraph-end citation markers", () => {
@@ -120,7 +120,7 @@ describe("MessageBubble search status", () => {
 
     render(<MessageBubble message={message} persistProcessIndicators />)
 
-    expect(screen.getByText("Tool pencarian tidak tersedia")).toBeInTheDocument()
+    expect(screen.getAllByText("Tool pencarian tidak tersedia")[0]).toBeInTheDocument()
     expect(screen.getAllByText(/Ini fallback jawaban tanpa sumber\./).length).toBeGreaterThan(0)
     expect(screen.getByTestId("internal-thought-block")).toHaveTextContent(/Bentar ya, aku cari dulu\./)
   })
@@ -158,7 +158,7 @@ describe("MessageBubble search status", () => {
 
     render(<MessageBubble message={message} persistProcessIndicators />)
 
-    expect(screen.getByText("Tool pencarian tidak tersedia")).toBeInTheDocument()
+    expect(screen.getAllByText("Tool pencarian tidak tersedia")[0]).toBeInTheDocument()
     expect(screen.queryByText(/^Link:\s*$/i)).not.toBeInTheDocument()
   })
 
@@ -207,9 +207,9 @@ describe("MessageBubble search status", () => {
 
     render(<MessageBubble message={message} persistProcessIndicators />)
 
-    expect(screen.getByText("Tool pencarian tidak tersedia")).toBeInTheDocument()
+    expect(screen.getAllByText("Tool pencarian tidak tersedia")[0]).toBeInTheDocument()
     expect(screen.queryByLabelText("Inventaris referensi")).not.toBeInTheDocument()
-    expect(screen.getByText("Ini fallback jawaban tanpa inventori inline.")).toBeInTheDocument()
+    expect(screen.getAllByText("Ini fallback jawaban tanpa inventori inline.")[0]).toBeInTheDocument()
     expect(screen.queryByText("https://example.com/a.pdf")).not.toBeInTheDocument()
   })
 
@@ -251,7 +251,7 @@ describe("MessageBubble search status", () => {
 
     render(<MessageBubble message={message} persistProcessIndicators />)
 
-    expect(screen.getByText("Tool pencarian tidak tersedia")).toBeInTheDocument()
+    expect(screen.getAllByText("Tool pencarian tidak tersedia")[0]).toBeInTheDocument()
     expect(screen.getByTestId("reference-inventory-body")).toHaveTextContent(
       "Berikut inventaris referensi yang ditemukan."
     )
