@@ -143,7 +143,7 @@ export function UnifiedProcessCard({
               )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {(activeProcessLabel || isStreaming) && (
+              {hasTaskData && (activeProcessLabel || isStreaming) && (
                 <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] truncate max-w-[200px]">
                   {activeProcessLabel ?? "Memproses..."}
                 </span>
