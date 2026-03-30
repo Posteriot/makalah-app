@@ -8,7 +8,7 @@ import {
 // TYPES
 // ============================================================================
 
-export type TaskStatus = "complete" | "active" | "pending"
+export type TaskStatus = "complete" | "pending"
 
 export type TaskItem = {
   id: string
@@ -172,25 +172,14 @@ export function deriveTaskList(
   const lampiranOverride =
     stageId === "lampiran" && currentStageData.tidakAdaLampiran === true
 
-  let foundFirstIncomplete = false
   const tasks: TaskItem[] = definitions.map((def) => {
     const complete = lampiranOverride || isFieldComplete(currentStageData[def.field], def.type)
-
-    let status: TaskStatus
-    if (complete) {
-      status = "complete"
-    } else if (!foundFirstIncomplete) {
-      foundFirstIncomplete = true
-      status = "active"
-    } else {
-      status = "pending"
-    }
 
     return {
       id: `${stageId}.${def.field}`,
       label: def.label,
       field: def.field,
-      status,
+      status: complete ? "complete" as const : "pending" as const,
     }
   })
 

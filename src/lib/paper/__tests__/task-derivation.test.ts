@@ -12,16 +12,15 @@ import {
 
 describe("deriveTaskList — empty stageData", () => {
   for (const stageId of STAGE_ORDER) {
-    it(`${stageId}: first task active, rest pending, completed = 0`, () => {
+    it(`${stageId}: all tasks pending, completed = 0`, () => {
       const result = deriveTaskList(stageId, {})
 
       expect(result.completed).toBe(0)
       expect(result.total).toBe(result.tasks.length)
       expect(result.total).toBeGreaterThan(0)
 
-      expect(result.tasks[0].status).toBe("active")
-      for (let i = 1; i < result.tasks.length; i++) {
-        expect(result.tasks[i].status).toBe("pending")
+      for (const task of result.tasks) {
+        expect(task.status).toBe("pending")
       }
     })
   }
@@ -83,7 +82,7 @@ describe("deriveTaskList — fully filled stageData", () => {
     expect(result.total).toBe(2)
   })
 
-  it("lampiran: items only (no tidakAdaLampiran) → 1 complete, 1 active", () => {
+  it("lampiran: items only (no tidakAdaLampiran) → 1 complete, 1 pending", () => {
     const result = deriveTaskList("lampiran", {
       lampiran: {
         items: ["lampiran1"],
@@ -92,7 +91,7 @@ describe("deriveTaskList — fully filled stageData", () => {
     })
     expect(result.completed).toBe(1)
     expect(result.tasks[0].status).toBe("complete")
-    expect(result.tasks[1].status).toBe("active")
+    expect(result.tasks[1].status).toBe("pending")
   })
 
   it("lampiran: items + tidakAdaLampiran=true → all 2 complete", () => {
@@ -123,8 +122,7 @@ describe("deriveTaskList — fully filled stageData", () => {
 // ============================================================================
 
 describe("deriveTaskList — partially filled", () => {
-  it("gagasan with 2/4 fields: tasks[0-1] complete, tasks[2] active, tasks[3] pending", () => {
-    // Order: ideKasar, referensiAwal, analisis, angle
+  it("gagasan with 2/4 fields: independent check, no ordering dependency", () => {
     const result = deriveTaskList("gagasan", {
       gagasan: {
         ideKasar: "Ide tentang AI",
@@ -136,7 +134,22 @@ describe("deriveTaskList — partially filled", () => {
     expect(result.total).toBe(4)
     expect(result.tasks[0].status).toBe("complete")  // ideKasar
     expect(result.tasks[1].status).toBe("complete")  // referensiAwal
-    expect(result.tasks[2].status).toBe("active")    // analisis
+    expect(result.tasks[2].status).toBe("pending")   // analisis
+    expect(result.tasks[3].status).toBe("pending")   // angle
+  })
+
+  it("gagasan with non-contiguous fields: analisis filled but referensiAwal empty", () => {
+    const result = deriveTaskList("gagasan", {
+      gagasan: {
+        ideKasar: "Ide tentang AI",
+        analisis: "Feasible karena...",
+      },
+    })
+
+    expect(result.completed).toBe(2)
+    expect(result.tasks[0].status).toBe("complete")  // ideKasar
+    expect(result.tasks[1].status).toBe("pending")   // referensiAwal (empty)
+    expect(result.tasks[2].status).toBe("complete")  // analisis (filled, independent)
     expect(result.tasks[3].status).toBe("pending")   // angle
   })
 })
@@ -159,7 +172,7 @@ describe("deriveTaskList — lampiran edge cases", () => {
     expect(result.tasks[1].status).toBe("complete")
   })
 
-  it("items populated without tidakAdaLampiran → first task complete, second active", () => {
+  it("items populated without tidakAdaLampiran → first task complete, second pending", () => {
     const result = deriveTaskList("lampiran", {
       lampiran: {
         items: ["lampiran1"],
@@ -168,7 +181,7 @@ describe("deriveTaskList — lampiran edge cases", () => {
 
     expect(result.completed).toBe(1)
     expect(result.tasks[0].status).toBe("complete")
-    expect(result.tasks[1].status).toBe("active")
+    expect(result.tasks[1].status).toBe("pending")
   })
 })
 
@@ -198,7 +211,7 @@ describe("deriveTaskList — number fields", () => {
     })
 
     expect(result.tasks[0].status).toBe("complete")
-    expect(result.tasks[1].status).toBe("active")
+    expect(result.tasks[1].status).toBe("pending")
     expect(result.completed).toBe(1)
   })
 })
@@ -216,7 +229,7 @@ describe("deriveTaskList — negative number values", () => {
       },
     })
 
-    expect(result.tasks[1].status).toBe("active")
+    expect(result.tasks[1].status).toBe("pending")
     expect(result.completed).toBe(1)
   })
 })
@@ -226,14 +239,13 @@ describe("deriveTaskList — negative number values", () => {
 // ============================================================================
 
 describe("deriveTaskList — stageData key mismatch", () => {
-  it("wrong key in stageData → all tasks pending (first active)", () => {
+  it("wrong key in stageData → all tasks pending", () => {
     const result = deriveTaskList("gagasan", { topik: { ideKasar: "test" } })
 
     expect(result.completed).toBe(0)
-    expect(result.tasks[0].status).toBe("active")
-    result.tasks.slice(1).forEach((t) => {
-      expect(t.status).toBe("pending")
-    })
+    for (const task of result.tasks) {
+      expect(task.status).toBe("pending")
+    }
   })
 })
 
