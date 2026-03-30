@@ -261,7 +261,11 @@ export function MessageBubble({
             ? getMessageStage(messageCreatedAt, stageData)
             : currentStage  // Streaming message (no createdAt yet) → use current stage
 
-        return deriveTaskList(messageStage as PaperStageId, stageData)
+        const result = deriveTaskList(messageStage as PaperStageId, stageData)
+        if (result) {
+            console.log(`[UnifiedProcess] msg#${messageIndex} stage=${result.stageId} tasks=${result.completed}/${result.total}`)
+        }
+        return result
     }, [isPaperMode, stageData, currentStage, allMessages, messageIndex])
 
 
@@ -760,6 +764,9 @@ export function MessageBubble({
     const showUnifiedCard = isAssistant && (
         taskSummary !== null || shouldShowProcessIndicators
     )
+    if (showUnifiedCard) {
+        console.log(`[UnifiedProcess] msg#${messageIndex} card hasTask=${taskSummary !== null} hasProcess=${shouldShowProcessIndicators} tools=${visibleProcessTools.map(t => `${t.toolName}:${t.state}`).join(",") || "none"} search=${searchStatus?.status ?? "none"}`)
+    }
 
     // Task 4.1: Extract sources (try annotations first, then fallback to property if we extend type)
     const sourcesFromAnnotation = (message as {
