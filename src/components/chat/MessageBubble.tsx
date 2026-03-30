@@ -1192,6 +1192,7 @@ export function MessageBubble({
 
                             {choiceSpec && choiceBlockPayload && (
                                 <JsonRendererChoiceBlock
+                                    key={`${message.id}-choice-block`}
                                     payload={choiceBlockPayload}
                                     isSubmitted={isChoiceSubmitted}
                                     onSubmit={
