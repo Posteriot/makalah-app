@@ -1,10 +1,9 @@
 import { fetchQuery } from "convex/nextjs";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { STAGE_ORDER, getStageLabel, getStageNumber, type PaperStageId } from "../../../convex/paperSessions/constants";
+import { STAGE_ORDER, getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants";
 import { getStageInstructions, formatStageData, formatArtifactSummaries } from "./paper-stages";
 import { resolveStageInstructions } from "./stage-skill-resolver";
-import { deriveTaskList } from "@/lib/paper/task-derivation";
 
 type StageStatus = "drafting" | "pending_validation" | "approved" | "revision";
 
@@ -63,28 +62,6 @@ IMPORTANT INSTRUCTIONS:
 - These artifacts already exist but need updating because the user rewound to a previous stage
 - Ensure new content is consistent with decisions made at the rewound stage
 `;
-}
-
-/**
- * Build plan context string for system prompt injection.
- * Shows current stage's task progress to give the model awareness.
- */
-function buildPlanContext(
-    currentStage: PaperStageId | "completed",
-    stageData: Record<string, unknown>
-): string {
-    if (currentStage === "completed") return "";
-    const tasks = deriveTaskList(currentStage, stageData);
-    if (!tasks.tasks.length) return "";
-
-    const lines = tasks.tasks.map(t => {
-        const icon = t.status === "complete" ? "✓" : "·";
-        return `  ${icon} ${t.label}`;
-    });
-
-    console.log(`[PlanContext] stage=${currentStage} tasks=${tasks.completed}/${tasks.total} details=${tasks.tasks.map(t => `${t.field}:${t.status}`).join(",")}`);
-
-    return `\nCURRENT PLAN CONTEXT (internal awareness only — DO NOT reference or mention these tasks in your response to the user):\nStage: ${tasks.stageLabel} (${getStageNumber(currentStage)}/${STAGE_ORDER.length})\nTasks: ${tasks.completed}/${tasks.total} complete\n${lines.join("\n")}\n`;
 }
 
 /**
@@ -293,8 +270,6 @@ export const getPaperModeSystemPrompt = async (
             ? "\n⚠️ SYNC CONTRACT: Stage data is not yet synced. If user asks to sync or continue from state, you MUST explain that the update cannot be finalized until the user requests a revision first.\n"
             : "";
 
-        const planContext = buildPlanContext(stage, session.stageData as Record<string, unknown>);
-
         logPaperPromptLatency("paperPrompt.total", paperPromptStart, {
             hasPrompt: true,
             stage,
@@ -304,7 +279,7 @@ export const getPaperModeSystemPrompt = async (
 ---
 [PAPER WRITING MODE]
 Tahap: ${stageLabel} (${stage}) | Status: ${status}
-${revisionNote}${pendingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}${planContext}
+${revisionNote}${pendingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}
 GENERAL RULES:
 - DISCUSS FIRST before drafting — do not immediately generate full output
 - When guiding, recommending, or presenting directions to the user, write an interactive card using a yaml-spec code fence — it is your visual language alongside text. Never write options as numbered lists or bullet points when the card is available.
@@ -313,7 +288,7 @@ GENERAL RULES:
 - Web search: If the user explicitly asks to search (e.g. "cari referensi", "search for papers"), proceed immediately — do NOT ask for confirmation again. Only ask for confirmation when YOU initiate a search that the user did not request. Do NOT say "please wait" or promise the search will happen automatically — either search now or ask first.
 - IMPORTANT: Web search and function tools CANNOT run in the same turn. After search results arrive, use function tools to save findings.
 - Do NOT call any function tool (updateStageData, createArtifact, submitStageForValidation) in a turn where you request web search. Complete search first, then save in the next turn.
-- SAVE PROGRESS INCREMENTALLY: Call updateStageData() after EACH meaningful step — when you identify the idea, when you analyze feasibility, when you determine the angle. Do NOT wait until all data is ready. Partial saves are expected. The user sees live task progress that only updates when you save to the database.
+- Save progress with updateStageData() after discussion is mature
 - For cross-stage reference audit, you MAY call compileDaftarPustaka({ mode: "preview" }) at any stage. This mode does not persist to DB.
 - Bibliography finalization MUST use compileDaftarPustaka({ mode: "persist", ringkasan, ringkasanDetail? }) and is only valid when active stage = daftar_pustaka.
 - MUST create artifact with createArtifact() for agreed stage output. Call in the SAME TURN as updateStageData, BEFORE submitStageForValidation. Include 'sources' from AVAILABLE_WEB_SOURCES if available. Artifact is the FINAL OUTPUT reviewed by user.

@@ -93,9 +93,8 @@ IMPORTANT — TOOL CALLS:
 - You have NO access to tools (updateStageData, createArtifact, submitStageForValidation) in this phase.
 - Do NOT output JSON tool calls as text. This will NOT work — it will appear as raw text to the user.
 - Present your synthesized findings to the user in this response.
-- Saving data (updateStageData, createArtifact) happens in the NEXT turn when tools are available.
-- You MUST present a thorough, detailed synthesis of the search results NOW — do NOT output a short placeholder or promise.
-- A response under 500 characters means you are NOT doing your job. Elaborate on findings, cite sources, analyze themes.
+- Saving data (updateStageData, createArtifact) happens in a SUBSEQUENT turn when tools are available.
+- Simply present the results and discuss with the user. The save step comes next.
 
 The search results below are your source material. Use them.
 ═══════════════════════════════════════════════════════════════════

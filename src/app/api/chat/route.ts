@@ -1833,7 +1833,6 @@ Aturan:
         // Hoist for catch block accessibility (fallback provider needs these)
         let shouldForceGetCurrentPaperState = false
         let shouldForceSubmitValidation = false
-        let shouldForceUpdateStageData = false
         let missingArtifactNote = ""
 
         const createSearchUnavailableResponse = async (input: {
@@ -2094,25 +2093,6 @@ Aturan:
                 && hasStageRingkasan(paperSession)
                 && hasStageArtifact(paperSession)
 
-            // Force updateStageData when search was done but stage data hasn't been saved yet
-            const currentStageDataForForce = paperSession?.stageData?.[paperSession?.currentStage ?? ""] as
-                Record<string, unknown> | undefined
-            const stageAlreadySaved = typeof currentStageDataForForce?.ringkasan === "string"
-                && currentStageDataForForce.ringkasan.trim().length > 0
-
-            shouldForceUpdateStageData = !enableWebSearch
-                && !!paperModePrompt
-                && searchAlreadyDone
-                && !stageAlreadySaved
-                && !shouldForceGetCurrentPaperState
-                && !shouldForceSubmitValidation
-                && !isSaveSubmitIntent
-                && paperSession?.stageStatus === "drafting"
-
-            if (shouldForceUpdateStageData) {
-                console.log(`[ForceUpdateStage] Forcing updateStageData at step 0: stage=${paperSession?.currentStage}, searchAlreadyDone=${searchAlreadyDone}, stageAlreadySaved=${stageAlreadySaved}`)
-            }
-
             missingArtifactNote = !shouldForceSubmitValidation
                 && !!paperModePrompt
                 && hasStageRingkasan(paperSession)
@@ -2124,9 +2104,7 @@ Aturan:
 
             const forcedToolTelemetryName = shouldForceGetCurrentPaperState
                 ? "getCurrentPaperState"
-                : shouldForceUpdateStageData
-                    ? "updateStageData"
-                    : undefined
+                : undefined
             const telemetrySkillContext = forcedToolTelemetryName
                 ? { ...skillTelemetryContext, fallbackReason: "explicit_sync_request" }
                 : skillTelemetryContext
@@ -2182,18 +2160,6 @@ Aturan:
                         }
                     }
 
-                    return undefined
-                }
-                : undefined
-            const forceUpdateStagePrepareStep = shouldForceUpdateStageData
-                ? ({ stepNumber }: { stepNumber: number }) => {
-                    if (stepNumber === 0) {
-                        return {
-                            toolChoice: { type: "tool", toolName: "updateStageData" } as const,
-                            activeTools: ["updateStageData"] as string[],
-                        }
-                    }
-                    // After forced save, allow all tools with auto choice
                     return undefined
                 }
                 : undefined
@@ -2372,7 +2338,7 @@ Aturan:
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
                 toolChoice: forcedToolChoice,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                prepareStep: (primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep ?? forceUpdateStagePrepareStep) as any,
+                prepareStep: (primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
                 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
                 onFinish: async ({ text, providerMetadata, usage }) => {
@@ -2741,18 +2707,6 @@ Aturan:
                         return undefined
                     }
                     : undefined
-                const fallbackForceUpdateStagePrepareStep = shouldForceUpdateStageData
-                    ? ({ stepNumber }: { stepNumber: number }) => {
-                        if (stepNumber === 0) {
-                            return {
-                                toolChoice: { type: "tool", toolName: "updateStageData" } as const,
-                                activeTools: ["updateStageData"] as string[],
-                            }
-                        }
-                        // After forced save, allow all tools with auto choice
-                        return undefined
-                    }
-                    : undefined
                 const shouldApplyFallbackDeterministicExactSourceRouting =
                     !enableWebSearch &&
                     !shouldForceGetCurrentPaperState &&
@@ -2784,7 +2738,7 @@ Aturan:
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep ?? fallbackForceUpdateStagePrepareStep) as any,
+                    prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
                     stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {

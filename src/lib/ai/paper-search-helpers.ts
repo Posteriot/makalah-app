@@ -120,10 +120,5 @@ export const getFunctionToolsModeNote = (searchInfo: string): string => `
 ══════════════════════════════════════════════════
 MODE: FUNCTION_TOOLS | ${searchInfo}
 AVAILABLE: createArtifact, updateStageData, submitStageForValidation
-══════════════════════════════════════════════════
-MANDATORY — SAVE PROGRESS NOW:
-- You MUST call updateStageData() in THIS turn to save findings from the search results and discussion so far.
-- Save whatever data you have — partial saves are expected and encouraged.
-- Do NOT just discuss or promise to save later — CALL THE TOOL NOW.
-- The user sees live task progress that only updates when you save to the database.
+TASK: Process results and continue workflow with user
 ══════════════════════════════════════════════════`
