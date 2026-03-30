@@ -2502,7 +2502,6 @@ export function ChatWindow({
                         onOpenSources={handleOpenSources}
                         isChoiceSubmitted={submittedChoiceKeys.has(`${message.id}::${message.id}-choice-spec`)}
                         onChoiceSubmit={handleChoiceSubmit}
-                        isLatestAssistantMessage={index === messages.length - 1 && message.role === "assistant"}
                       />
                     </div>
                   </div>

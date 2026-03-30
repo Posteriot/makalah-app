@@ -165,8 +165,6 @@ interface MessageBubbleProps {
         selectedOptionId: string
         customText?: string
     }) => void | Promise<void>
-    /** True only for the assistant bubble that represents the currently active turn */
-    isLatestAssistantMessage?: boolean
 }
 
 export function MessageBubble({
@@ -186,7 +184,6 @@ export function MessageBubble({
     onOpenSources,
     isChoiceSubmitted,
     onChoiceSubmit,
-    isLatestAssistantMessage = false,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
@@ -765,7 +762,7 @@ export function MessageBubble({
     const hasProcessError = visibleProcessTools.some((tool) => tool.state === "output-error" || tool.state === "error")
     const shouldShowProcessIndicators = !isEditing && isAssistant && (persistProcessIndicators || hasProcessError)
     const showUnifiedCard = isAssistant && (
-        isLatestAssistantMessage || shouldShowProcessIndicators
+        taskSummary !== null || shouldShowProcessIndicators
     )
     if (showUnifiedCard) {
         console.log(`[UnifiedProcess] msg#${messageIndex} card hasTask=${taskSummary !== null} hasProcess=${shouldShowProcessIndicators} tools=${visibleProcessTools.map(t => `${t.toolName}:${t.state}`).join(",") || "none"} search=${searchStatus?.status ?? "none"}`)
