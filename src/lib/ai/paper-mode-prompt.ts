@@ -288,7 +288,7 @@ GENERAL RULES:
 - Web search: If the user explicitly asks to search (e.g. "cari referensi", "search for papers"), proceed immediately — do NOT ask for confirmation again. Only ask for confirmation when YOU initiate a search that the user did not request. Do NOT say "please wait" or promise the search will happen automatically — either search now or ask first.
 - IMPORTANT: Web search and function tools CANNOT run in the same turn. After search results arrive, use function tools to save findings.
 - Do NOT call any function tool (updateStageData, createArtifact, submitStageForValidation) in a turn where you request web search. Complete search first, then save in the next turn.
-- Save progress with updateStageData() after discussion is mature
+- The system will prompt you to save each field incrementally during the workflow. When prompted, provide meaningful content for the requested field based on your discussion with the user so far. Quality matters — give your best analysis, not placeholder text.
 - For cross-stage reference audit, you MAY call compileDaftarPustaka({ mode: "preview" }) at any stage. This mode does not persist to DB.
 - Bibliography finalization MUST use compileDaftarPustaka({ mode: "persist", ringkasan, ringkasanDetail? }) and is only valid when active stage = daftar_pustaka.
 - MUST create artifact with createArtifact() for agreed stage output. Call in the SAME TURN as updateStageData, BEFORE submitStageForValidation. Include 'sources' from AVAILABLE_WEB_SOURCES if available. Artifact is the FINAL OUTPUT reviewed by user.
