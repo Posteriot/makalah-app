@@ -4,16 +4,14 @@ import { UIMessage } from "ai"
 import { EditPencil, Xmark, Send, CheckCircle, Page, MediaImage, Copy, Check } from "iconoir-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
-import { ToolStateIndicator } from "./ToolStateIndicator"
-import { SearchStatusIndicator, type SearchStatus } from "./SearchStatusIndicator"
+import { type SearchStatus } from "./SearchStatusIndicator"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { useState, useRef, useMemo, useEffect } from "react"
 import Image from "next/image"
 import { Id } from "../../../convex/_generated/dataModel"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { isEditAllowed, getMessageStage } from "@/lib/utils/paperPermissions"
-import { TaskProgress } from "./TaskProgress"
-import { ChainOfThought } from "./ChainOfThought"
+import { UnifiedProcessCard } from "./UnifiedProcessCard"
 import { deriveTaskList } from "@/lib/paper/task-derivation"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 import {
@@ -758,15 +756,11 @@ export function MessageBubble({
         return true
     })
 
-    const searchTools = visibleProcessTools.filter((t) => t.toolName === "google_search")
-    const nonSearchTools = visibleProcessTools.filter((t) => t.toolName !== "google_search")
     const hasProcessError = visibleProcessTools.some((tool) => tool.state === "output-error" || tool.state === "error")
     const shouldShowProcessIndicators = !isEditing && isAssistant && (persistProcessIndicators || hasProcessError)
-    const showFallbackProcessIndicator =
-        persistProcessIndicators &&
-        nonSearchTools.length === 0 &&
-        searchTools.length === 0 &&
-        !searchStatus
+    const showUnifiedCard = isAssistant && (
+        taskSummary !== null || shouldShowProcessIndicators
+    )
 
     // Task 4.1: Extract sources (try annotations first, then fallback to property if we extend type)
     const sourcesFromAnnotation = (message as {
@@ -1008,55 +1002,16 @@ export function MessageBubble({
                         return null
                     })}
 
-                    {/* TaskProgress — paper mode only, all assistant messages */}
-                    {isPaperMode && isAssistant && taskSummary && (
+                    {showUnifiedCard && (
                         <div className="mb-3">
-                            <TaskProgress
-                                stageId={taskSummary.stageId}
-                                stageLabel={taskSummary.stageLabel}
-                                tasks={taskSummary.tasks}
-                                completed={taskSummary.completed}
-                                total={taskSummary.total}
+                            <UnifiedProcessCard
+                                taskSummary={taskSummary}
+                                processTools={visibleProcessTools}
+                                searchStatus={searchStatus}
+                                persistProcessIndicators={persistProcessIndicators}
+                                defaultOpen={persistProcessIndicators}
                             />
                         </div>
-                    )}
-
-                    {/* Process Indicators — all modes, wrapped in ChainOfThought */}
-                    {shouldShowProcessIndicators && (
-                        <ChainOfThought defaultOpen={persistProcessIndicators}>
-                            {nonSearchTools.map((tool, index) => (
-                                <ToolStateIndicator
-                                    key={`tool-${index}`}
-                                    toolName={tool.toolName}
-                                    state={tool.state}
-                                    errorText={tool.errorText}
-                                    persistUntilDone={persistProcessIndicators}
-                                />
-                            ))}
-                            {(persistProcessIndicators || searchStatus?.status === "error") && searchStatus && (
-                                <SearchStatusIndicator
-                                    status={searchStatus.status}
-                                    message={searchStatus.message}
-                                    sourceCount={searchStatus.sourceCount}
-                                />
-                            )}
-                            {searchTools.map((tool, index) => (
-                                <ToolStateIndicator
-                                    key={`search-tool-${index}`}
-                                    toolName={tool.toolName}
-                                    state={tool.state}
-                                    errorText={tool.errorText}
-                                    persistUntilDone={persistProcessIndicators}
-                                />
-                            ))}
-                            {showFallbackProcessIndicator && (
-                                <ToolStateIndicator
-                                    toolName="assistant_response"
-                                    state="input-available"
-                                    persistUntilDone
-                                />
-                            )}
-                        </ChainOfThought>
                     )}
 
                     {/* Message Content */}
