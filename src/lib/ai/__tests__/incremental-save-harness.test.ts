@@ -50,10 +50,22 @@ describe("buildIncrementalSavePrepareStep", () => {
       expect(result).toBeUndefined()
     })
 
-    it("returns undefined when all fields are complete", () => {
+    it("returns mature save config when all fields complete but no ringkasan", () => {
       const result = buildIncrementalSavePrepareStep({
         currentStage: "gagasan",
         stageData: COMPLETE_GAGASAN_DATA,
+        stageStatus: "drafting",
+        enableWebSearch: false,
+      })
+      expect(result).toBeDefined()
+      expect(result!.targetField).toBe("_matureSave")
+      expect(result!.maxToolSteps).toBe(4)
+    })
+
+    it("returns undefined when all fields complete AND ringkasan exists", () => {
+      const result = buildIncrementalSavePrepareStep({
+        currentStage: "gagasan",
+        stageData: { ...COMPLETE_GAGASAN_DATA, ringkasan: "Agreed angle on topic" },
         stageStatus: "drafting",
         enableWebSearch: false,
       })

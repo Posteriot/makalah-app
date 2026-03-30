@@ -13,7 +13,7 @@ const AUTO_PERSIST_FIELDS: Record<string, string[]> = {
 
 type PrepareStepResult = {
   toolChoice: { type: "tool"; toolName: string } | "none"
-  activeTools: string[]
+  activeTools?: string[]
 } | undefined
 
 export type IncrementalSaveConfig = {
@@ -44,7 +44,49 @@ export function buildIncrementalSavePrepareStep(opts: {
     (t) => t.status === "pending" && !skipFields.includes(t.field)
   )
 
-  if (pendingTasks.length === 0) return undefined
+  // All draft fields complete → check if mature save (ringkasan + artifact) still needed
+  if (pendingTasks.length === 0) {
+    const hasRingkasan = typeof opts.stageData.ringkasan === "string"
+      && opts.stageData.ringkasan.trim().length > 0
+    if (hasRingkasan) return undefined // Fully done, nothing to enforce
+
+    // All fields saved but no ringkasan yet → force mature save
+    return {
+      targetField: "_matureSave",
+      maxToolSteps: 4,
+      systemNote: buildMatureSaveNote(),
+      prepareStep: ({ stepNumber }) => {
+        // step 0: force updateStageData (ringkasan)
+        if (stepNumber === 0) {
+          return {
+            toolChoice: { type: "tool", toolName: "updateStageData" } as const,
+            activeTools: ["updateStageData"],
+          }
+        }
+        // step 1: force createArtifact
+        if (stepNumber === 1) {
+          return {
+            toolChoice: { type: "tool", toolName: "createArtifact" } as const,
+            activeTools: ["createArtifact"],
+          }
+        }
+        // step 2: force submitStageForValidation
+        if (stepNumber === 2) {
+          return {
+            toolChoice: { type: "tool", toolName: "submitStageForValidation" } as const,
+            activeTools: ["submitStageForValidation"],
+          }
+        }
+        // step 3: text response
+        if (stepNumber === 3) {
+          return {
+            toolChoice: "none" as const,
+          }
+        }
+        return undefined
+      },
+    }
+  }
 
   const targetTask = pendingTasks[0]
 
@@ -62,9 +104,6 @@ export function buildIncrementalSavePrepareStep(opts: {
       if (stepNumber === 1) {
         return {
           toolChoice: "none" as const,
-          // Keep all tools visible so model retains paper workflow context
-          // (yaml-spec generation depends on seeing available tools).
-          // toolChoice: "none" prevents actual calls.
         }
       }
       return undefined
@@ -84,5 +123,17 @@ STEP 2: After saving, continue the conversation NATURALLY.
   Follow your normal stage instructions — discuss, recommend,
   and present options using yaml-spec interactive cards as usual.
   Do NOT just summarize what you saved.
+══════════════════════════════════════════════════════════════`
+}
+
+function buildMatureSaveNote(): string {
+  return `
+══════════════════════════════════════════════════════════════
+MODE: MATURE_SAVE_AND_SUBMIT
+All draft fields are complete. Now finalize this stage:
+1. Call updateStageData with ringkasan (max 280 chars summarizing the agreed decision)
+2. Call createArtifact with the full paper content for this stage (include sources)
+3. Call submitStageForValidation to present the approval panel to the user
+All three calls MUST happen in this turn, in this order.
 ══════════════════════════════════════════════════════════════`
 }
