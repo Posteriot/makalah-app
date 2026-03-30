@@ -83,6 +83,8 @@ function buildPlanContext(
         return `  ${icon} ${t.label}${suffix}`;
     });
 
+    console.log(`[PlanContext] stage=${currentStage} tasks=${tasks.completed}/${tasks.total} details=${tasks.tasks.map(t => `${t.field}:${t.status}`).join(",")}`);
+
     return `\nCURRENT PLAN CONTEXT (internal awareness only — DO NOT reference or mention these tasks in your response to the user):\nStage: ${tasks.stageLabel} (${getStageNumber(currentStage)}/${STAGE_ORDER.length})\nTasks: ${tasks.completed}/${tasks.total} complete\n${lines.join("\n")}\n`;
 }
 

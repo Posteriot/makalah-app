@@ -224,17 +224,6 @@ export function MessageBubble({
         return deriveTaskList(currentStage as PaperStageId, stageData)
     }, [isPaperMode, stageData, currentStage])
 
-    // Check if this is the last assistant message (only show TaskProgress on latest)
-    const isLastAssistantMessage = useMemo(() => {
-        if (!isPaperMode || !isAssistant) return false
-        // Find the last assistant message index in allMessages
-        for (let i = allMessages.length - 1; i >= 0; i--) {
-            if (allMessages[i].role === "assistant") {
-                return messageIndex === i
-            }
-        }
-        return false
-    }, [isPaperMode, isAssistant, allMessages, messageIndex])
 
     const extractArtifactSignals = (uiMessage: UIMessage): ArtifactSignal[] => {
         const signals: ArtifactSignal[] = []
@@ -943,9 +932,9 @@ export function MessageBubble({
                         return null
                     })}
 
-                    {/* Plan/Task Progress + Chain of Thought — paper mode only */}
-                    {isPaperMode && isAssistant && taskSummary && isLastAssistantMessage && (
-                        <div className="mb-3 space-y-1.5">
+                    {/* TaskProgress — paper mode only, all assistant messages */}
+                    {isPaperMode && isAssistant && taskSummary && (
+                        <div className="mb-3">
                             <TaskProgress
                                 stageId={taskSummary.stageId}
                                 stageLabel={taskSummary.stageLabel}
@@ -953,19 +942,12 @@ export function MessageBubble({
                                 completed={taskSummary.completed}
                                 total={taskSummary.total}
                             />
-                            {(searchStatus || internalThoughtContent || nonSearchTools.length > 0) && (
-                                <ChainOfThought
-                                    searchStatus={searchStatus}
-                                    internalThought={internalThoughtContent}
-                                    toolCalls={nonSearchTools}
-                                />
-                            )}
                         </div>
                     )}
 
-                    {/* Process Indicators - fixed slot above assistant content to prevent jumping */}
-                    {shouldShowProcessIndicators && !isPaperMode && (
-                        <div className="mb-3 space-y-2">
+                    {/* Process Indicators — all modes, wrapped in ChainOfThought */}
+                    {shouldShowProcessIndicators && (
+                        <ChainOfThought defaultOpen={persistProcessIndicators}>
                             {nonSearchTools.map((tool, index) => (
                                 <ToolStateIndicator
                                     key={`tool-${index}`}
@@ -998,7 +980,7 @@ export function MessageBubble({
                                     persistUntilDone
                                 />
                             )}
-                        </div>
+                        </ChainOfThought>
                     )}
 
                     {/* Message Content */}
