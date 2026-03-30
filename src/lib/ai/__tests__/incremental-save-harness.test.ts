@@ -73,7 +73,7 @@ describe("buildIncrementalSavePrepareStep", () => {
       })
       expect(result).toBeDefined()
       expect(result!.targetField).toBe("ideKasar")
-      expect(result!.maxToolSteps).toBe(2)
+      expect(result!.maxToolSteps).toBe(1)
     })
 
     it("targets analisis when ideKasar is filled", () => {
@@ -98,7 +98,7 @@ describe("buildIncrementalSavePrepareStep", () => {
       expect(result!.targetField).toBe("angle")
     })
 
-    it("prepareStep forces saveStageDraft at step 0, none at step 1", () => {
+    it("prepareStep forces saveStageDraft only at step 0", () => {
       const result = buildIncrementalSavePrepareStep({
         currentStage: "gagasan",
         stageData: PARTIAL_GAGASAN_DATA,
@@ -110,8 +110,7 @@ describe("buildIncrementalSavePrepareStep", () => {
       expect(step0!.activeTools).toEqual(["saveStageDraft"])
 
       const step1 = result!.prepareStep({ stepNumber: 1 })
-      expect(step1!.toolChoice).toBe("none")
-      expect(step1!.activeTools).toEqual([])
+      expect(step1).toBeUndefined()
     })
   })
 

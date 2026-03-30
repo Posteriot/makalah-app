@@ -50,19 +50,13 @@ export function buildIncrementalSavePrepareStep(opts: {
 
   return {
     targetField: targetTask.field,
-    maxToolSteps: 2,
+    maxToolSteps: 1,
     systemNote: buildIncrementalNote(targetTask.field, targetTask.label),
     prepareStep: ({ stepNumber }) => {
       if (stepNumber === 0) {
         return {
           toolChoice: { type: "tool", toolName: "saveStageDraft" } as const,
           activeTools: ["saveStageDraft"],
-        }
-      }
-      if (stepNumber === 1) {
-        return {
-          toolChoice: "none" as const,
-          activeTools: [],
         }
       }
       return undefined
