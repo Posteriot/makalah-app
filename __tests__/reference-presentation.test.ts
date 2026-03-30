@@ -72,6 +72,12 @@ describe("reference presentation contract", () => {
       inferSearchResponseMode({ lastUserMessage: "tampilkan sumbernya" })
     ).toBe("reference_inventory")
     expect(
+      inferSearchResponseMode({ lastUserMessage: "tampilkan lagi seluruh sumber" })
+    ).toBe("reference_inventory")
+    expect(
+      inferSearchResponseMode({ lastUserMessage: "kasih semua sumber yang tadi" })
+    ).toBe("reference_inventory")
+    expect(
       inferSearchResponseMode({ lastUserMessage: "kasih rujukan yang dipakai" })
     ).toBe("reference_inventory")
     expect(
