@@ -128,7 +128,9 @@ describe("MessageBubble reference inventory", () => {
     render(<MessageBubble message={message} onOpenSources={onOpenSources} />)
 
     expect(screen.getByText("Paper A")).toBeInTheDocument()
-    expect(screen.getByText("https://example.com/a.pdf")).toBeInTheDocument()
+    const inventoryLink = screen.getByRole("link", { name: "https://example.com/a.pdf" })
+    expect(inventoryLink).toBeInTheDocument()
+    expect(inventoryLink).toHaveAttribute("href", "https://example.com/a.pdf")
     expect(screen.queryByText(/^Link:\s*$/i)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId("sources-indicator"))
@@ -186,7 +188,9 @@ describe("MessageBubble reference inventory", () => {
     expect(screen.getByTestId("reference-inventory-body")).toHaveTextContent(
       "Berikut inventaris referensi yang ditemukan."
     )
-    expect(screen.getByText("https://example.com/a.pdf")).toBeInTheDocument()
+    expect(
+      screen.getByRole("link", { name: "https://example.com/a.pdf" })
+    ).toHaveAttribute("href", "https://example.com/a.pdf")
   })
 
   it("renders the same source contract in the Rujukan panel", () => {
