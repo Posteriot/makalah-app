@@ -426,16 +426,26 @@ export const deleteAllConversations = mutation({
     args: {},
     handler: async (ctx) => {
         const authUser = await requireAuthUser(ctx)
+        // Paginate: delete up to 5 conversations per mutation call to stay
+        // within Convex's 16 MB read limit. The client should call repeatedly
+        // until remaining === 0.
+        const BATCH_SIZE = 5
         const conversations = await ctx.db
             .query("conversations")
             .withIndex("by_user", (q) => q.eq("userId", authUser._id))
-            .collect()
+            .take(BATCH_SIZE)
 
         for (const conversation of conversations) {
             await deleteConversationCascade(ctx, conversation._id)
         }
 
-        return { deletedCount: conversations.length }
+        // Check if there are more conversations remaining
+        const remaining = await ctx.db
+            .query("conversations")
+            .withIndex("by_user", (q) => q.eq("userId", authUser._id))
+            .first()
+
+        return { deletedCount: conversations.length, hasMore: remaining !== null }
     },
 })
 
