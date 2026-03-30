@@ -63,10 +63,16 @@ collapsible container:
 
 ```
 ┌─────────────────────────────────────────────────┐
-│ 📋 Gagasan Paper  0/4                        ▾  │
+│ 📋 Gagasan Paper  1/4                        ▾  │
 │ Eksplorasi ide awal, analisis kelayakan...      │
 │                                                  │
-│ ⟳ Memulai sesi paper                            │
+│ LANGKAH                                          │
+│ ✅ Eksplorasi ide                                │
+│ ✅ Cari referensi awal                           │
+│ ○  Analisis feasibility                         │
+│ ○  Tentukan angle                               │
+│                                                  │
+│ PROSES                                           │
 │ ✅ Pencarian selesai (20 sumber)                 │
 │ ⟳ Menyimpan progres tahapan                     │
 │ ⚠ Galat pada membuat artifak                    │
@@ -77,9 +83,13 @@ collapsible container:
 [Message text starts here]
 ```
 
-One card. One border. One collapse control. Plan + search + tool calls + errors
-all inside. Active indicators appear and disappear as processes run. Task
-checklist (Langkah) available on expand.
+One card. One border. One collapse control. Three sections inside:
+- **Header**: Plan (stage name + description + completion count)
+- **Langkah**: Task checklist (derived from stageData, shows what needs to be done)
+- **Proses**: Active process indicators (search + tool calls + errors, shows what is happening now)
+
+Active indicators in Proses appear and disappear as processes run.
+Task checklist in Langkah updates when model saves data to stageData.
 
 ---
 
