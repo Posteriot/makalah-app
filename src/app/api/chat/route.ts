@@ -15,6 +15,7 @@ import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 // isBlockedSourceDomain removed — blocklist enforcement via SKILL.md natural language
 // formatParagraphEndCitations now handled by orchestrator
 import { createPaperTools } from "@/lib/ai/paper-tools"
+import { buildIncrementalSavePrepareStep, type IncrementalSaveConfig } from "@/lib/ai/incremental-save-harness"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
@@ -1392,6 +1393,10 @@ JSON schema:
             )
         }
 
+        // Incremental save gate — toggled to `true` when incrementalSaveConfig activates.
+        // Passed by reference to saveStageDraft tool closure.
+        const draftSaveGate = { active: false }
+
         // ============================================================
         // ARTIFACT TOOLS - Creates and updates standalone deliverable content
         // ============================================================
@@ -1773,6 +1778,7 @@ Aturan:
                 convexToken,
                 availableSources: recentSourcesList,
                 hasRecentSources: hasRecentSourcesInDb,
+                draftSaveGate,
             }),
         } satisfies ToolSet
 
@@ -1850,6 +1856,7 @@ Aturan:
         let shouldForceGetCurrentPaperState = false
         let shouldForceSubmitValidation = false
         let missingArtifactNote = ""
+        let incrementalSaveConfig: IncrementalSaveConfig | undefined
 
         const createSearchUnavailableResponse = async (input: {
             reasonCode: string
@@ -2205,6 +2212,32 @@ Aturan:
                 ? `\n⚠️ ARTIFACT NOT YET CREATED for this stage. You MUST call createArtifact() with the content saved in updateStageData BEFORE calling submitStageForValidation(). Make sure to include the 'sources' parameter if AVAILABLE_WEB_SOURCES exist.\n`
                 : ""
 
+            // Incremental save harness: force per-field draft save in function-tools turns
+            // Only active for supported stages (gagasan/topik in v1)
+            incrementalSaveConfig = (
+                !enableWebSearch
+                && !!paperModePrompt
+                && !shouldForceGetCurrentPaperState
+                && !shouldForceSubmitValidation
+                && paperSession
+            )
+                ? buildIncrementalSavePrepareStep({
+                    currentStage: paperSession.currentStage as string,
+                    stageData: ((paperSession.stageData as Record<string, Record<string, unknown>>)?.[paperSession.currentStage as string]) ?? {},
+                    stageStatus: paperSession.stageStatus as string,
+                    enableWebSearch,
+                })
+                : undefined
+
+            // Activate gate — saveStageDraft execute() will check this
+            if (incrementalSaveConfig) {
+                draftSaveGate.active = true
+                console.log(
+                    `[IncrementalSave] targetField=${incrementalSaveConfig.targetField}, ` +
+                    `maxToolSteps=${incrementalSaveConfig.maxToolSteps}`
+                )
+            }
+
             const forcedToolTelemetryName = shouldForceGetCurrentPaperState
                 ? "getCurrentPaperState"
                 : undefined
@@ -2235,6 +2268,9 @@ Aturan:
                         : []),
                     ...(missingArtifactNote
                         ? [{ role: "system" as const, content: missingArtifactNote }]
+                        : []),
+                    ...(incrementalSaveConfig?.systemNote
+                        ? [{ role: "system" as const, content: incrementalSaveConfig.systemNote }]
                         : []),
                     ...fullMessagesBase.slice(1),
                 ]
@@ -2441,8 +2477,8 @@ Aturan:
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
                 toolChoice: forcedToolChoice,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                prepareStep: (primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
-                stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
+                prepareStep: (primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep ?? incrementalSaveConfig?.prepareStep) as any,
+                stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? (shouldForceGetCurrentPaperState ? 2 : undefined) ?? incrementalSaveConfig?.maxToolSteps ?? 5),
                 ...samplingOptions,
                 onFinish: async ({ text, providerMetadata, usage }) => {
                         let sources: { url: string; title: string; publishedAt?: number | null }[] | undefined
@@ -2819,10 +2855,15 @@ Aturan:
                     !shouldForceSubmitValidation &&
                     availableExactSources.length > 0
                 const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
-                const fallbackBaseMessages = missingArtifactNote
+                const fallbackBaseMessages = (missingArtifactNote || incrementalSaveConfig?.systemNote)
                     ? [
                         fullMessagesBase[0],
-                        { role: "system" as const, content: missingArtifactNote },
+                        ...(missingArtifactNote
+                            ? [{ role: "system" as const, content: missingArtifactNote }]
+                            : []),
+                        ...(incrementalSaveConfig?.systemNote
+                            ? [{ role: "system" as const, content: incrementalSaveConfig.systemNote }]
+                            : []),
                         ...fullMessagesBase.slice(1),
                     ]
                     : fullMessagesBase
@@ -2844,8 +2885,8 @@ Aturan:
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
-                    stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
+                    prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep ?? incrementalSaveConfig?.prepareStep) as any,
+                    stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? (shouldForceGetCurrentPaperState ? 2 : undefined) ?? incrementalSaveConfig?.maxToolSteps ?? 5),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {
                         const rawText = typeof text === "string" ? text.trim() : ""
