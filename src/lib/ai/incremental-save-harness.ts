@@ -1,4 +1,5 @@
 import { deriveTaskList } from "@/lib/paper/task-derivation"
+import type { PaperStageId } from "../../../convex/paperSessions/constants"
 import { isDraftSaveSupportedStage } from "./draft-save-fields"
 
 /**
@@ -34,7 +35,7 @@ export function buildIncrementalSavePrepareStep(opts: {
 
   const stageId = opts.currentStage
   // deriveTaskList expects stageData nested under stageId key
-  const taskSummary = deriveTaskList(stageId as any, { [stageId]: opts.stageData })
+  const taskSummary = deriveTaskList(stageId as PaperStageId, { [stageId]: opts.stageData })
   if (!taskSummary || taskSummary.tasks.length === 0) return undefined
 
   const skipFields = AUTO_PERSIST_FIELDS[stageId] ?? []
