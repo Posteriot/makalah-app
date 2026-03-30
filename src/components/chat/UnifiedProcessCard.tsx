@@ -126,7 +126,7 @@ export function UnifiedProcessCard({
             <div className="flex-1 min-w-0 flex items-center gap-1.5">
               {hasTaskData ? (
                 <>
-                  <span className="text-xs font-mono font-semibold text-[var(--chat-foreground)] truncate">
+                  <span className="text-xs font-mono font-semibold text-[var(--chat-muted-foreground)] truncate">
                     {taskSummary.stageLabel}
                   </span>
                   <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] shrink-0">
@@ -139,12 +139,12 @@ export function UnifiedProcessCard({
                   )}
                 </>
               ) : (
-                <span className="text-xs font-mono text-[var(--chat-foreground)] truncate">
+                <span className="text-xs font-mono text-[var(--chat-muted-foreground)] truncate">
                   {activeProcessLabel ?? "Memproses..."}
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-[var(--chat-muted-foreground)] shrink-0">
+            <span className="text-sm text-[var(--chat-muted-foreground)] shrink-0">
               {open ? "▴" : "▾"}
             </span>
           </button>
