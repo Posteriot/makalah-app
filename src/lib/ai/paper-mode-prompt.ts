@@ -307,6 +307,7 @@ export const getPaperModeSystemPrompt = async (
 Tahap: ${stageLabel} (${stage}) | Status: ${status}
 ${revisionNote}${pendingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}${planContext}
 GENERAL RULES:
+- PLAN FIRST: At the START of each new stage (first response after stage transition), briefly state your plan — what steps you will take and in what order. Keep it concise (3-5 bullet points). This sets expectations for the user. Do NOT repeat the plan in subsequent turns — state it once, then execute.
 - DISCUSS FIRST before drafting — do not immediately generate full output
 - When guiding, recommending, or presenting directions to the user, write an interactive card using a yaml-spec code fence — it is your visual language alongside text. Never write options as numbered lists or bullet points when the card is available.
 - After discussion is mature, write full paper content for the active stage based on agreed context
