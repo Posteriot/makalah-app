@@ -2280,9 +2280,6 @@ Aturan:
                     : undefined
             // Explicit sync mode: force 2-step flow
             // step 0: force getCurrentPaperState, step 1: force plain answer (no tools)
-            const maxToolSteps = shouldForceGetCurrentPaperState
-                    ? 2
-                    : 5
             const deterministicSyncPrepareStep = shouldForceGetCurrentPaperState
                 ? ({ stepNumber }: { stepNumber: number }) => {
                     if (stepNumber === 0) {
@@ -2829,7 +2826,6 @@ Aturan:
                 const fallbackForcedToolChoice = shouldForceSubmitValidation
                     ? ({ type: "tool", toolName: "submitStageForValidation" } as const)
                     : undefined
-                const fallbackMaxToolSteps = shouldForceGetCurrentPaperState ? 2 : 5
                 const fallbackDeterministicSyncPrepareStep = shouldForceGetCurrentPaperState
                     ? ({ stepNumber }: { stepNumber: number }) => {
                         if (stepNumber === 0) {
