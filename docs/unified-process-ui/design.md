@@ -158,7 +158,9 @@ tools, not mode checks.
 Active process label priority:
 1. Search active → search label
 2. No search, tools running → **first active** tool label (stable, no flicker)
-3. Nothing active, `persistProcessIndicators` → last completed label
+3. Search done with source count → "Pencarian selesai (N sumber)"
+4. Nothing active, `persistProcessIndicators` → last completed tool label
+5. None of the above → null (no label shown in header)
 
 ---
 
@@ -212,9 +214,8 @@ All data already derived in MessageBubble:
 <Collapsible>
   └─ Container div (rounded, bordered, bg-muted)
      ├─ Header (always visible) ─── CollapsibleTrigger
-     │  ├─ Left: taskSummary ? (📋 + stageLabel + count) : activeProcessLabel
-     │  ├─ Right (taskSummary exists): activeProcessLabel (truncated) + chevron
-     │  └─ Right (no taskSummary): chevron only
+     │  ├─ Left (flex-1): taskSummary ? (📋 + stageLabel + count + activeProcessLabel via ml-auto) : activeProcessLabel
+     │  └─ Chevron (shrink-0): ▴/▾
      │
      └─ CollapsibleContent
         ├─ Description (taskSummary only): stage description text
@@ -225,7 +226,7 @@ All data already derived in MessageBubble:
         │     └─ For each task: status icon (✅/○) + label
         │
         └─ PROSES section (processTools/searchStatus present)
-           ├─ Section label "PROSES"
+           ├─ Section label "PROSES" (only when LANGKAH also present — avoids redundant label in process-only mode)
            ├─ SearchStatusIndicator (if searchStatus)
            └─ ToolStateIndicator per tool (if processTools)
 ```
@@ -254,6 +255,12 @@ producing process-only state automatically.
 These render individual process items with their own styling (spinner, labels,
 error states). UnifiedProcessCard is a layout container, not a renderer for
 individual process items.
+
+### Reuse ToolStateIndicator's label map for header
+
+`ToolStateIndicator.tsx` owns `TOOL_LABEL_MAP` and `getToolLabel()`. Export
+these and import in UnifiedProcessCard for the collapsed header label. Do not
+duplicate label strings — single source of truth.
 
 ### First-active tool label in header
 

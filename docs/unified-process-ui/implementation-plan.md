@@ -23,6 +23,16 @@
 - Reuses `ToolStateIndicator` and `SearchStatusIndicator` inside PROSES section
 - Port `STAGE_DESCRIPTIONS` and `STATUS_ICON` maps from `TaskProgress.tsx`
 
+**Step 0: Export `getToolLabel` from ToolStateIndicator**
+
+In `src/components/chat/ToolStateIndicator.tsx`, line 48, change:
+```diff
+- const getToolLabel = (toolName: string) => TOOL_LABEL_MAP[toolName] ?? toFallbackLabel(toolName)
++ export const getToolLabel = (toolName: string) => TOOL_LABEL_MAP[toolName] ?? toFallbackLabel(toolName)
+```
+
+This avoids duplicating label strings. UnifiedProcessCard imports this for the collapsed header label.
+
 **Step 1: Create the component file**
 
 ```tsx
@@ -35,7 +45,7 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { ToolStateIndicator } from "./ToolStateIndicator"
+import { ToolStateIndicator, getToolLabel } from "./ToolStateIndicator"
 import { SearchStatusIndicator } from "./SearchStatusIndicator"
 import type { TaskItem } from "@/lib/paper/task-derivation"
 
@@ -127,8 +137,13 @@ export function UnifiedProcessCard({
     if (searchStatus?.status === "done" && searchStatus.sourceCount) {
       return `Pencarian selesai (${searchStatus.sourceCount} sumber)`
     }
+    // Priority 4: last completed tool (when persisting indicators)
+    if (persistProcessIndicators && processTools.length > 0) {
+      const lastTool = processTools[processTools.length - 1]
+      return getToolLabel(lastTool.toolName)
+    }
     return null
-  }, [processTools, searchStatus])
+  }, [processTools, searchStatus, persistProcessIndicators])
 
   const description = hasTaskData ? (STAGE_DESCRIPTIONS[taskSummary.stageId] ?? "") : ""
 
@@ -249,22 +264,9 @@ export function UnifiedProcessCard({
   )
 }
 
-// --- Helpers ---
-
-function getToolLabel(toolName: string): string {
-  // Reuse ToolStateIndicator's label mapping if extracted,
-  // otherwise inline the common ones
-  const TOOL_LABELS: Record<string, string> = {
-    updateStageData: "Menyimpan progres...",
-    createArtifact: "Membuat artifak...",
-    submitStageForValidation: "Mengirim validasi...",
-    getCurrentPaperState: "Menyinkronkan status...",
-    startPaperSession: "Memulai sesi paper...",
-    google_search: "Mencari referensi...",
-    assistant_response: "Memproses...",
-  }
-  return TOOL_LABELS[toolName] ?? "Memproses..."
-}
+// NOTE: getToolLabel is imported from ToolStateIndicator.tsx (single source of truth).
+// It uses TOOL_LABEL_MAP which maps toolName → Indonesian labels.
+// Do NOT duplicate label strings here.
 ```
 
 **Step 2: Verify it builds**
@@ -385,20 +387,28 @@ Run: `npm run dev`
 2. Verify: card shows task count, no PROSES section when expanded
 3. Verify: collapsed state shows just stage label + count
 
-**Step 4: Test non-paper mode — process only (State 4)**
+**Step 4: Test paper mode — process only before stageData (State 3)**
+
+1. Start a fresh paper session (or find the first message where tools run before stageData loads)
+2. Verify: card shows process label only (no 📋, no LANGKAH)
+3. Verify: no "PROSES" section label (redundant in process-only mode)
+4. Verify: collapsible works
+
+**Step 5: Test non-paper mode — process only (State 4)**
 
 1. Open a non-paper conversation
 2. Trigger a search or tool call
 3. Verify: card shows process label, no LANGKAH section
-4. Verify: collapsible works
+4. Verify: no "PROSES" section label (same as State 3 — redundant when alone)
+5. Verify: collapsible works
 
-**Step 5: Test collapsed header label**
+**Step 6: Test collapsed header label**
 
 1. During active tool calling, verify header shows active process label
 2. Verify label comes from first active tool (not flickering between tools)
 3. After tools complete, verify label disappears or shows completed label
 
-**Step 6: Commit verification notes (optional)**
+**Step 7: Commit verification notes (optional)**
 
 If any visual adjustments needed, fix and commit:
 ```bash
