@@ -4,14 +4,13 @@ import { UIMessage } from "ai"
 import { EditPencil, Xmark, Send, CheckCircle, Page, MediaImage, Copy, Check } from "iconoir-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
-import { type SearchStatus } from "./SearchStatusIndicator"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { useState, useRef, useMemo, useEffect } from "react"
 import Image from "next/image"
 import { Id } from "../../../convex/_generated/dataModel"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { isEditAllowed, getMessageStage } from "@/lib/utils/paperPermissions"
-import { UnifiedProcessCard } from "./UnifiedProcessCard"
+import { UnifiedProcessCard, type ProcessTool, type SearchStatusData } from "./UnifiedProcessCard"
 import { deriveTaskList } from "@/lib/paper/task-derivation"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 import {
@@ -334,7 +333,7 @@ export function MessageBubble({
     }
 
     const extractInProgressTools = (uiMessage: UIMessage) => {
-        const tools: { toolName: string; state: string; errorText?: string }[] = []
+        const tools: ProcessTool[] = []
 
         for (const part of uiMessage.parts ?? []) {
             if (!part || typeof part !== "object") continue
@@ -380,7 +379,7 @@ export function MessageBubble({
 
     const extractSearchStatus = (
         uiMessage: UIMessage
-    ): { status: SearchStatus; message?: string; sourceCount?: number } | null => {
+    ): SearchStatusData | null => {
         for (const part of uiMessage.parts ?? []) {
             if (!part || typeof part !== "object") continue
             const maybeDataPart = part as unknown as { type?: string; data?: unknown }

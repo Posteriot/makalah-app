@@ -22,13 +22,13 @@ interface TaskSummaryData {
   total: number
 }
 
-interface ProcessTool {
+export interface ProcessTool {
   toolName: string
   state: string
   errorText?: string
 }
 
-interface SearchStatusData {
+export interface SearchStatusData {
   status: SearchStatus
   message?: string
   sourceCount?: number
