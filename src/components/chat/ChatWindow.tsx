@@ -610,6 +610,7 @@ export function ChatWindow({
   const {
     session: paperSession,
     isPaperMode,
+    isLoading: isPaperSessionLoading,
     stageStatus,
     stageLabel,
     stageData,
@@ -1458,6 +1459,7 @@ export function ChatWindow({
   const hasStandalonePendingIndicator =
     hasPendingAssistantGeneration &&
     !isPaperMode &&
+    !isPaperSessionLoading &&
     messages.length > 0 &&
     messages[messages.length - 1]?.role !== "assistant"
 
@@ -2410,6 +2412,7 @@ export function ChatWindow({
                 const shouldShowPendingIndicatorBeforeMessage =
                   hasPendingAssistantGeneration &&
                   !isPaperMode &&
+                  !isPaperSessionLoading &&
                   index === messages.length - 1 &&
                   message.role === "assistant"
 
