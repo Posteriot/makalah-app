@@ -127,7 +127,7 @@ export function buildUserFacingSearchPayload(
   const internalThoughtText = split.internalThoughtContent.trim()
   const referenceItems = normalizedInput.referenceItems ?? []
   const referenceInventory =
-    referenceItems.length > 0
+    normalizedInput.responseMode === "reference_inventory" && referenceItems.length > 0
       ? {
           introText: "",
           items: referenceItems,

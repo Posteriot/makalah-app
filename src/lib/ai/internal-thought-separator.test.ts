@@ -52,4 +52,40 @@ describe("buildUserFacingSearchPayload", () => {
     expect(out.citedText).toBe(input)
     expect(out.internalThoughtText).toBe("")
   })
+
+  it("does not attach reference inventory in synthesis mode", () => {
+    const out = buildUserFacingSearchPayload({
+      text: "Ini rangkumannya.",
+      responseMode: "synthesis",
+      referenceItems: [
+        {
+          sourceId: "s1",
+          title: "Paper A",
+          url: "https://example.com/a.pdf",
+          verificationStatus: "unverified_link",
+        },
+      ],
+    })
+
+    expect(out.citedText).toBe("Ini rangkumannya.")
+    expect(out.referenceInventory).toBeUndefined()
+  })
+
+  it("attaches reference inventory in reference_inventory mode", () => {
+    const out = buildUserFacingSearchPayload({
+      text: "Berikut sumber yang gue temukan.",
+      responseMode: "reference_inventory",
+      referenceItems: [
+        {
+          sourceId: "s1",
+          title: "Paper A",
+          url: "https://example.com/a.pdf",
+          verificationStatus: "unverified_link",
+        },
+      ],
+    })
+
+    expect(out.citedText).toBe("Berikut sumber yang gue temukan.")
+    expect(out.referenceInventory?.items).toHaveLength(1)
+  })
 })
