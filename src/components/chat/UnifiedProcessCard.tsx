@@ -149,10 +149,10 @@ export function UnifiedProcessCard({
                 </span>
               )}
               {isStreaming && (
-                <span className="flex items-center gap-0.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--chat-muted-foreground)] animate-pulse" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--chat-muted-foreground)] animate-pulse [animation-delay:150ms]" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--chat-muted-foreground)] animate-pulse [animation-delay:300ms]" />
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-[pulse-dot_1.2s_ease-in-out_infinite]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-[pulse-dot_1.2s_ease-in-out_0.2s_infinite]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-600 animate-[pulse-dot_1.2s_ease-in-out_0.4s_infinite]" />
                 </span>
               )}
               {open
