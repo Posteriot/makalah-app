@@ -252,7 +252,7 @@ export function MessageBubble({
         })
     }, [message.role, allMessages, messageIndex, isPaperMode, currentStageStartIndex, stageData])
 
-    // Derive task summary for TaskProgress — use per-message stage, not global currentStage
+    // Derive task summary for UnifiedProcessCard — use per-message stage, not global currentStage
     const taskSummary = useMemo(() => {
         if (!isPaperMode || !stageData || !currentStage || currentStage === "completed") return null
 
