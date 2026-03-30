@@ -7,6 +7,7 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
+import { NavArrowDown, NavArrowUp } from "iconoir-react"
 import { ToolStateIndicator, getToolLabel } from "./ToolStateIndicator"
 import { SearchStatusIndicator } from "./SearchStatusIndicator"
 import type { SearchStatus } from "./SearchStatusIndicator"
@@ -144,9 +145,10 @@ export function UnifiedProcessCard({
                 </span>
               )}
             </div>
-            <span className="text-sm text-[var(--chat-muted-foreground)] shrink-0">
-              {open ? "▴" : "▾"}
-            </span>
+            {open
+              ? <NavArrowUp className="h-3.5 w-3.5 text-[var(--chat-muted-foreground)] shrink-0" />
+              : <NavArrowDown className="h-3.5 w-3.5 text-[var(--chat-muted-foreground)] shrink-0" />
+            }
           </button>
         </CollapsibleTrigger>
 
