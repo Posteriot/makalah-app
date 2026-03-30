@@ -1457,6 +1457,7 @@ export function ChatWindow({
   const hasPendingAssistantGeneration = isGenerating || isAwaitingAssistantStart
   const hasStandalonePendingIndicator =
     hasPendingAssistantGeneration &&
+    !isPaperMode &&
     messages.length > 0 &&
     messages[messages.length - 1]?.role !== "assistant"
 
@@ -2408,6 +2409,7 @@ export function ChatWindow({
                 } as UIMessage
                 const shouldShowPendingIndicatorBeforeMessage =
                   hasPendingAssistantGeneration &&
+                  !isPaperMode &&
                   index === messages.length - 1 &&
                   message.role === "assistant"
 
