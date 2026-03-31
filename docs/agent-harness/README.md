@@ -26,7 +26,7 @@ controls timing. Ref: Anthropic "Effective harnesses for long-running agents."
 | `src/lib/ai/paper-mode-prompt.ts` | Prompt edit: "system will prompt incremental save" (gagasan/topik) |
 | `src/lib/ai/__tests__/draft-save-fields.test.ts` | Tests allowlist (13 tests) |
 | `src/lib/ai/__tests__/save-stage-draft.test.ts` | Tests warning filter (5 tests) |
-| `src/lib/ai/__tests__/incremental-save-harness.test.ts` | Tests harness logic (13 tests) |
+| `src/lib/ai/__tests__/incremental-save-harness.test.ts` | Tests harness logic (14 tests) |
 | `src/components/chat/UnifiedProcessCard.tsx` | UI: label duplikasi fix |
 | `src/components/chat/ChatWindow.tsx` | Pending indicator loading guard |
 | `src/components/chat/MessageBubble.tsx` | Stable key untuk JsonRendererChoiceBlock |
@@ -53,12 +53,16 @@ maxToolSteps: 4
 
 ### prepareStep Priority Chain
 ```
-1. Exact source routing     (highest)
-2. Sync request             (getCurrentPaperState)
-3. Save/submit intent       (user explicitly asks)
-4. Incremental save         (this harness)
-5. Default undefined         (model decides)
+1. Exact source routing     (highest, via prepareStep ?? chain)
+2. Sync request             (getCurrentPaperState, via prepareStep ?? chain)
+3. Incremental save         (this harness, via prepareStep ?? chain)
+4. Default undefined         (model decides, implicit fallthrough)
 ```
+
+Note: Save/submit intent (user explicitly asks) ditangani via
+`forcedToolChoice` parameter terpisah, bukan di prepareStep chain.
+Keduanya coexist — forcedToolChoice override toolChoice, prepareStep
+override step behavior.
 
 ### Hard-gate
 `saveStageDraft` di-register global tapi execute-time gated via `draftSaveGate.active`.
@@ -73,6 +77,14 @@ gate di-deactivate dan `fallbackIncrementalSaveConfig = undefined`.
 - Reuse backend `paperSessions.updateStageData` mutation
 - Filter "Ringkasan not provided." warning (exact prefix)
 - Gak disebut di prompt/stage instructions — harness-only
+
+### Auto-persist fields (harness skip list)
+Server-side `appendSearchReferences` otomatis persist beberapa field tanpa
+bantuan model. Harness skip field ini saat hitung pending tasks:
+- gagasan: `referensiAwal`
+- topik: `referensiPendukung`
+
+Definisi: `incremental-save-harness.ts` lines 9-12 (`AUTO_PERSIST_FIELDS`).
 
 `updateStageData` — TIDAK DIUBAH. Tetap mature save dengan ringkasan required.
 
@@ -215,7 +227,7 @@ Fixed: `fallbackIncrementalSaveConfig = undefined`, gate deactivated.
 7. **Choice card remount**: Stable key fix mungkin gak cukup. Apakah perlu
    lift `localSubmitted` state ke parent atau pakai ref?
 
-## Commits (21 total, banyak fix dan revert)
+## Commits Terkait Incremental Save (21 dari 63 total branch commits)
 
 ```
 866e4ba7 feat: harness enforces mature save when all draft fields complete
@@ -241,5 +253,9 @@ ed87f960 feat: add buildIncrementalSavePrepareStep targeting saveStageDraft
 77eced0b feat: add draft save field allowlist helpers for gagasan/topik
 ```
 
-Rasio feat:fix = 5:14 (belum termasuk reverts). Ini menunjukkan implementasi
-penuh masalah dan butuh rethink menyeluruh.
+Rasio feat:fix di atas = 5:14 (belum termasuk reverts). Branch secara
+keseluruhan punya 63 commits (feat:fix 13:26, 4 reverts) termasuk
+UnifiedProcessCard, plan/task/queue UI, dan design docs.
+
+Rasio fix-heavy ini menunjukkan implementasi penuh masalah dan butuh
+rethink menyeluruh.
