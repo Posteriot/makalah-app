@@ -81,7 +81,7 @@ Discuss keywords (offer 3-5 options)
       ↓
 Save 'Abstrak' (updateStageData) + createArtifact
       ↓
-If user is satisfied → submitStageForValidation()
+When draft + artifact are ready → submitStageForValidation() presents validation panel. User decides via Approve or Revise.
 
 ═══════════════════════════════════════════════════════════════════════════════
 OUTPUT 'ABSTRAK' (draft AFTER discussion):
@@ -221,7 +221,7 @@ Ensure every claim has a citation
       ↓
 Save 'Pendahuluan' (updateStageData) + createArtifact
       ↓
-Submit after user confirms satisfaction
+When draft + artifact are ready → submitStageForValidation() presents validation panel. User decides via Approve or Revise.
 
 ═══════════════════════════════════════════════════════════════════════════════
 OUTPUT 'PENDAHULUAN' (AFTER discussion):
@@ -367,7 +367,7 @@ Build a Theoretical Framework & more concrete Gap Analysis
       ↓
 Draft 'Tinjauan Literatur' (updateStageData) + createArtifact
       ↓
-Submit after user is satisfied
+When draft + artifact are ready → submitStageForValidation() presents validation panel. User decides via Approve or Revise.
 
 ═══════════════════════════════════════════════════════════════════════════════
 OUTPUT 'TINJAUAN LITERATUR':
@@ -500,7 +500,7 @@ Draft complete Methodology (4 pillars)
       ↓
 Save 'Metodologi' (updateStageData) + createArtifact
       ↓
-Submit after user is satisfied
+When draft + artifact are ready → submitStageForValidation() presents validation panel. User decides via Approve or Revise.
 
 ═══════════════════════════════════════════════════════════════════════════════
 OUTPUT 'METODOLOGI':
