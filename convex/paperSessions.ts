@@ -997,6 +997,18 @@ export const submitForValidation = mutation({
             );
         }
 
+        // ════════════════════════════════════════════════════════════════
+        // Guard: Enforce artifact exists BEFORE submitting for validation
+        // Prevents validation panel from appearing when no artifact is created
+        // ════════════════════════════════════════════════════════════════
+        const artifactId = currentStageData?.artifactId as string | undefined;
+        if (!artifactId) {
+            throw new Error(
+                "submitForValidation failed: Artifact must be created first. " +
+                "Call createArtifact before submitting for validation."
+            );
+        }
+
         await ctx.db.patch(args.sessionId, {
             stageStatus: "pending_validation",
             updatedAt: Date.now(),
