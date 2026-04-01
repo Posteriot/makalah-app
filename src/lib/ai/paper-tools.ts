@@ -386,6 +386,7 @@ The tool will:
             description: "Submit the current stage draft to the user for validation. This triggers an approval panel in the user's UI. AI stops generating after this.",
             inputSchema: z.object({}),
             execute: async () => {
+                console.log(`[AutoPresent] submitStageForValidation called — conversationId=${context.conversationId}`)
                 try {
                     const session = await retryQuery(
                         () => fetchQuery(api.paperSessions.getByConversation, {
@@ -395,18 +396,20 @@ The tool will:
                     );
                     if (!session) return { success: false, error: "Paper session not found." };
 
+                    console.log(`[AutoPresent] submitStageForValidation → mutation call, stage=${session.currentStage}, sessionId=${session._id}`)
                     await retryMutation(
                         () => fetchMutation(api.paperSessions.submitForValidation, {
                             sessionId: session._id,
                         }, convexOptions),
                         "paperSessions.submitForValidation"
                     );
+                    console.log(`[AutoPresent] submitStageForValidation → SUCCESS, panel should appear`)
                     return {
                         success: true,
                         message: "Draft submitted to user. Awaiting validation (Approve/Revise) from user before proceeding to the next stage."
                     };
                 } catch (error) {
-                    console.error("Error in submitStageForValidation tool:", error);
+                    console.error("[AutoPresent] submitStageForValidation → FAILED:", error);
                     // Forward specific error message from backend to AI
                     const errorMessage = error instanceof Error
                         ? error.message

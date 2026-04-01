@@ -989,6 +989,9 @@ export const submitForValidation = mutation({
         // ════════════════════════════════════════════════════════════════
         const currentStageData = session.stageData?.[currentStage] as Record<string, unknown> | undefined;
         const ringkasan = currentStageData?.ringkasan as string | undefined;
+        const artifactId = currentStageData?.artifactId as string | undefined;
+
+        console.log(`[AutoPresent] guard check — stage=${currentStage}, ringkasan=${!!ringkasan}, artifactId=${!!artifactId}`)
 
         if (!ringkasan || ringkasan.trim() === "") {
             throw new Error(
@@ -1001,7 +1004,6 @@ export const submitForValidation = mutation({
         // Guard: Enforce artifact exists BEFORE submitting for validation
         // Prevents validation panel from appearing when no artifact is created
         // ════════════════════════════════════════════════════════════════
-        const artifactId = currentStageData?.artifactId as string | undefined;
         if (!artifactId) {
             throw new Error(
                 "submitForValidation failed: Artifact must be created first. " +
@@ -1009,6 +1011,7 @@ export const submitForValidation = mutation({
             );
         }
 
+        console.log(`[AutoPresent] guard PASSED → setting stageStatus=pending_validation`)
         await ctx.db.patch(args.sessionId, {
             stageStatus: "pending_validation",
             updatedAt: Date.now(),

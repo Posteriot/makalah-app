@@ -51,11 +51,14 @@ export function buildIncrementalSavePrepareStep(opts: {
     if (hasRingkasan) return undefined // Fully done, nothing to enforce
 
     // All fields saved but no ringkasan yet → force mature save
+    console.log(`[AutoPresent] MATURE_SAVE triggered — stage=${opts.currentStage}, pendingFields=0, hasRingkasan=false`)
     return {
       targetField: "_matureSave",
       maxToolSteps: 4,
       systemNote: buildMatureSaveNote(),
       prepareStep: ({ stepNumber }) => {
+        const stepNames = ["updateStageData", "createArtifact", "submitStageForValidation", "text-response"]
+        console.log(`[AutoPresent] prepareStep step=${stepNumber}, forcing=${stepNames[stepNumber] ?? "undefined"}`)
         // step 0: force updateStageData (ringkasan)
         if (stepNumber === 0) {
           return {
