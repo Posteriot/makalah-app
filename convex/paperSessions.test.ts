@@ -120,12 +120,14 @@ describe("submitForValidation", () => {
       })
     );
 
-    // Verify it patched stageStatus to pending_validation
+    // Contract: submit sets pending_validation but does NOT advance currentStage
     expect(patches).toHaveLength(1);
     expect(patches[0].patch).toEqual(
       expect.objectContaining({
         stageStatus: "pending_validation",
       })
     );
+    // currentStage must NOT be in the patch — only approveStage advances it
+    expect(patches[0].patch).not.toHaveProperty("currentStage");
   });
 });
