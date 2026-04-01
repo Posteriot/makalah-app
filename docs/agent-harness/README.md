@@ -26,7 +26,7 @@ controls timing. Ref: Anthropic "Effective harnesses for long-running agents."
 | `src/lib/ai/paper-mode-prompt.ts` | Prompt edit: "system will prompt incremental save" (gagasan/topik) |
 | `src/lib/ai/__tests__/draft-save-fields.test.ts` | Tests allowlist (13 tests) |
 | `src/lib/ai/__tests__/save-stage-draft.test.ts` | Tests warning filter (5 tests) |
-| `src/lib/ai/__tests__/incremental-save-harness.test.ts` | Tests harness logic (14 tests) |
+| `src/lib/ai/__tests__/incremental-save-harness.test.ts` | Tests harness logic (13 tests) |
 | `src/components/chat/UnifiedProcessCard.tsx` | UI: label duplikasi fix |
 | `src/components/chat/ChatWindow.tsx` | Pending indicator loading guard |
 | `src/components/chat/MessageBubble.tsx` | Stable key untuk JsonRendererChoiceBlock |
@@ -227,7 +227,7 @@ Fixed: `fallbackIncrementalSaveConfig = undefined`, gate deactivated.
 7. **Choice card remount**: Stable key fix mungkin gak cukup. Apakah perlu
    lift `localSubmitted` state ke parent atau pakai ref?
 
-## Commits Terkait Incremental Save (21 dari 63 total branch commits)
+## Commits Terkait Incremental Save (21 dari 64 total branch commits)
 
 ```
 866e4ba7 feat: harness enforces mature save when all draft fields complete
