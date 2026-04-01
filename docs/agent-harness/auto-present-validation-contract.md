@@ -37,7 +37,7 @@
 
 **Files:**
 - Modify: `convex/paperSessions.ts:993-998`
-- Test: `convex/paperSessions.test.ts` (or inline test in same file if no separate test file)
+- Test: Buat file test baru atau pakai file Convex test yang sesuai (cek apakah `convex/paperSessions.test.ts` sudah ada; kalau belum, buat baru atau tambahkan ke test file Convex terdekat yang test paperSessions mutations)
 
 **Step 1: Write the failing test**
 
@@ -289,7 +289,7 @@ Current regex:
 
 This blocks skill content that says "submit without user confirmation." Under the new contract, this guard is STILL VALID — we don't want skills that bypass user review entirely. The new contract says system may auto-present the panel, but user still confirms via Approve button.
 
-**Decision:** KEEP the regex as-is. Auto-present ≠ skip user confirmation. The panel IS the confirmation mechanism.
+**Decision:** KEEP the regex as-is. Auto-present ≠ skip user confirmation. The panel IS the confirmation mechanism. "User confirmation" dalam konteks regex ini berarti **keputusan user melalui validation panel** (klik Approve atau Revise), bukan persetujuan eksplisit di percakapan sebelum model memanggil submit.
 
 **Step 2: No code change needed. Document the decision.**
 
@@ -299,6 +299,8 @@ Add a comment above line 117:
 // Guard still valid under auto-present contract: auto-present shows
 // the panel, but user must still Approve/Revise. "submit without user
 // confirmation" means bypassing the panel entirely — still forbidden.
+// "User confirmation" = decision via validation panel, NOT explicit
+// chat approval before the submit call.
 ```
 
 **Step 3: Commit**
@@ -340,14 +342,26 @@ New:
 - submitStageForValidation — present revised draft for user review (Approve/Revise)
 ```
 
-**Step 3: Note on updatePromptWithPaperWorkflow.ts and updateDocumentationChatAgentS5.ts**
+**Step 3: Update hardcoded text in updateDocumentationChatAgentS5.ts line 83**
 
-These files have idempotency guards that prevent re-run on already-migrated data. The wording in them (lines 54, 61, 83) describes workflow steps, not the confirmation contract. They say "Kirim draft untuk validasi user" and "Minta persetujuan user" which are still accurate under the new contract — submitting still sends to user for validation/approval. **No change needed.**
+Old:
+```
+{ text: "AI hanya boleh submit validasi ketika user sudah menyatakan setuju." }
+```
 
-**Step 4: Commit**
+New:
+```
+{ text: "AI boleh auto-present validation panel saat draft siap. User memutuskan lewat Approve atau Revise." }
+```
+
+**Step 4: Note on updatePromptWithPaperWorkflow.ts**
+
+This file has idempotency guard that prevents re-run on already-migrated data. The wording (lines 54, 61) describes workflow steps: "Kirim draft untuk validasi user" and "Minta persetujuan user" — still accurate under the new contract (submitting still sends to user for validation). **No change needed.**
+
+**Step 5: Commit**
 
 ```bash
-git add convex/migrations/updateStageSkillToolPolicy.ts convex/migrations/seedPembaruanAbstrakSkill.ts
+git add convex/migrations/updateStageSkillToolPolicy.ts convex/migrations/seedPembaruanAbstrakSkill.ts convex/migrations/updateDocumentationChatAgentS5.ts
 git commit -m "fix: align migration seed text to auto-present validation contract"
 ```
 
@@ -389,7 +403,7 @@ git commit -m "docs: update architecture decision — auto-present replaces no-a
 ## Task 11: Add regression tests for new contract
 
 **Files:**
-- Modify or create: test file for contract invariants
+- Buat file test baru atau pakai file Convex test yang sesuai (sama seperti Task 1 — gunakan file test yang sama)
 
 **Step 1: Write tests**
 
@@ -466,9 +480,10 @@ for old patterns to verify zero remnants:
 grep -rn "EXPLICIT.*confirm" src/lib/ai/paper-stages/ src/lib/ai/paper-mode-prompt.ts
 grep -rn "after user is satisfied" src/lib/ai/paper-stages/
 grep -rn "only after explicit user confirmation" src/ convex/
+grep -rn "hanya boleh submit validasi ketika user sudah" convex/
 ```
 
-All three greps should return **zero results** after implementation.
+All four greps should return **zero results** after implementation.
 
 **Secondary risk:** Migration re-run overwrites new wording.
 **Mitigation:** Task 9 updates migration source text. Idempotency guards prevent
