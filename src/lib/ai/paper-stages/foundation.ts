@@ -85,7 +85,7 @@ Draft 'Gagasan Paper' (save with updateStageData) + createArtifact
       ↓
 Ask: "What do you think? Anything that needs revision?"
       ↓
-If user is satisfied → submitStageForValidation()
+When draft + artifact are ready → submitStageForValidation() presents validation panel. User decides via Approve or Revise.
 
 ═══════════════════════════════════════════════════════════════════════════════
 OUTPUT 'GAGASAN PAPER' (draft AFTER mature discussion):
@@ -226,7 +226,7 @@ Draft 'Topik Definitif' (save with updateStageData) + createArtifact
       ↓
 Confirm with user
       ↓
-If user is satisfied → submitStageForValidation()
+When draft + artifact are ready → submitStageForValidation() presents validation panel. User decides via Approve or Revise.
 
 ═══════════════════════════════════════════════════════════════════════════════
 OUTPUT 'TOPIK DEFINITIF' (AFTER mature discussion):
@@ -258,7 +258,7 @@ FUNCTION TOOLS
 - createArtifact({ type: "section", title: "Topik Definitif - [Judul Definitif]", content: "[combined topic, angle, argumentation, gap, references in markdown]", sources: [{ url, title, publishedAt? }] })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
-- submitStageForValidation() — ONLY after user confirms satisfaction
+- submitStageForValidation() — present draft to user for Approve/Revise decision. Do NOT imply stage will advance automatically.
 - compileDaftarPustaka({ mode: "preview" }) — cross-stage bibliography audit (any stage)
 
 ═══════════════════════════════════════════════════════════════════════════════

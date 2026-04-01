@@ -69,7 +69,7 @@ Recommended:
 ## Guardrails
 Never fabricate references.
 ## Done Criteria
-Ready for validation after user confirmation.
+Ready for validation — user decides via Approve or Revise panel.
 `,
     })
 
