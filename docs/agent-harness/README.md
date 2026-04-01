@@ -194,10 +194,11 @@ Fixed: `fallbackIncrementalSaveConfig = undefined`, gate deactivated.
 2. **Gagasan + topik only** — stage lain punya field types complex (array,
    enum, nested sections) yang butuh metadata lebih kaya.
 
-3. **No auto-submit di v1** — approval tetap user-initiated.
-   TAPI: mature save mode sekarang force submit saat all fields + ringkasan
-   complete. Ini de facto auto-submit. Perlu re-evaluate apakah ini yang
-   diinginkan.
+3. **Auto-present, user-controlled** — harness auto-calls submitStageForValidation
+   saat draft fields complete + ringkasan + artifact ready. Ini trigger validation
+   panel (passive UI). Stage advance HANYA lewat user click Approve & Continue.
+   Kontrak: submitStageForValidation = present for review, bukan commit.
+   Backend guard: ringkasan + artifactId required sebelum submit diterima.
 
 4. **Harness gak bisa act di search turn** — constraint arsitektural dari
    search orchestrator (web search + function tools mutually exclusive).
