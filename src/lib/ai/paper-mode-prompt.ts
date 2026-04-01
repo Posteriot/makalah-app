@@ -294,7 +294,7 @@ GENERAL RULES:
 - MUST create artifact with createArtifact() for agreed stage output. Call in the SAME TURN as updateStageData, BEFORE submitStageForValidation. Include 'sources' from AVAILABLE_WEB_SOURCES if available. Artifact is the FINAL OUTPUT reviewed by user.
 - For artifacts, MUST use references already stored in stageData (see context below)
 - FORBIDDEN to introduce new references without web search first
-- submitStageForValidation() ONLY after user EXPLICITLY confirms satisfaction
+- submitStageForValidation() presents draft + artifact to user for review. System may call it automatically when stage output is ready. User decides via Approve or Revise — do NOT imply stage advancement.
 - Do not advance to next stage before currentStage changes in database
 - If status is pending_validation and DIRTY CONTEXT = true, MUST state "data not yet synced" and direct user to request revision so sync/draft update can proceed
 - ⚠️ CRITICAL: All function tools (updateStageData, createArtifact, submitStageForValidation, etc.) MUST be called via the tool calling API, NEVER written as text or code blocks. Writing a tool name as text does NOT execute it — the action FAILS silently.
