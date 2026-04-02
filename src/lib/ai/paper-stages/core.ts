@@ -90,8 +90,6 @@ OUTPUT 'ABSTRAK' (draft AFTER discussion):
 - ringkasanPenelitian: Full abstract text (150-250 words)
 - keywords: List of 3-5 keywords
 - wordCount: Word count of ringkasanPenelitian
-- ringkasanDetail: (optional, max 1000 char) Elaboration on WHY these keywords were chosen and how the abstract represents the paper holistically
-
 ═══════════════════════════════════════════════════════════════════════════════
 WEB SEARCH
 ═══════════════════════════════════════════════════════════════════════════════
@@ -108,7 +106,7 @@ IMPORTANT: Web search and function tools CANNOT run in the same turn.
 FUNCTION TOOLS
 ═══════════════════════════════════════════════════════════════════════════════
 
-- updateStageData({ ringkasan, ringkasanDetail, ringkasanPenelitian, keywords, wordCount })
+- updateStageData({ ringkasanPenelitian, keywords, wordCount })
 - createArtifact({ type: "section", title: "Abstrak - [Paper Title]", content: "[full abstract content]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
@@ -117,16 +115,6 @@ FUNCTION TOOLS
 
 - ❌ Do NOT generate an abstract that is misaligned with the Gagasan/Topik from Phase 1
 - ❌ Do NOT monologue — ask for feedback on every draft
-- ❌ Do NOT forget the 'ringkasan' field when calling updateStageData — approval WILL FAIL!
-
-═══════════════════════════════════════════════════════════════════════════════
-⚠️ RINGKASAN REQUIRED — APPROVAL WILL FAIL WITHOUT IT!
-═══════════════════════════════════════════════════════════════════════════════
-
-- Format: String, max 280 characters
-- Content: Keywords AGREED upon with the user
-- Example: "Keywords disepakati: machine learning, personalisasi, pendidikan tinggi, Indonesia, adaptive learning"
-- ⚠️ WARNING: If you do not include the 'ringkasan' field, the user CANNOT approve this stage!
 
 ═══════════════════════════════════════════════════════════════════════════════
 REMINDER — LINEAR FLOW:
@@ -234,8 +222,6 @@ OUTPUT 'PENDAHULUAN' (AFTER discussion):
 - signifikansiPenelitian: Why this research is important (theoretical/practical contribution)
 - hipotesis: Hypothesis or specific research questions (if applicable)
 - sitasiAPA: Array of references [{ inTextCitation, fullReference, url }]
-- ringkasanDetail: (optional, max 1000 char) Elaboration on WHY these problem formulations and research objectives were chosen, important context from the discussion with the user
-
 ═══════════════════════════════════════════════════════════════════════════════
 WEB SEARCH
 ═══════════════════════════════════════════════════════════════════════════════
@@ -251,7 +237,7 @@ After search results arrive, use function tools to save findings in the next tur
 FUNCTION TOOLS
 ═══════════════════════════════════════════════════════════════════════════════
 
-- updateStageData({ ringkasan, ringkasanDetail, latarBelakang, rumusanMasalah, researchGapAnalysis, tujuanPenelitian, signifikansiPenelitian, hipotesis, sitasiAPA })
+- updateStageData({ latarBelakang, rumusanMasalah, researchGapAnalysis, tujuanPenelitian, signifikansiPenelitian, hipotesis, sitasiAPA })
 - createArtifact({ type: "section", title: "Pendahuluan - [Paper Title]", content: "[full introduction content]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
@@ -259,19 +245,9 @@ FUNCTION TOOLS
 
 - ❌ Do NOT skip citation tracking — this is mandatory for the bibliography
 - ❌ Do NOT forget the novelty argument "anchor" from the Topik stage
-- ❌ Do NOT forget the 'ringkasan' field when calling updateStageData — approval WILL FAIL!
 - ❌ NEVER create PLACEHOLDER citations — fictitious "(Penulis, Tahun)" is STRICTLY PROHIBITED
 - ❌ Do NOT write citations without web search or Phase 1 references as the source
 - ❌ Better to have NO citation than a FAKE/PLACEHOLDER citation
-
-═══════════════════════════════════════════════════════════════════════════════
-⚠️ RINGKASAN REQUIRED — APPROVAL WILL FAIL WITHOUT IT!
-═══════════════════════════════════════════════════════════════════════════════
-
-- Format: String, max 280 characters
-- Content: Problem formulation and objectives AGREED upon with the user
-- Example: "3 rumusan masalah + 3 tujuan penelitian disetujui, fokus pada efektivitas ML dalam personalisasi pembelajaran"
-- ⚠️ WARNING: If you do not include the 'ringkasan' field, the user CANNOT approve this stage!
 
 ═══════════════════════════════════════════════════════════════════════════════
 REMINDER — LINEAR FLOW:
@@ -378,8 +354,6 @@ OUTPUT 'TINJAUAN LITERATUR':
 - gapAnalysis: Sharpened research gap based on literature
 - justifikasiPenelitian: Why this research is necessary based on existing literature
 - referensi: Array [{ title, authors, year, url, inTextCitation, isFromPhase1 }]
-- ringkasanDetail: (optional, max 1000 char) Elaboration on the chosen theoretical framework, rationale for theory selection, and how the literature interconnects
-
 ═══════════════════════════════════════════════════════════════════════════════
 WEB SEARCH
 ═══════════════════════════════════════════════════════════════════════════════
@@ -396,7 +370,7 @@ Target 3-5 search queries for deepening.
 FUNCTION TOOLS
 ═══════════════════════════════════════════════════════════════════════════════
 
-- updateStageData({ ringkasan, ringkasanDetail, kerangkaTeoretis, reviewLiteratur, gapAnalysis, justifikasiPenelitian, referensi })
+- updateStageData({ kerangkaTeoretis, reviewLiteratur, gapAnalysis, justifikasiPenelitian, referensi })
 - createArtifact({ type: "section", title: "Tinjauan Literatur - [Paper Title]", content: "[full literature review content]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
@@ -404,19 +378,9 @@ FUNCTION TOOLS
 
 - ❌ Do NOT ignore Phase 1 references — they are the initial foundation
 - ❌ Do NOT just copy abstracts from other literature — there must be SYNTHESIS
-- ❌ Do NOT forget the 'ringkasan' field when calling updateStageData — approval WILL FAIL!
 - ❌ NEVER create PLACEHOLDER citations — fictitious "(Penulis, Tahun)" is STRICTLY PROHIBITED
 - ❌ Do NOT fabricate "standard textbook" references without searching — all must be verifiable
 - ❌ Better to have NO citation than a FAKE/PLACEHOLDER citation
-
-═══════════════════════════════════════════════════════════════════════════════
-⚠️ RINGKASAN REQUIRED — APPROVAL WILL FAIL WITHOUT IT!
-═══════════════════════════════════════════════════════════════════════════════
-
-- Format: String, max 280 characters
-- Content: Theoretical framework AGREED upon with the user
-- Example: "Kerangka: Constructivism + Adaptive Learning Theory, 15 referensi utama dari 3 sumber berbeda"
-- ⚠️ WARNING: If you do not include the 'ringkasan' field, the user CANNOT approve this stage!
 
 ═══════════════════════════════════════════════════════════════════════════════
 REMINDER — LINEAR FLOW:
@@ -512,8 +476,6 @@ OUTPUT 'METODOLOGI':
 - teknikAnalisis: Technical details of how data is processed
 - etikaPenelitian: Research ethics statement
 - alatInstrumen: Research tools or instruments used (questionnaire, interview guide, software, etc.)
-- ringkasanDetail: (optional, max 1000 char) Elaboration on WHY this approach was chosen, trade-offs considered, and method justification
-
 ═══════════════════════════════════════════════════════════════════════════════
 WEB SEARCH
 ═══════════════════════════════════════════════════════════════════════════════
@@ -529,7 +491,7 @@ After search results arrive, use function tools to save findings in the next tur
 FUNCTION TOOLS
 ═══════════════════════════════════════════════════════════════════════════════
 
-- updateStageData({ ringkasan, ringkasanDetail, pendekatanPenelitian, desainPenelitian, metodePerolehanData, teknikAnalisis, etikaPenelitian, alatInstrumen })
+- updateStageData({ pendekatanPenelitian, desainPenelitian, metodePerolehanData, teknikAnalisis, etikaPenelitian, alatInstrumen })
 - createArtifact({ type: "section", title: "Metodologi - [Paper Title]", content: "[full methodology content]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
@@ -537,17 +499,7 @@ FUNCTION TOOLS
 
 - ❌ Do NOT generate without discussing the approach first
 - ❌ Do NOT create a design that cannot answer the problem formulation
-- ❌ Do NOT forget the 'ringkasan' field when calling updateStageData — approval WILL FAIL!
 - ❌ Do NOT create PLACEHOLDER citations — if you need methodology references, request a web search first
-
-═══════════════════════════════════════════════════════════════════════════════
-⚠️ RINGKASAN REQUIRED — APPROVAL WILL FAIL WITHOUT IT!
-═══════════════════════════════════════════════════════════════════════════════
-
-- Format: String, max 280 characters
-- Content: Research approach AGREED upon with the user
-- Example: "Mixed method: Survey (n=200) + Interview (n=10), lokasi: 3 kampus Jakarta, analisis: SPSS + thematic"
-- ⚠️ WARNING: If you do not include the 'ringkasan' field, the user CANNOT approve this stage!
 
 ═══════════════════════════════════════════════════════════════════════════════
 REMINDER — LINEAR FLOW:

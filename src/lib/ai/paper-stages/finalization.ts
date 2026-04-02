@@ -103,8 +103,6 @@ OUTPUT 'PEMBARUAN ABSTRAK':
 - perubahanUtama: Array of significant changes from the original abstract
 - keywordsBaru: Updated keywords (if changed)
 - wordCount: New abstract word count
-- ringkasanDetail: (optional, max 1000 char) Elaboration on why changes were made
-
 ===============================================================================
 WEB SEARCH
 ===============================================================================
@@ -120,7 +118,7 @@ IMPORTANT: Web search and function tools CANNOT run in the same turn.
 FUNCTION TOOLS
 ===============================================================================
 
-- updateStageData({ ringkasan, ringkasanDetail, ringkasanPenelitianBaru, perubahanUtama, keywordsBaru, wordCount })
+- updateStageData({ ringkasanPenelitianBaru, perubahanUtama, keywordsBaru, wordCount })
 - createArtifact({ type: "section", title: "Abstrak (Diperbarui) - [Paper Title]", content: "[full updated abstract text]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
@@ -130,16 +128,6 @@ FUNCTION TOOLS
 - ❌ Do NOT rewrite the abstract from scratch without showing comparisons
 - ❌ Do NOT ignore data from stages 5-10 — that is the source of truth
 - ❌ Do NOT change keywords without clear justification
-- ❌ Do NOT forget the 'ringkasan' field when calling updateStageData — approval WILL FAIL!
-
-===============================================================================
-⚠️ RINGKASAN REQUIRED — APPROVAL WILL FAIL WITHOUT IT!
-===============================================================================
-
-- Format: String, max 280 characters
-- Content: Key changes made to the abstract
-- Example: "Abstrak diperbarui: metodologi mixed methods, temuan korelasi X-Y ditambahkan, 2 keywords baru, word count 245 kata"
-- ⚠️ WARNING: If you do not include the 'ringkasan' field, the user CANNOT approve this stage!
 
 ===============================================================================
 REMINDER — LINEAR FLOW:
@@ -230,7 +218,7 @@ EXPECTED FLOW:
 
 Review all stages that have references
       |
-Call compileDaftarPustaka({ mode: "persist", ringkasan, ringkasanDetail }) for server-side compilation
+Call compileDaftarPustaka({ mode: "persist" }) for server-side compilation
       |
 Deduplicate based on URL or title+authors+year
       |
@@ -257,8 +245,6 @@ OUTPUT 'DAFTAR PUSTAKA':
 - totalCount: Total number of references
 - incompleteCount: Number of incomplete references
 - duplicatesMerged: Number of duplicates merged
-- ringkasanDetail: (optional, max 1000 char) Elaboration on the compilation process, issues found (duplicates, incomplete), and decisions made
-
 ===============================================================================
 WEB SEARCH
 ===============================================================================
@@ -276,9 +262,9 @@ After search results arrive, use function tools to save findings in the next tur
 FUNCTION TOOLS
 ===============================================================================
 
-- compileDaftarPustaka({ mode: "persist", ringkasan, ringkasanDetail }) — REQUIRED for main compilation + persist entries/count
+- compileDaftarPustaka({ mode: "persist" }) — REQUIRED for main compilation + persist entries/count
 - compileDaftarPustaka({ mode: "preview" }) — cross-stage bibliography audit (any stage)
-- updateStageData({ ringkasan, ringkasanDetail, ... }) — optional, only for minor corrections post-compile
+- updateStageData({ ... }) — optional, only for minor corrections post-compile
 - createArtifact({ type: "citation", title: "Daftar Pustaka - [Paper Title]", content: "[full reference list in APA format]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as compileDaftarPustaka, BEFORE submitStageForValidation!
@@ -287,16 +273,6 @@ FUNCTION TOOLS
 - ❌ Do NOT add new references not present in previous stages (unless user explicitly requests search)
 - ❌ Do NOT skip review with user — this is a critical accuracy stage
 - ❌ Do NOT compile manual entries in response text without calling compileDaftarPustaka
-- ❌ Do NOT forget the 'ringkasan' field when calling compileDaftarPustaka/updateStageData — approval WILL FAIL!
-
-===============================================================================
-⚠️ RINGKASAN REQUIRED — APPROVAL WILL FAIL WITHOUT IT!
-===============================================================================
-
-- Format: String, max 280 characters
-- Content: Number of compiled references and completeness status
-- Example: "Total 42 referensi: 15 dari fase awal, 27 tambahan, 3 incomplete di-flag, format APA 7th verified"
-- ⚠️ WARNING: If you do not include the 'ringkasan' field, the user CANNOT approve this stage!
 
 ===============================================================================
 REMINDER — LINEAR FLOW:
@@ -397,8 +373,6 @@ OUTPUT 'LAMPIRAN':
 
   Note: referencedInSections uses Outline section ID format
   Example: ["metodologi.alatInstrumen", "hasil.temuan1"]
-- ringkasanDetail: (optional, max 1000 char) Elaboration on decisions about what was included/excluded and why
-
 ===============================================================================
 WEB SEARCH
 ===============================================================================
@@ -414,7 +388,7 @@ IMPORTANT: Web search and function tools CANNOT run in the same turn.
 FUNCTION TOOLS
 ===============================================================================
 
-- updateStageData({ ringkasan, ringkasanDetail, items, tidakAdaLampiran, alasanTidakAda })
+- updateStageData({ items, tidakAdaLampiran, alasanTidakAda })
 - createArtifact({ type: "section", title: "Lampiran [label] - [judul]", content: "[appendix content]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
@@ -423,16 +397,6 @@ FUNCTION TOOLS
 
 - ❌ Do NOT create appendices without discussing with user first
 - ❌ Do NOT skip reference linking — user needs to know which sections refer to appendices
-- ❌ Do NOT forget the 'ringkasan' field when calling updateStageData — approval WILL FAIL!
-
-===============================================================================
-⚠️ RINGKASAN REQUIRED — APPROVAL WILL FAIL WITHOUT IT!
-===============================================================================
-
-- Format: String, max 280 characters
-- Content: Appendix items or no-appendix status
-- Example: "3 lampiran: A-Kuesioner, B-Panduan Interview, C-Raw Data Summary" or "Tidak ada lampiran diperlukan untuk paper ini"
-- ⚠️ WARNING: If you do not include the 'ringkasan' field, the user CANNOT approve this stage!
 
 ===============================================================================
 REMINDER — LINEAR FLOW:
@@ -539,8 +503,6 @@ OUTPUT 'JUDUL':
   { judul, keywordsCovered, coverageScore (0-100) }
 - judulTerpilih: The final title chosen by the user
 - alasanPemilihan: Why this title was chosen (for documentation)
-- ringkasanDetail: (optional, max 1000 char) Elaboration on the title selection process, alternatives considered, and final reasoning
-
 NOTE: Syncing judulTerpilih to paperSession.paperTitle is Phase 5 scope.
 
 ===============================================================================
@@ -558,7 +520,7 @@ IMPORTANT: Web search and function tools CANNOT run in the same turn.
 FUNCTION TOOLS
 ===============================================================================
 
-- updateStageData({ ringkasan, ringkasanDetail, opsiJudul, judulTerpilih, alasanPemilihan })
+- updateStageData({ opsiJudul, judulTerpilih, alasanPemilihan })
 - createArtifact({ type: "section", title: "Opsi Judul Paper", content: "[5 options + analysis]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
@@ -567,16 +529,6 @@ FUNCTION TOOLS
 
 - ❌ Do NOT choose a title for the user — always provide 5 options and wait for their choice
 - ❌ Do NOT generate titles that don't reflect the paper content
-- ❌ Do NOT forget the 'ringkasan' field when calling updateStageData — approval WILL FAIL!
-
-===============================================================================
-⚠️ RINGKASAN REQUIRED — APPROVAL WILL FAIL WITHOUT IT!
-===============================================================================
-
-- Format: String, max 280 characters
-- Content: The selected title and the reason
-- Example: "Terpilih opsi #3: 'Machine Learning untuk Personalisasi Pembelajaran' - coverage 4/5 keywords, catchy tapi tetap akademik"
-- ⚠️ WARNING: If you do not include the 'ringkasan' field, the user CANNOT approve this stage!
 
 ===============================================================================
 REMINDER — LINEAR FLOW:
@@ -683,8 +635,6 @@ OUTPUT 'OUTLINE':
 
 - totalWordCount: Estimated total word count for the entire paper
 - completenessScore: Percentage of sections that are complete (0-100)
-- ringkasanDetail: (optional, max 1000 char) Elaboration on the chosen structure, rationale for chapter division, and word count considerations
-
 ===============================================================================
 WEB SEARCH
 ===============================================================================
@@ -701,7 +651,7 @@ IMPORTANT: Web search and function tools CANNOT run in the same turn.
 FUNCTION TOOLS
 ===============================================================================
 
-- updateStageData({ ringkasan, ringkasanDetail, sections, totalWordCount, completenessScore })
+- updateStageData({ sections, totalWordCount, completenessScore })
 - createArtifact({ type: "outline", title: "Outline Paper - [Paper Title]", content: "[full hierarchical structure]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
@@ -710,16 +660,6 @@ FUNCTION TOOLS
 
 - ❌ Do NOT skip sections that already exist — all must be in the outline
 - ❌ Do NOT finalize without user review
-- ❌ Do NOT forget the 'ringkasan' field when calling updateStageData — approval WILL FAIL!
-
-===============================================================================
-⚠️ RINGKASAN REQUIRED — APPROVAL WILL FAIL WITHOUT IT!
-===============================================================================
-
-- Format: String, max 280 characters
-- Content: The outline structure AGREED upon (number of sections/sub-sections)
-- Example: "Outline disetujui: 7 bab utama, 21 sub-bab, estimasi 12.000 kata, completeness score 65%"
-- ⚠️ WARNING: If you do not include the 'ringkasan' field, the user CANNOT approve this stage!
 
 ===============================================================================
 REMINDER — LINEAR FLOW:

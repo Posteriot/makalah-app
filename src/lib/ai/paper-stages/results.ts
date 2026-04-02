@@ -94,8 +94,6 @@ OUTPUT 'HASIL':
 - temuanUtama: Array of strings (finding + explanation per item)
 - metodePenyajian: narrative | tabular | mixed
 - dataPoints: Array of quantitative data (optional)
-- ringkasanDetail: (optional, max 1000 char) Elaboration on key findings, interesting patterns, and data context that doesn't fit in the 280-char ringkasan
-
 ===============================================================================
 WEB SEARCH
 ===============================================================================
@@ -112,7 +110,7 @@ IMPORTANT: Web search and function tools CANNOT run in the same turn.
 FUNCTION TOOLS
 ===============================================================================
 
-- updateStageData({ ringkasan, ringkasanDetail, temuanUtama, metodePenyajian, dataPoints })
+- updateStageData({ temuanUtama, metodePenyajian, dataPoints })
 - createArtifact({ type: "section" | "table", title: "Hasil - [Paper Title]", content: "[full results content]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
@@ -121,16 +119,6 @@ FUNCTION TOOLS
 
 - ❌ Do NOT generate fictitious findings
 - ❌ Do NOT include deep interpretation (that belongs in Diskusi)
-- ❌ Do NOT forget the 'ringkasan' field when calling updateStageData — approval WILL FAIL!
-
-===============================================================================
-⚠️ RINGKASAN REQUIRED — APPROVAL WILL FAIL WITHOUT IT!
-===============================================================================
-
-- Format: String, max 280 characters
-- Content: Key findings AGREED upon with the user
-- Example: "5 temuan utama: (1) peningkatan 23% engagement, (2) korelasi kuat motivasi-hasil, (3) preferensi adaptive content"
-- ⚠️ WARNING: If you do not include the 'ringkasan' field, the user CANNOT approve this stage!
 
 ===============================================================================
 REMINDER — LINEAR FLOW:
@@ -234,8 +222,6 @@ OUTPUT 'DISKUSI':
 - keterbatasanPenelitian
 - saranPenelitianMendatang
 - sitasiTambahan: Array of additional citations (optional)
-- ringkasanDetail: (optional, max 1000 char) Elaboration on key interpretations, the relationship between findings and theory, and important discussion context with the user
-
 ===============================================================================
 WEB SEARCH
 ===============================================================================
@@ -252,7 +238,7 @@ After search results arrive, use function tools to save findings in the next tur
 FUNCTION TOOLS
 ===============================================================================
 
-- updateStageData({ ringkasan, ringkasanDetail, interpretasiTemuan, perbandinganLiteratur, implikasiTeoretis, implikasiPraktis, keterbatasanPenelitian, saranPenelitianMendatang, sitasiTambahan })
+- updateStageData({ interpretasiTemuan, perbandinganLiteratur, implikasiTeoretis, implikasiPraktis, keterbatasanPenelitian, saranPenelitianMendatang, sitasiTambahan })
 - createArtifact({ type: "section", title: "Diskusi - [Paper Title]", content: "[full discussion content]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
@@ -261,19 +247,9 @@ FUNCTION TOOLS
 
 - ❌ Do NOT introduce new findings (that belongs in Hasil)
 - ❌ Do NOT skip literature comparison
-- ❌ Do NOT forget the 'ringkasan' field when calling updateStageData — approval WILL FAIL!
 - ❌ NEVER create PLACEHOLDER citations — fictitious "(Penulis, Tahun)" is STRICTLY PROHIBITED
 - ❌ Do NOT fabricate references — all citations must come from Tinjauan Literatur or web search
 - ❌ Better to have NO citation than a FAKE/PLACEHOLDER citation
-
-===============================================================================
-⚠️ RINGKASAN REQUIRED — APPROVAL WILL FAIL WITHOUT IT!
-===============================================================================
-
-- Format: String, max 280 characters
-- Content: Key interpretations AGREED upon with the user
-- Example: "Interpretasi: Temuan sejalan dengan studi X (2023), implikasi praktis untuk dosen dan institusi pendidikan"
-- ⚠️ WARNING: If you do not include the 'ringkasan' field, the user CANNOT approve this stage!
 
 ===============================================================================
 REMINDER — LINEAR FLOW:
@@ -364,8 +340,6 @@ OUTPUT 'KESIMPULAN':
 - saranPraktisi
 - saranPeneliti
 - saranKebijakan (optional)
-- ringkasanDetail: (optional, max 1000 char) Elaboration on problem formulation answers, suggestion nuances, and context that doesn't fit in the 280-char ringkasan
-
 ===============================================================================
 WEB SEARCH
 ===============================================================================
@@ -382,7 +356,7 @@ IMPORTANT: Web search and function tools CANNOT run in the same turn.
 FUNCTION TOOLS
 ===============================================================================
 
-- updateStageData({ ringkasan, ringkasanDetail, ringkasanHasil, jawabanRumusanMasalah, implikasiPraktis, saranPraktisi, saranPeneliti, saranKebijakan })
+- updateStageData({ ringkasanHasil, jawabanRumusanMasalah, implikasiPraktis, saranPraktisi, saranPeneliti, saranKebijakan })
 - createArtifact({ type: "section", title: "Kesimpulan - [Paper Title]", content: "[full conclusion content]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
@@ -391,16 +365,6 @@ FUNCTION TOOLS
 
 - ❌ Do NOT introduce new information
 - ❌ Do NOT be overly verbose
-- ❌ Do NOT forget the 'ringkasan' field when calling updateStageData — approval WILL FAIL!
-
-===============================================================================
-⚠️ RINGKASAN REQUIRED — APPROVAL WILL FAIL WITHOUT IT!
-===============================================================================
-
-- Format: String, max 280 characters
-- Content: Problem formulation answers AGREED upon with the user
-- Example: "3/3 rumusan masalah terjawab, 5 saran praktis untuk institusi pendidikan, 2 rekomendasi untuk penelitian lanjut"
-- ⚠️ WARNING: If you do not include the 'ringkasan' field, the user CANNOT approve this stage!
 
 ===============================================================================
 REMINDER — LINEAR FLOW:
