@@ -39,11 +39,7 @@ type SearchPolicy = "active" | "passive"
 
 const ACTIVE_SEARCH_STAGES: StageScope[] = [
   "gagasan",
-  "topik",
-  "pendahuluan",
   "tinjauan_literatur",
-  "metodologi",
-  "diskusi",
 ]
 
 function getDefaultSearchPolicy(stageScope: StageScope): SearchPolicy {
