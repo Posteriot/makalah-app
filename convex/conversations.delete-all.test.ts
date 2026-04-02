@@ -74,6 +74,12 @@ function createMockDb() {
         async collect() {
           return run()
         },
+        async take(n: number) {
+          return run().slice(0, n)
+        },
+        async first() {
+          return run()[0] ?? null
+        },
         async unique() {
           const results = run()
           return results[0] ?? null

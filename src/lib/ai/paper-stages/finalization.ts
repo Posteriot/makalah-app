@@ -93,7 +93,7 @@ DISCUSSION: "Ini perubahan yang saya usulkan. Setuju?"
       |
 Save 'Pembaruan Abstrak' (updateStageData) + createArtifact
       |
-When draft + artifact are ready → submitStageForValidation() presents validation panel. User decides via Approve or Revise.
+If user is satisfied → submitStageForValidation()
 
 ===============================================================================
 OUTPUT 'PEMBARUAN ABSTRAK':
@@ -246,7 +246,7 @@ Revise based on user feedback
       |
 Save 'Daftar Pustaka' (compileDaftarPustaka mode persist + createArtifact)
       |
-When draft + artifact are ready → submitStageForValidation() presents validation panel. User decides via Approve or Revise.
+If user is satisfied → submitStageForValidation()
 
 ===============================================================================
 OUTPUT 'DAFTAR PUSTAKA':
@@ -386,7 +386,7 @@ Review with user
       |
 Save 'Lampiran' (updateStageData) + createArtifact per appendix
       |
-When draft + artifact are ready → submitStageForValidation() presents validation panel. User decides via Approve or Revise.
+If user is satisfied → submitStageForValidation()
 
 ===============================================================================
 OUTPUT 'LAMPIRAN':
@@ -529,7 +529,7 @@ Finalize judulTerpilih + alasanPemilihan
       |
 Save 'Judul' (updateStageData) + createArtifact
       |
-When draft + artifact are ready → submitStageForValidation() presents validation panel. User decides via Approve or Revise.
+If user is satisfied → submitStageForValidation()
 
 ===============================================================================
 OUTPUT 'JUDUL':
@@ -668,7 +668,7 @@ Calculate totalWordCount and completenessScore
       |
 Save 'Outline' (updateStageData) + createArtifact
       |
-When draft + artifact are ready → submitStageForValidation() presents validation panel. User decides via Approve or Revise.
+If user is satisfied → submitStageForValidation()
 
 ===============================================================================
 OUTPUT 'OUTLINE':

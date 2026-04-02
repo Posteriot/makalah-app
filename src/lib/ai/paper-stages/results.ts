@@ -85,7 +85,7 @@ Charts/graphs only if user requests
       |
 Save 'Hasil' (updateStageData) + createArtifact
       |
-When draft + artifact are ready → submitStageForValidation() presents validation panel. User decides via Approve or Revise.
+Submit after user is satisfied
 
 ===============================================================================
 OUTPUT 'HASIL':
@@ -221,7 +221,7 @@ Build implications + limitations + future research suggestions
       |
 Save 'Diskusi' (updateStageData) + createArtifact
       |
-When draft + artifact are ready → submitStageForValidation() presents validation panel. User decides via Approve or Revise.
+Submit after user is satisfied
 
 ===============================================================================
 OUTPUT 'DISKUSI':
@@ -352,7 +352,7 @@ Build suggestions for practitioners/researchers/policy
       |
 Save 'Kesimpulan' (updateStageData) + createArtifact
       |
-When draft + artifact are ready → submitStageForValidation() presents validation panel. User decides via Approve or Revise.
+Submit after user is satisfied
 
 ===============================================================================
 OUTPUT 'KESIMPULAN':

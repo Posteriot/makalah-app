@@ -80,7 +80,7 @@ const CHAT_AGENT_SECTION = {
           { text: "Periksa hasilnya dulu, lalu putuskan Revisi atau Approve & Lanjut." },
           { text: "AI diarahkan diskusi dulu sebelum drafting penuh." },
           { text: "AI menyimpan progres ke tahap aktif (auto-stage), bukan bebas lompat tahap." },
-          { text: "AI boleh auto-present validation panel saat draft siap. User memutuskan lewat Approve atau Revise." },
+          { text: "AI hanya boleh submit validasi ketika user sudah menyatakan setuju." },
         ],
       },
     },

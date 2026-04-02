@@ -114,11 +114,6 @@ function hasDangerousOverridePhrase(content: string): boolean {
         /\bignore\s+tool\s+routing\b/i,
         /\bcall\s+(web\s+search|function\s+tools)\s+and\s+(updateStageData|web\s+search)\s+in\s+the\s+same\s+turn\b/i,
         /\bsubmit\s+without\s+ringkasan\b/i,
-        // Guard still valid under auto-present contract: auto-present shows
-        // the panel, but user must still Approve/Revise. "submit without user
-        // confirmation" means bypassing the panel entirely — still forbidden.
-        // "User confirmation" = decision via validation panel, NOT explicit
-        // chat approval before the submit call.
         /\bsubmit\s+without\s+user\s+confirmation\b/i,
     ];
 

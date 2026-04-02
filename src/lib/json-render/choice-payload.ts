@@ -1,5 +1,4 @@
 import { z } from "zod"
-import type { Spec } from "@json-render/core"
 
 // ---------------------------------------------------------------------------
 // Stage
@@ -117,8 +116,6 @@ const choiceSubmitButtonPropsSchema = z.object({
   label: z.string().min(1),
   disabled: z.boolean().optional(),
 })
-
-const DEFAULT_CHOICE_SUBMIT_LABEL = "Lanjutkan"
 
 // ---------------------------------------------------------------------------
 // Component type enum + props map
@@ -240,132 +237,6 @@ export function parseJsonRendererChoicePayload(
   payload: unknown
 ): JsonRendererChoicePayload {
   return choicePayloadSchema.parse(payload)
-}
-
-export function normalizeChoiceSpec(spec: Spec): Spec {
-  if (!spec || typeof spec !== "object") return spec
-
-  const candidate = spec as Spec & {
-    root?: unknown
-    elements?: Record<string, Record<string, unknown>>
-    state?: {
-      selection?: {
-        selectedOptionId?: string | null
-        customText?: string
-      }
-    }
-  }
-
-  if (
-    typeof candidate.root !== "string" ||
-    !candidate.elements ||
-    typeof candidate.elements !== "object"
-  ) {
-    return spec
-  }
-
-  const rootElement = candidate.elements[candidate.root] as {
-    type?: unknown
-    children?: unknown
-    props?: Record<string, unknown>
-  } | undefined
-
-  if (!rootElement || rootElement.type !== "ChoiceCardShell") {
-    return spec
-  }
-
-  const rootChildren = Array.isArray(rootElement.children)
-    ? rootElement.children.filter((child): child is string => typeof child === "string")
-    : []
-
-  const optionChildIds = rootChildren.filter((childId) => {
-    const child = candidate.elements?.[childId] as { type?: unknown } | undefined
-    return child?.type === "ChoiceOptionButton"
-  })
-
-  if (optionChildIds.length === 0) {
-    return spec
-  }
-
-  const hasSubmitChild = rootChildren.some((childId) => {
-    const child = candidate.elements?.[childId] as { type?: unknown } | undefined
-    return child?.type === "ChoiceSubmitButton"
-  })
-
-  const nextSpec = {
-    ...candidate,
-    elements: Object.fromEntries(
-      Object.entries(candidate.elements).map(([key, value]) => [
-        key,
-        value && typeof value === "object"
-          ? {
-              ...value,
-              ...(Array.isArray((value as { children?: unknown }).children)
-                ? { children: [...((value as { children: unknown[] }).children ?? [])] }
-                : {}),
-              ...("props" in value
-                ? { props: { ...((value as { props?: Record<string, unknown> }).props ?? {}) } }
-                : {}),
-            }
-          : value,
-      ])
-    ),
-    state: {
-      selection: {
-        selectedOptionId:
-          typeof candidate.state?.selection?.selectedOptionId === "string" &&
-          candidate.state.selection.selectedOptionId.trim().length > 0
-            ? candidate.state.selection.selectedOptionId
-            : (
-                optionChildIds.find((childId) => {
-                  const child = candidate.elements?.[childId] as {
-                    props?: { recommended?: unknown }
-                  } | undefined
-                  return child?.props?.recommended === true
-                }) ?? optionChildIds[0]
-              ),
-        customText:
-          typeof candidate.state?.selection?.customText === "string"
-            ? candidate.state.selection.customText
-            : "",
-      },
-    },
-  }
-
-  if (!hasSubmitChild) {
-    const submitIdBase = `${candidate.root}-submit`
-    let submitId = submitIdBase
-    let counter = 2
-    while (nextSpec.elements[submitId]) {
-      submitId = `${submitIdBase}-${counter}`
-      counter += 1
-    }
-
-    nextSpec.elements[submitId] = {
-      type: "ChoiceSubmitButton",
-      props: {
-        label: DEFAULT_CHOICE_SUBMIT_LABEL,
-        disabled: false,
-      },
-      children: [],
-      on: {
-        press: {
-          action: "submitChoice",
-          params: {
-            selectedOptionId: { $state: "/selection/selectedOptionId" },
-            customText: { $state: "/selection/customText" },
-          },
-        },
-      },
-    }
-
-    nextSpec.elements[candidate.root] = {
-      ...nextSpec.elements[candidate.root],
-      children: [...rootChildren, submitId],
-    }
-  }
-
-  return nextSpec as Spec
 }
 
 // ---------------------------------------------------------------------------

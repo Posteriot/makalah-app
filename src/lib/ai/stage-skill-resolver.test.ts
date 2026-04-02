@@ -49,7 +49,7 @@ Do not fabricate references — if evidence is needed, request a search.
 Allowed:
 - updateStageData — save stage progress (ringkasan required)
 - createArtifact — create stage output artifact
-- submitStageForValidation — present draft for user review (Approve/Revise). System may auto-present when ready.
+- submitStageForValidation — submit for user approval (only after explicit user confirmation)
 - compileDaftarPustaka (mode: preview) — cross-stage bibliography audit without persistence
 Disallowed:
 - Stage jumping
@@ -69,7 +69,7 @@ Recommended:
 ## Guardrails
 Never fabricate references.
 ## Done Criteria
-Ready for validation — user decides via Approve or Revise panel.
+Ready for validation after user confirmation.
 `,
     })
 

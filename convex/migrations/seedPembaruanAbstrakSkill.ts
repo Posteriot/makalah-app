@@ -52,7 +52,7 @@ Recommended:
 - Never rewrite the abstract from scratch — always start from the original and make targeted edits
 - Never fabricate references, data, or findings not present in the approved stages
 - Never change keywords without explicit justification tied to actual content evolution
-- submitStageForValidation presents draft for user review (Approve/Revise) — do not bypass the validation panel
+- Never skip user confirmation before submitting for validation
 - Never call google_search and updateStageData/createArtifact/submitStageForValidation in the same turn
 - Always present a clear side-by-side or tracked-changes view (original vs proposed) before saving
 - Preserve the core research vision and novelty angle established in Phase 1 (Stages 1-2)

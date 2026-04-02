@@ -9,17 +9,12 @@ import { getSystemPrompt } from "@/lib/ai/chat-config"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
-import { retryMutation, retryQuery } from "@/lib/convex/retry"
+import { retryMutation } from "@/lib/convex/retry"
 import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 // isBlockedSourceDomain removed — blocklist enforcement via SKILL.md natural language
 // formatParagraphEndCitations now handled by orchestrator
 import { createPaperTools } from "@/lib/ai/paper-tools"
-import {
-    buildIncrementalSavePrepareStep,
-    buildValidationSubmitPrepareStep,
-    type IncrementalSaveConfig,
-} from "@/lib/ai/incremental-save-harness"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
@@ -52,14 +47,13 @@ import {
 } from "@/lib/ai/curated-trace"
 import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 // buildUserFacingSearchPayload now handled by orchestrator
+import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
 import { pipeYamlRender } from "@json-render/yaml"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
-import { normalizeChoiceSpec, type JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
 import {
     parseOptionalChoiceInteractionEvent,
-    isValidationChoiceInteractionEvent,
     validateChoiceInteractionEvent,
     buildChoiceContextNote,
 } from "@/lib/chat/choice-request"
@@ -153,10 +147,7 @@ export async function POST(req: Request) {
         const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 
         // 3. Get Convex User ID
-        const userId = await retryQuery(
-            () => fetchQueryWithToken(api.chatHelpers.getMyUserId, {}),
-            "chatHelpers.getMyUserId"
-        )
+        const userId = await fetchQueryWithToken(api.chatHelpers.getMyUserId, {})
         if (!userId) {
             return new Response("User not found in database", { status: 404 })
         }
@@ -1393,26 +1384,13 @@ JSON schema:
                     sources: normalizedSources && normalizedSources.length > 0 ? normalizedSources : undefined,
                     reasoningTrace: sanitizedReasoningTrace,
                     ...(jsonRendererChoice
-                        ? {
-                            jsonRendererChoice: JSON.stringify(
-                                "spec" in jsonRendererChoice
-                                    ? ({
-                                        ...jsonRendererChoice,
-                                        spec: normalizeChoiceSpec(jsonRendererChoice.spec as Spec),
-                                    } as JsonRendererChoicePayload)
-                                    : normalizeChoiceSpec(jsonRendererChoice as Spec)
-                            ),
-                        }
+                        ? { jsonRendererChoice: JSON.stringify(jsonRendererChoice) }
                         : {}),
                     ...(uiMessageId ? { uiMessageId } : {}),
                 }),
                 "messages.createMessage(assistant)"
             )
         }
-
-        // Incremental save gate — toggled to `true` when incrementalSaveConfig activates.
-        // Passed by reference to saveStageDraft tool closure.
-        const draftSaveGate = { active: false }
 
         // ============================================================
         // ARTIFACT TOOLS - Creates and updates standalone deliverable content
@@ -1497,16 +1475,6 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                 }),
                 execute: async ({ type, title, content, format, description, sources }) => {
                     try {
-                        const activeStageArtifactId = paperSession?.currentStage && paperSession.currentStage !== "completed"
-                            ? (paperSession.stageData?.[paperSession.currentStage as string] as { artifactId?: unknown } | undefined)?.artifactId
-                            : undefined
-                        if (typeof activeStageArtifactId === "string" && activeStageArtifactId.trim().length > 0) {
-                            return {
-                                success: false,
-                                error: `Artifact untuk stage aktif sudah ada (${activeStageArtifactId}). Gunakan updateArtifact, bukan createArtifact, untuk revisi konten stage ini.`,
-                            }
-                        }
-
                         const refValidation = skill.checkReferences({
                             toolName: 'createArtifact',
                             claimedSources: sources,
@@ -1554,20 +1522,14 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                         // Auto-link artifactId to paper session stageData
                         if (paperSession) {
                             try {
-                                await retryMutation(
-                                    () => fetchMutationWithToken(api.paperSessions.updateStageData, {
-                                        sessionId: paperSession._id,
-                                        stage: paperSession.currentStage,
-                                        data: { artifactId: result.artifactId },
-                                    }),
-                                    "paperSessions.updateStageData(auto-link artifactId)"
-                                )
-                            } catch (error) {
+                                await fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                    sessionId: paperSession._id,
+                                    stage: paperSession.currentStage,
+                                    data: { artifactId: result.artifactId },
+                                })
+                            } catch {
                                 // Non-critical: artifact exists but not linked to stage
-                                console.warn(
-                                    "[createArtifact] Auto-link artifactId to stageData failed:",
-                                    error instanceof Error ? error.message : String(error)
-                                )
+                                console.warn("[createArtifact] Auto-link artifactId to stageData failed")
                             }
                         }
 
@@ -1811,7 +1773,6 @@ Aturan:
                 convexToken,
                 availableSources: recentSourcesList,
                 hasRecentSources: hasRecentSourcesInDb,
-                draftSaveGate,
             }),
         } satisfies ToolSet
 
@@ -1889,8 +1850,6 @@ Aturan:
         let shouldForceGetCurrentPaperState = false
         let shouldForceSubmitValidation = false
         let missingArtifactNote = ""
-        let incrementalSaveConfig: IncrementalSaveConfig | undefined
-        let validationSubmitConfig: IncrementalSaveConfig | undefined
 
         const createSearchUnavailableResponse = async (input: {
             reasonCode: string
@@ -2045,8 +2004,6 @@ Aturan:
             let isSyncRequest = false
             let isSaveSubmitIntent = false
             let isCompileBibliographyIntent = false
-            const isChoiceValidationIntent = !!choiceInteractionEvent
-                && isValidationChoiceInteractionEvent(choiceInteractionEvent)
 
             // --- Pre-router guardrails (structural state only, NO regex intent detection) ---
             // Intent detection is the LLM router's job. Regex cannot scale to language
@@ -2230,14 +2187,12 @@ Aturan:
                 && !!paperModePrompt
                 && isSyncRequest
 
-            const wantsValidationSubmit = !enableWebSearch
+            // Force submit validation when user explicitly requests save/submit
+            shouldForceSubmitValidation = !enableWebSearch
                 && !!paperModePrompt
                 && !shouldForceGetCurrentPaperState
+                && isSaveSubmitIntent
                 && paperSession?.stageStatus === "drafting"
-                && (isSaveSubmitIntent || isChoiceValidationIntent)
-
-            // Force submit validation when user explicitly requests save/submit
-            shouldForceSubmitValidation = wantsValidationSubmit
                 && hasStageRingkasan(paperSession)
                 && hasStageArtifact(paperSession)
 
@@ -2246,51 +2201,9 @@ Aturan:
                 && hasStageRingkasan(paperSession)
                 && !hasStageArtifact(paperSession)
                 && paperSession?.stageStatus === "drafting"
-                && (isSaveSubmitIntent || isChoiceValidationIntent)
+                && isSaveSubmitIntent
                 ? `\n⚠️ ARTIFACT NOT YET CREATED for this stage. You MUST call createArtifact() with the content saved in updateStageData BEFORE calling submitStageForValidation(). Make sure to include the 'sources' parameter if AVAILABLE_WEB_SOURCES exist.\n`
                 : ""
-
-            validationSubmitConfig = wantsValidationSubmit && paperSession
-                ? buildValidationSubmitPrepareStep({
-                    hasRingkasan: hasStageRingkasan(paperSession),
-                    hasArtifact: hasStageArtifact(paperSession),
-                })
-                : undefined
-
-            // Incremental save harness: force per-field draft save in function-tools turns
-            // Only active for supported stages (gagasan/topik in v1)
-            // Note: exact-source routing coexists safely — prepareStep priority chain
-            // ensures exact-source wins when active (exactSource > sync > incremental)
-            incrementalSaveConfig = (
-                !enableWebSearch
-                && !!paperModePrompt
-                && !shouldForceGetCurrentPaperState
-                && !shouldForceSubmitValidation
-                && !validationSubmitConfig
-                && paperSession
-            )
-                ? buildIncrementalSavePrepareStep({
-                    currentStage: paperSession.currentStage as string,
-                    stageData: ((paperSession.stageData as Record<string, Record<string, unknown>>)?.[paperSession.currentStage as string]) ?? {},
-                    stageStatus: paperSession.stageStatus as string,
-                    enableWebSearch,
-                })
-                : undefined
-
-            // Activate gate — saveStageDraft execute() will check this
-            if (incrementalSaveConfig) {
-                draftSaveGate.active = true
-                console.log(
-                    `[IncrementalSave] targetField=${incrementalSaveConfig.targetField}, ` +
-                    `maxToolSteps=${incrementalSaveConfig.maxToolSteps}`
-                )
-            }
-            if (validationSubmitConfig) {
-                console.log(
-                    `[ValidationSubmit] targetField=${validationSubmitConfig.targetField}, ` +
-                    `maxToolSteps=${validationSubmitConfig.maxToolSteps}`
-                )
-            }
 
             const forcedToolTelemetryName = shouldForceGetCurrentPaperState
                 ? "getCurrentPaperState"
@@ -2323,12 +2236,6 @@ Aturan:
                     ...(missingArtifactNote
                         ? [{ role: "system" as const, content: missingArtifactNote }]
                         : []),
-                    ...(validationSubmitConfig?.systemNote
-                        ? [{ role: "system" as const, content: validationSubmitConfig.systemNote }]
-                        : []),
-                    ...(incrementalSaveConfig?.systemNote
-                        ? [{ role: "system" as const, content: incrementalSaveConfig.systemNote }]
-                        : []),
                     ...fullMessagesBase.slice(1),
                 ]
 
@@ -2337,6 +2244,9 @@ Aturan:
                     : undefined
             // Explicit sync mode: force 2-step flow
             // step 0: force getCurrentPaperState, step 1: force plain answer (no tools)
+            const maxToolSteps = shouldForceGetCurrentPaperState
+                    ? 2
+                    : 5
             const deterministicSyncPrepareStep = shouldForceGetCurrentPaperState
                 ? ({ stepNumber }: { stepNumber: number }) => {
                     if (stepNumber === 0) {
@@ -2360,9 +2270,7 @@ Aturan:
                 !enableWebSearch &&
                 !shouldForceGetCurrentPaperState &&
                 !shouldForceSubmitValidation &&
-                !validationSubmitConfig &&
                 availableExactSources.length > 0
-
             const primaryExactSourceRoutePlan = shouldApplyDeterministicExactSourceRouting
                 ? buildDeterministicExactSourcePrepareStep({
                     messages: fullMessagesGateway as Array<{ role: "system" | "user" | "assistant"; content: string }>,
@@ -2533,8 +2441,8 @@ Aturan:
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
                 toolChoice: forcedToolChoice,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                prepareStep: (primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep ?? validationSubmitConfig?.prepareStep ?? incrementalSaveConfig?.prepareStep) as any,
-                stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? (shouldForceGetCurrentPaperState ? 2 : undefined) ?? validationSubmitConfig?.maxToolSteps ?? incrementalSaveConfig?.maxToolSteps ?? 5),
+                prepareStep: (primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
+                stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
                 onFinish: async ({ text, providerMetadata, usage }) => {
                         let sources: { url: string; title: string; publishedAt?: number | null }[] | undefined
@@ -2863,15 +2771,6 @@ Aturan:
             // (Web search failover is now handled by the orchestrator's retriever chain)
             // ════════════════════════════════════════════════════════════════
 
-            // Disable incremental save for fallback — primary may have partially saved,
-            // reusing stale config risks double-save or overwrite with different content
-            const fallbackIncrementalSaveConfig = undefined as typeof incrementalSaveConfig
-            const fallbackValidationSubmitConfig = validationSubmitConfig
-            if (incrementalSaveConfig) {
-                draftSaveGate.active = false
-                console.log("[IncrementalSave] Disabled for fallback provider — avoiding stale config reuse")
-            }
-
             const fallbackTelemetryContext = skillTelemetryContext
             const fallbackReasoningProviderOptions = buildReasoningProviderOptions({
                 settings: reasoningSettings,
@@ -2894,6 +2793,7 @@ Aturan:
                 const fallbackForcedToolChoice = shouldForceSubmitValidation
                     ? ({ type: "tool", toolName: "submitStageForValidation" } as const)
                     : undefined
+                const fallbackMaxToolSteps = shouldForceGetCurrentPaperState ? 2 : 5
                 const fallbackDeterministicSyncPrepareStep = shouldForceGetCurrentPaperState
                     ? ({ stepNumber }: { stepNumber: number }) => {
                         if (stepNumber === 0) {
@@ -2917,21 +2817,12 @@ Aturan:
                     !enableWebSearch &&
                     !shouldForceGetCurrentPaperState &&
                     !shouldForceSubmitValidation &&
-                    !fallbackValidationSubmitConfig &&
                     availableExactSources.length > 0
                 const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
-                const fallbackBaseMessages = (missingArtifactNote || fallbackValidationSubmitConfig?.systemNote || fallbackIncrementalSaveConfig?.systemNote)
+                const fallbackBaseMessages = missingArtifactNote
                     ? [
                         fullMessagesBase[0],
-                        ...(missingArtifactNote
-                            ? [{ role: "system" as const, content: missingArtifactNote }]
-                            : []),
-                        ...(fallbackValidationSubmitConfig?.systemNote
-                            ? [{ role: "system" as const, content: fallbackValidationSubmitConfig.systemNote }]
-                            : []),
-                        ...(fallbackIncrementalSaveConfig?.systemNote
-                            ? [{ role: "system" as const, content: fallbackIncrementalSaveConfig.systemNote }]
-                            : []),
+                        { role: "system" as const, content: missingArtifactNote },
                         ...fullMessagesBase.slice(1),
                     ]
                     : fullMessagesBase
@@ -2953,8 +2844,8 @@ Aturan:
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep ?? fallbackValidationSubmitConfig?.prepareStep ?? fallbackIncrementalSaveConfig?.prepareStep) as any,
-                    stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? (shouldForceGetCurrentPaperState ? 2 : undefined) ?? fallbackValidationSubmitConfig?.maxToolSteps ?? fallbackIncrementalSaveConfig?.maxToolSteps ?? 5),
+                    prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
+                    stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {
                         const rawText = typeof text === "string" ? text.trim() : ""

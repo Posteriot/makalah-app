@@ -5,8 +5,6 @@ import { fetchQuery, fetchMutation, fetchAction } from "convex/nextjs"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { retryMutation, retryQuery } from "../convex/retry"
-import { isAllowedDraftField, getDraftSaveAllowedFields } from "./draft-save-fields"
-import { filterDraftSaveWarnings } from "./paper-tools-draft-save"
 
 type ExactSourceParagraph = {
     index: number
@@ -20,49 +18,6 @@ type ExactSourceDocument = {
     siteName?: string
     documentKind?: "html" | "pdf" | "unknown"
     paragraphs?: ExactSourceParagraph[]
-}
-
-type SaveStageDraftResult = {
-    success: boolean
-    stage?: string
-    field?: string
-    warning?: string
-    error?: string
-}
-
-const draftSaveQueues = new Map<string, Promise<void>>()
-const inflightDraftSaves = new Map<string, Promise<SaveStageDraftResult>>()
-
-const normalizeDraftSaveValue = (value: string) => value.trim().replace(/\r\n/g, "\n")
-
-const enqueueDraftSave = <T>(queueKey: string, task: () => Promise<T>): Promise<T> => {
-    const previous = draftSaveQueues.get(queueKey) ?? Promise.resolve()
-    const next = previous.catch(() => undefined).then(task)
-    const settled = next.then(() => undefined, () => undefined)
-    draftSaveQueues.set(queueKey, settled)
-    return next.finally(() => {
-        if (draftSaveQueues.get(queueKey) === settled) {
-            draftSaveQueues.delete(queueKey)
-        }
-    })
-}
-
-const dedupeDraftSave = (
-    dedupeKey: string,
-    queueKey: string,
-    task: () => Promise<SaveStageDraftResult>
-): Promise<SaveStageDraftResult> => {
-    const existing = inflightDraftSaves.get(dedupeKey)
-    if (existing) return existing
-
-    const run = enqueueDraftSave(queueKey, task)
-    inflightDraftSaves.set(dedupeKey, run)
-
-    return run.finally(() => {
-        if (inflightDraftSaves.get(dedupeKey) === run) {
-            inflightDraftSaves.delete(dedupeKey)
-        }
-    })
 }
 
 const buildExactAvailability = (document: ExactSourceDocument | null) => ({
@@ -83,7 +38,6 @@ export const createPaperTools = (context: {
     convexToken?: string
     availableSources?: Array<{ url: string; title: string; publishedAt?: number }>
     hasRecentSources?: boolean
-    draftSaveGate?: { active: boolean }
 }) => {
     const convexOptions = context.convexToken ? { token: context.convexToken } : undefined
     return {
@@ -429,7 +383,6 @@ The tool will:
             description: "Submit the current stage draft to the user for validation. This triggers an approval panel in the user's UI. AI stops generating after this.",
             inputSchema: z.object({}),
             execute: async () => {
-                console.log(`[AutoPresent] submitStageForValidation called — conversationId=${context.conversationId}`)
                 try {
                     const session = await retryQuery(
                         () => fetchQuery(api.paperSessions.getByConversation, {
@@ -439,117 +392,23 @@ The tool will:
                     );
                     if (!session) return { success: false, error: "Paper session not found." };
 
-                    console.log(`[AutoPresent] submitStageForValidation → mutation call, stage=${session.currentStage}, sessionId=${session._id}`)
                     await retryMutation(
                         () => fetchMutation(api.paperSessions.submitForValidation, {
                             sessionId: session._id,
                         }, convexOptions),
                         "paperSessions.submitForValidation"
                     );
-                    console.log(`[AutoPresent] submitStageForValidation → SUCCESS, panel should appear`)
                     return {
                         success: true,
                         message: "Draft submitted to user. Awaiting validation (Approve/Revise) from user before proceeding to the next stage."
                     };
                 } catch (error) {
-                    console.error("[AutoPresent] submitStageForValidation → FAILED:", error);
+                    console.error("Error in submitStageForValidation tool:", error);
                     // Forward specific error message from backend to AI
                     const errorMessage = error instanceof Error
                         ? error.message
                         : "Failed to submit validation signal.";
                     return { success: false, error: errorMessage };
-                }
-            },
-        }),
-
-        saveStageDraft: tool({
-            description:
-                "Save a single draft field for the current stage. " +
-                "System-driven incremental checkpoint — do not call unless instructed by the system.",
-            inputSchema: z.object({
-                field: z.enum([
-                    "ideKasar", "analisis", "angle",
-                    "definitif", "angleSpesifik", "argumentasiKebaruan", "researchGap",
-                ]).describe("The field to save. Must be from the current stage's allowed fields."),
-                value: z.string().min(1).describe(
-                    "The field content. Must be non-empty meaningful text based on discussion so far."
-                ),
-            }),
-            execute: async ({ field, value }) => {
-                try {
-                    if (!context.draftSaveGate?.active) {
-                        return {
-                            success: false,
-                            error: "saveStageDraft is only available during incremental save mode.",
-                        }
-                    }
-
-                    const normalizedValue = normalizeDraftSaveValue(value)
-                    const queueKey = `draft-save:${String(context.conversationId)}`
-                    const dedupeKey = `${queueKey}:${field}:${normalizedValue}`
-
-                    return await dedupeDraftSave(dedupeKey, queueKey, async () => {
-                        // Defensive re-check in case gate flips during async scheduling
-                        if (!context.draftSaveGate?.active) {
-                            return {
-                                success: false,
-                                error: "saveStageDraft is only available during incremental save mode.",
-                            }
-                        }
-
-                        const session = await retryQuery(
-                            () => fetchQuery(api.paperSessions.getByConversation, {
-                                conversationId: context.conversationId
-                            }, convexOptions),
-                            "paperSessions.getByConversation"
-                        )
-                        if (!session) return { success: false, error: "Paper session not found." }
-
-                        const currentStage = session.currentStage as string
-
-                        if (!isAllowedDraftField(currentStage, field)) {
-                            const allowed = getDraftSaveAllowedFields(currentStage)
-                            return {
-                                success: false,
-                                error: `Field "${field}" is not allowed for draft save in stage "${currentStage}". ` +
-                                    (allowed.length > 0
-                                        ? `Allowed: ${allowed.join(", ")}`
-                                        : `Stage "${currentStage}" does not support draft saves.`),
-                            }
-                        }
-
-                        const currentStageData = ((session.stageData as Record<string, Record<string, unknown>> | undefined)?.[currentStage] ?? {})
-                        const existingValue = currentStageData[field]
-                        if (typeof existingValue === "string" && normalizeDraftSaveValue(existingValue) === normalizedValue) {
-                            return {
-                                success: true,
-                                stage: currentStage,
-                                field,
-                            }
-                        }
-
-                        const result = await retryMutation(
-                            () => fetchMutation(api.paperSessions.updateStageData, {
-                                sessionId: session._id,
-                                stage: currentStage,
-                                data: { [field]: normalizedValue },
-                            }, convexOptions),
-                            "paperSessions.updateStageData"
-                        )
-
-                        const filteredWarning = filterDraftSaveWarnings(result.warning)
-
-                        return {
-                            success: true,
-                            stage: currentStage,
-                            field,
-                            ...(filteredWarning ? { warning: filteredWarning } : {}),
-                        }
-                    })
-                } catch (error) {
-                    console.error("Error in saveStageDraft tool:", error)
-                    const errorMessage = error instanceof Error ? error.message : "Failed to save draft field."
-                    return { success: false, error: errorMessage }
                 }
             },
         }),

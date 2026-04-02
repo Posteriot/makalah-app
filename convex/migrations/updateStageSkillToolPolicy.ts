@@ -60,7 +60,7 @@ const FUNCTION_TOOLS_ALLOWED = `## Function Tools
 Allowed:
 - updateStageData — save stage progress (ringkasan required)
 - createArtifact — create stage output artifact
-- submitStageForValidation — present draft for user review (Approve/Revise). System may auto-present when ready.
+- submitStageForValidation — submit for user approval (only after explicit user confirmation)
 - compileDaftarPustaka (mode: preview) — cross-stage bibliography audit without persistence`
 
 const FUNCTION_TOOLS_DISALLOWED_BASE = `Disallowed:

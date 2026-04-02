@@ -18,23 +18,6 @@ const choiceInteractionEventSchema = z.object({
 
 export type ParsedChoiceInteractionEvent = z.infer<typeof choiceInteractionEventSchema>
 
-export function isValidationChoiceInteractionEvent(
-  event: ParsedChoiceInteractionEvent
-): boolean {
-  const selectedOptionIds = event.selectedOptionIds.map((id) => id.trim().toLowerCase())
-  return (
-    selectedOptionIds.includes(VALIDATE_OPTION_ID) ||
-    selectedOptionIds.some(
-      (id) =>
-        id === "confirm" ||
-        id === "confirmed" ||
-        /^setuju(?:-|$)/.test(id) ||
-        /^approve(?:-|$)/.test(id) ||
-        /(?:validasi|validation)(?:-|$)/.test(id)
-    )
-  )
-}
-
 export function parseOptionalChoiceInteractionEvent(
   body: unknown
 ): ParsedChoiceInteractionEvent | null {
@@ -60,7 +43,15 @@ export function validateChoiceInteractionEvent(params: {
 export function buildChoiceContextNote(
   event: ParsedChoiceInteractionEvent
 ): string {
-  const requestedValidation = isValidationChoiceInteractionEvent(event)
+  const selectedOptionIds = event.selectedOptionIds.map((id) => id.trim().toLowerCase())
+  const requestedValidation =
+    selectedOptionIds.includes(VALIDATE_OPTION_ID) ||
+    selectedOptionIds.some(
+      (id) =>
+        /^setuju(?:-|$)/.test(id) ||
+        /^approve(?:-|$)/.test(id) ||
+        /(?:validasi|validation)(?:-|$)/.test(id)
+    )
 
   const baseLines = [
     "USER_CHOICE_DECISION:",

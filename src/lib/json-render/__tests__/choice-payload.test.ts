@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest"
-import type { Spec } from "@json-render/core"
 import {
   parseJsonRendererChoicePayload,
   cloneSpecWithReadOnlyState,
-  normalizeChoiceSpec,
   type JsonRendererChoicePayload,
 } from "../choice-payload"
 
@@ -146,42 +144,5 @@ describe("cloneSpecWithReadOnlyState", () => {
     expect(optB).toBeDefined()
     expect((optB.props as Record<string, unknown>).disabled).toBe(true)
     expect((optB as Record<string, unknown>).on).toBeUndefined()
-  })
-})
-
-describe("normalizeChoiceSpec", () => {
-  it("injects a default submit button when the spec is missing one", () => {
-    const payload = makeValidPayload()
-    delete payload.spec.elements.submit
-    payload.spec.elements.shell.children = ["opt-a", "opt-b"]
-
-    const normalized = normalizeChoiceSpec(payload.spec as unknown as Spec) as typeof payload.spec
-    const root = normalized.elements[normalized.root] as typeof payload.spec.elements.shell
-
-    expect(root.children).toHaveLength(3)
-    const submitId = root.children[2]
-    expect(normalized.elements[submitId].type).toBe("ChoiceSubmitButton")
-    expect((normalized.elements[submitId].props as Record<string, unknown>).label).toBe("Lanjutkan")
-  })
-
-  it("fills initial selection when missing", () => {
-    const payload = makeValidPayload()
-    const normalized = normalizeChoiceSpec({
-      ...payload.spec,
-      state: {
-        selection: {
-          selectedOptionId: null,
-          customText: "",
-        },
-      },
-    } as unknown as import("@json-render/core").Spec & { state: unknown }) as typeof payload.spec & {
-      state?: {
-        selection?: {
-          selectedOptionId?: string | null
-        }
-      }
-    }
-
-    expect(normalized.state?.selection?.selectedOptionId).toBe("opt-b")
   })
 })

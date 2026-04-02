@@ -64,40 +64,6 @@ IMPORTANT INSTRUCTIONS:
 `;
 }
 
-function getActiveStageArtifactContext(input: {
-    currentStage: PaperStageId | "completed";
-    stageData: Record<string, { artifactId?: string }>;
-    artifacts: Array<{
-        _id: Id<"artifacts">;
-        title: string;
-        version: number;
-        invalidatedAt?: number;
-    }>;
-}): string {
-    if (input.currentStage === "completed") return "";
-
-    const currentStageData = input.stageData[input.currentStage];
-    const artifactId = currentStageData?.artifactId;
-    if (!artifactId) return "";
-
-    const artifact = input.artifacts.find((item) => String(item._id) === artifactId);
-    if (!artifact) return "";
-
-    return `
-⚠️ ACTIVE STAGE ARTIFACT EXISTS:
-- Stage: ${getStageLabel(input.currentStage)}
-- Artifact ID: ${artifactId}
-- Title: "${artifact.title}"
-- Version: ${artifact.version}
-
-IMPORTANT INSTRUCTIONS:
-- This active stage already has an artifact.
-- If user asks to revise, expand, refine, or rewrite this stage artifact, MUST use updateArtifact with the artifact ID above.
-- Do NOT call createArtifact for the same active stage output again unless there is truly no artifactId in current stageData.
-- Use readArtifact if you need the full existing content before revising.
-`;
-}
-
 /**
  * Generate paper mode system prompt if conversation has active paper session.
  * Simplified approach: goal-oriented instructions + inline revision context.
@@ -241,7 +207,6 @@ export const getPaperModeSystemPrompt = async (
 
         // Artifact summaries: non-critical — empty string on failure
         let artifactSummariesSection = "";
-        let activeStageArtifactContext = "";
         if (artifactsResult.status === "fulfilled") {
             try {
                 const allArtifacts = artifactsResult.value;
@@ -272,11 +237,6 @@ export const getPaperModeSystemPrompt = async (
                     }
                 }
                 artifactSummariesSection = formatArtifactSummaries(completedArtifacts);
-                activeStageArtifactContext = getActiveStageArtifactContext({
-                    currentStage: stage,
-                    stageData: session.stageData as Record<string, { artifactId?: string }>,
-                    artifacts: allArtifacts,
-                });
             } catch (err) {
                 console.error("Error building artifact summaries:", err);
             }
@@ -328,13 +288,13 @@ GENERAL RULES:
 - Web search: If the user explicitly asks to search (e.g. "cari referensi", "search for papers"), proceed immediately — do NOT ask for confirmation again. Only ask for confirmation when YOU initiate a search that the user did not request. Do NOT say "please wait" or promise the search will happen automatically — either search now or ask first.
 - IMPORTANT: Web search and function tools CANNOT run in the same turn. After search results arrive, use function tools to save findings.
 - Do NOT call any function tool (updateStageData, createArtifact, submitStageForValidation) in a turn where you request web search. Complete search first, then save in the next turn.
-- During the gagasan and topik stages, the system will prompt you to save each field incrementally. When prompted, provide meaningful content for the requested field based on your discussion with the user so far. Quality matters — give your best analysis, not placeholder text. For other stages, save progress with updateStageData() after discussion is mature.
+- Save progress with updateStageData() after discussion is mature
 - For cross-stage reference audit, you MAY call compileDaftarPustaka({ mode: "preview" }) at any stage. This mode does not persist to DB.
 - Bibliography finalization MUST use compileDaftarPustaka({ mode: "persist", ringkasan, ringkasanDetail? }) and is only valid when active stage = daftar_pustaka.
 - MUST create artifact with createArtifact() for agreed stage output. Call in the SAME TURN as updateStageData, BEFORE submitStageForValidation. Include 'sources' from AVAILABLE_WEB_SOURCES if available. Artifact is the FINAL OUTPUT reviewed by user.
 - For artifacts, MUST use references already stored in stageData (see context below)
 - FORBIDDEN to introduce new references without web search first
-- submitStageForValidation() presents draft + artifact to user for review. System may call it automatically when stage output is ready. User decides via Approve or Revise — do NOT imply stage advancement.
+- submitStageForValidation() ONLY after user EXPLICITLY confirms satisfaction
 - Do not advance to next stage before currentStage changes in database
 - If status is pending_validation and DIRTY CONTEXT = true, MUST state "data not yet synced" and direct user to request revision so sync/draft update can proceed
 - ⚠️ CRITICAL: All function tools (updateStageData, createArtifact, submitStageForValidation, etc.) MUST be called via the tool calling API, NEVER written as text or code blocks. Writing a tool name as text does NOT execute it — the action FAILS silently.
@@ -354,7 +314,6 @@ ${memoryDigest}
 COMPLETED STAGES CONTEXT & CHECKLIST:
 Context compression active: max 5 refs, max 5 citations, detailed summary only for last 3 completed stages.
 ${formattedData}
-${activeStageArtifactContext ? `\n${activeStageArtifactContext}` : ""}
 ${artifactSummariesSection ? `\n${artifactSummariesSection}` : ""}
 ---
 `,
