@@ -1492,7 +1492,7 @@ export function ChatWindow({
         }
       }
     }
-    if (keys.size > 0) setSubmittedChoiceKeys(keys)
+    if (keys.size > 0) setSubmittedChoiceKeys((prev) => new Set([...prev, ...keys]))
   }, [historyMessages])
 
   const isLoading = status !== 'ready' && status !== 'error'
