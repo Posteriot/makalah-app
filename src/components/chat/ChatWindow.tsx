@@ -2109,6 +2109,9 @@ export function ChatWindow({
 
   const handleApprove = async () => {
     if (!userId) return
+    // [F1-DEBUG] Trace who/what triggered this approval — check browser console
+    console.trace("[F1-DEBUG] handleApprove TRIGGERED — who called this?")
+    console.log("[F1-DEBUG] handleApprove context:", { stageLabel, stageStatus: paperSession?.stageStatus, userId })
     try {
       await approveStage(userId)
       // Auto-send message agar AI aware dan bisa lanjutkan ke tahap berikutnya
