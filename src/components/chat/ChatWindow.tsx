@@ -560,6 +560,9 @@ export function ChatWindow({
   const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
   const [submittedChoiceKeys, setSubmittedChoiceKeys] = useState<Set<string>>(new Set())
+  // Optimistic bridge: show approval panel immediately when onFinish detects
+  // submitStageForValidation in message, without waiting for Convex subscription
+  const [optimisticPendingValidation, setOptimisticPendingValidation] = useState(false)
   const [chatViewportNode, setChatViewportNode] = useState<HTMLDivElement | null>(null)
   const [chatViewportWidth, setChatViewportWidth] = useState(0)
   type ActiveSheet = "proses" | "sources" | null
@@ -619,6 +622,13 @@ export function ChatWindow({
     rewindToStage,
     getStageStartIndex,
   } = usePaperSession(safeConversationId ?? undefined)
+
+  // Clear optimistic flag once Convex subscription confirms pending_validation
+  useEffect(() => {
+    if (optimisticPendingValidation && stageStatus === "pending_validation") {
+      setOptimisticPendingValidation(false)
+    }
+  }, [stageStatus, optimisticPendingValidation])
 
   useEffect(() => {
     if (!chatViewportNode) {
@@ -879,6 +889,28 @@ export function ChatWindow({
     return created
   }
 
+  /** Detect successful submitStageForValidation tool call in message parts */
+  const hasSubmitForValidation = (uiMessage: UIMessage): boolean => {
+    for (const part of uiMessage.parts ?? []) {
+      if (!part || typeof part !== "object") continue
+      const maybeToolPart = part as unknown as {
+        type?: unknown
+        state?: unknown
+        output?: unknown
+        result?: unknown
+      }
+      if (maybeToolPart.type !== "tool-submitStageForValidation") continue
+      const okState =
+        maybeToolPart.state === "output-available" || maybeToolPart.state === "result"
+      if (!okState) continue
+      const maybeOutput = (maybeToolPart.output ?? maybeToolPart.result) as unknown as {
+        success?: unknown
+      } | null
+      if (maybeOutput?.success === true) return true
+    }
+    return false
+  }
+
   const { messages, sendMessage, status, setMessages, regenerate, stop, error } = useChat({
     transport,
     onFinish: ({ message }) => {
@@ -886,6 +918,11 @@ export function ChatWindow({
       if (createdArtifacts.length > 0 && onArtifactSelect) {
         // Auto-open artifact panel dengan artifact terbaru yang dibuat
         onArtifactSelect(createdArtifacts[createdArtifacts.length - 1].artifactId)
+      }
+      // Optimistic: bridge Convex subscription latency so approval panel
+      // appears in the same render cycle as artifact panel opening
+      if (isPaperMode && hasSubmitForValidation(message)) {
+        setOptimisticPendingValidation(true)
       }
     },
     onError: (err) => {
@@ -901,6 +938,13 @@ export function ChatWindow({
       })
     }
   })
+
+  // Clear optimistic flag when new streaming starts (user approved/revised)
+  useEffect(() => {
+    if (optimisticPendingValidation && status === "streaming") {
+      setOptimisticPendingValidation(false)
+    }
+  }, [status, optimisticPendingValidation])
 
   const isQuotaRejectedError = useMemo(() => isQuotaExceededChatError(error), [error])
   const quotaRejectedOffer = useMemo(
@@ -2474,7 +2518,7 @@ export function ChatWindow({
                 Footer: () => (
                   <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                     {/* Paper Validation Panel - footer area before input */}
-                    {(isPaperMode && stageStatus === "pending_validation" && userId && status !== 'streaming') && (
+                    {(isPaperMode && (stageStatus === "pending_validation" || optimisticPendingValidation) && userId && status !== 'streaming') && (
                       <PaperValidationPanel
                         stageLabel={stageLabel}
                         onApprove={handleApprove}
