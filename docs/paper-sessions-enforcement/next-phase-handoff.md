@@ -63,6 +63,45 @@
 
 **How:** Ini butuh incremental save yang benar — bukan harness force (sudah gagal), tapi prompt instruction yang lebih kuat + model compliance enforcement.
 
+## Target 4: Stage Role Architecture — Search & Discussion Allocation
+
+**Problem:** Sekarang setiap stage pakai pola yang sama: diskusi → search → diskusi lagi → draft. Ini bikin flow bertele-tele dan fungsi agentik gak jalan. UX jelek karena user harus babysit di setiap stage.
+
+**Design Decision:**
+
+### Gagasan = Hub Stage (diskusi + search maksimal)
+- **Diskusi dimaksimalkan di sini** — eksplorasi ide, debat angle, tentukan arah
+- **Search dua macam:**
+  - Non-akademik: berita, opini, data populer (untuk konteks dan feasibility)
+  - Akademik: jurnal, paper, studi (untuk referensi awal dan gap identification)
+- Semua bahan research ditumpuk di gagasan — ini jadi fondasi seluruh paper
+- Ini satu-satunya stage yang benar-benar interaktif/diskusi
+
+### Topik = Derivasi (tanpa search)
+- Search di topik **tidak efektif** — bahan sudah ada dari gagasan
+- Topik cuma merumuskan dari bahan yang sudah dikumpulkan
+- Agent derive, user review
+
+### Outline → Kesimpulan = Review Mode (agent generate, user review)
+- Agent generate draft otomatis dari bahan gagasan + topik
+- User review dan approve/revise di artifact
+- **Bukan diskusi** — agent sudah punya semua bahan, tinggal execute
+- Pengecualian: tinjauan literatur boleh search tambahan (pendalaman akademik)
+
+### Tinjauan Literatur = Search Pendalaman
+- Search akademik yang lebih dalam dari gagasan
+- Focus: jurnal spesifik, studi empiris, theoretical frameworks
+- Ini satu-satunya stage selain gagasan yang butuh search signifikan
+
+### Impact ke Stage Instructions
+- `foundation.ts` gagasan: tambah dual-search instruction (non-akademik + akademik)
+- `foundation.ts` topik: hapus search trigger, mode derivasi
+- `core.ts` + `results.ts` + `finalization.ts`: ubah ke review mode — "generate draft, present for review"
+- `core.ts` tinjauan_literatur: pertahankan search, perkuat academic focus
+- `paper-mode-prompt.ts`: general rule yang distinguish discussion stage vs review stage
+
+---
+
 ## Files Reference
 
 Key files untuk enforcement:
