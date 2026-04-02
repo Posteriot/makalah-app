@@ -253,12 +253,18 @@ const newDigestEntry = {
 After:
 ```typescript
 const existingDigest = session.paperMemoryDigest || [];
-// Derive decision from artifact title (artifact exists — enforced by submitForValidation guard)
-const artifactId = currentStageData?.artifactId as string | undefined;
-let decisionText = "(no artifact)";
-if (artifactId) {
-    const artifact = await ctx.db.get(artifactId as Id<"artifacts">);
+// Derive decision from artifact title, with legacy fallback to ringkasan
+const stageArtifactId = currentStageData?.artifactId as string | undefined;
+let decisionText = "(no summary)";
+if (stageArtifactId) {
+    const artifact = await ctx.db.get(stageArtifactId as Id<"artifacts">);
     decisionText = artifact?.title ?? "(untitled artifact)";
+} else {
+    // Legacy fallback: existing sessions may have ringkasan but no artifact
+    const legacyRingkasan = currentStageData?.ringkasan as string | undefined;
+    if (legacyRingkasan) {
+        decisionText = legacyRingkasan.slice(0, 200);
+    }
 }
 const newDigestEntry = {
     stage: currentStage,
@@ -273,9 +279,15 @@ Note: add `Id` import from `convex/_generated/dataModel` if not already imported
 
 These derived from the removed budget calculation. Remove:
 ```typescript
-estimatedContentChars: totalContentChars,
-estimatedTokenUsage: estimatedTokens,
+const estimatedTokens = Math.ceil(totalContentChars / 4);  // line 1159
 ```
+And from the patch object:
+```typescript
+estimatedContentChars: totalContentChars,  // line 1169
+estimatedTokenUsage: estimatedTokens,      // line 1170
+```
+
+Note: These fields remain in the Convex schema (schema.ts:723-724) as optional fields. They become stale but don't break anything. No schema migration needed.
 
 **Step 8: Remove ringkasan warning from `updateStageData` mutation (lines 716-741)**
 
@@ -467,36 +479,72 @@ git commit -m "refactor(f1): remove ringkasan from compileDaftarPustaka instruct
 
 ---
 
-## Task 7: Update chat route dirty check (route.ts)
+## Task 7: Remove `hasStageRingkasan` from chat route (route.ts)
+
+`hasStageRingkasan` is defined at line 919 and called at lines 2197 and 2202. A replacement `hasStageArtifact` already exists at line 935. We delete the ringkasan one and update its callers.
 
 **Files:**
 - Modify: `src/app/api/chat/route.ts`
 
-**Step 1: Replace `hasStageRingkasan` with artifact-based check (lines 930-933)**
+**Step 1: Delete the entire `hasStageRingkasan` function (lines 919-933)**
+
+This function is no longer needed — `hasStageArtifact` (lines 935-943) provides the equivalent check.
+
+**Step 2: Update `shouldForceSubmitValidation` (line 2192-2198)**
 
 Before:
 ```typescript
-const stageKey = session.currentStage
-const stageEntry = session.stageData[stageKey] as { ringkasan?: unknown } | undefined
-return typeof stageEntry?.ringkasan === "string" && stageEntry.ringkasan.trim().length > 0
+shouldForceSubmitValidation = !enableWebSearch
+    && !!paperModePrompt
+    && !shouldForceGetCurrentPaperState
+    && isSaveSubmitIntent
+    && paperSession?.stageStatus === "drafting"
+    && hasStageRingkasan(paperSession)
+    && hasStageArtifact(paperSession)
 ```
 
-After:
+After (remove `hasStageRingkasan` line — `hasStageArtifact` already covers the readiness check):
 ```typescript
-const stageKey = session.currentStage
-const stageEntry = session.stageData[stageKey] as { artifactId?: unknown } | undefined
-return typeof stageEntry?.artifactId === "string" && stageEntry.artifactId.length > 0
+shouldForceSubmitValidation = !enableWebSearch
+    && !!paperModePrompt
+    && !shouldForceGetCurrentPaperState
+    && isSaveSubmitIntent
+    && paperSession?.stageStatus === "drafting"
+    && hasStageArtifact(paperSession)
 ```
 
-**Step 2: Verify `hasStageArtifact` function already exists (lines 935-939)**
+**Step 3: Update `missingArtifactNote` (lines 2200-2207)**
 
-Based on reading, there's already a `hasStageArtifact` helper. If the ringkasan-based function and the artifact-based function are separate, remove the ringkasan one and use the artifact one. If they serve different purposes, verify and consolidate.
+Before:
+```typescript
+missingArtifactNote = !shouldForceSubmitValidation
+    && !!paperModePrompt
+    && hasStageRingkasan(paperSession)
+    && !hasStageArtifact(paperSession)
+    && paperSession?.stageStatus === "drafting"
+    && isSaveSubmitIntent
+    ? `\n⚠️ ARTIFACT NOT YET CREATED ...`
+    : ""
+```
 
-**Step 3: Commit**
+After (replace `hasStageRingkasan` with a simple "has any stage data" check — the note should still fire when user tries to save without artifact):
+```typescript
+missingArtifactNote = !shouldForceSubmitValidation
+    && !!paperModePrompt
+    && !hasStageArtifact(paperSession)
+    && paperSession?.stageStatus === "drafting"
+    && isSaveSubmitIntent
+    ? `\n⚠️ ARTIFACT NOT YET CREATED ...`
+    : ""
+```
+
+Note: removing the `hasStageRingkasan` guard makes the note trigger more broadly (any save intent without artifact), which is actually correct behavior — the note warns about missing artifact regardless of other data state.
+
+**Step 4: Commit**
 
 ```
 git add src/app/api/chat/route.ts
-git commit -m "refactor(f1): replace ringkasan dirty check with artifact-based check in chat route"
+git commit -m "refactor(f1): remove hasStageRingkasan, use hasStageArtifact for submit guards"
 ```
 
 ---
@@ -663,6 +711,6 @@ git commit -m "refactor(f1): final cleanup — remove remaining ringkasan refere
 | 4 | Context builder + tests | 4 files | 10 min |
 | 5 | Stage instructions (14 stages) | 4 files | 10 min |
 | 6 | General prompt | 1 file | 2 min |
-| 7 | Chat route dirty check | 1 file | 2 min |
+| 7 | Chat route: delete hasStageRingkasan + update callers | 1 file | 5 min |
 | 8 | Admin UI + backend | 2 files | 10 min |
 | 9 | Verification + cleanup | - | 5 min |

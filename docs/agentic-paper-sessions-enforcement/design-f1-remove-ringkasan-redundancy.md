@@ -59,7 +59,7 @@ Artifact is the Single Source of Truth (SSOT) for stage output. Stage context fo
 
 **approveStage (line 1031+):**
 - Remove ringkasan guard (lines 1055-1060)
-- Keep artifactId guard
+- No artifactId guard needed here — `submitForValidation` (which runs first, sets `pending_validation` status) already enforces artifact existence
 
 **Content budget calculation (lines 1069-1095):**
 - Remove entirely. Current implementation is fundamentally broken:
@@ -160,7 +160,9 @@ Files:
 
 ### Layer 8: Chat Route (route.ts)
 
-- Line 931-932: Replace `hasStageRingkasan` check with `hasArtifactId` check for stage dirty status
+- Delete `hasStageRingkasan` function entirely (lines 919-933) — `hasStageArtifact` (line 935) already exists as replacement
+- Update `shouldForceSubmitValidation` (line 2197): remove `hasStageRingkasan` from condition — `hasStageArtifact` is sufficient
+- Update `missingArtifactNote` (line 2202): remove `hasStageRingkasan` — note should fire based on `!hasStageArtifact` alone
 - Artifact reminder (lines 2203-2206): keep as-is (still relevant)
 
 ### Layer 9: General Prompt (paper-mode-prompt.ts)
@@ -187,6 +189,7 @@ Files:
 - `formatArtifactSummaries()`: already handles missing artifacts (skips stages without artifactId)
 - Memory digest: fallback to `ringkasan.slice(0, 200)` when `artifactId` is absent
 - Admin UI: show "(no artifact)" badge when artifactId missing, instead of showing stale ringkasan
+- Schema fields `estimatedContentChars` and `estimatedTokenUsage` (schema.ts:723-724): optional fields that were populated by the removed budget calculation. They stay in schema (no migration), but become stale (never updated). Safe to ignore or remove in a future cleanup.
 
 ---
 
