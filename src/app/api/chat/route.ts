@@ -1629,16 +1629,16 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                 },
             }),
             readArtifact: tool({
-                description: `Baca isi lengkap sebuah artifact berdasarkan ID-nya. Gunakan tool ini jika perlu merujuk konten artifact secara utuh (bukan hanya ringkasan 500 karakter di system prompt).
+                description: `Baca isi lengkap sebuah artifact berdasarkan ID-nya. Gunakan tool ini jika perlu merujuk konten artifact secara utuh (bukan hanya summary singkat di system prompt).
 
 USE THIS TOOL WHEN:
 ✓ Perlu membaca ulang artifact dari stage sebelumnya sebagai rujukan
 ✓ User bertanya tentang isi spesifik sebuah artifact
 ✓ Perlu mengecek konten lengkap sebelum menulis revisi atau stage berikutnya
-✓ Perlu memverifikasi detail yang mungkin ter-truncate di ringkasan
+✓ Perlu memverifikasi detail yang mungkin ter-truncate di summary
 
 Tool ini mengembalikan: title, type, version, content lengkap, dan sources (jika ada).
-Artifact ID bisa didapat dari RINGKASAN ARTIFACT di system prompt atau dari getCurrentPaperState().`,
+Artifact ID bisa didapat dari ARTIFACT SUMMARY di system prompt atau dari getCurrentPaperState().`,
                 inputSchema: z.object({
                     artifactId: z.string()
                         .describe("ID artifact yang ingin dibaca."),

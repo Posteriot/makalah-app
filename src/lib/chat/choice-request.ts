@@ -70,7 +70,7 @@ export function buildChoiceContextNote(
     // daftar_pustaka has a special compilation step that must run before submit
     if (event.stage === "daftar_pustaka") {
       baseLines.push(
-        "- Next action: call compileDaftarPustaka with mode 'persist' and a ringkasan summarizing the bibliography. This compiles and deduplicates references server-side.",
+        "- Next action: call compileDaftarPustaka with mode 'persist'. This compiles and deduplicates references server-side.",
         "- After compileDaftarPustaka succeeds, call createArtifact with the compiled bibliography content.",
         "- Then call submitStageForValidation.",
         "- Do NOT call updateStageData directly — compileDaftarPustaka handles data persistence internally."

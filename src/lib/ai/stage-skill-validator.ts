@@ -113,7 +113,6 @@ function hasDangerousOverridePhrase(content: string): boolean {
         /\boverride\s+tool\s+routing\b/i,
         /\bignore\s+tool\s+routing\b/i,
         /\bcall\s+(web\s+search|function\s+tools)\s+and\s+(updateStageData|web\s+search)\s+in\s+the\s+same\s+turn\b/i,
-        /\bsubmit\s+without\s+ringkasan\b/i,
         /\bsubmit\s+without\s+user\s+confirmation\b/i,
     ];
 

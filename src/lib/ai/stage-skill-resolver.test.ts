@@ -47,22 +47,19 @@ IMPORTANT: Web search and function tools cannot run in the same turn.
 Do not fabricate references — if evidence is needed, request a search.
 ## Function Tools
 Allowed:
-- updateStageData — save stage progress (ringkasan required)
+- updateStageData — save stage progress
 - createArtifact — create stage output artifact
 - submitStageForValidation — submit for user approval (only after explicit user confirmation)
 - compileDaftarPustaka (mode: preview) — cross-stage bibliography audit without persistence
 Disallowed:
 - Stage jumping
 - compileDaftarPustaka (mode: persist) outside daftar_pustaka stage
-- Submission without ringkasan
 - Calling function tools in the same turn as web search
 - Fabricating references or factual claims
 ## Output Contract
 Required:
-- ringkasan
-Recommended:
-- ringkasanDetail
 - ideKasar
+Recommended:
 - analisis
 - angle
 - novelty
