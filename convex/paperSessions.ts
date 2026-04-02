@@ -1058,6 +1058,8 @@ export const approveStage = mutation({
             decision: decisionText,
             timestamp: now,
         };
+        // [F1-DEBUG] Log digest source — remove after testing
+        console.log(`[F1-DEBUG] approveStage digest — stage=${currentStage}, source=${stageArtifactId ? "artifact.title" : "legacy-ringkasan"}, decision="${decisionText}"`);
         const updatedDigest = [...existingDigest, newDigestEntry];
 
         // ════════════════════════════════════════════════════════════════

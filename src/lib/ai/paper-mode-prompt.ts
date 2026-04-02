@@ -204,6 +204,9 @@ export const getPaperModeSystemPrompt = async (
 
         // Format stageData into readable context
         const formattedData = formatStageData(session.stageData, stage);
+        // [F1-DEBUG] Verify no ringkasan summaries in prompt — remove after testing
+        const hasOldSummaries = formattedData.includes("COMPLETED STAGE SUMMARIES");
+        console.log(`[F1-DEBUG] formatStageData — hasOldCompletedSummaries: ${hasOldSummaries}, length: ${formattedData.length}`);
 
         // Artifact summaries: non-critical — empty string on failure
         let artifactSummariesSection = "";
@@ -237,6 +240,8 @@ export const getPaperModeSystemPrompt = async (
                     }
                 }
                 artifactSummariesSection = formatArtifactSummaries(completedArtifacts);
+                // [F1-DEBUG] Confirm artifact summaries are now the sole completed stage context — remove after testing
+                console.log(`[F1-DEBUG] artifactSummaries — ${completedArtifacts.length} completed stages, section length: ${artifactSummariesSection.length}`);
             } catch (err) {
                 console.error("Error building artifact summaries:", err);
             }

@@ -150,6 +150,12 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
             }),
             execute: async ({ data }) => {
                 try {
+                    // [F1-DEBUG] Verify ringkasan is NOT in data payload — remove after testing
+                    const dataKeys = Object.keys(data || {});
+                    const hasRingkasan = dataKeys.includes("ringkasan");
+                    console.log(`[F1-DEBUG] updateStageData called — keys: [${dataKeys.join(", ")}], hasRingkasan: ${hasRingkasan}`);
+                    if (hasRingkasan) console.warn("[F1-DEBUG] ⚠️ ringkasan STILL in data! Model may be hallucinating old schema.");
+
                     const session = await retryQuery(
                         () => fetchQuery(api.paperSessions.getByConversation, {
                             conversationId: context.conversationId
