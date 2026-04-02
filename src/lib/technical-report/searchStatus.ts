@@ -37,7 +37,10 @@ export function collectSearchStatusesFromMessages(
 export function resolveTechnicalReportSearchStatus(
   messages: UIMessage[]
 ): TechnicalReportSearchStatus | undefined {
-  const statuses = collectSearchStatusesFromMessages(messages)
+  // Only check the LAST assistant message — old errors should not persist the banner forever
+  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant")
+  if (!lastAssistant) return undefined
+  const statuses = collectSearchStatusesFromMessages([lastAssistant])
   if (statuses.some((status) => status === "error")) return "error"
   return statuses.at(-1)
 }

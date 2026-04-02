@@ -9,7 +9,7 @@ import { getSystemPrompt } from "@/lib/ai/chat-config"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
-import { retryMutation } from "@/lib/convex/retry"
+import { retryMutation, retryQuery } from "@/lib/convex/retry"
 import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 // isBlockedSourceDomain removed — blocklist enforcement via SKILL.md natural language
@@ -147,7 +147,10 @@ export async function POST(req: Request) {
         const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 
         // 3. Get Convex User ID
-        const userId = await fetchQueryWithToken(api.chatHelpers.getMyUserId, {})
+        const userId = await retryQuery(
+            () => fetchQueryWithToken(api.chatHelpers.getMyUserId, {}),
+            "chatHelpers.getMyUserId"
+        )
         if (!userId) {
             return new Response("User not found in database", { status: 404 })
         }

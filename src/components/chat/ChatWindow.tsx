@@ -2537,6 +2537,7 @@ export function ChatWindow({
                         currentStageStartIndex={currentStageStartIndex}
                         allMessages={permissionMessages}
                         stageData={stageData}
+                        currentStage={paperSession?.currentStage}
                         // Persisted artifact signals (survive page refresh)
                         persistedArtifacts={historyMsg ? messageArtifactMap.get(historyMsg._id) : undefined}
                         // File name lookup for history messages

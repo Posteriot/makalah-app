@@ -72,6 +72,8 @@ export function extractToolStatesFromReasoning(
 export function shouldShowTechnicalReportTrigger(
   input: ShouldShowTechnicalReportTriggerInput
 ): boolean {
+  // Chat recovered — don't show banner for historical errors
+  if (input.chatStatus === "ready" || input.chatStatus === "streaming" || input.chatStatus === "submitted") return false
   if (input.chatStatus === "error") return true
   if (input.searchStatus === "error") return true
   return (input.toolStates ?? []).some((tool) => {
