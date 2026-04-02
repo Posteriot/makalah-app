@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
-import { Xmark, WarningTriangle, InfoCircle, Check, AlignLeft, NavArrowDown, NavArrowRight } from "iconoir-react"
+import { Xmark, WarningTriangle, InfoCircle, Check, NavArrowDown, NavArrowRight } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
 
 const STAGE_LABELS: Record<string, string> = {
@@ -30,7 +30,7 @@ interface SessionSuggestion {
 
 function generateSessionSuggestions(data: {
   session: { isDirty?: boolean; digestCount: number; currentStage: string; stageStatus: string }
-  stageDetails: Array<{ hasRingkasan: boolean; validatedAt: unknown; superseded: boolean; revisionCount: number }>
+  stageDetails: Array<{ hasArtifact: boolean; validatedAt: unknown; superseded: boolean; revisionCount: number }>
   rewindHistory: Array<unknown>
   invalidatedArtifacts: number
 }): SessionSuggestion[] {
@@ -191,7 +191,7 @@ export function SessionDetailDialog({
                         {STAGE_LABELS[d.stage] || d.stage}
                       </span>
                       <span className="text-foreground">
-                        {d.ringkasan || "(kosong)"}
+                        {d.decision || "(kosong)"}
                       </span>
                       {d.superseded && (
                         <span className="shrink-0 rounded-[6px] border border-rose-500/30 bg-rose-500/10 px-1 py-0.5 text-[8px] font-bold uppercase text-rose-500">
@@ -244,10 +244,8 @@ export function SessionDetailDialog({
 
 type StageDetail = {
   stageId: string
-  hasRingkasan: boolean
-  hasRingkasanDetail: boolean
-  ringkasan: string | null
-  ringkasanDetail: string | null
+  hasArtifact: boolean
+  artifactId: string | null
   validatedAt: number | null
   superseded: boolean
   revisionCount: number
@@ -260,7 +258,7 @@ function StageDataList({ stages }: { stages: StageDetail[] }) {
     <div className="space-y-0.5">
       {stages.map((s) => {
         const isOpen = expanded === s.stageId
-        const hasContent = s.hasRingkasan || s.hasRingkasanDetail
+        const hasContent = s.hasArtifact
         return (
           <div key={s.stageId}>
             <button
@@ -293,24 +291,14 @@ function StageDataList({ stages }: { stages: StageDetail[] }) {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {s.hasRingkasan ? (
+                {s.hasArtifact ? (
                   <span className="inline-flex items-center gap-1 rounded-[6px] border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-sky-600">
                     <Check className="size-2.5" strokeWidth={2.5} />
-                    ringkasan
+                    artifact
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 rounded-[6px] border border-muted/50 bg-muted/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50">
-                    ringkasan
-                  </span>
-                )}
-                {s.hasRingkasanDetail ? (
-                  <span className="inline-flex items-center gap-1 rounded-[6px] border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-emerald-600">
-                    <AlignLeft className="size-2.5" strokeWidth={2.5} />
-                    detail
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded-[6px] border border-muted/50 bg-muted/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50">
-                    detail
+                    artifact
                   </span>
                 )}
                 {s.revisionCount > 0 && (
@@ -322,16 +310,10 @@ function StageDataList({ stages }: { stages: StageDetail[] }) {
             </button>
             {isOpen && (
               <div className="ml-5 mb-2 space-y-2 border-l-2 border-border pl-3 py-2">
-                {s.ringkasan && (
+                {s.artifactId && (
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-sky-600">Ringkasan</span>
-                    <p className="text-xs text-foreground mt-0.5 font-mono leading-relaxed">{s.ringkasan}</p>
-                  </div>
-                )}
-                {s.ringkasanDetail && (
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">Detail</span>
-                    <p className="text-xs text-foreground mt-0.5 font-mono leading-relaxed">{s.ringkasanDetail}</p>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-sky-600">Artifact ID</span>
+                    <p className="text-xs text-foreground mt-0.5 font-mono leading-relaxed">{s.artifactId}</p>
                   </div>
                 )}
               </div>
