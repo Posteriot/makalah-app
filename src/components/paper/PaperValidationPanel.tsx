@@ -1,11 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Check, EditPencil, Send, WarningCircle, Xmark } from "iconoir-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+/**
+ * Activation delay (ms) before approve button becomes clickable.
+ * Prevents phantom clicks from layout shift — panel appears under cursor
+ * and stale mouse events register as accidental approval.
+ */
+const APPROVE_ACTIVATION_DELAY_MS = 800;
 
 interface PaperValidationPanelProps {
     stageLabel: string;
@@ -27,7 +34,14 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
     const [showRevisionForm, setShowRevisionForm] = useState(false);
     const [feedback, setFeedback] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [approveReady, setApproveReady] = useState(false);
     const isRevisionFeedbackReady = feedback.trim().length > 0 && !isSubmitting;
+
+    // Activation delay: prevent phantom clicks from layout shift
+    useEffect(() => {
+        const timer = setTimeout(() => setApproveReady(true), APPROVE_ACTIVATION_DELAY_MS);
+        return () => clearTimeout(timer);
+    }, []);
 
     const handleApprove = async () => {
         setIsSubmitting(true);
@@ -143,11 +157,12 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                         <Button
                             size="sm"
                             onClick={handleApprove}
-                            disabled={isSubmitting || isLoading}
+                            disabled={isSubmitting || isLoading || !approveReady}
                             className={cn(
-                                "gap-2 h-9 px-4 rounded-action",
+                                "gap-2 h-9 px-4 rounded-action transition-opacity",
                                 forceMobileLayout ? "w-full" : "flex-1 md:flex-initial",
-                                "chat-validation-approve-button"
+                                "chat-validation-approve-button",
+                                !approveReady && "opacity-50 cursor-not-allowed"
                             )}
                         >
                             <Check className="h-3.5 w-3.5" />
