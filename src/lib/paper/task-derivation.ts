@@ -61,7 +61,7 @@ const STAGE_TASKS: Record<PaperStageId, TaskDefinition[]> = {
     { field: "angle", label: "Tentukan angle", type: "string" },
   ],
   topik: [
-    { field: "definitif", label: "Definisikan judul", type: "string" },
+    { field: "definitif", label: "Rumuskan topik definitif", type: "string" },
     { field: "angleSpesifik", label: "Spesifikasi angle", type: "string" },
     { field: "argumentasiKebaruan", label: "Argumentasi kebaruan", type: "string" },
     { field: "researchGap", label: "Identifikasi research gap", type: "string" },
