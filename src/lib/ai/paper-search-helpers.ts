@@ -25,25 +25,10 @@ export const STAGE_RESEARCH_REQUIREMENTS: Partial<Record<PaperStageId, {
         minCount: 2,
         description: "referensi awal untuk mendukung kelayakan ide"
     },
-    topik: {
-        requiredField: "referensiPendukung",
-        minCount: 3,
-        description: "referensi pendukung untuk memperkuat topik"
-    },
     tinjauan_literatur: {
         requiredField: "referensi",
         minCount: 5,
         description: "referensi untuk tinjauan literatur"
-    },
-    pendahuluan: {
-        requiredField: "sitasiAPA",
-        minCount: 2,
-        description: "sitasi APA untuk mendukung latar belakang"
-    },
-    diskusi: {
-        requiredField: "sitasiTambahan",
-        minCount: 2,
-        description: "sitasi tambahan untuk perbandingan literatur"
     },
 }
 

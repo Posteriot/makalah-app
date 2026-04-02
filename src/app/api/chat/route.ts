@@ -886,25 +886,10 @@ ${sourcesJson}`
                     const minCount = STAGE_RESEARCH_REQUIREMENTS.gagasan?.minCount ?? 1
                     return Array.isArray(data?.referensiAwal) && data.referensiAwal.length >= minCount
                 }
-                case "topik": {
-                    const data = stageData.topik as { referensiPendukung?: unknown[] } | undefined
-                    const minCount = STAGE_RESEARCH_REQUIREMENTS.topik?.minCount ?? 1
-                    return Array.isArray(data?.referensiPendukung) && data.referensiPendukung.length >= minCount
-                }
                 case "tinjauan_literatur": {
                     const data = stageData.tinjauan_literatur as { referensi?: unknown[] } | undefined
                     const minCount = STAGE_RESEARCH_REQUIREMENTS.tinjauan_literatur?.minCount ?? 1
                     return Array.isArray(data?.referensi) && data.referensi.length >= minCount
-                }
-                case "pendahuluan": {
-                    const data = stageData.pendahuluan as { sitasiAPA?: unknown[] } | undefined
-                    const minCount = STAGE_RESEARCH_REQUIREMENTS.pendahuluan?.minCount ?? 1
-                    return Array.isArray(data?.sitasiAPA) && data.sitasiAPA.length >= minCount
-                }
-                case "diskusi": {
-                    const data = stageData.diskusi as { sitasiTambahan?: unknown[] } | undefined
-                    const minCount = STAGE_RESEARCH_REQUIREMENTS.diskusi?.minCount ?? 1
-                    return Array.isArray(data?.sitasiTambahan) && data.sitasiTambahan.length >= minCount
                 }
                 case "daftar_pustaka": {
                     const data = stageData.daftar_pustaka as { entries?: unknown[] } | undefined
