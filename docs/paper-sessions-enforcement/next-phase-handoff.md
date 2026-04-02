@@ -54,6 +54,26 @@
 
 **How:** Ubah stage instructions: "Create artifact EARLY as working draft (v1). Use chat for discussion only. Update artifact as discussion matures. Final artifact version is the deliverable that feeds the next stage. Do NOT write full draft content in chat messages."
 
+### Target 5: Eliminate Redundant Ringkasan — Use Artifact as Single Source of Truth
+
+**Problem:** Model harus generate dua output per stage: artifact (full content) + ringkasan (280 chars) + ringkasanDetail (1000 chars) di `updateStageData`. Ini dobel — artifact sudah punya full content, ringkasan cuma versi pendek dari hal yang sama. Boros token, boros effort model.
+
+**Current usage of ringkasan:**
+1. Guard di `submitForValidation` — approval gagal tanpa ringkasan
+2. `formatStageData` inject ringkasan ke system prompt sebagai context completed stages
+3. `ringkasanDetail` sebagai elaborasi buat nuance yang gak muat di 280 chars
+
+**Expected behavior:**
+- Ringkasan TIDAK ditulis terpisah oleh model
+- Guard di `submitForValidation` cukup cek artifact exists (sudah diimplementasi)
+- Context completed stages di-derive dari artifact: `artifact.title` + truncated `artifact.content` (first 280 chars)
+- `ringkasan` dan `ringkasanDetail` fields dihapus dari `updateStageData` tool schema
+- `formatStageData` baca dari artifact, bukan dari stageData.ringkasan
+
+**Impact:** Mengurangi token usage per stage, menghilangkan satu tool call (updateStageData cuma perlu data fields, bukan ringkasan), mempercepat flow karena model gak perlu compose ringkasan terpisah.
+
+---
+
 ### Target 3: Plan/Task Auto-Update
 
 **Problem:** UnifiedProcessCard task progress hanya update dari stageData fields. Tapi banyak progress yang terjadi di chat (diskusi, keputusan) yang gak reflected di task card karena model gak call updateStageData.
