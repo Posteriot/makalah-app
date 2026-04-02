@@ -44,21 +44,9 @@ async function callHandler(ctx: any, args: { sessionId: string }) {
 }
 
 describe("submitForValidation — artifact guard", () => {
-  it("throws when ringkasan is missing", async () => {
+  it("throws when artifactId is missing", async () => {
     const session = makeSession({
       stageData: { gagasan: {} },
-    });
-    mockedRequirePaperSessionOwner.mockResolvedValue({ session } as never);
-    const { ctx } = makeMockCtx();
-
-    await expect(callHandler(ctx, { sessionId: "paperSessions_1" })).rejects.toThrow(
-      /Ringkasan must be provided/
-    );
-  });
-
-  it("throws when artifactId is missing but ringkasan exists", async () => {
-    const session = makeSession({
-      stageData: { gagasan: { ringkasan: "Test summary" } },
     });
     mockedRequirePaperSessionOwner.mockResolvedValue({ session } as never);
     const { ctx } = makeMockCtx();
@@ -68,9 +56,9 @@ describe("submitForValidation — artifact guard", () => {
     );
   });
 
-  it("succeeds when both ringkasan and artifactId exist", async () => {
+  it("succeeds when artifactId exists", async () => {
     const session = makeSession({
-      stageData: { gagasan: { ringkasan: "Test summary", artifactId: "artifact_123" } },
+      stageData: { gagasan: { artifactId: "artifact_123" } },
     });
     mockedRequirePaperSessionOwner.mockResolvedValue({ session } as never);
     const { ctx, patches } = makeMockCtx();
