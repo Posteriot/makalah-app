@@ -45,12 +45,14 @@
 **Problem:** Model tulis draft panjang di chat window, lalu create artifact di akhir sebagai "barang jadi". Chat jadi tempat draft — user scroll panjang. Artifact cuma jadi display case.
 
 **Expected behavior:**
-- Artifact dibuat lebih awal sebagai draft workspace
-- Model update artifact incrementally (updateArtifact) saat diskusi progresses
+- Artifact punya versioning: draft = v1, revisi = v2, dst.
+- Model create artifact lebih awal sebagai draft (v1)
+- Model update artifact (updateArtifact) saat diskusi progresses → v2, v3, ...
+- **Final version artifact = input untuk stage berikutnya** — stage instructions reference artifact version terakhir dari stage sebelumnya
 - Chat hanya berisi diskusi, keputusan, dan pointers ke artifact
-- User baca draft di artifact panel, bukan di chat scroll
+- TIDAK BOLEH ada draft panjang di chat window
 
-**How:** Ubah stage instructions: "Create artifact EARLY as working draft. Use chat for discussion only. Update artifact as discussion matures. Do NOT write full draft content in chat messages."
+**How:** Ubah stage instructions: "Create artifact EARLY as working draft (v1). Use chat for discussion only. Update artifact as discussion matures. Final artifact version is the deliverable that feeds the next stage. Do NOT write full draft content in chat messages."
 
 ### Target 3: Plan/Task Auto-Update
 
