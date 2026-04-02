@@ -14,11 +14,7 @@ const MANDATORY_SECTIONS = [
 
 const ACTIVE_SEARCH_STAGES: PaperStageId[] = [
     "gagasan",
-    "topik",
-    "pendahuluan",
     "tinjauan_literatur",
-    "metodologi",
-    "diskusi",
 ];
 
 type ValidationIssue = {

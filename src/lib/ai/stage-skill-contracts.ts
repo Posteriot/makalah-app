@@ -1,23 +1,13 @@
 import type { PaperStageId } from "../../../convex/paperSessions/constants";
 
 export const ACTIVE_SEARCH_STAGES: PaperStageId[] = [
-    "gagasan",
-    "topik",
-    "pendahuluan",
-    "tinjauan_literatur",
-    "metodologi",
-    "diskusi",
+    "gagasan", "tinjauan_literatur",
 ];
 
 export const PASSIVE_SEARCH_STAGES: PaperStageId[] = [
-    "outline",
-    "abstrak",
-    "hasil",
-    "kesimpulan",
-    "pembaruan_abstrak",
-    "daftar_pustaka",
-    "lampiran",
-    "judul",
+    "topik", "outline", "abstrak", "pendahuluan", "metodologi",
+    "hasil", "diskusi", "kesimpulan",
+    "pembaruan_abstrak", "daftar_pustaka", "lampiran", "judul",
 ];
 
 export function getExpectedSearchPolicy(stage: PaperStageId): "active" | "passive" {
