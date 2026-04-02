@@ -109,6 +109,7 @@ WEB SEARCH
 
 PASSIVE MODE: Web search should ONLY be used if the user explicitly requests it.
 Do NOT proactively initiate search at this stage. This stage compiles existing data.
+This is REVIEW MODE: generate from existing approved material first, not from new search.
 If the user explicitly requests search, run it immediately in this turn.
 If the user has not explicitly requested search, you may recommend a search and ask for confirmation first.
 Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request.
@@ -252,6 +253,7 @@ WEB SEARCH
 PASSIVE MODE: Web search should ONLY be used if the user explicitly requests
 verification/enrichment of incomplete references. Do NOT proactively initiate
 search at this stage.
+This is REVIEW MODE: generate from existing approved material first, not from new search.
 If the user explicitly requests search, run it immediately in this turn.
 If the user has not explicitly requested search, you may recommend a search and ask for confirmation first.
 Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request.
@@ -379,6 +381,7 @@ WEB SEARCH
 
 PASSIVE MODE: Web search should ONLY be used if the user explicitly asks to find
 appendix templates/examples. Do NOT proactively initiate search at this stage.
+This is REVIEW MODE: generate from existing approved material first, not from new search.
 If the user explicitly requests search, run it immediately in this turn.
 If the user has not explicitly requested search, you may recommend a search and ask for confirmation first.
 Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request.
@@ -511,6 +514,7 @@ WEB SEARCH
 
 PASSIVE MODE: Web search should ONLY be used if the user explicitly asks to find
 title inspiration from similar papers. Do NOT proactively initiate search at this stage.
+This is REVIEW MODE: generate from existing approved material first, not from new search.
 If the user explicitly requests search, run it immediately in this turn.
 If the user has not explicitly requested search, you may recommend a search and ask for confirmation first.
 Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request.
@@ -642,6 +646,7 @@ WEB SEARCH
 PASSIVE MODE: Web search should ONLY be used if the user explicitly asks to find
 example paper structures for similar topics. Do NOT proactively initiate search
 at this stage.
+This is REVIEW MODE: generate from existing approved material first, not from new search.
 If the user explicitly requests search, run it immediately in this turn.
 If the user has not explicitly requested search, you may recommend a search and ask for confirmation first.
 Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request.

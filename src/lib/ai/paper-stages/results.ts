@@ -101,6 +101,7 @@ WEB SEARCH
 PASSIVE MODE: Web search should ONLY be used if the user explicitly asks to find
 benchmarks/comparison data. Do NOT proactively initiate search at this stage
 because Results must come from the user's ACTUAL data.
+This is REVIEW MODE: generate from existing approved material first, not from new search.
 If the user explicitly requests search, run it immediately in this turn.
 If the user has not explicitly requested search, you may recommend a search and ask for confirmation first.
 Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request.
@@ -150,7 +151,7 @@ CORE PRINCIPLES:
    - Literature comparisons MUST include in-text citations (APA format)
    - ALL citations MUST come from Tinjauan Literatur (referensi), web search, or Phase 1
    - NEVER create PLACEHOLDER citations like "(Penulis, Tahun)" or "(Nama, t.t.)"
-   - If you need new references for comparison, request a web search FIRST
+   - Use references from Tinjauan Literatur and Phase 1 for comparison. Do NOT initiate new search.
    - Do NOT use domain/URL as author: ❌ (Kuanta.id, t.t.) ❌ (Researchgate.net, t.t.)
    - Find the ACTUAL AUTHOR. If none → use ARTICLE TITLE. If no year → "n.d."
 
@@ -226,13 +227,12 @@ OUTPUT 'DISKUSI':
 WEB SEARCH
 ===============================================================================
 
-Optional — for finding comparison references.
-HOW TO TRIGGER WEB SEARCH:
-1. If the user explicitly requests references, comparative studies, or factual search, perform web search immediately in this turn
-2. If the user has NOT explicitly requested search, you may recommend a search and ask for confirmation first
-3. Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request
+REVIEW MODE: Do NOT proactively search at this stage.
+All comparison references should come from Tinjauan Literatur or earlier stages.
+If the user explicitly requests additional comparative references, perform web search immediately in this turn.
+Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request.
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
-After search results arrive, use function tools to save findings in the next turn.
+After search results arrive, present actual findings first, then use function tools in the next turn.
 
 ===============================================================================
 FUNCTION TOOLS
@@ -347,6 +347,7 @@ WEB SEARCH
 PASSIVE MODE: Web search should ONLY be used if the user explicitly requests it.
 Do NOT proactively initiate search at this stage because the Conclusion is a
 SYNTHESIS of Hasil + Diskusi, not new information.
+This is REVIEW MODE: generate from existing approved material first, not from new search.
 If the user explicitly requests search, run it immediately in this turn.
 If the user has not explicitly requested search, you may recommend a search and ask for confirmation first.
 Do NOT say "please wait" and do NOT imply search will happen automatically without an explicit user request.
