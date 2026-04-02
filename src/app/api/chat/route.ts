@@ -22,7 +22,7 @@ import { ACTIVE_SEARCH_STAGES, PASSIVE_SEARCH_STAGES } from "@/lib/ai/stage-skil
 import { getStageLabel, type PaperStageId } from "../../../../convex/paperSessions/constants"
 import {
     isStageResearchIncomplete,
-    PAPER_TOOLS_ONLY_NOTE,
+    getPaperToolsOnlyNote,
     getResearchIncompleteNote,
     getFunctionToolsModeNote,
     STAGE_RESEARCH_REQUIREMENTS,
@@ -2037,7 +2037,7 @@ Aturan:
                     } else if (searchAlreadyDone) {
                         activeStageSearchNote = getFunctionToolsModeNote("Search completed")
                     } else {
-                        activeStageSearchNote = PAPER_TOOLS_ONLY_NOTE
+                        activeStageSearchNote = getPaperToolsOnlyNote(currentStage as string)
                     }
                 }
 
@@ -2117,7 +2117,7 @@ Aturan:
             }
 
             if (!enableWebSearch && paperModePrompt && !activeStageSearchNote) {
-                activeStageSearchNote = PAPER_TOOLS_ONLY_NOTE
+                activeStageSearchNote = getPaperToolsOnlyNote(currentStage as string)
             }
 
             const requestedResponseMode = inferSearchResponseMode({
