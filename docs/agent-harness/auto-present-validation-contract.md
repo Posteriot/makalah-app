@@ -37,7 +37,7 @@
 
 **Files:**
 - Modify: `convex/paperSessions.ts:993-998`
-- Test: Buat file test baru atau pakai file Convex test yang sesuai (cek apakah `convex/paperSessions.test.ts` sudah ada; kalau belum, buat baru atau tambahkan ke test file Convex terdekat yang test paperSessions mutations)
+- Test: Create new file `convex/paperSessions.test.ts` specifically for the submit/approve contract tests in this plan. Reuse the same file in Task 11.
 
 **Step 1: Write the failing test**
 
@@ -52,12 +52,16 @@ test("submitForValidation rejects when artifactId is missing", async () => {
 })
 ```
 
-**Step 2: Run test to verify it fails**
+**Step 2: Create the test file**
+
+If `convex/paperSessions.test.ts` does not exist yet, create it first and place the failing test there.
+
+**Step 3: Run test to verify it fails**
 
 Run: `npx vitest run convex/paperSessions.test.ts -t "submitForValidation rejects when artifactId"`
 Expected: FAIL (current code only checks ringkasan)
 
-**Step 3: Add artifact guard after ringkasan check**
+**Step 4: Add artifact guard after ringkasan check**
 
 In `convex/paperSessions.ts`, after the ringkasan guard (line 998), add:
 
@@ -71,12 +75,12 @@ if (!artifactId) {
 }
 ```
 
-**Step 4: Run test to verify it passes**
+**Step 5: Run test to verify it passes**
 
 Run: `npx vitest run convex/paperSessions.test.ts -t "submitForValidation rejects when artifactId"`
 Expected: PASS
 
-**Step 5: Commit**
+**Step 6: Commit**
 
 ```bash
 git add convex/paperSessions.ts convex/paperSessions.test.ts
@@ -403,7 +407,7 @@ git commit -m "docs: update architecture decision — auto-present replaces no-a
 ## Task 11: Add regression tests for new contract
 
 **Files:**
-- Buat file test baru atau pakai file Convex test yang sesuai (sama seperti Task 1 — gunakan file test yang sama)
+- Modify: `convex/paperSessions.test.ts` (the test file created in Task 1)
 
 **Step 1: Write tests**
 

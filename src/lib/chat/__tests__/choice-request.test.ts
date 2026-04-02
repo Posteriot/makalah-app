@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest"
-import { parseOptionalChoiceInteractionEvent, buildChoiceContextNote } from "../choice-request"
+import {
+  parseOptionalChoiceInteractionEvent,
+  buildChoiceContextNote,
+  isValidationChoiceInteractionEvent,
+} from "../choice-request"
 
 describe("parseOptionalChoiceInteractionEvent", () => {
   it("returns null when no interactionEvent", () => {
@@ -53,6 +57,16 @@ describe("buildChoiceContextNote", () => {
     })
     expect(note).toContain("Mode: validation-ready")
     expect(note).toContain("submitStageForValidation")
+  })
+
+  it("treats generic confirm option as validation-ready", () => {
+    const event = {
+      ...baseEvent,
+      selectedOptionIds: ["confirm"],
+    }
+    expect(isValidationChoiceInteractionEvent(event)).toBe(true)
+    const note = buildChoiceContextNote(event)
+    expect(note).toContain("Mode: validation-ready")
   })
 
   it("includes custom text when present", () => {

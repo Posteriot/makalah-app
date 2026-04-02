@@ -19,11 +19,11 @@ vi.mock("../convex/retry", () => ({
 
 type SaveStageDraftExecute = (input: { field: string; value: string }) => Promise<Record<string, unknown>>
 
-const getSaveStageDraftExecute = (): SaveStageDraftExecute => {
+const getSaveStageDraftExecute = (draftSaveGate: { active: boolean } = { active: true }): SaveStageDraftExecute => {
   const tools = createPaperTools({
     userId: "user_1" as never,
     conversationId: "conv_1" as never,
-    draftSaveGate: { active: true },
+    draftSaveGate,
   }) as unknown as {
     saveStageDraft?: {
       execute?: SaveStageDraftExecute
@@ -105,6 +105,28 @@ describe("createPaperTools.saveStageDraft", () => {
     expect(fetchMutationMock).not.toHaveBeenCalled()
   })
 
+  it("fails fast when gate inactive, including duplicate identical calls", async () => {
+    const fetchMutationMock = vi.mocked(fetchMutation)
+    const fetchQueryMock = vi.mocked(fetchQuery)
+
+    const execute = getSaveStageDraftExecute({ active: false })
+    const [firstResult, secondResult] = await Promise.all([
+      execute({ field: "ideKasar", value: "Rumusan awal" }),
+      execute({ field: "ideKasar", value: "Rumusan awal" }),
+    ])
+
+    expect(firstResult).toMatchObject({
+      success: false,
+      error: "saveStageDraft is only available during incremental save mode.",
+    })
+    expect(secondResult).toMatchObject({
+      success: false,
+      error: "saveStageDraft is only available during incremental save mode.",
+    })
+    expect(fetchQueryMock).not.toHaveBeenCalled()
+    expect(fetchMutationMock).not.toHaveBeenCalled()
+  })
+
   it("serializes concurrent saves for different fields — both fire, no parallel writes", async () => {
     const fetchQueryMock = vi.mocked(fetchQuery)
     const fetchMutationMock = vi.mocked(fetchMutation)
@@ -117,8 +139,9 @@ describe("createPaperTools.saveStageDraft", () => {
 
     const callOrder: string[] = []
     fetchMutationMock.mockImplementation(
-      (_api: unknown, args: Record<string, unknown>) =>
+      (...mockArgs: unknown[]) =>
         new Promise((resolve) => {
+          const args = (mockArgs[1] ?? {}) as Record<string, unknown>
           const data = args.data as Record<string, string>
           const field = Object.keys(data)[0]
           callOrder.push(`start:${field}`)

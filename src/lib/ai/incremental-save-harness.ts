@@ -23,6 +23,43 @@ export type IncrementalSaveConfig = {
   targetField: string
 }
 
+export function buildValidationSubmitPrepareStep(opts: {
+  hasRingkasan: boolean
+  hasArtifact: boolean
+}): IncrementalSaveConfig {
+  const forcedSteps = [
+    ...(opts.hasRingkasan ? [] : ["updateStageData"]),
+    ...(opts.hasArtifact ? [] : ["createArtifact"]),
+    "submitStageForValidation",
+  ] as const
+
+  return {
+    targetField: "_validationSubmit",
+    maxToolSteps: forcedSteps.length + 1,
+    systemNote: buildValidationSubmitNote({
+      hasRingkasan: opts.hasRingkasan,
+      hasArtifact: opts.hasArtifact,
+    }),
+    prepareStep: ({ stepNumber }) => {
+      const toolName = forcedSteps[stepNumber]
+      if (toolName) {
+        return {
+          toolChoice: { type: "tool", toolName } as const,
+          activeTools: [toolName],
+        }
+      }
+
+      if (stepNumber === forcedSteps.length) {
+        return {
+          toolChoice: "none" as const,
+        }
+      }
+
+      return undefined
+    },
+  }
+}
+
 export function buildIncrementalSavePrepareStep(opts: {
   currentStage: string
   stageData: Record<string, unknown>
@@ -138,5 +175,27 @@ All draft fields are complete. Now finalize this stage:
 2. Call createArtifact with the full paper content for this stage (include sources)
 3. Call submitStageForValidation to present the approval panel to the user
 All three calls MUST happen in this turn, in this order.
+══════════════════════════════════════════════════════════════`
+}
+
+function buildValidationSubmitNote(opts: {
+  hasRingkasan: boolean
+  hasArtifact: boolean
+}): string {
+  return `
+══════════════════════════════════════════════════════════════
+MODE: VALIDATION_SUBMIT_FLOW
+User explicitly confirmed the current direction and wants to proceed.
+You MUST finish the current stage in THIS turn. Do NOT say "I will save",
+"I will create", "I will submit", or any future-tense promise.
+${opts.hasRingkasan
+    ? "- Ringkasan already exists in stageData."
+    : '- First call updateStageData with ringkasan and any missing stage fields needed to finalize this stage.'}
+${opts.hasArtifact
+    ? "- Artifact already exists for this stage."
+    : "- Then call createArtifact for the finalized stage output."}
+- Then call submitStageForValidation.
+- After tool calls finish, reply briefly in present/past tense only:
+  confirm the draft has been prepared/submitted. Do not promise future actions.
 ══════════════════════════════════════════════════════════════`
 }

@@ -64,6 +64,40 @@ IMPORTANT INSTRUCTIONS:
 `;
 }
 
+function getActiveStageArtifactContext(input: {
+    currentStage: PaperStageId | "completed";
+    stageData: Record<string, { artifactId?: string }>;
+    artifacts: Array<{
+        _id: Id<"artifacts">;
+        title: string;
+        version: number;
+        invalidatedAt?: number;
+    }>;
+}): string {
+    if (input.currentStage === "completed") return "";
+
+    const currentStageData = input.stageData[input.currentStage];
+    const artifactId = currentStageData?.artifactId;
+    if (!artifactId) return "";
+
+    const artifact = input.artifacts.find((item) => String(item._id) === artifactId);
+    if (!artifact) return "";
+
+    return `
+⚠️ ACTIVE STAGE ARTIFACT EXISTS:
+- Stage: ${getStageLabel(input.currentStage)}
+- Artifact ID: ${artifactId}
+- Title: "${artifact.title}"
+- Version: ${artifact.version}
+
+IMPORTANT INSTRUCTIONS:
+- This active stage already has an artifact.
+- If user asks to revise, expand, refine, or rewrite this stage artifact, MUST use updateArtifact with the artifact ID above.
+- Do NOT call createArtifact for the same active stage output again unless there is truly no artifactId in current stageData.
+- Use readArtifact if you need the full existing content before revising.
+`;
+}
+
 /**
  * Generate paper mode system prompt if conversation has active paper session.
  * Simplified approach: goal-oriented instructions + inline revision context.
@@ -207,6 +241,7 @@ export const getPaperModeSystemPrompt = async (
 
         // Artifact summaries: non-critical — empty string on failure
         let artifactSummariesSection = "";
+        let activeStageArtifactContext = "";
         if (artifactsResult.status === "fulfilled") {
             try {
                 const allArtifacts = artifactsResult.value;
@@ -237,6 +272,11 @@ export const getPaperModeSystemPrompt = async (
                     }
                 }
                 artifactSummariesSection = formatArtifactSummaries(completedArtifacts);
+                activeStageArtifactContext = getActiveStageArtifactContext({
+                    currentStage: stage,
+                    stageData: session.stageData as Record<string, { artifactId?: string }>,
+                    artifacts: allArtifacts,
+                });
             } catch (err) {
                 console.error("Error building artifact summaries:", err);
             }
@@ -314,6 +354,7 @@ ${memoryDigest}
 COMPLETED STAGES CONTEXT & CHECKLIST:
 Context compression active: max 5 refs, max 5 citations, detailed summary only for last 3 completed stages.
 ${formattedData}
+${activeStageArtifactContext ? `\n${activeStageArtifactContext}` : ""}
 ${artifactSummariesSection ? `\n${artifactSummariesSection}` : ""}
 ---
 `,

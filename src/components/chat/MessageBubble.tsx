@@ -26,6 +26,7 @@ import { splitInternalThought } from "@/lib/ai/internal-thought-separator"
 import { JsonRendererChoiceBlock } from "./json-renderer/JsonRendererChoiceBlock"
 import {
     choiceSpecSchema,
+    normalizeChoiceSpec,
     type JsonRendererChoiceRenderPayload,
     type JsonRendererChoiceSpec,
 } from "@/lib/json-render/choice-payload"
@@ -562,8 +563,9 @@ export function MessageBubble({
 
         if (!spec) return null
 
-        const parsedSpec = choiceSpecSchema.safeParse(spec)
-        return parsedSpec.success ? (spec as JsonRendererChoiceSpec) : null
+        const normalizedSpec = normalizeChoiceSpec(spec)
+        const parsedSpec = choiceSpecSchema.safeParse(normalizedSpec)
+        return parsedSpec.success ? (normalizedSpec as JsonRendererChoiceSpec) : null
     }
 
     const searchStatus = extractSearchStatus(message)

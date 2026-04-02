@@ -93,4 +93,42 @@ describe("getPaperModeSystemPrompt - stage skill integration", () => {
     expect(result.prompt).toContain("Fallback gagasan instruction")
     expect(result.prompt).toContain("REVISION MODE")
   })
+
+  it("menyertakan konteks artifact aktif agar revisi memakai updateArtifact", async () => {
+    vi.mocked(fetchQuery)
+      .mockResolvedValueOnce({
+        _id: "session_3",
+        currentStage: "gagasan",
+        stageStatus: "revision",
+        userId: "user_3",
+        stageData: {
+          gagasan: {
+            artifactId: "artifact_active_1",
+          },
+        },
+      })
+      .mockResolvedValueOnce([
+        {
+          _id: "artifact_active_1",
+          title: "Gagasan Paper",
+          content: "Konten artifact aktif",
+          version: 2,
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    vi.mocked(resolveStageInstructions).mockResolvedValueOnce({
+      instructions: "Fallback gagasan instruction",
+      source: "fallback",
+      skillResolverFallback: true,
+      fallbackReason: "runtime_validation_failed",
+    })
+
+    const result = await getPaperModeSystemPrompt("conv_3" as never, "token-4", "req-4")
+
+    expect(result.prompt).toContain("ACTIVE STAGE ARTIFACT EXISTS")
+    expect(result.prompt).toContain("Artifact ID: artifact_active_1")
+    expect(result.prompt).toContain("MUST use updateArtifact")
+    expect(result.prompt).toContain("Do NOT call createArtifact")
+  })
 })

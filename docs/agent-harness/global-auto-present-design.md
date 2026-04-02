@@ -16,8 +16,15 @@ Kalau model ignore instruksi, panel gak muncul dan user bingung "habis ini ngapa
 
 ## Goal
 
-Enforce auto-present di **semua 14 stage** tanpa mengubah incremental save harness
-(yang tetap scoped ke gagasan/topik untuk per-field saving).
+Define arsitektur enforcement global untuk **semua 14 stage**, tetapi rollout
+runtime hanya boleh diaktifkan per stage family setelah family itu lulus safety
+gate di `readiness-evaluator-spec.md`.
+
+Target akhir:
+
+- `Foundation` tetap ditangani harness v1
+- family lain bisa ikut auto-present hanya setelah evaluator readiness-nya `GO`
+- incremental save harness tetap scoped ke gagasan/topik untuk per-field saving
 
 ## Non-Goals
 
@@ -25,6 +32,7 @@ Enforce auto-present di **semua 14 stage** tanpa mengubah incremental save harne
   design terpisah)
 - Mengubah behavior existing harness v1
 - Auto-approve (stage advance tetap user-initiated via Approve button)
+- Bypass readiness evaluator dengan heuristic generik `ringkasan + artifactId`
 
 ---
 
@@ -76,16 +84,27 @@ call submit, panel gak muncul.
 
 ---
 
-## Proposed Design: Post-Turn Readiness Detector
+## Proposed Design: Evaluator-Gated Post-Turn Auto-Present
 
 ### Konsep
 
 Tambah **satu check point baru** di route.ts: setelah AI turn selesai, kalau
-draft ready (ringkasan + artifact ada) tapi `submitStageForValidation` belum
-dipanggil di turn itu, **inject prepareStep di turn berikutnya** yang force submit.
+stage family sudah `GO` menurut `readiness-evaluator-spec.md`, draft dinilai
+`ready for review` oleh evaluator deterministik, dan `submitStageForValidation`
+belum dipanggil di turn itu, **inject prepareStep di turn berikutnya** yang
+force submit.
 
 Ini beda dari harness v1 yang force 4-step chain dalam satu turn. Ini cuma force
 **1 tool call** (submit) di turn berikutnya kalau model lupa.
+
+Catatan penting:
+
+- Desain ini **tidak boleh** diaktifkan global sekaligus dengan heuristic
+  generik `hasStageRingkasan && hasStageArtifact`
+- Implementasi harus phased per family
+- Desain ini masih menyisakan keputusan UX terpisah: apakah panel boleh muncul
+  di turn berikutnya, atau harus tetap diusahakan muncul bersamaan dengan
+  artifact
 
 ### Flow
 
@@ -107,15 +126,27 @@ Turn N+1:
 ### Readiness Condition
 
 ```typescript
+const readiness = evaluateStageReadiness({
+  stage: paperSession?.currentStage,
+  stageStatus: paperSession?.stageStatus,
+  stageData: currentStageData,
+  enableWebSearch,
+})
+
 const isReadyForAutoPresent = (
   !enableWebSearch
   && !!paperModePrompt
-  && paperSession?.stageStatus === "drafting"
-  && hasStageRingkasan(paperSession)
-  && hasStageArtifact(paperSession)
+  && readiness.ready === true
   && !submitCalledThisTurn  // model didn't already call it
 )
 ```
+
+Where:
+
+- `evaluateStageReadiness()` MUST use the family-specific rules from
+  `readiness-evaluator-spec.md`
+- evaluator output MUST include structured failure reasons for observability
+- stages/families still marked `NO-GO` in the spec MUST return `ready: false`
 
 ### Dimana Detect `submitCalledThisTurn`?
 
@@ -143,25 +174,36 @@ Flag "auto-present pending" perlu survive antar turn. Options:
 
 2. **In-memory di route.ts** — gak survive antar request. Gak bisa.
 
-3. **Derive dari existing state** — kalau `hasStageRingkasan && hasStageArtifact
-   && stageStatus === "drafting"`, itu by definition "ready tapi belum submitted."
-   Gak perlu flag baru.
+3. **Derive dari existing state + readiness evaluator** — kalau evaluator bilang
+   `ready === true` dan stage masih `drafting`, itu by definition "ready tapi
+   belum submitted." Gak perlu flag baru.
 
 **Rekomendasi: Option 3.** Derive dari existing state. Gak butuh field baru atau
 migration. Condition:
 
 ```typescript
+const readiness = evaluateStageReadiness({
+  stage: paperSession?.currentStage,
+  stageStatus: paperSession?.stageStatus,
+  stageData: currentStageData,
+  enableWebSearch,
+})
+
 const shouldAutoPresent = (
   !enableWebSearch
   && !!paperModePrompt
   && !shouldForceGetCurrentPaperState
   && !shouldForceSubmitValidation  // not already forced by user intent
   && !incrementalSaveConfig        // not handled by v1 harness
-  && paperSession?.stageStatus === "drafting"
-  && hasStageRingkasan(paperSession)
-  && hasStageArtifact(paperSession)
+  && readiness.ready === true
 )
 ```
+
+Implementation note:
+
+- `incrementalSaveConfig` should remain the higher-priority path for `Foundation`
+- `shouldAutoPresent` should only be reachable for families that are already
+  marked runtime-eligible
 
 Kalau `shouldAutoPresent === true`, inject prepareStep yang force submit:
 
@@ -227,10 +269,22 @@ force submit prematur.
 `"revision"`, bukan `"drafting"`. `shouldAutoPresent` check `stageStatus ===
 "drafting"`, jadi revision flow aman.
 
-Tapi: setelah model selesai revisi dan call `updateStageData` lagi, status
-kembali ke `"drafting"` (via backend logic). Apakah ini trigger auto-present?
-**Ya** — dan itu behavior yang diinginkan. Setelah revisi selesai, panel harus
-muncul lagi.
+Koreksi state machine:
+
+- `requestRevision` memang set `stageStatus = "revision"`
+- `updateStageData` saat ini **tidak** mengembalikan status ke `"drafting"`
+
+Jadi, setelah user request revision, auto-present **tidak akan hidup lagi**
+hanya dengan `updateStageData`. Kalau produk menginginkan panel muncul lagi
+setelah revisi selesai, perlu desain tambahan yang eksplisit, misalnya:
+
+- mutation/tool yang menandai revision draft "ready for review" dan mengembalikan
+  status ke `drafting`, atau
+- evaluator path yang diizinkan berjalan dari status `revision` dengan
+  transition yang jelas dan teruji
+
+**Status:** unresolved prerequisite. Jangan implement global auto-present untuk
+revision cycle sebelum transition ini didesain.
 
 ### 4. Harness v1 stage (gagasan/topik)
 **Scenario:** `incrementalSaveConfig` exists → `shouldAutoPresent = false`
@@ -261,18 +315,24 @@ Karena stage lain punya flow yang lebih complex:
 Auto-present cuma perlu solve **satu gap**: model lupa call submit setelah
 semuanya ready. That's it.
 
+Dengan constraint tambahan:
+
+- "ready" harus ditentukan oleh evaluator per family, bukan heuristic generik
+- revision loop belum fully solved di state machine saat ini
+
 ---
 
 ## Estimasi Perubahan
 
 | File | Perubahan |
 |------|-----------|
-| `src/app/api/chat/route.ts` | ~15 lines: `shouldAutoPresent` condition + prepareStep injection + chain update |
+| `src/app/api/chat/route.ts` | lebih dari ~15 lines: `shouldAutoPresent` condition + evaluator integration + prepareStep injection + chain update |
 | `src/lib/ai/incremental-save-harness.ts` | 0 lines (unchanged) |
 | `convex/paperSessions.ts` | 0 lines (guards already global) |
-| Tests | ~20 lines: verify auto-present triggers for non-gagasan stage, verify gak conflict dengan v1 harness |
+| `readiness evaluator module` | NEW: family-based deterministic evaluator |
+| Tests | lebih dari ~20 lines: evaluator tests per family + route integration tests + no-conflict with v1 harness |
 
-Total: **~35 lines of code changes + tests.**
+Total: **lebih besar dari ~35 lines.** Ini bukan patch kecil kalau mau aman.
 
 ---
 
@@ -282,7 +342,7 @@ Tambah log `[AutoPresent]` di trigger point:
 
 ```typescript
 if (shouldAutoPresent) {
-  console.log(`[AutoPresent] GLOBAL auto-present triggered — stage=${paperSession.currentStage}, ringkasan=true, artifactId=true`)
+  console.log(`[AutoPresent] GLOBAL auto-present triggered — stage=${paperSession.currentStage}, family=${readiness.family}, reason=${readiness.reason}, failedChecks=${readiness.failedChecks.join(",")}`)
 }
 ```
 
@@ -293,20 +353,43 @@ Log ini join existing `[AutoPresent]` logs dari harness v1 dan submitStageForVal
 ## Urutan Implementasi
 
 1. Tambah `shouldAutoPresent` condition di route.ts (setelah `shouldForceSubmitValidation` block)
-2. Tambah `autoPresentPrepareStep` function
-3. Extend prepareStep chain dengan `?? autoPresentPrepareStep`
-4. Tambah `maxToolSteps` override (2) saat auto-present active
-5. Tambah `[AutoPresent]` log
-6. Tambah tests
-7. Manual test di UI: buat paper session, navigate ke stage abstrak, biarkan model generate tanpa call submit → verify panel muncul di turn berikutnya
+2. Tambah module `evaluateStageReadiness()` sesuai `readiness-evaluator-spec.md`
+3. Wire `shouldAutoPresent` ke evaluator output, bukan ke `hasStageRingkasan + hasStageArtifact` langsung
+4. Tambah `autoPresentPrepareStep` function
+5. Extend prepareStep chain dengan `?? autoPresentPrepareStep`
+6. Tambah `maxToolSteps` override (2) saat auto-present active
+7. Tambah `[AutoPresent]` log dengan `family`, `reason`, `failedChecks`
+8. Tambah tests
+9. Manual test di UI:
+   - stage family yang sudah `GO`
+   - verify panel muncul only when evaluator says ready
+   - verify revision cycle does NOT silently auto-present unless transition-nya sudah didesain
 
 ---
 
 ## Risiko
 
-1. **False positive di edge case yang belum teridentifikasi** — mitigasi: log
-   observability + manual test di beberapa stage
-2. **Interaction dengan future features** — mitigasi: auto-present cuma inject 1
+1. **False positive karena evaluator terlalu lemah** — mitigasi: rollout per
+   family, mulai hanya untuk family yang sudah `GO`
+2. **Revision loop belum punya transition yang aman** — mitigasi: treat sebagai
+   prerequisite, bukan edge case minor
+3. **Interaction dengan future features** — mitigasi: auto-present cuma inject 1
    prepareStep di priority chain terendah, mudah di-override
-3. **Model confusion** — model mungkin generate text yang kontradiksi panel.
+4. **Model confusion** — model mungkin generate text yang kontradiksi panel.
    Mitigasi: system note "Validation panel sudah muncul. Tunggu keputusan user."
+5. **UX mismatch** — panel muncul di turn berikutnya, bukan bersamaan dengan
+   artifact. Ini perlu keputusan produk terpisah sebelum implementasi final.
+
+---
+
+## Preconditions Before Implementation
+
+Implementasi desain ini sebaiknya **ditunda** sampai semua syarat berikut true:
+
+1. `readiness-evaluator-spec.md` punya minimal satu family non-Foundation yang
+   sudah benar-benar diubah dari `NO-GO` ke `GO`
+2. Module evaluator runtime sudah ada dan punya regression tests
+3. Revision cycle transition sudah diputuskan eksplisit
+4. Keputusan UX final sudah jelas:
+   - panel di turn berikutnya, atau
+   - panel harus tetap muncul bersamaan dengan artifact

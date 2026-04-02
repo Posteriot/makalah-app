@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest"
-import { buildIncrementalSavePrepareStep } from "../incremental-save-harness"
+import {
+  buildIncrementalSavePrepareStep,
+  buildValidationSubmitPrepareStep,
+} from "../incremental-save-harness"
 
 const EMPTY_GAGASAN_DATA = {}
 const PARTIAL_GAGASAN_DATA = {
@@ -175,5 +178,44 @@ describe("buildIncrementalSavePrepareStep", () => {
       expect(result).toBeDefined()
       expect(result!.targetField).toBe("definitif")
     })
+  })
+})
+
+describe("buildValidationSubmitPrepareStep", () => {
+  it("forces update, create, submit when summary and artifact are missing", () => {
+    const result = buildValidationSubmitPrepareStep({
+      hasRingkasan: false,
+      hasArtifact: false,
+    })
+
+    expect(result.targetField).toBe("_validationSubmit")
+    expect(result.maxToolSteps).toBe(4)
+    expect(result.prepareStep({ stepNumber: 0 })?.toolChoice).toEqual({
+      type: "tool",
+      toolName: "updateStageData",
+    })
+    expect(result.prepareStep({ stepNumber: 1 })?.toolChoice).toEqual({
+      type: "tool",
+      toolName: "createArtifact",
+    })
+    expect(result.prepareStep({ stepNumber: 2 })?.toolChoice).toEqual({
+      type: "tool",
+      toolName: "submitStageForValidation",
+    })
+    expect(result.prepareStep({ stepNumber: 3 })?.toolChoice).toBe("none")
+  })
+
+  it("forces submit only when summary and artifact already exist", () => {
+    const result = buildValidationSubmitPrepareStep({
+      hasRingkasan: true,
+      hasArtifact: true,
+    })
+
+    expect(result.maxToolSteps).toBe(2)
+    expect(result.prepareStep({ stepNumber: 0 })?.toolChoice).toEqual({
+      type: "tool",
+      toolName: "submitStageForValidation",
+    })
+    expect(result.prepareStep({ stepNumber: 1 })?.toolChoice).toBe("none")
   })
 })
