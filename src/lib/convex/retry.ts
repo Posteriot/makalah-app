@@ -73,6 +73,9 @@ export async function withRetry<T>(
   throw lastError
 }
 
+/** Short async delay for retry loops in serverless handlers. */
+export const retryDelay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
 /**
  * Wrapper for Convex fetchMutation with retry
  * Convenience function for common mutation pattern

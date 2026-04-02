@@ -9,7 +9,7 @@ import { getSystemPrompt } from "@/lib/ai/chat-config"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
-import { retryMutation, retryQuery } from "@/lib/convex/retry"
+import { retryMutation, retryQuery, retryDelay } from "@/lib/convex/retry"
 import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 // isBlockedSourceDomain removed — blocklist enforcement via SKILL.md natural language
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
             }
 
             if (attempt < 3) {
-                await new Promise((resolve) => setTimeout(resolve, attempt * 150))
+                await retryDelay(attempt * 150)
             }
         }
         if (!convexToken) {
@@ -411,9 +411,7 @@ export async function POST(req: Request) {
                 content?: string
                 parts?: Array<{ type?: string; text?: string }>
             }) => {
-                const extractedContent = typeof message?.content === "string"
-                    ? message.content
-                    : message?.parts?.find((part) => part.type === "text")?.text
+                const extractedContent = message?.parts?.find((part) => part.type === "text")?.text
 
                 if ((message?.role !== "user" && message?.role !== "assistant") || !extractedContent?.trim()) {
                     return null
@@ -482,7 +480,7 @@ export async function POST(req: Request) {
             )
             if (hasPending) {
                 for (let attempt = 0; attempt < 16; attempt++) {
-                    await new Promise((r) => setTimeout(r, 500))
+                    await retryDelay(500)
                     files = await fetchQueryWithToken(api.files.getFilesByIds, {
                         userId: userId as Id<"users">,
                         fileIds: effectiveFileIds,
