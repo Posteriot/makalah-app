@@ -2353,25 +2353,26 @@ Aturan:
                             result.capturedChoiceSpec ?? undefined,
                         )
 
-                        // ──── Non-critical ops: fire-and-forget (don't block response close) ────
-
                         // Auto-persist search references to paper stageData
+                        // Awaited (not fire-and-forget) so stageData is updated before
+                        // stream closes — UnifiedProcessCard task progress reflects immediately.
                         if (paperSession && result.sources.length > 0) {
-                            void fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
-                                sessionId: paperSession._id,
-                                references: result.sources.map(s => ({
-                                    url: s.url,
-                                    title: s.title,
-                                    ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
-                                        ? { publishedAt: s.publishedAt }
-                                        : {}),
-                                })),
-                            }).then(() => {
+                            try {
+                                await fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
+                                    sessionId: paperSession._id,
+                                    references: result.sources.map(s => ({
+                                        url: s.url,
+                                        title: s.title,
+                                        ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
+                                            ? { publishedAt: s.publishedAt }
+                                            : {}),
+                                    })),
+                                })
                                 console.log(`[Paper] Auto-persisted ${result.sources.length} search refs to stageData`)
-                            }).catch(err => {
+                            } catch (err) {
                                 Sentry.captureException(err, { tags: { subsystem: "paper" } })
                                 console.error("[Paper] Failed to auto-persist search references:", err)
-                            })
+                            }
                         }
 
                         // Auto-title generation

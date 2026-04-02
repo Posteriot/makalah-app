@@ -55,8 +55,8 @@ type TaskDefinition = {
 
 const STAGE_TASKS: Record<PaperStageId, TaskDefinition[]> = {
   gagasan: [
-    { field: "ideKasar", label: "Eksplorasi ide", type: "string" },
     { field: "referensiAwal", label: "Cari referensi awal", type: "array" },
+    { field: "ideKasar", label: "Eksplorasi ide", type: "string" },
     { field: "analisis", label: "Analisis feasibility", type: "string" },
     { field: "angle", label: "Tentukan angle", type: "string" },
   ],

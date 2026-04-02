@@ -132,8 +132,8 @@ describe("deriveTaskList — partially filled", () => {
 
     expect(result.completed).toBe(2)
     expect(result.total).toBe(4)
-    expect(result.tasks[0].status).toBe("complete")  // ideKasar
-    expect(result.tasks[1].status).toBe("complete")  // referensiAwal
+    expect(result.tasks[0].status).toBe("complete")  // referensiAwal
+    expect(result.tasks[1].status).toBe("complete")  // ideKasar
     expect(result.tasks[2].status).toBe("pending")   // analisis
     expect(result.tasks[3].status).toBe("pending")   // angle
   })
@@ -147,8 +147,8 @@ describe("deriveTaskList — partially filled", () => {
     })
 
     expect(result.completed).toBe(2)
-    expect(result.tasks[0].status).toBe("complete")  // ideKasar
-    expect(result.tasks[1].status).toBe("pending")   // referensiAwal (empty)
+    expect(result.tasks[0].status).toBe("pending")   // referensiAwal (empty)
+    expect(result.tasks[1].status).toBe("complete")  // ideKasar
     expect(result.tasks[2].status).toBe("complete")  // analisis (filled, independent)
     expect(result.tasks[3].status).toBe("pending")   // angle
   })
