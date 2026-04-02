@@ -916,22 +916,6 @@ ${sourcesJson}`
             }
         }
 
-        const hasStageRingkasan = (session: {
-            currentStage?: string
-            stageData?: Record<string, unknown>
-        } | null): boolean => {
-            if (!session || !session.stageData || !session.currentStage) {
-                return false
-            }
-            if (session.currentStage === "completed") {
-                return false
-            }
-
-            const stageKey = session.currentStage
-            const stageEntry = session.stageData[stageKey] as { ringkasan?: unknown } | undefined
-            return typeof stageEntry?.ringkasan === "string" && stageEntry.ringkasan.trim().length > 0
-        }
-
         const hasStageArtifact = (session: {
             currentStage?: string
             stageData?: Record<string, unknown>
@@ -2194,12 +2178,10 @@ Aturan:
                 && !shouldForceGetCurrentPaperState
                 && isSaveSubmitIntent
                 && paperSession?.stageStatus === "drafting"
-                && hasStageRingkasan(paperSession)
                 && hasStageArtifact(paperSession)
 
             missingArtifactNote = !shouldForceSubmitValidation
                 && !!paperModePrompt
-                && hasStageRingkasan(paperSession)
                 && !hasStageArtifact(paperSession)
                 && paperSession?.stageStatus === "drafting"
                 && isSaveSubmitIntent
