@@ -1,7 +1,9 @@
 # Branch Review Handoff
 
 > Baca ini PERTAMA sebelum mulai kerja di sesi baru.
-> Branch: `feature/plan-task-queue-review` (renamed from `feature/plan-task-queue-components`)
+> Branch: `feature/paper-ui-harness-rev-enforcement`
+> Worktree: `.worktrees/plan-task-queue-components` (directory name unchanged)
+> Renamed from: `feature/plan-task-queue-components`
 
 ## Scope Branch Ini
 
