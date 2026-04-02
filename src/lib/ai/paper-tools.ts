@@ -144,21 +144,11 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
             inputSchema: z.object({
                 // NOTE: 'stage' parameter REMOVED - auto-fetched from session.currentStage
                 // This prevents AI from specifying wrong stage (Option B fix for stage confusion bug)
-                ringkasan: z.string().max(280).describe(
-                    "REQUIRED! The main decision AGREED upon with the user for this stage. Max 280 characters. " +
-                    "Example: 'Agreed angle: AI impact on Indonesian higher education, gap: no studies on private universities'"
-                ),
-                ringkasanDetail: z.string().max(1000).optional().describe(
-                    "Elaboration on ringkasan: WHY this decision was made, important nuances, discussion context with user, " +
-                    "and details that don't fit in the 280-char ringkasan. Max 1000 characters. " +
-                    "Example: 'Angle chosen due to large literature gap in Indonesian context, user has data access from 3 private universities in Jakarta, " +
-                    "focus on introductory programming courses semesters 1-2.'"
-                ),
-                data: z.record(z.string(), z.any()).optional().describe(
-                    "Additional draft data object (besides ringkasan/ringkasanDetail). IMPORTANT: referensiAwal/referensiPendukung must be ARRAY OF OBJECTS!"
+                data: z.record(z.string(), z.any()).describe(
+                    "Draft data object for the current stage. IMPORTANT: referensiAwal/referensiPendukung must be ARRAY OF OBJECTS!"
                 ),
             }),
-            execute: async ({ ringkasan, ringkasanDetail, data }) => {
+            execute: async ({ data }) => {
                 try {
                     const session = await retryQuery(
                         () => fetchQuery(api.paperSessions.getByConversation, {
@@ -199,37 +189,19 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                         }
                     }
 
-                    // Merge ringkasan + ringkasanDetail into data object
-                    const mergedData = {
-                        ...(data || {}),
-                        ringkasan,
-                        ...(ringkasanDetail ? { ringkasanDetail } : {}),
-                    };
-
-                    const result = await retryMutation(
+                    await retryMutation(
                         () => fetchMutation(api.paperSessions.updateStageData, {
                             sessionId: session._id,
                             stage,
-                            data: mergedData,
+                            data,
                         }, convexOptions),
                         "paperSessions.updateStageData"
                     );
 
-                    // Safety net: Parse warning from backend if ringkasan somehow missing
-                    // (Should never happen now since ringkasan is required by Zod schema)
-                    if (result && typeof result === 'object' && 'warning' in result && result.warning) {
-                        return {
-                            success: true,
-                            stage, // Include stage in response so AI knows which stage was updated
-                            message: `Successfully saved progress for stage ${stage}.`,
-                            warning: result.warning,
-                        };
-                    }
-
                     return {
                         success: true,
                         stage, // Include stage in response so AI knows which stage was updated
-                        message: `Successfully saved progress for stage ${stage}. Summary saved.`
+                        message: `Successfully saved progress for stage ${stage}.`
                     };
                 } catch (error) {
                     console.error("Error in updateStageData tool:", error);
@@ -257,14 +229,8 @@ The tool will:
                 mode: z.enum(["preview", "persist"]).optional().describe(
                     "Compilation mode. Default: persist. Use preview for a quick cross-stage audit."
                 ),
-                ringkasan: z.string().max(280).optional().describe(
-                    "Required if mode=persist. Summary of the bibliography compilation result (max 280 characters)."
-                ),
-                ringkasanDetail: z.string().max(1000).optional().describe(
-                    "Optional. Details on the compilation process, merged duplicates, and incomplete references."
-                ),
             }),
-            execute: async ({ mode, ringkasan, ringkasanDetail }) => {
+            execute: async ({ mode }) => {
                 try {
                     const session = await retryQuery(
                         () => fetchQuery(api.paperSessions.getByConversation, {
@@ -276,13 +242,6 @@ The tool will:
 
                     const stage = session.currentStage;
                     const compileMode = mode ?? "persist";
-
-                    if (compileMode === "persist" && (!ringkasan || ringkasan.trim() === "")) {
-                        return {
-                            success: false,
-                            error: "compileDaftarPustaka persist mode requires the ringkasan field (max 280 characters).",
-                        };
-                    }
 
                     const compileResult = await retryMutation(
                         () => fetchMutation(api.paperSessions.compileDaftarPustaka, {
@@ -336,17 +295,11 @@ The tool will:
                         };
                     }
 
-                    const mergedData = {
-                        ringkasan: ringkasan!,
-                        ...(ringkasanDetail ? { ringkasanDetail } : {}),
-                        ...compileResult.compiled,
-                    };
-
                     const updateResult = await retryMutation(
                         () => fetchMutation(api.paperSessions.updateStageData, {
                             sessionId: session._id,
                             stage,
-                            data: mergedData,
+                            data: { ...compileResult.compiled },
                         }, convexOptions),
                         "paperSessions.updateStageData"
                     ) as { warning?: string };
