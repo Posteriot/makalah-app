@@ -767,6 +767,20 @@ export function MessageBubble({
     }).annotations?.find((annotation) => annotation.type === "sources")?.sources
     const citedSources = extractCitedSources(message)
     const referenceInventory = extractReferenceInventory(message)
+    const correctiveFindings = useMemo(() => {
+        for (const part of message.parts ?? []) {
+            if (!part || typeof part !== "object") continue
+            const maybeDataPart = part as unknown as { type?: string; data?: unknown }
+            if (maybeDataPart.type !== "data-corrective-findings") continue
+            const data = maybeDataPart.data as {
+                sources?: Array<{ title?: string; url?: string; citedText?: string }>
+                sourceCount?: number
+            } | null
+            if (!data?.sources?.length) return null
+            return data
+        }
+        return null
+    }, [message.parts])
     const messageSources = (message as { sources?: { url: string; title: string; publishedAt?: number | null }[] }).sources
     const referenceInventorySources = referenceInventory?.items ?? []
     const persistedOrStreamedSources = citedSources || sourcesFromAnnotation || messageSources || []
@@ -1144,6 +1158,29 @@ export function MessageBubble({
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            )}
+                            {correctiveFindings && (
+                                <div className="mt-3 rounded-lg border border-border/50 bg-muted/30 p-3">
+                                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                                        Sumber yang ditemukan:
+                                    </p>
+                                    <ul className="space-y-1">
+                                        {correctiveFindings.sources?.map((s, i) => (
+                                            <li key={i} className="text-sm">
+                                                {s.url ? (
+                                                    <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                                        {s.title || s.url}
+                                                    </a>
+                                                ) : (
+                                                    <span>{s.title || "Source"}</span>
+                                                )}
+                                                {s.citedText && (
+                                                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{s.citedText}</p>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
                                 </div>
                             )}
                             {isAssistant && internalThoughtContent.trim().length > 0 && (

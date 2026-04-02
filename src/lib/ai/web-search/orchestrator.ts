@@ -235,6 +235,14 @@ export function emitTransparentReasoningResetForRetry(params: {
  * for retry / fallback handling. Phase 1.5 runs inside execute so Vercel's
  * streaming timeout doesn't apply (first byte already sent).
  */
+export function validateComposeSubstantiveness(composedText: string, sourceCount: number): boolean {
+    if (sourceCount === 0) return true
+    // composedText is from text-delta chunks AFTER pipeYamlRender.
+    // YAML cards already extracted. Raw length is reliable.
+    // Transitional: ~50-100 chars. Substantive: ~500+ chars.
+    return composedText.trim().length >= 200
+}
+
 export async function executeWebSearch(
   config: WebSearchOrchestratorConfig,
 ): Promise<Response> {
@@ -950,6 +958,25 @@ export async function executeWebSearch(
               data: { status: sourceCount > 0 ? "done" : "off" },
             })
             console.error(`[Orchestrator][${reqId}] Citation finalize failed:`, err)
+          }
+
+          // Layer 4: Post-compose transitional response detection
+          const hasSubstantiveFindings = validateComposeSubstantiveness(composedText, sourceCount)
+          if (!hasSubstantiveFindings && sourceCount > 0) {
+            const correctiveId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-corrective`
+            writer.write({
+              type: "data-corrective-findings",
+              id: correctiveId,
+              data: {
+                sources: scoredSources.slice(0, 5).map(s => ({
+                  title: s.title,
+                  url: s.url,
+                  citedText: s.citedText?.slice(0, 200),
+                })),
+                sourceCount,
+              },
+            })
+            console.warn(`[COMPOSE-GUARD][${reqId}] Transitional response detected with ${sourceCount} sources. Corrective event emitted.`)
           }
 
           // Forward finish chunk to preserve SDK semantics (finishReason, metadata)
