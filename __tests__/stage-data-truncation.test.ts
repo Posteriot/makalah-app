@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 const FIELD_CHAR_LIMIT = 2000;
 const EXCLUDED_FIELDS = new Set([
-    "ringkasan", "ringkasanDetail", "artifactId",
+    "artifactId",
     "validatedAt", "revisionCount",
 ]);
 
@@ -37,13 +37,6 @@ describe("truncateStageDataFields", () => {
     expect(truncated.ideKasar).toBe("short");
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain("analisis");
-  });
-
-  it("should not truncate excluded fields like ringkasan", () => {
-    const data = { ringkasan: "a".repeat(280) };
-    const { truncated, warnings } = truncateStageDataFields(data);
-    expect((truncated.ringkasan as string).length).toBe(280);
-    expect(warnings).toHaveLength(0);
   });
 
   it("should not truncate non-string fields", () => {
