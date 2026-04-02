@@ -842,7 +842,7 @@ export function MessageBubble({
             anchors: [],
         })
     })()
-    const isInlineReferenceInventory = referenceInventory?.responseMode === "reference_inventory"
+    const isInlineReferenceInventory = !isPaperMode && referenceInventory?.responseMode === "reference_inventory"
     const referenceInventoryIntroText = (() => {
         if (!isInlineReferenceInventory || !referenceInventory) return null
         if (typeof referenceInventory.introText === "string" && referenceInventory.introText.trim().length > 0) {
