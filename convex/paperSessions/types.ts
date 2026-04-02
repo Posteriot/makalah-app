@@ -17,8 +17,9 @@ const SitasiAPAShape = {
     url: v.optional(v.string()),
 };
 
-// Legacy fields: ringkasan/ringkasanDetail kept in validators for backward compat
-// (existing DB documents still have these fields — Convex strict-validates all documents)
+// Backward compatibility for existing paperSessions documents in Convex.
+// New runtime writes should still be governed by tool schemas + whitelist,
+// but schema validation must continue to accept legacy session records.
 const legacyRingkasanFields = {
     ringkasan: v.optional(v.string()),
     ringkasanDetail: v.optional(v.string()),
