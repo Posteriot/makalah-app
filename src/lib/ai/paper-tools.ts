@@ -204,10 +204,17 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                         "paperSessions.updateStageData"
                     );
 
+                    // Check if artifact exists for this stage
+                    const currentStageData = session.stageData?.[stage] as Record<string, unknown> | undefined;
+                    const hasArtifact = !!currentStageData?.artifactId;
+
                     return {
                         success: true,
-                        stage, // Include stage in response so AI knows which stage was updated
-                        message: `Successfully saved progress for stage ${stage}.`
+                        stage,
+                        message: `Successfully saved progress for stage ${stage}.`,
+                        nextAction: hasArtifact
+                            ? "Data saved. Artifact already exists — call updateArtifact if content changed, then present to user."
+                            : "Data saved. NEXT: You MUST call createArtifact() NOW in this same response to create the stage artifact. Do NOT stop here.",
                     };
                 } catch (error) {
                     console.error("Error in updateStageData tool:", error);
