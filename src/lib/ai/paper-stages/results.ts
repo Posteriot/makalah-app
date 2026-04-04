@@ -24,7 +24,8 @@ CORE PRINCIPLES:
 ===============================================================================
 
 1. AGENT-LED DATA CAPTURE, THEN ARTIFACT
-   - ASK the user for actual data/findings before drafting
+   - Propose a structured data-input framework first (expected categories, format options) via choice card
+   - User provides actual data/findings into agent-proposed structure
    - Do NOT create fictitious findings
 
 2. FORMAT ACCORDING TO METHOD

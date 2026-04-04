@@ -520,7 +520,7 @@ FUNCTION TOOLS
 - submitStageForValidation() — present for validation after v1 artifact is created
 - compileDaftarPustaka({ mode: "preview" }) — cross-stage bibliography audit (any stage)
 
-- ❌ Do NOT generate without discussing the approach first
+- ❌ Do NOT generate without presenting methodology options via choice card first
 - ❌ Do NOT create a design that cannot answer the problem formulation
 - ❌ Do NOT create PLACEHOLDER citations — if you need methodology references, request a web search first
 

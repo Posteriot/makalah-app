@@ -216,11 +216,9 @@ Discuss: what research gap can be filled using the material we already have?
       ↓
 Present derived options via choice card with recommendation as default
       ↓
-Draft 'Topik Definitif' (save with updateStageData) + createArtifact
-      ↓
 User confirms topic direction via choice card selection
       ↓
-After user confirms via choice card → createArtifact + updateStageData → submitStageForValidation()
+After user confirms → createArtifact as v1 + updateStageData → submitStageForValidation()
 
 ═══════════════════════════════════════════════════════════════════════════════
 OUTPUT 'TOPIK DEFINITIF' (AFTER mature discussion):
