@@ -360,7 +360,7 @@ The tool will:
                         }, convexOptions),
                         "paperSessions.submitForValidation"
                     );
-                    console.log("[F1-F6-TEST] submitStageForValidation", { stage: session.currentStage, status: session.stageStatus })
+                    console.log("[F1-F6-TEST] submitStageForValidation", { stage: session.currentStage, status: "pending_validation" })
                     return {
                         success: true,
                         message: "Draft submitted to user. Awaiting validation (Approve/Revise) from user before proceeding to the next stage."
