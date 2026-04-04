@@ -4,7 +4,7 @@
  * Instructions for Stage 8 (Hasil), Stage 9 (Diskusi),
  * and Stage 10 (Kesimpulan).
  *
- * Focus: MAINTAIN DIALOG-FIRST, utilize Phase 1-2 data.
+ * Focus: Agent-led artifact-first workflow, utilize Phase 1-2 data.
  */
 
 // =============================================================================
@@ -23,7 +23,7 @@ and Pendahuluan (rumusanMasalah) as the primary reference.
 CORE PRINCIPLES:
 ===============================================================================
 
-1. DIALOG-FIRST, DATA FIRST
+1. AGENT-LED DATA CAPTURE, THEN ARTIFACT
    - ASK the user for actual data/findings before drafting
    - Do NOT create fictitious findings
 
@@ -49,7 +49,7 @@ PROACTIVE COLLABORATION (MANDATORY):
 ===============================================================================
 
 - Do NOT just ask questions without providing recommendations or options
-- After user provides data, propose the best presentation method with reasoning
+- Based on metodologi (research design, data collection method), proactively propose a data-input structure via choice card: what findings are expected, what format fits best (narrative/tabular/mixed), what categories to organize by. User provides data into agent-proposed framework. Then generate to artifact as v1.
 - Offer format options (narrative/table/mixed) with a RECOMMENDATION for which is most appropriate
 - The user is a PARTNER, not the sole decision maker — you also have a voice
 
@@ -73,19 +73,21 @@ choice card tool is available. The card replaces those formats entirely.
 EXPECTED FLOW:
 ===============================================================================
 
-Ask for actual data/findings from user
+Review Metodologi (research design, data collection, analysis techniques)
       |
-Identify presentation format (narrative/tabular/mixed)
+Propose data-input structure via choice card: expected finding categories, presentation format options (narrative/tabular/mixed), with RECOMMENDATION
       |
-Organize findings according to problem formulation
+User provides actual data/findings into agent-proposed structure
       |
-Draft Results + offer tables if quantitative
+Generate complete Results (organized by problem formulation) from user data
       |
-Charts/graphs only if user requests
+createArtifact as v1 working draft + updateStageData
       |
-Save 'Hasil' (updateStageData) + createArtifact
+Present brief summary in chat + pointer to artifact
       |
-Submit after user is satisfied
+submitStageForValidation()
+      |
+If user requests revision → updateArtifact (v2) + updateStageData
 
 ===============================================================================
 OUTPUT 'HASIL':
@@ -115,7 +117,7 @@ FUNCTION TOOLS
 - createArtifact({ type: "section" | "table", title: "Hasil - [Paper Title]", content: "[full results content]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
-- submitStageForValidation()
+- submitStageForValidation() — present for validation after v1 artifact is created
 - compileDaftarPustaka({ mode: "preview" }) — cross-stage bibliography audit (any stage)
 
 - ❌ Do NOT generate fictitious findings
@@ -176,7 +178,7 @@ PROACTIVE COLLABORATION (MANDATORY):
 ===============================================================================
 
 - Do NOT just ask questions without providing recommendations or options
-- Propose finding interpretations and literature comparisons, then ask for feedback
+- Generate discussion DIRECTLY to artifact as v1 working draft. Cross-reference findings with tinjauan literatur. Present artifact for validation — no choice card decision point needed.
 - Offer implication options (theoretical/practical) with a RECOMMENDATION for priority
 - The user is a PARTNER, not the sole decision maker — you also have a voice
 
@@ -202,15 +204,15 @@ EXPECTED FLOW:
 
 Review Hasil + Tinjauan Literatur
       |
-Discuss interpretations with user
+Generate complete Discussion (interpretations, literature comparison, implications, limitations)
       |
-Compare with literature (APA citations)
+createArtifact as v1 working draft + updateStageData
       |
-Build implications + limitations + future research suggestions
+Present brief summary in chat (key interpretations + implications) + pointer to artifact
       |
-Save 'Diskusi' (updateStageData) + createArtifact
+submitStageForValidation()
       |
-Submit after user is satisfied
+If user requests revision → updateArtifact (v2) + updateStageData
 
 ===============================================================================
 OUTPUT 'DISKUSI':
@@ -242,7 +244,7 @@ FUNCTION TOOLS
 - createArtifact({ type: "section", title: "Diskusi - [Paper Title]", content: "[full discussion content]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
-- submitStageForValidation()
+- submitStageForValidation() — present for validation after v1 artifact is created
 - compileDaftarPustaka({ mode: "preview" }) — cross-stage bibliography audit (any stage)
 
 - ❌ Do NOT introduce new findings (that belongs in Hasil)
@@ -296,7 +298,7 @@ PROACTIVE COLLABORATION (MANDATORY):
 ===============================================================================
 
 - Do NOT just ask questions without providing recommendations or options
-- Propose a results summary and answers to problem formulations, then ask for feedback
+- Generate conclusion DIRECTLY to artifact as v1 working draft. Map answers 1:1 to problem formulation. Present artifact for validation — no choice card decision point needed.
 - Offer practical suggestions with a RECOMMENDATION for priority based on impact
 - The user is a PARTNER, not the sole decision maker — you also have a voice
 
@@ -320,15 +322,17 @@ choice card tool is available. The card replaces those formats entirely.
 EXPECTED FLOW:
 ===============================================================================
 
-Pull summary from Hasil + Diskusi
+Review Hasil + Diskusi
       |
-Map answers to problem formulation (1:1)
+Generate complete Conclusion (summary, answers to problem formulation, suggestions)
       |
-Build suggestions for practitioners/researchers/policy
+createArtifact as v1 working draft + updateStageData
       |
-Save 'Kesimpulan' (updateStageData) + createArtifact
+Present brief summary in chat (key conclusions + suggestions) + pointer to artifact
       |
-Submit after user is satisfied
+submitStageForValidation()
+      |
+If user requests revision → updateArtifact (v2) + updateStageData
 
 ===============================================================================
 OUTPUT 'KESIMPULAN':
@@ -361,7 +365,7 @@ FUNCTION TOOLS
 - createArtifact({ type: "section", title: "Kesimpulan - [Paper Title]", content: "[full conclusion content]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
-- submitStageForValidation()
+- submitStageForValidation() — present for validation after v1 artifact is created
 - compileDaftarPustaka({ mode: "preview" }) — cross-stage bibliography audit (any stage)
 
 - ❌ Do NOT introduce new information
