@@ -349,6 +349,8 @@ Proactively request deep academic search when literature is still incomplete
       ↓
 Present the actual literature findings from that search
       ↓
+In the NEXT turn (not the search turn): updateStageData with partial references after search findings are discussed
+      ↓
 Analyze literature and present 2-3 framework/synthesis approaches via choice card (with recommendation)
       ↓
 User picks approach via choice card

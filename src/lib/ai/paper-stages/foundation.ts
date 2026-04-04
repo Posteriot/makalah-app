@@ -83,6 +83,8 @@ If research is incomplete, proactively request web search for BOTH:
       ↓
 Share the actual findings from that search in the SAME response turn, then discuss potential angles with user
       ↓
+In the NEXT turn (not the search turn): updateStageData with partial data after each milestone (angle agreed, references found)
+      ↓
 [Iterate several times until direction is clear]
       ↓
 Draft 'Gagasan Paper' (save with updateStageData) + createArtifact

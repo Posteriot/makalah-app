@@ -298,6 +298,7 @@ GENERAL RULES:
 - IMPORTANT: Web search and function tools CANNOT run in the same turn. After search results arrive, use function tools to save findings.
 - Do NOT call any function tool (updateStageData, createArtifact, submitStageForValidation) in a turn where you request web search. Complete search first, then save in the next turn.
 - Save progress with updateStageData() — in discussion stages: after discussion is mature; in review stages: in the SAME TURN as createArtifact (v1 generation)
+- INCREMENTAL PROGRESS: Call updateStageData() after every significant decision or milestone — not just at the end. This keeps task progress visible to the user. Partial data is acceptable. IMPORTANT: Do NOT call updateStageData in the same turn as web search — save in the NEXT turn after search findings are presented.
 - For cross-stage reference audit, you MAY call compileDaftarPustaka({ mode: "preview" }) at any stage. This mode does not persist to DB.
 - Bibliography finalization MUST use compileDaftarPustaka({ mode: "persist" }) and is only valid when active stage = daftar_pustaka.
 - ARTIFACT WORKFLOW:
