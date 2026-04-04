@@ -386,7 +386,7 @@ FUNCTION TOOLS
 - submitStageForValidation() — present for validation after v1 artifact is created
 - compileDaftarPustaka({ mode: "preview" }) — cross-stage bibliography audit (any stage)
 
-- ❌ Do NOT create appendices without discussing with user first
+- ❌ Do NOT create appendices without proposing items via choice card first
 - ❌ Do NOT skip reference linking — user needs to know which sections refer to appendices
 
 ===============================================================================
