@@ -1226,6 +1226,7 @@ export function ChatWindow({
       (el) => el?.props?.optionId === params.selectedOptionId
     )
     const selectedLabel = matchedElement?.props?.label ?? params.selectedOptionId
+    console.log("[F1-F6-TEST] ChoiceSubmit", { submissionKey, selectedOptionId: params.selectedOptionId, selectedLabel })
 
     // Use current paper stage from session (spec doesn't carry stage info)
     const currentStage = (paperSession?.currentStage ?? "gagasan") as PaperStageId
@@ -1524,7 +1525,10 @@ export function ChatWindow({
         }
       }
     }
-    if (keys.size > 0) setSubmittedChoiceKeys((prev) => new Set([...prev, ...keys]))
+    if (keys.size > 0) {
+      setSubmittedChoiceKeys((prev) => new Set([...prev, ...keys]))
+      console.log("[F1-F6-TEST] ChoiceRehydrate", { rehydratedCount: keys.size, keys: [...keys] })
+    }
   }, [historyMessages])
 
   const isLoading = status !== 'ready' && status !== 'error'

@@ -270,6 +270,7 @@ export const getPaperModeSystemPrompt = async (
             ? "\n⚠️ SYNC CONTRACT: Stage data is not yet synced. If user asks to sync or continue from state, you MUST explain that the update cannot be finalized until the user requests a revision first.\n"
             : "";
 
+        console.log("[F1-F6-TEST] PaperPrompt", { stage, status, stageInstructionSource, activeSkillId: activeSkillId ?? "fallback", hasArtifactSummaries: !!artifactSummariesSection })
         logPaperPromptLatency("paperPrompt.total", paperPromptStart, {
             hasPrompt: true,
             stage,

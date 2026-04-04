@@ -203,6 +203,7 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                     const currentStageData = stageDataMap?.[stage];
                     const hasArtifact = !!currentStageData?.artifactId;
 
+                    console.log("[F1-F6-TEST] updateStageData", { stage, hasArtifact, dataKeys: Object.keys(data) })
                     return {
                         success: true,
                         stage,
@@ -359,6 +360,7 @@ The tool will:
                         }, convexOptions),
                         "paperSessions.submitForValidation"
                     );
+                    console.log("[F1-F6-TEST] submitStageForValidation", { stage: session.currentStage, status: session.stageStatus })
                     return {
                         success: true,
                         message: "Draft submitted to user. Awaiting validation (Approve/Revise) from user before proceeding to the next stage."

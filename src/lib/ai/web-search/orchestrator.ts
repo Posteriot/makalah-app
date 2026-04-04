@@ -978,6 +978,9 @@ export async function executeWebSearch(
             })
             console.warn(`[COMPOSE-GUARD][${reqId}] Transitional response detected with ${sourceCount} sources. Corrective event emitted.`)
           }
+          if (hasSubstantiveFindings) {
+            console.log("[F1-F6-TEST] ComposeGuard PASS", { sourceCount, composedLength: composedText.trim().length })
+          }
 
           // Forward finish chunk to preserve SDK semantics (finishReason, metadata)
           writer.write(chunk)

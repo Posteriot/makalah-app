@@ -1503,6 +1503,7 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                             }
                         }
 
+                        console.log("[F1-F6-TEST] createArtifact", { stage: paperSession?.currentStage, artifactId: result.artifactId, title })
                         return {
                             success: true,
                             artifactId: result.artifactId,
@@ -1595,6 +1596,7 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                             "artifacts.update"
                         )
 
+                        console.log("[F1-F6-TEST] updateArtifact", { stage: paperSession?.currentStage, artifactId })
                         return {
                             success: true,
                             newArtifactId: result.artifactId,
@@ -1945,6 +1947,7 @@ Aturan:
             const recentForRouter = modelMessages.slice(-8)
             const currentStage = paperSession?.currentStage as PaperStageId | "completed" | undefined
             const stagePolicy = getStageSearchPolicy(currentStage)
+            console.log("[F1-F6-TEST] SearchPolicy", { stage: currentStage, policy: stagePolicy })
             const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession)
                 || (!paperSession && hasRecentSourcesInDb)
             // Check if RAG chunks are available for this conversation.
@@ -2039,6 +2042,7 @@ Aturan:
                     } else {
                         activeStageSearchNote = getPaperToolsOnlyNote(currentStage as string)
                     }
+                    console.log("[F1-F6-TEST] NoteInjected", { stage: currentStage, type: incomplete ? "research_incomplete" : searchAlreadyDone ? "search_done" : "tools_only" })
                 }
 
                 console.log(
@@ -2047,6 +2051,7 @@ Aturan:
                     `searchAlreadyDone: ${searchAlreadyDone}, ` +
                     `searchRequestedByPolicy: ${searchRequestedByPolicy}`
                 )
+                console.log("[F1-F6-TEST] SearchDecision", { stage: currentStage, policy: stagePolicy, search: searchRequestedByPolicy, reason: activeStageSearchReason, note: activeStageSearchNote ? "injected" : "none" })
 
                 // Post-router sync detection via intentType
                 isSyncRequest = !!paperModePrompt
