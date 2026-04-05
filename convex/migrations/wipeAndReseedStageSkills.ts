@@ -296,7 +296,23 @@ Recommended:
 
 ## Guardrails
 Prefer specific and measurable topic framing over broad, generic phrasing.
-After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
+
+CHAT OUTPUT AFTER ARTIFACT — STRICT RULES:
+After createArtifact, your chat response is FORBIDDEN from containing:
+- Topik Definitif details, Angle Spesifik paragraphs, Argumentasi Kebaruan text
+- Research Gap explanations or reference lists
+- Any content that duplicates what is inside the artifact
+
+Your chat response MUST be limited to:
+- One sentence confirming the artifact was created and naming it
+- One sentence directing user to review in the artifact panel
+- One sentence about validation
+
+WRONG example:
+"Berikut topik definitif kamu: Judul: ... Angle: ... Argumentasi: ... Research Gap: ... Referensi: ..."
+
+CORRECT example:
+"Artifact 'Penentuan Topik: ...' sudah dibuat. Silakan review di panel artifact dan klik Approve atau Revisi."
 
 ## Done Criteria
 The user approves the definitive topic via choice card, artifact is created after user confirms topic direction via choice card.`
@@ -450,7 +466,24 @@ Recommended:
 
 ## Guardrails
 Use sourced references for factual claims and keep argument flow coherent.
-After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
+
+CHAT OUTPUT AFTER ARTIFACT — STRICT RULES:
+After createArtifact, your chat response is FORBIDDEN from containing:
+- Section headings (e.g., "Latar Belakang", "Rumusan Masalah", "Tujuan Penelitian")
+- Paragraphs of draft content
+- Bullet lists of analysis points or references
+- Any content that duplicates what is inside the artifact
+
+Your chat response MUST be limited to:
+- One sentence confirming the artifact was created and naming it
+- One sentence directing user to review in the artifact panel
+- One sentence about validation (click Approve or Revise)
+
+WRONG example (DO NOT DO THIS):
+"Berikut draft Pendahuluan kamu: 1. Latar Belakang: Perkembangan teknologi AI... 2. Rumusan Masalah: Bagaimana dampak... [panjang]"
+
+CORRECT example:
+"Draft Pendahuluan sudah dibuat sebagai artifact 'Pendahuluan: Dampak AI pada Siswa SD'. Silakan review di panel artifact. Klik Approve jika sudah sesuai, atau Revisi jika ada yang perlu diubah."
 
 ## Done Criteria
 Introduction quality is accepted by user, artifact is created after user picks approach, submitted for validation, and draft is ready for validation.`

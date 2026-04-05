@@ -375,7 +375,8 @@ The tool will:
                     console.log("[F1-F6-TEST] submitStageForValidation", { stage: session.currentStage, status: "pending_validation" })
                     return {
                         success: true,
-                        message: "Draft submitted to user. Awaiting validation (Approve/Revise) from user before proceeding to the next stage."
+                        message: "Draft submitted to user. Awaiting validation (Approve/Revise) from user before proceeding to the next stage.",
+                        nextAction: "STOP. Do not add any more content to chat. End your response with one short confirmation sentence only. The user will review the artifact in the validation panel.",
                     };
                 } catch (error) {
                     console.error("Error in submitStageForValidation tool:", error);
