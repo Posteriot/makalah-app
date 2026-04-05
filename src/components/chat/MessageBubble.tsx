@@ -566,7 +566,18 @@ export function MessageBubble({
             return null
         }
 
-        const elementTypes = Object.entries((spec as unknown as Record<string, unknown>).elements ?? {}).map(([id, el]) => `${id}:${(el as {type?:string}).type ?? "?"}`).join(", ")
+        const rawElements = (spec as unknown as Record<string, unknown>).elements
+        const elementTypes = Object.entries(
+            rawElements && typeof rawElements === "object" ? rawElements : {}
+        )
+            .map(([id, el]) => {
+                const elementType =
+                    el && typeof el === "object" && "type" in el
+                        ? (el as { type?: string }).type
+                        : "?"
+                return `${id}:${elementType ?? "?"}`
+            })
+            .join(", ")
         const parsedSpec = choiceSpecSchema.safeParse(spec)
         if (!parsedSpec.success) {
             console.warn("[F1-F6-TEST] ChoiceSpec validation FAILED", { errors: parsedSpec.error.issues.map(i => `${i.path.join(".")}: ${i.message}`), elementTypes })
@@ -584,14 +595,19 @@ export function MessageBubble({
 
         // Safety net: if model generated ChoiceOptionButtons but no ChoiceSubmitButton, inject one
         const elements = choiceSpec.elements ?? {}
-        const hasOptionButtons = Object.values(elements).some((el) => (el as { type?: string }).type === "ChoiceOptionButton")
-        const hasSubmitButton = Object.values(elements).some((el) => (el as { type?: string }).type === "ChoiceSubmitButton")
+        const choiceElements = Object.values(elements).filter(
+            (el) => !!el && typeof el === "object"
+        ) as Array<{ type?: string; props?: Record<string, unknown>; children?: string[] }>
+        const hasOptionButtons = choiceElements.some((el) => el.type === "ChoiceOptionButton")
+        const hasSubmitButton = choiceElements.some((el) => el.type === "ChoiceSubmitButton")
 
         let normalizedSpec = choiceSpec
 
         // Safety net 2: if ChoiceSubmitButton exists but has empty/missing label, fix it
         if (hasSubmitButton) {
-            const submitEntry = Object.entries(elements).find(([, el]) => (el as { type?: string }).type === "ChoiceSubmitButton")
+            const submitEntry = Object.entries(elements).find(
+                ([, el]) => !!el && typeof el === "object" && (el as { type?: string }).type === "ChoiceSubmitButton"
+            )
             if (submitEntry) {
                 const [submitKey, submitEl] = submitEntry
                 const submitProps = (submitEl as { props?: Record<string, unknown> }).props ?? {}

@@ -95,6 +95,7 @@ import type * as migrations_upsertDocumentationLanggananTierPembayaranS11 from "
 import type * as migrations_upsertDocumentationLegalS7S8S10 from "../migrations/upsertDocumentationLegalS7S8S10.js";
 import type * as migrations_upsertDocumentationRefrasaS9 from "../migrations/upsertDocumentationRefrasaS9.js";
 import type * as migrations_upsertPrivacyPolicyGoogleOAuth from "../migrations/upsertPrivacyPolicyGoogleOAuth.js";
+import type * as migrations_wipeAndReseedStageSkills from "../migrations/wipeAndReseedStageSkills.js";
 import type * as pageContent from "../pageContent.js";
 import type * as paperSessions from "../paperSessions.js";
 import type * as paperSessions_constants from "../paperSessions/constants.js";
@@ -214,6 +215,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/upsertDocumentationLegalS7S8S10": typeof migrations_upsertDocumentationLegalS7S8S10;
   "migrations/upsertDocumentationRefrasaS9": typeof migrations_upsertDocumentationRefrasaS9;
   "migrations/upsertPrivacyPolicyGoogleOAuth": typeof migrations_upsertPrivacyPolicyGoogleOAuth;
+  "migrations/wipeAndReseedStageSkills": typeof migrations_wipeAndReseedStageSkills;
   pageContent: typeof pageContent;
   paperSessions: typeof paperSessions;
   "paperSessions/constants": typeof paperSessions_constants;

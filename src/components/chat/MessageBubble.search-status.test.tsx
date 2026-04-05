@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import type { UIMessage } from "ai"
 import { describe, expect, it, vi } from "vitest"
+import { SPEC_DATA_PART_TYPE } from "@json-render/core"
 import { MessageBubble } from "./MessageBubble"
 
 vi.mock("./QuickActions", () => ({
@@ -255,6 +256,36 @@ describe("MessageBubble search status", () => {
     expect(screen.getByTestId("reference-inventory-body")).toHaveTextContent(
       "Berikut inventaris referensi yang ditemukan."
     )
+  })
+
+  it("does not crash when json-render spec contains null elements", () => {
+    const message = {
+      id: "m-bad-choice-spec",
+      role: "assistant",
+      parts: [
+        { type: "text", text: "Respons tetap tampil." },
+        {
+          type: SPEC_DATA_PART_TYPE,
+          data: {
+            type: "flat",
+            spec: {
+              root: "shell",
+              elements: {
+                shell: {
+                  type: "ChoiceCardShell",
+                  props: { title: "Pilihan fokus" },
+                  children: ["bad"],
+                },
+                bad: null,
+              },
+            },
+          },
+        },
+      ],
+    } as unknown as UIMessage
+
+    expect(() => render(<MessageBubble message={message} />)).not.toThrow()
+    expect(screen.getAllByText("Respons tetap tampil.").length).toBeGreaterThan(0)
   })
 
   it("feeds quick actions with structured inventory text instead of raw placeholder links", () => {
