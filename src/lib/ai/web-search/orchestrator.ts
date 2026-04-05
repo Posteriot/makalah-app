@@ -584,6 +584,10 @@ export async function executeWebSearch(
         ...(config.isDraftingStage
           ? [{ role: "system" as const, content: CHOICE_YAML_SYSTEM_PROMPT }]
           : []),
+        // Stage-specific compose override — injected LAST for maximum recency bias
+        ...(sourceCount > 0 && config.currentStage === "tinjauan_literatur"
+          ? [{ role: "system" as const, content: `FINAL OVERRIDE FOR TINJAUAN LITERATUR:\nSearch is DONE. ${sourceCount} sources found. You MUST:\n1. Write 3-5 bullet points summarizing key literature findings\n2. Output a yaml-spec choice card with 2-3 theoretical framework options\n3. NEVER say "akan mencari", "mohon tunggu", or "setelah pencarian selesai"\nThe search results are ALREADY in your context above. Synthesize them NOW.` }]
+          : []),
       ]
 
       const composeMessages = [
