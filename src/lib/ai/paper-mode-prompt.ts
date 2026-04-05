@@ -267,13 +267,16 @@ export const getPaperModeSystemPrompt = async (
             : "";
         // Check if previous turn saved data but skipped artifact creation
         const currentStageData = (session.stageData as Record<string, Record<string, unknown> | undefined>)?.[stage as string];
+        const hasArtifactForStage = !!currentStageData?.artifactId;
         const hasDataButNoArtifact = status === "drafting"
             && currentStageData
             && Object.keys(currentStageData).filter(k => k !== "referensiAwal" && k !== "referensiPendukung" && k !== "webSearchReferences").length > 0
-            && !currentStageData.artifactId;
+            && !hasArtifactForStage;
         const artifactMissingNote = hasDataButNoArtifact
-            ? `\n⚠️ CRITICAL: Stage data was saved but NO ARTIFACT exists yet. You MUST call createArtifact() NOW with the saved data, then call submitStageForValidation() in this SAME turn. Do NOT write more prose — create the artifact IMMEDIATELY.\n`
-            : "";
+            ? `\n⚠️ CRITICAL: Stage data was saved but NO ARTIFACT exists yet. You MUST call createArtifact() NOW with the saved data, then call submitStageForValidation() in this SAME turn. Do NOT write more prose — create the artifact IMMEDIATELY. Do NOT claim you already created an artifact — check the tool results.\n`
+            : !hasArtifactForStage && status === "drafting" && stage !== "gagasan"
+                ? `\n⚠️ IMPORTANT: No artifact exists for this stage yet. When you are ready to save the draft, you MUST call updateStageData + createArtifact + submitStageForValidation in the SAME turn. Do NOT claim artifact was created unless you actually called the createArtifact tool and received a success response.\n`
+                : "";
 
         const dirtyContextNote = `\n🔄 DIRTY CONTEXT: ${isDirty ? "true" : "false"}\n`;
         const dirtySyncContractNote = status === "pending_validation" && isDirty
