@@ -209,8 +209,8 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                         stage,
                         message: `Successfully saved progress for stage ${stage}.`,
                         nextAction: hasArtifact
-                            ? "Data saved. Artifact already exists — call updateArtifact if content changed, then present to user."
-                            : "Data saved. NEXT: You MUST call createArtifact() NOW in this same response to create the stage artifact. Do NOT stop here.",
+                            ? "Data saved. Artifact already exists — call updateArtifact if content changed, then call submitStageForValidation()."
+                            : "⚠️ MANDATORY: call createArtifact() RIGHT NOW in this same response, then call submitStageForValidation(). Do NOT generate text, do NOT stop — call the tools IMMEDIATELY.",
                     };
                 } catch (error) {
                     console.error("Error in updateStageData tool:", error);

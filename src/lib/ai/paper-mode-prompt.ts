@@ -265,6 +265,16 @@ export const getPaperModeSystemPrompt = async (
         const pendingNote = status === "pending_validation"
             ? "\n⏳ AWAITING VALIDATION: Draft has been submitted. Wait for user to approve/revise before proceeding.\n"
             : "";
+        // Check if previous turn saved data but skipped artifact creation
+        const currentStageData = (session.stageData as Record<string, Record<string, unknown> | undefined>)?.[stage as string];
+        const hasDataButNoArtifact = status === "drafting"
+            && currentStageData
+            && Object.keys(currentStageData).filter(k => k !== "referensiAwal" && k !== "referensiPendukung" && k !== "webSearchReferences").length > 0
+            && !currentStageData.artifactId;
+        const artifactMissingNote = hasDataButNoArtifact
+            ? `\n⚠️ CRITICAL: Stage data was saved but NO ARTIFACT exists yet. You MUST call createArtifact() NOW with the saved data, then call submitStageForValidation() in this SAME turn. Do NOT write more prose — create the artifact IMMEDIATELY.\n`
+            : "";
+
         const dirtyContextNote = `\n🔄 DIRTY CONTEXT: ${isDirty ? "true" : "false"}\n`;
         const dirtySyncContractNote = status === "pending_validation" && isDirty
             ? "\n⚠️ SYNC CONTRACT: Stage data is not yet synced. If user asks to sync or continue from state, you MUST explain that the update cannot be finalized until the user requests a revision first.\n"
@@ -280,7 +290,7 @@ export const getPaperModeSystemPrompt = async (
 ---
 [PAPER WRITING MODE]
 Tahap: ${stageLabel} (${stage}) | Status: ${status}
-${revisionNote}${pendingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}
+${revisionNote}${pendingNote}${artifactMissingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}
 GENERAL RULES:
 - STAGE MODES:
   - gagasan = discussion hub + proactive dual search (academic + non-academic)
