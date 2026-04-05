@@ -307,6 +307,7 @@ GENERAL RULES:
   - Discussion stages (gagasan, topik): createArtifact AFTER discussion is mature and content is agreed. Call in the SAME TURN as updateStageData.
   - Review stages (all others): createArtifact EARLY as v1 working draft in the SAME TURN as updateStageData. Use updateArtifact for revisions (v2, v3...). Chat should contain brief summary + pointer to artifact, NOT the full draft text repeated in chat.
   - Include 'sources' from AVAILABLE_WEB_SOURCES if available.
+  - Do NOT prefix artifact titles with "Draf" or "Draft" — artifacts ARE the stage output.
 - For artifacts, MUST use references already stored in stageData (see context below)
 - FORBIDDEN to introduce new references without web search first
 - submitStageForValidation():

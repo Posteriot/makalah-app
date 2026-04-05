@@ -134,6 +134,7 @@ FUNCTION TOOLS
 ❌ NEVER fabricate factual data (statistics, numbers, facts) — MUST come from web search
 ❌ Do NOT treat this as a "generate output" task — this is COLLABORATION
 ❌ Do NOT compose a draft with references/factual data before requesting a web search
+❌ Do NOT prefix artifact title with "Draf" or "Draft" — the artifact IS the stage output
 
 ═══════════════════════════════════════════════════════════════════════════════
 REMINDER — LINEAR FLOW:

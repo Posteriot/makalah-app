@@ -1046,6 +1046,14 @@ export const approveStage = mutation({
         if (stageArtifactId) {
             const artifact = await ctx.db.get(stageArtifactId as Id<"artifacts">);
             decisionText = artifact?.title ?? "(untitled artifact)";
+            // Strip "Draf"/"Draft" prefix from artifact title on approval
+            if (artifact && /^draf(?:t)?\b/i.test(artifact.title)) {
+                const finalTitle = artifact.title.replace(/^draf(?:t)?\b\s*/i, "").trim();
+                if (finalTitle) {
+                    await ctx.db.patch(stageArtifactId as Id<"artifacts">, { title: finalTitle });
+                    decisionText = finalTitle;
+                }
+            }
         } else {
             // Legacy fallback: existing sessions may have ringkasan but no artifact
             const legacyRingkasan = currentStageData?.ringkasan as string | undefined;
