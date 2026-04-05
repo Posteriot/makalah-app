@@ -310,7 +310,8 @@ GENERAL RULES:
 - For artifacts, MUST use references already stored in stageData (see context below)
 - FORBIDDEN to introduce new references without web search first
 - submitStageForValidation():
-  - Discussion stages (gagasan, topik): ONLY after user EXPLICITLY confirms satisfaction.
+  - All stages: call in the SAME TURN as createArtifact. User approves or requests revision via the PaperValidationPanel.
+  - topik: ONLY after user confirms topic direction via choice card.
   - Review stages (all others): Present for validation IMMEDIATELY after v1 artifact is created. User approves or requests revision via the validation panel. Do NOT wait for explicit chat confirmation.
 - Do not advance to next stage before currentStage changes in database
 - If status is pending_validation and DIRTY CONTEXT = true, MUST state "data not yet synced" and direct user to request revision so sync/draft update can proceed
