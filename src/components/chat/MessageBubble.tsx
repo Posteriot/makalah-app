@@ -557,9 +557,22 @@ export function MessageBubble({
             }
         }
 
-        if (!spec) return null
+        if (!spec) {
+            // Check: does this message have parts at all? And do any look like spec parts?
+            const partTypes = (uiMessage.parts ?? []).map(p => (p as {type?:string})?.type).filter(Boolean)
+            if (partTypes.length > 0) {
+                console.log("[F1-F6-TEST] extractChoiceSpec: no spec found", { messageId: uiMessage.id, partTypes: partTypes.join(",") })
+            }
+            return null
+        }
 
+        const elementTypes = Object.entries((spec as unknown as Record<string, unknown>).elements ?? {}).map(([id, el]) => `${id}:${(el as {type?:string}).type ?? "?"}`).join(", ")
         const parsedSpec = choiceSpecSchema.safeParse(spec)
+        if (!parsedSpec.success) {
+            console.warn("[F1-F6-TEST] ChoiceSpec validation FAILED", { errors: parsedSpec.error.issues.map(i => `${i.path.join(".")}: ${i.message}`), elementTypes })
+        } else {
+            console.log("[F1-F6-TEST] extractChoiceSpec OK", { messageId: uiMessage.id, elementTypes })
+        }
         return parsedSpec.success ? (spec as JsonRendererChoiceSpec) : null
     }
 
@@ -575,6 +588,29 @@ export function MessageBubble({
         const hasSubmitButton = Object.values(elements).some((el) => (el as { type?: string }).type === "ChoiceSubmitButton")
 
         let normalizedSpec = choiceSpec
+
+        // Safety net 2: if ChoiceSubmitButton exists but has empty/missing label, fix it
+        if (hasSubmitButton) {
+            const submitEntry = Object.entries(elements).find(([, el]) => (el as { type?: string }).type === "ChoiceSubmitButton")
+            if (submitEntry) {
+                const [submitKey, submitEl] = submitEntry
+                const submitProps = (submitEl as { props?: Record<string, unknown> }).props ?? {}
+                if (!submitProps.label || (typeof submitProps.label === "string" && submitProps.label.trim().length === 0)) {
+                    normalizedSpec = {
+                        ...choiceSpec,
+                        elements: {
+                            ...elements,
+                            [submitKey]: {
+                                ...submitEl,
+                                props: { ...submitProps, label: "Lanjutkan" },
+                            },
+                        },
+                    } as JsonRendererChoiceSpec
+                    console.warn("[F1-F6-TEST] ChoiceSubmitButton had empty label — set to 'Lanjutkan'")
+                }
+            }
+        }
+
         if (hasOptionButtons && !hasSubmitButton) {
             const submitId = "injected-submit-btn"
             const rootElement = elements[choiceSpec.root]
