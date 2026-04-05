@@ -43,6 +43,7 @@ Recommended:
 
 ## Guardrails
 Title selection must reflect scope, contribution, and evidence from previous stages.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Artifact is created after user selects title via choice card, submitted for validation. Final title decision is approved, and stage is ready for completion.

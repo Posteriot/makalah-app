@@ -296,6 +296,7 @@ Recommended:
 
 ## Guardrails
 Prefer specific and measurable topic framing over broad, generic phrasing.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 The user approves the definitive topic via choice card, artifact is created after user confirms topic direction via choice card.`
@@ -346,6 +347,7 @@ Recommended:
 ## Guardrails
 Ensure section ordering supports the 13-stage workflow, avoids structural duplication, and keeps IDs stable for living-checklist tracking.
 Each outline section must track: checkedAt (when last verified), checkedBy (who verified), editHistory (changes log).
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Outline is complete, internally consistent, living-checklist fields are structurally ready, artifact is created and linked to stage, outline structure presented for validation, and user confirms readiness.`
@@ -394,6 +396,7 @@ Recommended:
 
 ## Guardrails
 Keep the abstract aligned with previously approved stage decisions.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Abstract is concise and aligned, artifact is created after user picks approach via choice card, submitted for validation, and user confirms readiness.`
@@ -447,6 +450,7 @@ Recommended:
 
 ## Guardrails
 Use sourced references for factual claims and keep argument flow coherent.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Introduction quality is accepted by user, artifact is created after user picks approach, submitted for validation, and draft is ready for validation.`
@@ -499,6 +503,7 @@ Recommended:
 
 ## Guardrails
 Prioritize high-quality references and keep claims traceable to sources.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Review is coherent and evidence-backed, artifact is created after user picks framework approach, submitted for validation, and user confirms readiness.`
@@ -550,6 +555,7 @@ Recommended:
 
 ## Guardrails
 Method choices must be internally consistent and feasible for the user context.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Method plan is clear and feasible, artifact is created after user picks methodology approach, submitted for validation, and user confirms readiness.`
@@ -597,6 +603,7 @@ Recommended:
 
 ## Guardrails
 Differentiate clearly between observed findings and interpretation.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Artifact is created after user provides data into agent-proposed structure, submitted for validation. Results are accurate and readable, and user confirms readiness.`
@@ -647,6 +654,7 @@ Recommended:
 
 ## Guardrails
 Keep interpretation tied to findings and cited references.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Artifact is created with complete discussion, submitted for validation. Discussion is analytically sound, and user confirms readiness.`
@@ -696,6 +704,7 @@ Recommended:
 
 ## Guardrails
 Keep the conclusion as synthesis, not as a new analysis section.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Artifact is created with complete conclusion, submitted for validation. Conclusion is complete and actionable, and user confirms readiness.`
@@ -758,6 +767,7 @@ Recommended:
 - Web search and function tools must not run in the same turn
 - Preserve the core research vision and novelty angle established in Phase 1 (Stages 1-2)
 - If the original abstract is already well-aligned with actual results, say so — do not force unnecessary changes
+- After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Artifact is created with updated abstract + tracked changes, submitted for validation. perubahanUtama lists all significant deviations from the original. The draft is ready for user validation via submitStageForValidation.`
@@ -806,6 +816,7 @@ Recommended:
 
 ## Guardrails
 Use consistent citation formatting and avoid duplicates. Final compilation must go through compileDaftarPustaka({ mode: "persist" }).
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Artifact is created with compiled bibliography, submitted for validation. compileDaftarPustaka({ mode: "persist" }) has been executed, and user confirms readiness.`
@@ -853,6 +864,7 @@ Recommended:
 
 ## Guardrails
 Appendix entries must map to actual needs of the paper.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Artifact is created after user validates proposed items, submitted for validation. Appendix plan is complete (or justified as empty), and user confirms readiness.`
@@ -900,6 +912,7 @@ Recommended:
 
 ## Guardrails
 Title selection must reflect scope, contribution, and evidence from previous stages.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Artifact is created after user selects title via choice card, submitted for validation. Final title decision is approved, and stage is ready for completion.`

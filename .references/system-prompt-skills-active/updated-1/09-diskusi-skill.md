@@ -46,6 +46,7 @@ Recommended:
 
 ## Guardrails
 Keep interpretation tied to findings and cited references.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Artifact is created with complete discussion, submitted for validation. Discussion is analytically sound, and user confirms readiness.

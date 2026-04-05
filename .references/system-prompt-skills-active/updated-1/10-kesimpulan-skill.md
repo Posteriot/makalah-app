@@ -45,6 +45,7 @@ Recommended:
 
 ## Guardrails
 Keep the conclusion as synthesis, not as a new analysis section.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Artifact is created with complete conclusion, submitted for validation. Conclusion is complete and actionable, and user confirms readiness.

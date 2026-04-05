@@ -44,6 +44,7 @@ Recommended:
 
 ## Guardrails
 Keep the abstract aligned with previously approved stage decisions.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Abstract is concise and aligned, artifact is created after user picks approach via choice card, submitted for validation, and user confirms readiness.

@@ -56,6 +56,7 @@ Recommended:
 - Web search and function tools must not run in the same turn
 - Preserve the core research vision and novelty angle established in Phase 1 (Stages 1-2)
 - If the original abstract is already well-aligned with actual results, say so — do not force unnecessary changes
+- After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Artifact is created with updated abstract + tracked changes, submitted for validation. perubahanUtama lists all significant deviations from the original. The draft is ready for user validation via submitStageForValidation.

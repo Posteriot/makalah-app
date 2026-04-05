@@ -43,6 +43,7 @@ Recommended:
 
 ## Guardrails
 Appendix entries must map to actual needs of the paper.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Artifact is created after user validates proposed items, submitted for validation. Appendix plan is complete (or justified as empty), and user confirms readiness.

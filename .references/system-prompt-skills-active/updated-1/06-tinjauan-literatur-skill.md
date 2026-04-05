@@ -48,6 +48,7 @@ Recommended:
 
 ## Guardrails
 Prioritize high-quality references and keep claims traceable to sources.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 Review is coherent and evidence-backed, artifact is created after user picks framework approach, submitted for validation, and user confirms readiness.

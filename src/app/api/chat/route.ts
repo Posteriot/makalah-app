@@ -1509,6 +1509,7 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                             artifactId: result.artifactId,
                             title,
                             message: `Artifact "${title}" berhasil dibuat. User dapat melihatnya di panel artifact.`,
+                            nextAction: "⚠️ MANDATORY: Artifact is created. Do NOT restate the draft content in chat. Respond with MAX 2-3 sentences: (1) confirm artifact was created, (2) direct user to review in artifact panel, (3) call submitStageForValidation() NOW. No bullet lists, no section details, no references in chat.",
                         }
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : String(error)
@@ -1603,6 +1604,7 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                             oldArtifactId: artifactId,
                             version: result.version,
                             message: `Artifact berhasil di-update ke versi ${result.version}. User dapat melihat versi baru di panel artifact.`,
+                            nextAction: "⚠️ Artifact updated. Do NOT repeat the revised content in chat. Respond with MAX 2-3 sentences confirming the update and directing user to review in artifact panel.",
                         }
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : String(error)

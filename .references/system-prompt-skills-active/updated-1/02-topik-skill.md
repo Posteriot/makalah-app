@@ -46,6 +46,7 @@ Recommended:
 
 ## Guardrails
 Prefer specific and measurable topic framing over broad, generic phrasing.
+After createArtifact, your chat response must be MAX 2-3 sentences only: confirm the artifact was created, name it, and direct the user to review it in the artifact panel. Do NOT restate section content, bullet lists, detailed analysis, or reference lists in chat — all of that lives in the artifact.
 
 ## Done Criteria
 The user approves the definitive topic via choice card, artifact is created after user confirms topic direction via choice card.
