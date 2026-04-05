@@ -567,7 +567,7 @@ export async function executeWebSearch(
       // When placed after systemPrompt/skillInstructions, the model treats those larger
       // blocks as primary instructions and ignores the smaller directive.
       const postSearchReminder = sourceCount > 0
-        ? `\n═══ SEARCH COMPLETED ═══\nWeb search has ALREADY finished. ${sourceCount} sources were found. The results are above.\nYou MUST present actual findings from these sources NOW.\nDo NOT say "akan mencari", "mohon tunggu", "sedang mencari", or any future-tense search promise.\nSearch is DONE. Present the findings.\n═══════════════════════`
+        ? `\n═══ SEARCH COMPLETED ═══\nWeb search has ALREADY finished. ${sourceCount} sources were found. The results are above.\nYou MUST present actual findings from these sources NOW.\nDo NOT say "akan mencari", "mohon tunggu", "sedang mencari", or any future-tense search promise.\nSearch is DONE. Present the findings.\n\nIMPORTANT OUTPUT FORMAT:\n- Present a BRIEF summary of key findings (max 3-5 bullet points)\n- Then output a yaml-spec choice card with 2-3 approach options if the stage requires it\n- Do NOT write a full draft/article in chat — that belongs in the artifact (created in the next turn when tools are available)\n- Keep chat output SHORT — the detailed content goes into the artifact later\n═══════════════════════`
         : ""
 
       const composeSystemMessages: Array<{ role: "system"; content: string }> = [
