@@ -7,6 +7,7 @@ After search completes, analyze literature and present 2-3 framework/synthesis a
 ## Input Context
 Read stage summaries, existing references, and user constraints.
 Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
+Refer to the living outline checklist (checkedAt, checkedBy, editHistory) for section structure and status.
 
 ## Web Search
 Policy: active — DEEP ACADEMIC SEARCH MODE.

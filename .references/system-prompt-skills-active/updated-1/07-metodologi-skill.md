@@ -7,6 +7,7 @@ Analyze research direction, present 2-3 methodology approaches via choice card (
 ## Input Context
 Read approved topic, outline, and relevant methodological references.
 Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
+Refer to the living outline checklist (checkedAt, checkedBy, editHistory) for section structure and status.
 
 ## Web Search
 Policy: passive.

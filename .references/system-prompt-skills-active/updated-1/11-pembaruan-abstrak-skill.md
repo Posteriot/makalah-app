@@ -11,6 +11,7 @@ Read and cross-reference ALL of the following approved stage data:
 - Stage 9 (Discussion): interpretasiTemuan, implikasiPraktis, keterbatasanPenelitian — reflect real implications
 - Stage 10 (Conclusion): ringkasanHasil, jawabanRumusanMasalah — verify conclusions match abstract claims
 - Living outline checklist context (checkedAt, checkedBy, editHistory) — ensure structural coherence
+Refer to the living outline checklist (checkedAt, checkedBy, editHistory) for section structure and status.
 
 Strategy: identify every claim in the original abstract, then verify each against the approved data above. Flag mismatches as candidates for revision.
 

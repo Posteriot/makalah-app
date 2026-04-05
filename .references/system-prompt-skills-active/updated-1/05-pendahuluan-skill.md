@@ -7,6 +7,7 @@ Analyze material, present 2-3 narrative approaches via choice card with RECOMMEN
 ## Input Context
 Read approved context from earlier stages and latest user feedback.
 Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
+Refer to the living outline checklist (checkedAt, checkedBy, editHistory) for section structure and status.
 
 ## Web Search
 Policy: passive.

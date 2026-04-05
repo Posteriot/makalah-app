@@ -6,6 +6,7 @@ Present results clearly using user-provided or approved data representation. Bas
 ## Input Context
 Read approved methodology and prior stage outputs.
 Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
+Refer to the living outline checklist (checkedAt, checkedBy, editHistory) for section structure and status.
 
 ## Web Search
 Policy: passive — only when user explicitly requests it.

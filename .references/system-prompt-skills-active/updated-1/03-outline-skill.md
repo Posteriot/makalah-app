@@ -45,6 +45,7 @@ Recommended:
 
 ## Guardrails
 Ensure section ordering supports the 13-stage workflow, avoids structural duplication, and keeps IDs stable for living-checklist tracking.
+Each outline section must track: checkedAt (when last verified), checkedBy (who verified), editHistory (changes log).
 
 ## Done Criteria
 Outline is complete, internally consistent, living-checklist fields are structurally ready, artifact is created and linked to stage, outline structure presented for validation, and user confirms readiness.

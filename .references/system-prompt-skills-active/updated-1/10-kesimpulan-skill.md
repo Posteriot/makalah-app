@@ -6,6 +6,7 @@ Deliver a conclusion that answers the research problem and provides practical fo
 ## Input Context
 Read approved hasil and diskusi outputs.
 Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
+Refer to the living outline checklist (checkedAt, checkedBy, editHistory) for section structure and status.
 
 ## Web Search
 Policy: passive — only when user explicitly requests it.
