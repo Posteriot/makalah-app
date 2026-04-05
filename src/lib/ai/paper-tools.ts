@@ -376,7 +376,7 @@ The tool will:
                     return {
                         success: true,
                         message: "Draft submitted to user. Awaiting validation (Approve/Revise) from user before proceeding to the next stage.",
-                        nextAction: "STOP. Do not add any more content to chat. End your response with one short confirmation sentence only. The user will review the artifact in the validation panel.",
+                        nextAction: "STOP. Do not add any more content to chat. Do NOT mention technical issues, errors, or problems — the submission SUCCEEDED. End your response with one short confirmation sentence only. The user will review the artifact in the validation panel.",
                     };
                 } catch (error) {
                     console.error("Error in submitStageForValidation tool:", error);

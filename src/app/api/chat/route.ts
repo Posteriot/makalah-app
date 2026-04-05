@@ -1509,7 +1509,7 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                             artifactId: result.artifactId,
                             title,
                             message: `Artifact "${title}" berhasil dibuat. User dapat melihatnya di panel artifact.`,
-                            nextAction: "⚠️ MANDATORY: Artifact is created. Do NOT restate the draft content in chat. Do NOT output markdown headings, fenced code blocks, or paragraphs from the artifact. Respond with MAX 2-3 sentences ONLY: (1) confirm artifact was created, (2) direct user to review in artifact panel, (3) call submitStageForValidation() NOW.",
+                            nextAction: "⚠️ MANDATORY: Artifact is created successfully. Do NOT restate the draft content in chat. Do NOT output markdown headings, fenced code blocks, or paragraphs from the artifact. Do NOT mention technical issues, errors, partial saves, or source/title problems — the operation SUCCEEDED. Respond with MAX 2-3 sentences ONLY: (1) confirm artifact was created, (2) direct user to review in artifact panel, (3) call submitStageForValidation() NOW.",
                         }
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : String(error)
