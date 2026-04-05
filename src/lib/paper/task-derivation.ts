@@ -138,7 +138,9 @@ function isFieldComplete(value: unknown, type: CompletionType): boolean {
     case "number":
       return typeof value === "number" && value > 0
     case "array":
-      return Array.isArray(value) && value.length > 0
+      if (Array.isArray(value)) return value.length > 0
+      if (typeof value === "string") return value.trim().length > 0
+      return false
     case "boolean":
       return value === true
     case "enum":
