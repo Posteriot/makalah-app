@@ -566,9 +566,14 @@ export async function executeWebSearch(
       // COMPOSE_PHASE_DIRECTIVE goes FIRST — it defines the phase context and overrides.
       // When placed after systemPrompt/skillInstructions, the model treats those larger
       // blocks as primary instructions and ignores the smaller directive.
+      const postSearchReminder = sourceCount > 0
+        ? `\n═══ SEARCH COMPLETED ═══\nWeb search has ALREADY finished. ${sourceCount} sources were found. The results are above.\nYou MUST present actual findings from these sources NOW.\nDo NOT say "akan mencari", "mohon tunggu", "sedang mencari", or any future-tense search promise.\nSearch is DONE. Present the findings.\n═══════════════════════`
+        : ""
+
       const composeSystemMessages: Array<{ role: "system"; content: string }> = [
         { role: "system", content: COMPOSE_PHASE_DIRECTIVE },
         { role: "system", content: searchResultsContext },
+        ...(postSearchReminder ? [{ role: "system" as const, content: postSearchReminder }] : []),
         { role: "system", content: config.systemPrompt },
         ...(skillInstructions
           ? [{ role: "system" as const, content: skillInstructions }]
