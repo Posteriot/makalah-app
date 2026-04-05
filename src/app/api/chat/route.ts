@@ -2662,7 +2662,10 @@ Aturan:
                             if (chunk.type === "finish") {
                                 // Log captured YAML spec for persistence
                                 if (capturedChoiceSpec && capturedChoiceSpec.root) {
+                                    const elementTypes = Object.entries(capturedChoiceSpec.elements || {}).map(([id, el]) => `${id}:${(el as {type?:string}).type ?? '?'}`).join(", ")
+                                    const hasSubmitBtn = Object.values(capturedChoiceSpec.elements || {}).some((el) => (el as {type?:string}).type === "ChoiceSubmitButton")
                                     console.info(`[CHOICE-CARD][yaml-capture] primary stage=${paperStageScope} specKeys=${Object.keys(capturedChoiceSpec).join(",")}`)
+                                    console.info(`[F1-F6-TEST] ChoiceCardSpec { elements: "${elementTypes}", hasSubmitButton: ${hasSubmitBtn} }`)
                                 }
 
                                 if (reasoningAccumulator.hasReasoning()) {

@@ -569,12 +569,52 @@ export function MessageBubble({
     const choiceBlockPayload = useMemo<JsonRendererChoiceRenderPayload | null>(() => {
         if (!choiceSpec) return null
 
-        const specWithState = choiceSpec as JsonRendererChoiceSpec & {
+        // Safety net: if model generated ChoiceOptionButtons but no ChoiceSubmitButton, inject one
+        const elements = choiceSpec.elements ?? {}
+        const hasOptionButtons = Object.values(elements).some((el) => (el as { type?: string }).type === "ChoiceOptionButton")
+        const hasSubmitButton = Object.values(elements).some((el) => (el as { type?: string }).type === "ChoiceSubmitButton")
+
+        let normalizedSpec = choiceSpec
+        if (hasOptionButtons && !hasSubmitButton) {
+            const submitId = "injected-submit-btn"
+            const rootElement = elements[choiceSpec.root]
+            const rootChildren = Array.isArray((rootElement as { children?: string[] })?.children)
+                ? [...(rootElement as { children: string[] }).children, submitId]
+                : [submitId]
+
+            normalizedSpec = {
+                ...choiceSpec,
+                elements: {
+                    ...elements,
+                    [choiceSpec.root]: {
+                        ...rootElement,
+                        children: rootChildren,
+                    },
+                    [submitId]: {
+                        type: "ChoiceSubmitButton",
+                        props: { label: "Lanjutkan", disabled: false },
+                        children: [],
+                        on: {
+                            press: {
+                                action: "submitChoice",
+                                params: {
+                                    selectedOptionId: { $state: "/selection/selectedOptionId" },
+                                    customText: { $state: "/selection/customText" },
+                                },
+                            },
+                        },
+                    },
+                },
+            } as JsonRendererChoiceSpec
+            console.warn("[F1-F6-TEST] ChoiceSubmitButton missing from model YAML — injected fallback")
+        }
+
+        const specWithState = normalizedSpec as JsonRendererChoiceSpec & {
             state?: JsonRendererChoiceRenderPayload["initialState"]
         }
 
         return {
-            spec: choiceSpec,
+            spec: normalizedSpec,
             initialState: specWithState.state ?? {
                 selection: {
                     selectedOptionId: null,
