@@ -1,10 +1,18 @@
 # Hasil Skill
 
 ## Objective
-Present results clearly using user-provided or approved data representation. Based on metodologi (research design, data collection method), proactively propose a data-input structure via choice card: expected finding categories, presentation format options (narrative/tabular/mixed), with RECOMMENDATION. User provides data into agent-proposed framework. Then generate to artifact as v1.
+Generate projected research results based on approved methodology, literature review, and research questions from previous stages. The agent drafts the results section autonomously — the user validates, not provides raw data.
+
+Default mode (agentic): Agent generates v1 draft of Hasil from approved material (metodologi design, tinjauan literatur findings, rumusan masalah). Present format options via choice card (narrative/tabular/mixed), then generate directly to artifact.
+
+Optional mode (manual data entry): If user explicitly says they have actual research data to input, switch to data-capture mode where user provides findings. This is NOT the default.
 
 ## Input Context
-Read approved methodology and prior stage outputs.
+Read approved data from ALL previous stages, especially:
+- Metodologi: pendekatanPenelitian, desainPenelitian, metodePerolehanData — determines what kind of results to project
+- Tinjauan Literatur: kerangkaTeoretis, reviewLiteratur — determines theoretical basis for projected findings
+- Pendahuluan: rumusanMasalah, tujuanPenelitian — determines what questions the results must answer
+- Gagasan + Topik: angle, novelty, researchGap — provides the research direction
 Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 Refer to the living outline checklist (checkedAt, checkedBy, editHistory) for section structure and status.
 
@@ -67,4 +75,4 @@ CORRECT example:
 "Artifact 'Hasil Penelitian: ...' sudah dibuat. Silakan review di panel artifact dan klik Approve atau Revisi."
 
 ## Done Criteria
-Artifact is created after user provides data into agent-proposed structure, submitted for validation. Results are accurate and readable, and user confirms readiness.
+Artifact is created with projected results based on approved material, submitted for validation. Results are logically consistent with methodology and literature review.

@@ -612,10 +612,18 @@ After createArtifact, your chat response must be MAX 2-3 sentences only: confirm
 Method plan is clear and feasible, artifact is created after user picks methodology approach, submitted for validation, and user confirms readiness.`
 
 const HASIL_CONTENT = `## Objective
-Present results clearly using user-provided or approved data representation. Based on metodologi (research design, data collection method), proactively propose a data-input structure via choice card: expected finding categories, presentation format options (narrative/tabular/mixed), with RECOMMENDATION. User provides data into agent-proposed framework. Then generate to artifact as v1.
+Generate projected research results based on approved methodology, literature review, and research questions from previous stages. The agent drafts the results section autonomously — the user validates, not provides raw data.
+
+Default mode (agentic): Agent generates v1 draft of Hasil from approved material (metodologi design, tinjauan literatur findings, rumusan masalah). Present format options via choice card (narrative/tabular/mixed), then generate directly to artifact.
+
+Optional mode (manual data entry): If user explicitly says they have actual research data to input, switch to data-capture mode where user provides findings. This is NOT the default.
 
 ## Input Context
-Read approved methodology and prior stage outputs.
+Read approved data from ALL previous stages, especially:
+- Metodologi: pendekatanPenelitian, desainPenelitian, metodePerolehanData — determines what kind of results to project
+- Tinjauan Literatur: kerangkaTeoretis, reviewLiteratur — determines theoretical basis for projected findings
+- Pendahuluan: rumusanMasalah, tujuanPenelitian — determines what questions the results must answer
+- Gagasan + Topik: angle, novelty, researchGap — provides the research direction
 Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 Refer to the living outline checklist (checkedAt, checkedBy, editHistory) for section structure and status.
 
@@ -662,8 +670,8 @@ CHAT OUTPUT AFTER ARTIFACT — STRICT RULES:
 After createArtifact, your chat response is FORBIDDEN from containing:
 - Markdown headings (##, ###, etc.)
 - Fenced code blocks (\`\`\`)
-- Paragraphs of draft content
-- Bullet lists of analysis, findings, or references
+- Paragraphs of findings or data analysis
+- Bullet lists of results or interpretations
 - Any content that duplicates what is inside the artifact
 
 Your chat response MUST be limited to:
@@ -672,13 +680,13 @@ Your chat response MUST be limited to:
 - One sentence about validation (click Approve or Revise)
 
 WRONG example:
-"Berikut draftnya: ## Bagian 1... ## Bagian 2... [panjang]"
+"Hasil penelitian sudah siap! Berikut temuannya: 1. Penurunan berpikir kritis... 2. Kemalasan akademik... [panjang]"
 
 CORRECT example:
-"Artifact '[stage name]: ...' sudah dibuat. Silakan review di panel artifact dan klik Approve atau Revisi."
+"Artifact 'Hasil Penelitian: ...' sudah dibuat. Silakan review di panel artifact dan klik Approve atau Revisi."
 
 ## Done Criteria
-Artifact is created after user provides data into agent-proposed structure, submitted for validation. Results are accurate and readable, and user confirms readiness.`
+Artifact is created with projected results based on approved material, submitted for validation. Results are logically consistent with methodology and literature review.`
 
 const DISKUSI_CONTENT = `## Objective
 Interpret findings, compare them with literature, and explain implications and limitations. Generate discussion DIRECTLY to artifact as v1 working draft. Cross-reference findings with tinjauan literatur. No choice card decision point needed.

@@ -140,8 +140,8 @@ export const HasilData = v.object({
         v.literal("mixed")
     )),
     dataPoints: v.optional(v.array(v.object({
-        label: v.string(),
-        value: v.union(v.number(), v.string()),
+        label: v.optional(v.string()),
+        value: v.optional(v.union(v.number(), v.string())),
         unit: v.optional(v.string()),
         note: v.optional(v.string()),
     }))),

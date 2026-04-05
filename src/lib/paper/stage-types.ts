@@ -111,8 +111,8 @@ export interface MetodologiData {
 }
 
 export interface DataPoint {
-  label: string
-  value: number | string
+  label?: string
+  value?: number | string
   unit?: string
   note?: string
 }
