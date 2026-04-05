@@ -342,7 +342,7 @@ The tool will:
         }),
 
         submitStageForValidation: tool({
-            description: "Submit the current stage draft to the user for validation. This triggers an approval panel in the user's UI. AI stops generating after this.",
+            description: "Submit the current stage draft to the user for validation. This triggers an approval panel in the user's UI. AI stops generating after this. IMPORTANT: createArtifact MUST be called BEFORE this tool.",
             inputSchema: z.object({}),
             execute: async () => {
                 try {
@@ -353,6 +353,18 @@ The tool will:
                         "paperSessions.getByConversation"
                     );
                     if (!session) return { success: false, error: "Paper session not found." };
+
+                    // Pre-check: artifact must exist before submitting
+                    const stage = session.currentStage;
+                    const stageDataMap = session.stageData as Record<string, Record<string, unknown> | undefined> | undefined;
+                    const currentStageData = stageDataMap?.[stage];
+                    if (!currentStageData?.artifactId) {
+                        console.warn("[submitStageForValidation] Blocked: no artifact yet for stage", stage);
+                        return {
+                            success: false,
+                            error: "Artifact has not been created yet. You MUST call createArtifact() FIRST, then call submitStageForValidation() again.",
+                        };
+                    }
 
                     await retryMutation(
                         () => fetchMutation(api.paperSessions.submitForValidation, {
