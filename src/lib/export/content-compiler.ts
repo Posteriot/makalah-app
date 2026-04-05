@@ -50,7 +50,7 @@ export interface CompiledPaperContent {
     etikaPenelitian: string | null
   } | null
   hasil: {
-    temuanUtama: string[] | null
+    temuanUtama: string[] | string | null
     metodePenyajian: "narrative" | "tabular" | "mixed" | null
     dataPoints: DataPoint[] | null
   } | null

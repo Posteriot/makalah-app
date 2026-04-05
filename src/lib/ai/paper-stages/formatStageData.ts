@@ -363,7 +363,8 @@ function formatHasilData(data: HasilData, isCurrentStage: boolean, summaryMode =
     }
     if (data.temuanUtama && data.temuanUtama.length > 0) {
         output += `Key Findings:\n`;
-        data.temuanUtama.forEach((item, i) => {
+        const findings = Array.isArray(data.temuanUtama) ? data.temuanUtama : [data.temuanUtama];
+        findings.forEach((item: string, i: number) => {
             output += `  ${i + 1}. ${truncateText(item, summaryMode)}\n`;
         });
     }

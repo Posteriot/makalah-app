@@ -133,7 +133,7 @@ export const MetodologiData = v.object({
 // Phase 3: Results & Analysis
 export const HasilData = v.object({
     ...legacyRingkasanFields,
-    temuanUtama: v.optional(v.array(v.string())),
+    temuanUtama: v.optional(v.union(v.array(v.string()), v.string())),
     metodePenyajian: v.optional(v.union(
         v.literal("narrative"),
         v.literal("tabular"),

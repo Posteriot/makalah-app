@@ -118,7 +118,7 @@ export interface DataPoint {
 }
 
 export interface HasilData {
-  temuanUtama?: string[]
+  temuanUtama?: string[] | string
   metodePenyajian?: "narrative" | "tabular" | "mixed"
   dataPoints?: DataPoint[]
   webSearchReferences?: WebSearchReference[]

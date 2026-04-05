@@ -363,7 +363,8 @@ function buildHasilSection(hasil: CompiledPaperContent["hasil"]): Paragraph[] {
     paragraphs.push(
       createSectionHeading("4.1 Temuan Utama", HeadingLevel.HEADING_2)
     )
-    hasil.temuanUtama.forEach((temuan, index) => {
+    const temuanList = Array.isArray(hasil.temuanUtama) ? hasil.temuanUtama : [hasil.temuanUtama];
+    temuanList.forEach((temuan: string, index: number) => {
       paragraphs.push(createNumberedItem(index + 1, temuan))
     })
   }
