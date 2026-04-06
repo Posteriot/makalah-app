@@ -90,6 +90,27 @@ export function buildChoiceContextNote(
     return baseLines.join("\n")
   }
 
+  // Hasil post-choice: artifact-first mandatory contract
+  if (event.stage === "hasil") {
+    baseLines.push(
+      "- Mode: post-choice-artifact-first",
+      "- The user has selected the presentation format. This is NOT a new decision turn.",
+      "- Translate the selected option into metodePenyajian immediately. Mapping: narasi/narrative → 'narrative', tabular/tabel → 'tabular', campuran/mixed → 'mixed'. The value MUST be one of these exact strings: 'narrative', 'tabular', or 'mixed'.",
+      "- Generate the full hasil draft NOW from approved material (metodologi, tinjauan literatur, rumusan masalah). Do NOT ask for more input.",
+      "- You MUST call tools in this EXACT order:",
+      "  1. updateStageData (MUST include: temuanUtama, metodePenyajian, dataPoints if available)",
+      "  2. createArtifact (full hasil draft as artifact content)",
+      "  3. submitStageForValidation",
+      "- Do NOT output another choice card.",
+      "- Do NOT write prose previewing the draft in chat (e.g. 'aku akan menyusun draf', 'draf ini akan', 'berikut adalah draf'). ALL draft content goes into createArtifact, not chat.",
+      "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
+      "- If submitStageForValidation fails with ARTIFACT_MISSING, retry it after createArtifact succeeds.",
+      "- Mention the validation panel ONLY if submitStageForValidation succeeds.",
+      "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
+    )
+    return baseLines.join("\n")
+  }
+
   baseLines.push(
     "- Mode: decision-to-draft",
     "- Next action: translate the user's selected direction into a concrete stage draft. If the content becomes mature enough, updateStageData and createArtifact are allowed in this response. Do not submit validation automatically.",

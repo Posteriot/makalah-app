@@ -30,6 +30,23 @@ const buildExactAvailability = (document: ExactSourceDocument | null) => ({
 })
 
 /**
+ * Mutable tracker set from tool execute functions, read at stream finish for observability.
+ */
+export type PaperToolTracker = {
+    sawUpdateStageData: boolean
+    sawCreateArtifactSuccess: boolean
+    sawSubmitValidationSuccess: boolean
+    sawSubmitValidationArtifactMissing: boolean
+}
+
+export const createPaperToolTracker = (): PaperToolTracker => ({
+    sawUpdateStageData: false,
+    sawCreateArtifactSuccess: false,
+    sawSubmitValidationSuccess: false,
+    sawSubmitValidationArtifactMissing: false,
+})
+
+/**
  * Factory for creating AI tools specific to the paper writing workflow.
  */
 export const createPaperTools = (context: {
@@ -38,6 +55,7 @@ export const createPaperTools = (context: {
     convexToken?: string
     availableSources?: Array<{ url: string; title: string; publishedAt?: number }>
     hasRecentSources?: boolean
+    toolTracker?: PaperToolTracker
 }) => {
     const convexOptions = context.convexToken ? { token: context.convexToken } : undefined
     return {
@@ -204,6 +222,7 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                     const hasArtifact = !!currentStageData?.artifactId;
 
                     console.log("[F1-F6-TEST] updateStageData", { stage, hasArtifact, dataKeys: Object.keys(data) })
+                    if (context.toolTracker) context.toolTracker.sawUpdateStageData = true
                     return {
                         success: true,
                         stage,
@@ -360,9 +379,13 @@ The tool will:
                     const currentStageData = stageDataMap?.[stage];
                     if (!currentStageData?.artifactId) {
                         console.warn("[submitStageForValidation] Blocked: no artifact yet for stage", stage);
+                        if (context.toolTracker) context.toolTracker.sawSubmitValidationArtifactMissing = true
                         return {
                             success: false,
+                            errorCode: "ARTIFACT_MISSING",
+                            retryable: true,
                             error: "Artifact has not been created yet. You MUST call createArtifact() FIRST, then call submitStageForValidation() again.",
+                            nextAction: "Create artifact first with createArtifact(), then retry submitStageForValidation() in the same response.",
                         };
                     }
 
@@ -372,6 +395,7 @@ The tool will:
                         }, convexOptions),
                         "paperSessions.submitForValidation"
                     );
+                    if (context.toolTracker) context.toolTracker.sawSubmitValidationSuccess = true
                     console.log("[F1-F6-TEST] submitStageForValidation", { stage: session.currentStage, status: "pending_validation" })
                     return {
                         success: true,

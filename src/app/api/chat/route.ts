@@ -14,7 +14,7 @@ import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 // isBlockedSourceDomain removed — blocklist enforcement via SKILL.md natural language
 // formatParagraphEndCitations now handled by orchestrator
-import { createPaperTools } from "@/lib/ai/paper-tools"
+import { createPaperTools, createPaperToolTracker } from "@/lib/ai/paper-tools"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
@@ -365,6 +365,8 @@ export async function POST(req: Request) {
                 ? (paperSession.currentStage as PaperStageId)
                 : undefined
         const isDraftingStage = !!paperStageScope && paperSession?.stageStatus === "drafting"
+        const isHasilPostChoice = choiceInteractionEvent?.stage === "hasil"
+        const paperToolTracker = createPaperToolTracker()
 
         let choiceContextNote: string | undefined
         if (choiceInteractionEvent) {
@@ -375,6 +377,9 @@ export async function POST(req: Request) {
                 isPaperMode: !!paperModePrompt,
             })
             choiceContextNote = buildChoiceContextNote(choiceInteractionEvent)
+            if (isHasilPostChoice) {
+                console.info("[HASIL][post-choice] entering artifact-first follow-up turn")
+            }
         }
 
         // Update billing context with paper session info
@@ -1504,6 +1509,7 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                         }
 
                         console.log("[F1-F6-TEST] createArtifact", { stage: paperSession?.currentStage, artifactId: result.artifactId, title })
+                        if (paperToolTracker) paperToolTracker.sawCreateArtifactSuccess = true
                         return {
                             success: true,
                             artifactId: result.artifactId,
@@ -1747,6 +1753,7 @@ Aturan:
                 convexToken,
                 availableSources: recentSourcesList,
                 hasRecentSources: hasRecentSourcesInDb,
+                toolTracker: paperToolTracker,
             }),
         } satisfies ToolSet
 
@@ -2455,6 +2462,36 @@ Aturan:
                             ? buildForcedSyncStatusMessage(paperSession)
                             : normalizedText
 
+                        // Hasil post-choice observability
+                        if (isHasilPostChoice && normalizedText.length > 0) {
+                            if (
+                                paperToolTracker.sawSubmitValidationArtifactMissing &&
+                                paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[HASIL][ordering-bug] submitStageForValidation failed before artifact existed, createArtifact succeeded later, but submit was not retried.")
+                            }
+                            if (
+                                paperToolTracker.sawUpdateStageData &&
+                                !paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[HASIL][partial-save-stall] updateStageData called but createArtifact and submitStageForValidation were not called. Tool chain incomplete.")
+                            }
+                            if (
+                                /panel validasi|approve|revisi/i.test(normalizedText) &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[HASIL][false-validation-claim] response mentioned validation flow without successful submitStageForValidation.")
+                            }
+                            if (
+                                /aku akan menyusun|draf ini akan|berikut adalah draf/i.test(normalizedText) &&
+                                !paperToolTracker.sawCreateArtifactSuccess
+                            ) {
+                                console.warn("[HASIL][prose-leakage] post-choice response previewed draft content in chat before artifact creation.")
+                            }
+                        }
+
                         if (normalizedText.length > 0 && sources && sources.length > 0) {
                             sources = await enrichSourcesWithFetchedTitles(sources, {
                                 concurrency: 4,
@@ -2838,6 +2875,36 @@ Aturan:
                         const persistedContent = shouldPersistForcedSyncFallback
                             ? buildForcedSyncStatusMessage(paperSession)
                             : normalizedText
+
+                        // Hasil post-choice observability (fallback path — parity with primary)
+                        if (isHasilPostChoice && normalizedText.length > 0) {
+                            if (
+                                paperToolTracker.sawSubmitValidationArtifactMissing &&
+                                paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[HASIL][ordering-bug][fallback] submitStageForValidation failed before artifact existed, createArtifact succeeded later, but submit was not retried.")
+                            }
+                            if (
+                                paperToolTracker.sawUpdateStageData &&
+                                !paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[HASIL][partial-save-stall][fallback] updateStageData called but createArtifact and submitStageForValidation were not called. Tool chain incomplete.")
+                            }
+                            if (
+                                /panel validasi|approve|revisi/i.test(normalizedText) &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[HASIL][false-validation-claim][fallback] response mentioned validation flow without successful submitStageForValidation.")
+                            }
+                            if (
+                                /aku akan menyusun|draf ini akan|berikut adalah draf/i.test(normalizedText) &&
+                                !paperToolTracker.sawCreateArtifactSuccess
+                            ) {
+                                console.warn("[HASIL][prose-leakage][fallback] post-choice response previewed draft content in chat before artifact creation.")
+                            }
+                        }
 
                         if (persistedContent.length > 0) {
                             const persistedReasoningTrace = (() => {
