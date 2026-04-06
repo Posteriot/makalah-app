@@ -73,25 +73,38 @@ export function getStageInstructions(stage: PaperStageId | "completed"): string 
         case "judul":
             return JUDUL_INSTRUCTIONS;
         case "completed":
-            return `STAGE: Completed — All stages validated.
+            return `STAGE: Completed — Final baseline reached. Reopenable anytime.
 
-You MUST respond with a brief closing message (max 2 short paragraphs) that conveys exactly these three points:
-- Your response must clearly state that all stages are completed and approved.
-- It must explicitly mention that the sidebar conversation history stores artifacts from every stage, from the initial idea (gagasan) through to the final title selection (judul).
-- It must explicitly mention that the sidebar progress timeline is fully complete, confirming all stages have been covered.
+All paper writing stages have been completed and approved. This is the final baseline, but the user can still:
+- Review any artifact from the sidebar conversation history
+- Request revision of any specific stage or section
+- Ask informational questions about progress, export, or content
 
-Golden phrasing (you may vary slightly but preserve meaning):
-"Semua tahap penyusunan makalah sudah selesai dan disetujui. Riwayat percakapan di sidebar menyimpan artifact dari setiap tahap, mulai dari gagasan awal sampai pemilihan judul. Linimasa progres juga sudah penuh, menandakan seluruh tahapan penyusunan makalah telah terlewati."
+DEFAULT CLOSING RESPONSE (use when user says generic "lanjut", "oke", "setuju", or similar):
+Respond with a brief message (max 2 short paragraphs) that conveys:
+- All stages are completed and approved
+- Sidebar conversation history stores artifacts from every stage (gagasan through judul)
+- Sidebar progress timeline is fully complete
+- User can request revision of any specific section if needed
 
-You MAY add one optional sentence about reviewing artifacts in the sidebar or proceeding to export, but keep it brief and non-committal.
+Golden phrasing:
+"Semua tahap penyusunan makalah sudah selesai dan disetujui. Riwayat percakapan di sidebar menyimpan artifact dari setiap tahap, mulai dari gagasan awal sampai pemilihan judul. Linimasa progres juga sudah penuh, menandakan seluruh tahapan penyusunan makalah telah terlewati. Jika kamu ingin mengubah bagian tertentu, sebutkan bagian yang ingin direvisi."
 
-STRICT PROHIBITIONS for completed stage:
-- Do NOT output a yaml-spec choice card.
-- Do NOT ask "mau lanjut apa?" or similar open-ended questions.
-- Do NOT mention internal processes, validation mechanics, retries, sync state, or technical workflow details.
-- Do NOT claim the user can download the full paper directly from artifact history.
-- Do NOT create numbered lists or bullet points.
-- Do NOT call any function tools (updateStageData, createArtifact, submitStageForValidation).`;
+INFORMATIONAL FOLLOW-UP (use when user asks about artifacts, progress, export, sidebar):
+- Answer concisely and helpfully
+- You MAY use readArtifact to show artifact content if requested
+- Keep response focused on the question
+
+REVISION REQUEST (use when user asks to revise/edit a specific section):
+- Help identify which stage/artifact needs revision
+- You MAY use readArtifact to show current content
+- Guide the user on how to proceed with revision
+
+GENERAL RULES for completed stage:
+- Do NOT output a yaml-spec choice card
+- Do NOT mention internal processes, validation mechanics, retries, sync state, or technical workflow details
+- Do NOT claim the user can download the full paper directly from artifact history
+- Completed is a reopenable checkpoint, NOT a terminal locked state`;
         default:
             // TypeScript exhaustive check - should never reach here
             return `Stage "${stage}" is not recognized. Continue assisting the user academically.`;
