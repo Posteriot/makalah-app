@@ -176,6 +176,16 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                     );
                     if (!session) return { success: false, error: "Paper session not found." };
 
+                    if (session.stageStatus === "pending_validation") {
+                        return {
+                            success: false,
+                            errorCode: "STAGE_PENDING_VALIDATION",
+                            retryable: false,
+                            error: "Stage is pending validation. Request revision first if you want to modify the draft.",
+                            nextAction: "Do not call updateStageData now. Direct the user to the validation panel to approve, or ask them to request a revision first.",
+                        };
+                    }
+
                     // Option B Fix: Auto-fetch stage from session.currentStage
                     // This eliminates the possibility of AI specifying wrong stage
                     const stage = session.currentStage;
@@ -237,6 +247,15 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                     const errorMessage = error instanceof Error
                         ? error.message
                         : "Failed to save stage data progress.";
+                    if (errorMessage.includes("Stage is pending validation")) {
+                        return {
+                            success: false,
+                            errorCode: "STAGE_PENDING_VALIDATION",
+                            retryable: false,
+                            error: errorMessage,
+                            nextAction: "Do not modify the draft. Direct the user to approve in the validation panel or request a revision first.",
+                        };
+                    }
                     return { success: false, error: errorMessage };
                 }
             },
@@ -375,6 +394,14 @@ The tool will:
 
                     // Pre-check: artifact must exist before submitting
                     const stage = session.currentStage;
+                    if (session.stageStatus === "pending_validation") {
+                        return {
+                            success: true,
+                            alreadyPendingValidation: true,
+                            message: `Stage ${stage} is already pending validation.`,
+                            nextAction: "Do not call more drafting tools. Direct the user to the validation panel to approve or request revision.",
+                        };
+                    }
                     const stageDataMap = session.stageData as Record<string, Record<string, unknown> | undefined> | undefined;
                     const currentStageData = stageDataMap?.[stage];
                     if (!currentStageData?.artifactId) {

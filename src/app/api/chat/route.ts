@@ -1452,6 +1452,16 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                 }),
                 execute: async ({ type, title, content, format, description, sources }) => {
                     try {
+                        if (paperSession?.stageStatus === "pending_validation") {
+                            return {
+                                success: false,
+                                errorCode: "STAGE_PENDING_VALIDATION",
+                                retryable: false,
+                                error: "Stage is pending validation. Request revision first if you want to replace the artifact.",
+                                nextAction: "Do not create a new artifact now. Direct the user to the validation panel to approve or request revision first.",
+                            }
+                        }
+
                         const refValidation = skill.checkReferences({
                             toolName: 'createArtifact',
                             claimedSources: sources,
@@ -1564,6 +1574,16 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                 }),
                 execute: async ({ artifactId, content, title, sources }) => {
                     try {
+                        if (paperSession?.stageStatus === "pending_validation") {
+                            return {
+                                success: false,
+                                errorCode: "STAGE_PENDING_VALIDATION",
+                                retryable: false,
+                                error: "Stage is pending validation. Request revision first if you want to update the artifact.",
+                                nextAction: "Do not update the artifact now. Direct the user to the validation panel to approve or request revision first.",
+                            }
+                        }
+
                         const refValidation = skill.checkReferences({
                             toolName: 'updateArtifact',
                             claimedSources: sources,

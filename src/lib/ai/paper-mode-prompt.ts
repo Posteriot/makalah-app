@@ -263,7 +263,7 @@ export const getPaperModeSystemPrompt = async (
 
         // Inline pending validation note
         const pendingNote = status === "pending_validation"
-            ? "\n⏳ AWAITING VALIDATION: Draft has been submitted. Wait for user to approve/revise before proceeding.\n"
+            ? "\n⏳ AWAITING VALIDATION: Draft has been submitted. Wait for user to approve/revise before proceeding. Do NOT call updateStageData, createArtifact, updateArtifact, or submitStageForValidation again unless the user explicitly requests revision and the stage is reopened.\n"
             : "";
         // Check if previous turn saved data but skipped artifact creation
         const currentStageData = (session.stageData as Record<string, Record<string, unknown> | undefined>)?.[stage as string];
