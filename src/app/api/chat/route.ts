@@ -818,30 +818,20 @@ ${sourcesJson}`
 
                 return [{ role: "system" as const, content: lines.join("\n") }]
             })(),
-            // Completed-state dynamic note: override static closing template when AI normal path allowed
+            // Completed-state dynamic note: always injected for completed sessions.
+            // If pre-stream guard short-circuits (workflow confusion), this note is unused.
+            // If model runs (informational/revision), this overrides closing-only constraints.
             ...(() => {
                 if (paperSession?.currentStage !== "completed") return []
-                // Check if pre-stream guard allowed normal AI (informational/revision intent)
-                // If so, override the restrictive completed prompt to allow tool use and normal answers
-                const revisionSignalPattern =
-                    /revisi|ubah|edit|koreksi|review|cek\s*lagi|perbaiki|judul|abstrak|metodologi|hasil|diskusi|kesimpulan|daftar_pustaka|lampiran|pendahuluan|tinjauan|gagasan|topik|outline/i
-                const informationalSignalPattern =
-                    /di\s*mana|bagaimana|export|unduh|download|artifact|artefak|sidebar|progress|linimasa|status|selesai|apa\s+semua|sudah\s+selesai|lihat|tampilkan/i
-                const hasRevisionIntent = revisionSignalPattern.test(normalizedLastUserContent)
-                const hasInformationalIntent = informationalSignalPattern.test(normalizedLastUserContent)
-
-                if (hasRevisionIntent || hasInformationalIntent) {
-                    return [{ role: "system" as const, content:
-                        "COMPLETED SESSION — OVERRIDE:\n" +
-                        "The paper is completed, but the user is asking a follow-up question (informational or revision).\n" +
-                        "IGNORE the closing-only instructions from the completed stage prompt.\n" +
-                        "You MAY use readArtifact to show artifact content if the user asks.\n" +
-                        "You MAY answer questions about artifacts, sidebar, progress, export.\n" +
-                        "You MAY help with revision if the user explicitly asks to revise a stage.\n" +
-                        "Keep answers concise. Do NOT output choice cards. Do NOT pretend the session is still in progress."
-                    }]
-                }
-                return []
+                return [{ role: "system" as const, content:
+                    "COMPLETED SESSION — FOLLOW-UP OVERRIDE:\n" +
+                    "The paper is completed. If the user asks a follow-up question, answer it.\n" +
+                    "You MAY use readArtifact to show artifact content if the user asks to see it.\n" +
+                    "You MAY answer questions about artifacts, sidebar, progress, export.\n" +
+                    "You MAY help with revision if the user explicitly asks to revise a stage.\n" +
+                    "Keep answers concise. Do NOT output choice cards. Do NOT pretend the session is still in progress.\n" +
+                    "If the user's message is just a generic acknowledgment (oke, lanjut, setuju), use the default closing response from the completed stage instructions."
+                }]
             })(),
             ...trimmedModelMessages,
         ]
