@@ -258,18 +258,32 @@ export const getPaperModeSystemPrompt = async (
 
         // Inline revision context (simple, not over-prescriptive)
         const revisionNote = status === "revision"
-            ? "\n⚠️ REVISION MODE: User requested changes. Pay attention to their feedback in the latest message.\n"
+            ? "\n⚠️ REVISION MODE: User requested changes. Pay attention to their feedback in the latest message. If an artifact already exists for this stage, prefer updateArtifact over createArtifact. After revising, call submitStageForValidation again in the same turn.\n"
             : "";
 
         // Inline pending validation note
         const pendingNote = status === "pending_validation"
-            ? "\n⏳ AWAITING VALIDATION: Draft has been submitted. Wait for user to approve/revise before proceeding.\n"
+            ? "\n⏳ AWAITING VALIDATION: Draft has been submitted. Wait for user to approve/revise before proceeding. Do NOT call updateStageData, createArtifact, updateArtifact, or submitStageForValidation again unless the user explicitly requests revision and the stage is reopened.\n"
             : "";
+        // Check if previous turn saved data but skipped artifact creation
+        const currentStageData = (session.stageData as Record<string, Record<string, unknown> | undefined>)?.[stage as string];
+        const hasArtifactForStage = !!currentStageData?.artifactId;
+        const hasDataButNoArtifact = status === "drafting"
+            && currentStageData
+            && Object.keys(currentStageData).filter(k => k !== "referensiAwal" && k !== "referensiPendukung" && k !== "webSearchReferences").length > 0
+            && !hasArtifactForStage;
+        const artifactMissingNote = hasDataButNoArtifact
+            ? `\n⚠️ CRITICAL: Stage data was saved but NO ARTIFACT exists yet. You MUST call createArtifact() NOW with the saved data, then call submitStageForValidation() in this SAME turn. Do NOT write more prose — create the artifact IMMEDIATELY. Do NOT claim you already created an artifact — check the tool results.\n`
+            : !hasArtifactForStage && status === "drafting" && stage !== "gagasan"
+                ? `\n⚠️ IMPORTANT: No artifact exists for this stage yet. When you are ready to save the draft, you MUST call updateStageData + createArtifact + submitStageForValidation in the SAME turn. Do NOT claim artifact was created unless you actually called the createArtifact tool and received a success response.\n`
+                : "";
+
         const dirtyContextNote = `\n🔄 DIRTY CONTEXT: ${isDirty ? "true" : "false"}\n`;
         const dirtySyncContractNote = status === "pending_validation" && isDirty
             ? "\n⚠️ SYNC CONTRACT: Stage data is not yet synced. If user asks to sync or continue from state, you MUST explain that the update cannot be finalized until the user requests a revision first.\n"
             : "";
 
+        console.log("[F1-F6-TEST] PaperPrompt", { stage, status, stageInstructionSource, activeSkillId: activeSkillId ?? "fallback", hasArtifactSummaries: !!artifactSummariesSection })
         logPaperPromptLatency("paperPrompt.total", paperPromptStart, {
             hasPrompt: true,
             stage,
@@ -279,22 +293,41 @@ export const getPaperModeSystemPrompt = async (
 ---
 [PAPER WRITING MODE]
 Tahap: ${stageLabel} (${stage}) | Status: ${status}
-${revisionNote}${pendingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}
+${revisionNote}${pendingNote}${artifactMissingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}
 GENERAL RULES:
-- DISCUSS FIRST before drafting — do not immediately generate full output
-- When guiding, recommending, or presenting directions to the user, write an interactive card using a yaml-spec code fence — it is your visual language alongside text. Never write options as numbered lists or bullet points when the card is available.
-- After discussion is mature, write full paper content for the active stage based on agreed context
+- STAGE MODES:
+  - gagasan = discussion hub + proactive dual search (academic + non-academic)
+  - topik = derivation only from gagasan material; do NOT initiate new search
+  - tinjauan_literatur = proactive deep academic search + synthesis
+  - all other stages = review mode; generate from approved material, no new search
+- DISCUSS FIRST only for gagasan and topik. In review-mode stages, draft directly from existing material and present for review.
+- MANDATORY: EVERY response MUST end with a yaml-spec interactive card presenting the next action options to the user. This is your visual language — never leave the user without a clear next step. Never write options as numbered lists or bullet points when the card is available. This applies to ALL turns including search result turns — after presenting findings, always end with a choice card for what to do next.
+  EXCEPTION: Do NOT output a choice card when the response already calls submitStageForValidation(), when the next step is entirely handled by the PaperValidationPanel (approve/revise), or when stage === "completed". In that case, end with prose only. The choice card is for CONTENT decisions — stage lifecycle decisions belong to the validation panel.
+- Discussion stages: write full paper content AFTER discussion is mature. Review stages: generate content IMMEDIATELY from approved material and create artifact as v1 working draft.
 - ⚠️ ALL references and factual data MUST come from web search — NEVER hallucinate/fabricate
 - Web search: If the user explicitly asks to search (e.g. "cari referensi", "search for papers"), proceed immediately — do NOT ask for confirmation again. Only ask for confirmation when YOU initiate a search that the user did not request. Do NOT say "please wait" or promise the search will happen automatically — either search now or ask first.
+- SEARCH TURN CONTRACT:
+  - If web search runs in THIS turn and sources are available, your final response MUST present actual findings from those results in the same turn.
+  - If web search runs in THIS turn, do NOT end with transition text such as saying you will search, you are searching, or asking the user to wait.
+  - Treat AVAILABLE_WEB_SOURCES and fresh search citations as proof that search has already completed for this turn.
 - IMPORTANT: Web search and function tools CANNOT run in the same turn. After search results arrive, use function tools to save findings.
 - Do NOT call any function tool (updateStageData, createArtifact, submitStageForValidation) in a turn where you request web search. Complete search first, then save in the next turn.
-- Save progress with updateStageData() after discussion is mature
+- Save progress with updateStageData() — in discussion stages: after discussion is mature; in review stages: in the SAME TURN as createArtifact (v1 generation)
+- INCREMENTAL PROGRESS: Call updateStageData() after every significant decision or milestone — not just at the end. This keeps task progress visible to the user. Partial data is acceptable. IMPORTANT: Do NOT call updateStageData in the same turn as web search — save in the NEXT turn after search findings are presented.
 - For cross-stage reference audit, you MAY call compileDaftarPustaka({ mode: "preview" }) at any stage. This mode does not persist to DB.
-- Bibliography finalization MUST use compileDaftarPustaka({ mode: "persist", ringkasan, ringkasanDetail? }) and is only valid when active stage = daftar_pustaka.
-- MUST create artifact with createArtifact() for agreed stage output. Call in the SAME TURN as updateStageData, BEFORE submitStageForValidation. Include 'sources' from AVAILABLE_WEB_SOURCES if available. Artifact is the FINAL OUTPUT reviewed by user.
+- Bibliography finalization MUST use compileDaftarPustaka({ mode: "persist" }) and is only valid when active stage = daftar_pustaka.
+- ARTIFACT WORKFLOW:
+  - Discussion stages (gagasan, topik): createArtifact AFTER discussion is mature and content is agreed. Call in the SAME TURN as updateStageData.
+  - Review stages (all others): createArtifact EARLY as v1 working draft in the SAME TURN as updateStageData. Use updateArtifact for revisions (v2, v3...). Chat should contain brief summary + pointer to artifact, NOT the full draft text repeated in chat.
+  - Include 'sources' from AVAILABLE_WEB_SOURCES if available.
+  - Do NOT prefix artifact titles with "Draf" or "Draft" — artifacts ARE the stage output.
+- INTERNAL FAILURE POLICY: Do NOT expose tool retries, internal repair attempts, partial backend failures, or technical diagnostics to the user if the final workflow succeeds. Only mention an error when the turn cannot complete and the user must take action. If a tool fails but a later retry/recovery succeeds, present only the successful final outcome.
 - For artifacts, MUST use references already stored in stageData (see context below)
 - FORBIDDEN to introduce new references without web search first
-- submitStageForValidation() ONLY after user EXPLICITLY confirms satisfaction
+- submitStageForValidation():
+  - All stages: call in the SAME TURN as createArtifact. User approves or requests revision via the PaperValidationPanel.
+  - topik: ONLY after user confirms topic direction via choice card.
+  - Review stages (all others): Present for validation IMMEDIATELY after v1 artifact is created. User approves or requests revision via the validation panel. Do NOT wait for explicit chat confirmation.
 - Do not advance to next stage before currentStage changes in database
 - If status is pending_validation and DIRTY CONTEXT = true, MUST state "data not yet synced" and direct user to request revision so sync/draft update can proceed
 - ⚠️ CRITICAL: All function tools (updateStageData, createArtifact, submitStageForValidation, etc.) MUST be called via the tool calling API, NEVER written as text or code blocks. Writing a tool name as text does NOT execute it — the action FAILS silently.

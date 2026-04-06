@@ -13,7 +13,7 @@ import { RewindConfirmationDialog } from "./RewindConfirmationDialog";
 
 interface StageDataEntry {
     validatedAt?: number;
-    // Other fields like artifactId, ringkasan can be added if needed
+    // Other fields like artifactId can be added if needed
 }
 
 interface PaperStageProgressProps {

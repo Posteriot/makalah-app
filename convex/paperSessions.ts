@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 import { getNextStage, PaperStageId, STAGE_ORDER } from "./paperSessions/constants";
 import {
     requireAuthUser,
@@ -373,14 +374,14 @@ function isStageInvalidatedByLatestRewind(
 
 const FIELD_CHAR_LIMIT = 2000;
 const EXCLUDED_TRUNCATION_FIELDS = new Set([
-    "ringkasan", "ringkasanDetail", "artifactId",
+    "artifactId",
     "validatedAt", "revisionCount",
 ]);
 
 /**
  * Truncate oversized string fields in stage data.
  * Prevents bloated DB records and AI context.
- * Excluded fields: ringkasan, ringkasanDetail, artifactId, validatedAt, revisionCount.
+ * Excluded fields: artifactId, validatedAt, revisionCount.
  */
 function truncateStageDataFields(data: Record<string, unknown>): {
   truncated: Record<string, unknown>;
@@ -399,13 +400,6 @@ function truncateStageDataFields(data: Record<string, unknown>): {
         `Field '${key}' di-truncate dari ${value.length} ke ${FIELD_CHAR_LIMIT} karakter.`
       );
     }
-  }
-
-  // Custom limit for ringkasanDetail: 1000 chars
-  if (typeof truncated.ringkasanDetail === "string" &&
-      (truncated.ringkasanDetail as string).length > 1000) {
-    truncated.ringkasanDetail = (truncated.ringkasanDetail as string).slice(0, 1000);
-    warnings.push("Field 'ringkasanDetail' di-truncate ke 1000 karakter.");
   }
 
   return { truncated, warnings };
@@ -714,15 +708,13 @@ export const updateStageData = mutation({
         });
 
         // ════════════════════════════════════════════════════════════════
-        // Return warnings for missing ringkasan and referensi without URLs
+        // Return warnings for referensi without URLs
         // This gives AI feedback before submitting
         // ════════════════════════════════════════════════════════════════
         const finalStageData = {
             ...existingStageData,
             ...truncatedData,
         };
-        const hasRingkasan = typeof finalStageData.ringkasan === "string"
-            && finalStageData.ringkasan.trim() !== "";
 
         // Anti-hallucination: Check referensi URLs
         const urlValidation = validateReferensiUrls(finalStageData);
@@ -732,12 +724,6 @@ export const updateStageData = mutation({
             warnings.push(
                 `Unknown keys stripped: ${unknownKeys.join(", ")}. ` +
                 `Use keys matching the schema for stage ${args.stage}.`
-            );
-        }
-        if (!hasRingkasan) {
-            warnings.push(
-                "Ringkasan not provided. This stage CANNOT be approved without ringkasan. " +
-                "Call updateStageData again with the 'ringkasan' field containing the agreed key decisions (max 280 characters)."
             );
         }
         if (urlValidation) {
@@ -973,8 +959,8 @@ export const compileDaftarPustaka = mutation({
 /**
  * Submit current stage draft for user validation.
  *
- * GUARD: Throws error if ringkasan is not provided.
- * This ensures AI always includes ringkasan before submitting.
+ * GUARD: Throws error if artifactId is not present.
+ * This ensures an artifact is created before submitting.
  */
 export const submitForValidation = mutation({
     args: { sessionId: v.id("paperSessions") },
@@ -984,19 +970,22 @@ export const submitForValidation = mutation({
         const currentStage = session.currentStage as PaperStageId;
 
         // ════════════════════════════════════════════════════════════════
-        // Guard: Enforce ringkasan exists BEFORE submitting for validation
-        // This catches missing ringkasan early, before UI validation panel appears
+        // Guard: Enforce artifact exists BEFORE submitting for validation
+        // Prevents validation panel from appearing when no artifact is created
         // ════════════════════════════════════════════════════════════════
         const currentStageData = session.stageData?.[currentStage] as Record<string, unknown> | undefined;
-        const ringkasan = currentStageData?.ringkasan as string | undefined;
+        const artifactId = currentStageData?.artifactId as string | undefined;
 
-        if (!ringkasan || ringkasan.trim() === "") {
+        console.log(`[AutoPresent] guard check — stage=${currentStage}, artifactId=${!!artifactId}`)
+
+        if (!artifactId) {
             throw new Error(
-                "submitForValidation failed: Ringkasan must be provided first. " +
-                "Use updateStageData to add ringkasan before submitting."
+                "submitForValidation failed: Artifact must be created first. " +
+                "Call createArtifact before submitting for validation."
             );
         }
 
+        console.log(`[AutoPresent] guard PASSED → setting stageStatus=pending_validation`)
         await ctx.db.patch(args.sessionId, {
             stageStatus: "pending_validation",
             updatedAt: Date.now(),
@@ -1033,51 +1022,7 @@ export const approveStage = mutation({
         const now = Date.now();
         const currentStage = session.currentStage as PaperStageId;
 
-        // Guard: Enforce ringkasan exists before approval
         const currentStageData = session.stageData?.[currentStage] as Record<string, unknown> | undefined;
-        const ringkasan = currentStageData?.ringkasan as string | undefined;
-
-        if (!ringkasan || ringkasan.trim() === "") {
-            throw new Error(
-                "approveStage failed: Ringkasan must be provided. " +
-                "Use updateStageData to add ringkasan."
-            );
-        }
-
-        // ════════════════════════════════════════════════════════════════
-        // Phase 3 Task 3.3.2: Budget Enforcement (Optional)
-        // Check if content exceeds outline budget before approval
-        // ════════════════════════════════════════════════════════════════
-        const outlineData = session.stageData?.outline as Record<string, unknown> | undefined;
-        const outlineTotalWordCount = outlineData?.totalWordCount as number | undefined;
-
-        // Calculate current estimated content chars from all ringkasan
-        let totalContentChars = 0;
-        const stageDataRecord = session.stageData as Record<string, Record<string, unknown>> | undefined;
-        if (stageDataRecord) {
-            for (const stageKey of Object.keys(stageDataRecord)) {
-                const stageContent = stageDataRecord[stageKey];
-                const stageRingkasan = stageContent?.ringkasan as string | undefined;
-                if (stageRingkasan) {
-                    totalContentChars += stageRingkasan.length;
-                }
-            }
-        }
-        // Add current stage ringkasan
-        totalContentChars += ringkasan.length;
-
-        // Convert outline word count to char estimate (avg 5 chars per word + space)
-        const outlineBudgetChars = outlineTotalWordCount ? outlineTotalWordCount * 6 : undefined;
-
-        // Soft warning: Only enforce if outline has budget and content exceeds 150%
-        if (outlineBudgetChars && totalContentChars > outlineBudgetChars * 1.5) {
-            throw new Error(
-                `approveStage failed: Content exceeds outline budget. ` +
-                `Estimated: ${Math.ceil(totalContentChars / 6)} words, ` +
-                `Budget: ${outlineTotalWordCount} words. ` +
-                `Consider condensing the content.`
-            );
-        }
 
         // Mark current stage validated
         const updatedStageData = { ...session.stageData } as Record<string, Record<string, unknown>>;
@@ -1095,9 +1040,30 @@ export const approveStage = mutation({
         // Add decision summary to digest for AI memory
         // ════════════════════════════════════════════════════════════════
         const existingDigest = session.paperMemoryDigest || [];
+        // Derive decision from artifact title, with legacy fallback to ringkasan
+        const stageArtifactId = currentStageData?.artifactId as string | undefined;
+        let decisionText = "(no summary)";
+        if (stageArtifactId) {
+            const artifact = await ctx.db.get(stageArtifactId as Id<"artifacts">);
+            decisionText = artifact?.title ?? "(untitled artifact)";
+            // Strip "Draf"/"Draft" prefix from artifact title on approval
+            if (artifact && /^draf(?:t)?\b/i.test(artifact.title)) {
+                const finalTitle = artifact.title.replace(/^draf(?:t)?\b\s*/i, "").trim();
+                if (finalTitle) {
+                    await ctx.db.patch(stageArtifactId as Id<"artifacts">, { title: finalTitle });
+                    decisionText = finalTitle;
+                }
+            }
+        } else {
+            // Legacy fallback: existing sessions may have ringkasan but no artifact
+            const legacyRingkasan = currentStageData?.ringkasan as string | undefined;
+            if (legacyRingkasan) {
+                decisionText = legacyRingkasan.slice(0, 200);
+            }
+        }
         const newDigestEntry = {
             stage: currentStage,
-            decision: ringkasan.slice(0, 200), // Limit to 200 chars for digest
+            decision: decisionText,
             timestamp: now,
         };
         const updatedDigest = [...existingDigest, newDigestEntry];
@@ -1138,11 +1104,6 @@ export const approveStage = mutation({
             updatedBoundaries = [...existingBoundaries, newBoundary];
         }
 
-        // ════════════════════════════════════════════════════════════════
-        // Phase 3 Task 3.3.1: Update Estimated Content Tracking
-        // ════════════════════════════════════════════════════════════════
-        const estimatedTokens = Math.ceil(totalContentChars / 4);
-
         const patchData: Record<string, unknown> = {
             currentStage: nextStage,
             stageStatus: nextStage === "completed" ? "approved" : "drafting",
@@ -1151,8 +1112,6 @@ export const approveStage = mutation({
             isDirty: false, // Reset dirty flag on approve
             paperMemoryDigest: updatedDigest,
             stageMessageBoundaries: updatedBoundaries,
-            estimatedContentChars: totalContentChars,
-            estimatedTokenUsage: estimatedTokens,
             ...(nextStage === "completed" ? { completedAt: now } : {}),
         };
 

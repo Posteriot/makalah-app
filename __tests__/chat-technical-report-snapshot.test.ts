@@ -25,19 +25,38 @@ describe("extractChatDiagnosticSnapshot", () => {
     ).toBe(true)
   })
 
-  it("shows trigger when any tool state is error", () => {
+  it("does not show trigger when chat recovered (ready) even with historical tool error", () => {
     expect(
       shouldShowTechnicalReportTrigger({
         chatStatus: "ready",
         toolStates: [{ toolName: "google_search", state: "error" }],
       })
-    ).toBe(true)
+    ).toBe(false)
   })
 
-  it("shows trigger when data-search status is error", () => {
+  it("does not show trigger when chat recovered (ready) even with historical search error", () => {
     expect(
       shouldShowTechnicalReportTrigger({
         chatStatus: "ready",
+        searchStatus: "error",
+        toolStates: [],
+      })
+    ).toBe(false)
+  })
+
+  it("shows trigger when chat status is error with tool error", () => {
+    expect(
+      shouldShowTechnicalReportTrigger({
+        chatStatus: "error",
+        toolStates: [{ toolName: "google_search", state: "error" }],
+      })
+    ).toBe(true)
+  })
+
+  it("shows trigger when chat status is error with search error", () => {
+    expect(
+      shouldShowTechnicalReportTrigger({
+        chatStatus: "error",
         searchStatus: "error",
         toolStates: [],
       })

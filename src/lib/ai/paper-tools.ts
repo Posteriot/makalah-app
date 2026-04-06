@@ -30,6 +30,27 @@ const buildExactAvailability = (document: ExactSourceDocument | null) => ({
 })
 
 /**
+ * Mutable tracker set from tool execute functions, read at stream finish for observability.
+ */
+export type PaperToolTracker = {
+    sawUpdateStageData: boolean
+    sawCreateArtifactSuccess: boolean
+    sawUpdateArtifactSuccess: boolean
+    sawCompileDaftarPustakaPersist: boolean
+    sawSubmitValidationSuccess: boolean
+    sawSubmitValidationArtifactMissing: boolean
+}
+
+export const createPaperToolTracker = (): PaperToolTracker => ({
+    sawUpdateStageData: false,
+    sawCreateArtifactSuccess: false,
+    sawUpdateArtifactSuccess: false,
+    sawCompileDaftarPustakaPersist: false,
+    sawSubmitValidationSuccess: false,
+    sawSubmitValidationArtifactMissing: false,
+})
+
+/**
  * Factory for creating AI tools specific to the paper writing workflow.
  */
 export const createPaperTools = (context: {
@@ -38,6 +59,7 @@ export const createPaperTools = (context: {
     convexToken?: string
     availableSources?: Array<{ url: string; title: string; publishedAt?: number }>
     hasRecentSources?: boolean
+    toolTracker?: PaperToolTracker
 }) => {
     const convexOptions = context.convexToken ? { token: context.convexToken } : undefined
     return {
@@ -144,21 +166,11 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
             inputSchema: z.object({
                 // NOTE: 'stage' parameter REMOVED - auto-fetched from session.currentStage
                 // This prevents AI from specifying wrong stage (Option B fix for stage confusion bug)
-                ringkasan: z.string().max(280).describe(
-                    "REQUIRED! The main decision AGREED upon with the user for this stage. Max 280 characters. " +
-                    "Example: 'Agreed angle: AI impact on Indonesian higher education, gap: no studies on private universities'"
-                ),
-                ringkasanDetail: z.string().max(1000).optional().describe(
-                    "Elaboration on ringkasan: WHY this decision was made, important nuances, discussion context with user, " +
-                    "and details that don't fit in the 280-char ringkasan. Max 1000 characters. " +
-                    "Example: 'Angle chosen due to large literature gap in Indonesian context, user has data access from 3 private universities in Jakarta, " +
-                    "focus on introductory programming courses semesters 1-2.'"
-                ),
-                data: z.record(z.string(), z.any()).optional().describe(
-                    "Additional draft data object (besides ringkasan/ringkasanDetail). IMPORTANT: referensiAwal/referensiPendukung must be ARRAY OF OBJECTS!"
+                data: z.record(z.string(), z.any()).describe(
+                    "Draft data object for the current stage. IMPORTANT: referensiAwal/referensiPendukung must be ARRAY OF OBJECTS!"
                 ),
             }),
-            execute: async ({ ringkasan, ringkasanDetail, data }) => {
+            execute: async ({ data }) => {
                 try {
                     const session = await retryQuery(
                         () => fetchQuery(api.paperSessions.getByConversation, {
@@ -167,6 +179,16 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                         "paperSessions.getByConversation"
                     );
                     if (!session) return { success: false, error: "Paper session not found." };
+
+                    if (session.stageStatus === "pending_validation") {
+                        return {
+                            success: false,
+                            errorCode: "STAGE_PENDING_VALIDATION",
+                            retryable: false,
+                            error: "Stage is pending validation. Request revision first if you want to modify the draft.",
+                            nextAction: "Do not call updateStageData now. Direct the user to the validation panel to approve, or ask them to request a revision first.",
+                        };
+                    }
 
                     // Option B Fix: Auto-fetch stage from session.currentStage
                     // This eliminates the possibility of AI specifying wrong stage
@@ -199,37 +221,29 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                         }
                     }
 
-                    // Merge ringkasan + ringkasanDetail into data object
-                    const mergedData = {
-                        ...(data || {}),
-                        ringkasan,
-                        ...(ringkasanDetail ? { ringkasanDetail } : {}),
-                    };
-
-                    const result = await retryMutation(
+                    await retryMutation(
                         () => fetchMutation(api.paperSessions.updateStageData, {
                             sessionId: session._id,
                             stage,
-                            data: mergedData,
+                            data,
                         }, convexOptions),
                         "paperSessions.updateStageData"
                     );
 
-                    // Safety net: Parse warning from backend if ringkasan somehow missing
-                    // (Should never happen now since ringkasan is required by Zod schema)
-                    if (result && typeof result === 'object' && 'warning' in result && result.warning) {
-                        return {
-                            success: true,
-                            stage, // Include stage in response so AI knows which stage was updated
-                            message: `Successfully saved progress for stage ${stage}.`,
-                            warning: result.warning,
-                        };
-                    }
+                    // Check if artifact exists for this stage
+                    const stageDataMap = session.stageData as Record<string, Record<string, unknown> | undefined> | undefined;
+                    const currentStageData = stageDataMap?.[stage];
+                    const hasArtifact = !!currentStageData?.artifactId;
 
+                    console.log("[F1-F6-TEST] updateStageData", { stage, hasArtifact, dataKeys: Object.keys(data) })
+                    if (context.toolTracker) context.toolTracker.sawUpdateStageData = true
                     return {
                         success: true,
-                        stage, // Include stage in response so AI knows which stage was updated
-                        message: `Successfully saved progress for stage ${stage}. Summary saved.`
+                        stage,
+                        message: `Successfully saved progress for stage ${stage}.`,
+                        nextAction: hasArtifact
+                            ? "Data saved. Artifact already exists — call updateArtifact if content changed, then call submitStageForValidation()."
+                            : "⚠️ MANDATORY: call createArtifact() RIGHT NOW in this same response, then call submitStageForValidation(). Do NOT generate text, do NOT stop — call the tools IMMEDIATELY.",
                     };
                 } catch (error) {
                     console.error("Error in updateStageData tool:", error);
@@ -237,6 +251,15 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                     const errorMessage = error instanceof Error
                         ? error.message
                         : "Failed to save stage data progress.";
+                    if (errorMessage.includes("Stage is pending validation")) {
+                        return {
+                            success: false,
+                            errorCode: "STAGE_PENDING_VALIDATION",
+                            retryable: false,
+                            error: errorMessage,
+                            nextAction: "Do not modify the draft. Direct the user to approve in the validation panel or request a revision first.",
+                        };
+                    }
                     return { success: false, error: errorMessage };
                 }
             },
@@ -257,14 +280,8 @@ The tool will:
                 mode: z.enum(["preview", "persist"]).optional().describe(
                     "Compilation mode. Default: persist. Use preview for a quick cross-stage audit."
                 ),
-                ringkasan: z.string().max(280).optional().describe(
-                    "Required if mode=persist. Summary of the bibliography compilation result (max 280 characters)."
-                ),
-                ringkasanDetail: z.string().max(1000).optional().describe(
-                    "Optional. Details on the compilation process, merged duplicates, and incomplete references."
-                ),
             }),
-            execute: async ({ mode, ringkasan, ringkasanDetail }) => {
+            execute: async ({ mode }) => {
                 try {
                     const session = await retryQuery(
                         () => fetchQuery(api.paperSessions.getByConversation, {
@@ -276,13 +293,6 @@ The tool will:
 
                     const stage = session.currentStage;
                     const compileMode = mode ?? "persist";
-
-                    if (compileMode === "persist" && (!ringkasan || ringkasan.trim() === "")) {
-                        return {
-                            success: false,
-                            error: "compileDaftarPustaka persist mode requires the ringkasan field (max 280 characters).",
-                        };
-                    }
 
                     const compileResult = await retryMutation(
                         () => fetchMutation(api.paperSessions.compileDaftarPustaka, {
@@ -300,6 +310,10 @@ The tool will:
                                 title: string;
                                 authors?: string;
                                 year?: number;
+                                url?: string;
+                                doi?: string;
+                                fullReference?: string;
+                                inTextCitation?: string;
                                 sourceStage?: string;
                                 isComplete?: boolean;
                             }>;
@@ -336,17 +350,11 @@ The tool will:
                         };
                     }
 
-                    const mergedData = {
-                        ringkasan: ringkasan!,
-                        ...(ringkasanDetail ? { ringkasanDetail } : {}),
-                        ...compileResult.compiled,
-                    };
-
                     const updateResult = await retryMutation(
                         () => fetchMutation(api.paperSessions.updateStageData, {
                             sessionId: session._id,
                             stage,
-                            data: mergedData,
+                            data: { ...compileResult.compiled },
                         }, convexOptions),
                         "paperSessions.updateStageData"
                     ) as { warning?: string };
@@ -359,6 +367,23 @@ The tool will:
                         warnings.push(updateResult.warning);
                     }
 
+                    // Format entries as APA 7th for artifact creation
+                    const formattedEntries = compileResult.compiled.entries.map((entry, i) => {
+                        if (entry.fullReference) return `${i + 1}. ${entry.fullReference}`;
+                        const yearPart = entry.year ? `(${entry.year}).` : "(n.d.).";
+                        // APA: when no author, title moves to author position
+                        if (entry.authors) {
+                            const urlPart = entry.url ? ` Retrieved from ${entry.url}` : "";
+                            return `${i + 1}. ${entry.authors} ${yearPart} ${entry.title}.${urlPart}`;
+                        }
+                        const urlPart = entry.url ? ` Retrieved from ${entry.url}` : "";
+                        return `${i + 1}. ${entry.title}. ${yearPart}${urlPart}`;
+                    });
+
+                    const stageDataMap = session.stageData as Record<string, Record<string, unknown> | undefined> | undefined;
+                    const hasExistingArtifact = !!stageDataMap?.[stage]?.artifactId;
+                    if (context.toolTracker) context.toolTracker.sawCompileDaftarPustakaPersist = true
+
                     return {
                         success: true,
                         mode: "persist" as const,
@@ -367,7 +392,11 @@ The tool will:
                         totalCount: compileResult.compiled.totalCount,
                         incompleteCount: compileResult.compiled.incompleteCount,
                         duplicatesMerged: compileResult.compiled.duplicatesMerged,
+                        formattedEntries,
                         ...(warnings.length > 0 ? { warning: warnings.join(" | ") } : {}),
+                        nextAction: hasExistingArtifact
+                            ? "⚠️ MANDATORY: Bibliography is compiled. You MUST call updateArtifact() NOW in this same response using the existing artifact. Join formattedEntries with newlines to build updated content. AFTER updateArtifact, MUST call submitStageForValidation(). Do NOT mention technical issues or retries to the user. Do NOT call compileDaftarPustaka again."
+                            : "⚠️ MANDATORY: Bibliography is compiled. You MUST call createArtifact() NOW in this same response. Join formattedEntries with newlines to build the artifact content. AFTER createArtifact, MUST call submitStageForValidation(). Do NOT mention technical issues or retries to the user. Do NOT call compileDaftarPustaka again.",
                     };
                 } catch (error) {
                     console.error("Error in compileDaftarPustaka tool:", error);
@@ -380,7 +409,7 @@ The tool will:
         }),
 
         submitStageForValidation: tool({
-            description: "Submit the current stage draft to the user for validation. This triggers an approval panel in the user's UI. AI stops generating after this.",
+            description: "Submit the current stage draft to the user for validation. This triggers an approval panel in the user's UI. AI stops generating after this. IMPORTANT: createArtifact MUST be called BEFORE this tool.",
             inputSchema: z.object({}),
             execute: async () => {
                 try {
@@ -392,15 +421,42 @@ The tool will:
                     );
                     if (!session) return { success: false, error: "Paper session not found." };
 
+                    // Pre-check: artifact must exist before submitting
+                    const stage = session.currentStage;
+                    if (session.stageStatus === "pending_validation") {
+                        return {
+                            success: true,
+                            alreadyPendingValidation: true,
+                            message: `Stage ${stage} is already pending validation.`,
+                            nextAction: "Do not call more drafting tools. Direct the user to the validation panel to approve or request revision.",
+                        };
+                    }
+                    const stageDataMap = session.stageData as Record<string, Record<string, unknown> | undefined> | undefined;
+                    const currentStageData = stageDataMap?.[stage];
+                    if (!currentStageData?.artifactId) {
+                        console.warn("[submitStageForValidation] Blocked: no artifact yet for stage", stage);
+                        if (context.toolTracker) context.toolTracker.sawSubmitValidationArtifactMissing = true
+                        return {
+                            success: false,
+                            errorCode: "ARTIFACT_MISSING",
+                            retryable: true,
+                            error: "Artifact has not been created yet. You MUST call createArtifact() FIRST, then call submitStageForValidation() again.",
+                            nextAction: "Create artifact first with createArtifact(), then retry submitStageForValidation() in the same response.",
+                        };
+                    }
+
                     await retryMutation(
                         () => fetchMutation(api.paperSessions.submitForValidation, {
                             sessionId: session._id,
                         }, convexOptions),
                         "paperSessions.submitForValidation"
                     );
+                    if (context.toolTracker) context.toolTracker.sawSubmitValidationSuccess = true
+                    console.log("[F1-F6-TEST] submitStageForValidation", { stage: session.currentStage, status: "pending_validation" })
                     return {
                         success: true,
-                        message: "Draft submitted to user. Awaiting validation (Approve/Revise) from user before proceeding to the next stage."
+                        message: "Draft submitted to user. Awaiting validation (Approve/Revise) from user before proceeding to the next stage.",
+                        nextAction: "STOP. Do not add any more content to chat. Do NOT mention technical issues, errors, or problems — the submission SUCCEEDED. End your response with one short confirmation sentence only. The user will review the artifact in the validation panel.",
                     };
                 } catch (error) {
                     console.error("Error in submitStageForValidation tool:", error);

@@ -25,25 +25,10 @@ export const STAGE_RESEARCH_REQUIREMENTS: Partial<Record<PaperStageId, {
         minCount: 2,
         description: "referensi awal untuk mendukung kelayakan ide"
     },
-    topik: {
-        requiredField: "referensiPendukung",
-        minCount: 3,
-        description: "referensi pendukung untuk memperkuat topik"
-    },
     tinjauan_literatur: {
         requiredField: "referensi",
         minCount: 5,
         description: "referensi untuk tinjauan literatur"
-    },
-    pendahuluan: {
-        requiredField: "sitasiAPA",
-        minCount: 2,
-        description: "sitasi APA untuk mendukung latar belakang"
-    },
-    diskusi: {
-        requiredField: "sitasiTambahan",
-        minCount: 2,
-        description: "sitasi tambahan untuk perbandingan literatur"
     },
 }
 
@@ -71,10 +56,16 @@ export const isStageResearchIncomplete = (
 }
 
 /**
- * System note when search is disabled in paper mode
- * Prevents AI from promising to search when it can't
+ * System note when search is disabled in paper mode.
+ * Returns different text based on whether the stage is an active search stage
+ * (gagasan, tinjauan_literatur) or a review/derivation stage.
  */
-export const PAPER_TOOLS_ONLY_NOTE = `
+export function getPaperToolsOnlyNote(stage?: string): string {
+    const isActiveSearchStage = stage === "gagasan" || stage === "tinjauan_literatur"
+
+    if (isActiveSearchStage) {
+        // Search is appropriate but unavailable this turn
+        return `
 ═══════════════════════════════════════════════════════════════════
 FUNCTION TOOLS MODE (NO WEB SEARCH)
 ═══════════════════════════════════════════════════════════════════
@@ -86,9 +77,22 @@ TECHNICAL CONSTRAINT:
 
 IF FACTUAL DATA/REFERENCES ARE NEEDED:
 - Ask user to explicitly request a search.
-- Example: "I need to search for additional references to strengthen this section. If you want that, please confirm."
 - Do NOT fabricate/hallucinate references — this is FORBIDDEN.
 ═══════════════════════════════════════════════════════════════════`
+    }
+
+    // Review/derivation stages — search is not expected
+    return `
+═══════════════════════════════════════════════════════════════════
+FUNCTION TOOLS MODE
+═══════════════════════════════════════════════════════════════════
+
+This stage does not require new web search.
+Use approved material from previous stages as the evidence base.
+Available tools: updateStageData, submitStageForValidation, createArtifact, updateArtifact.
+Do NOT fabricate/hallucinate references — this is FORBIDDEN.
+═══════════════════════════════════════════════════════════════════`
+}
 
 /**
  * System note when research is incomplete for current stage

@@ -235,6 +235,14 @@ export function emitTransparentReasoningResetForRetry(params: {
  * for retry / fallback handling. Phase 1.5 runs inside execute so Vercel's
  * streaming timeout doesn't apply (first byte already sent).
  */
+export function validateComposeSubstantiveness(composedText: string, sourceCount: number): boolean {
+    if (sourceCount === 0) return true
+    // composedText is from text-delta chunks AFTER pipeYamlRender.
+    // YAML cards already extracted. Raw length is reliable.
+    // Transitional: ~50-100 chars. Substantive: ~500+ chars.
+    return composedText.trim().length >= 200
+}
+
 export async function executeWebSearch(
   config: WebSearchOrchestratorConfig,
 ): Promise<Response> {
@@ -558,9 +566,14 @@ export async function executeWebSearch(
       // COMPOSE_PHASE_DIRECTIVE goes FIRST — it defines the phase context and overrides.
       // When placed after systemPrompt/skillInstructions, the model treats those larger
       // blocks as primary instructions and ignores the smaller directive.
+      const postSearchReminder = sourceCount > 0
+        ? `\n═══ SEARCH COMPLETED ═══\nWeb search has ALREADY finished. ${sourceCount} sources were found. The results are above.\nYou MUST present actual findings from these sources NOW.\nDo NOT say "akan mencari", "mohon tunggu", "sedang mencari", or any future-tense search promise.\nSearch is DONE. Present the findings.\n\nIMPORTANT OUTPUT FORMAT:\n- Present a BRIEF summary of key findings (max 3-5 bullet points)\n- Then output a yaml-spec choice card with 2-3 approach options if the stage requires it\n- Do NOT write a full draft/article in chat — that belongs in the artifact (created in the next turn when tools are available)\n- Keep chat output SHORT — the detailed content goes into the artifact later\n═══════════════════════`
+        : ""
+
       const composeSystemMessages: Array<{ role: "system"; content: string }> = [
         { role: "system", content: COMPOSE_PHASE_DIRECTIVE },
         { role: "system", content: searchResultsContext },
+        ...(postSearchReminder ? [{ role: "system" as const, content: postSearchReminder }] : []),
         { role: "system", content: config.systemPrompt },
         ...(skillInstructions
           ? [{ role: "system" as const, content: skillInstructions }]
@@ -570,6 +583,10 @@ export async function executeWebSearch(
           : []),
         ...(config.isDraftingStage
           ? [{ role: "system" as const, content: CHOICE_YAML_SYSTEM_PROMPT }]
+          : []),
+        // Stage-specific compose override — injected LAST for maximum recency bias
+        ...(sourceCount > 0 && config.currentStage === "tinjauan_literatur"
+          ? [{ role: "system" as const, content: `FINAL OVERRIDE FOR TINJAUAN LITERATUR:\nSearch is DONE. ${sourceCount} sources found. You MUST:\n1. Write 3-5 bullet points summarizing key literature findings\n2. Output a yaml-spec choice card with 2-3 theoretical framework options\n3. NEVER say "akan mencari", "mohon tunggu", or "setelah pencarian selesai"\nThe search results are ALREADY in your context above. Synthesize them NOW.` }]
           : []),
       ]
 
@@ -950,6 +967,28 @@ export async function executeWebSearch(
               data: { status: sourceCount > 0 ? "done" : "off" },
             })
             console.error(`[Orchestrator][${reqId}] Citation finalize failed:`, err)
+          }
+
+          // Layer 4: Post-compose transitional response detection
+          const hasSubstantiveFindings = validateComposeSubstantiveness(composedText, sourceCount)
+          if (!hasSubstantiveFindings && sourceCount > 0) {
+            const correctiveId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-corrective`
+            writer.write({
+              type: "data-corrective-findings",
+              id: correctiveId,
+              data: {
+                sources: scoredSources.slice(0, 5).map(s => ({
+                  title: s.title,
+                  url: s.url,
+                  citedText: s.citedText?.slice(0, 200),
+                })),
+                sourceCount,
+              },
+            })
+            console.warn(`[COMPOSE-GUARD][${reqId}] Transitional response detected with ${sourceCount} sources. Corrective event emitted.`)
+          }
+          if (hasSubstantiveFindings) {
+            console.log("[F1-F6-TEST] ComposeGuard PASS", { sourceCount, composedLength: composedText.trim().length })
           }
 
           // Forward finish chunk to preserve SDK semantics (finishReason, metadata)

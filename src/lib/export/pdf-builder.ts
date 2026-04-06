@@ -610,7 +610,8 @@ function buildHasilSection(
 
   if (hasil.temuanUtama && hasil.temuanUtama.length > 0) {
     writeHeading2(doc, "4.1 Temuan Utama")
-    hasil.temuanUtama.forEach((temuan, index) => {
+    const temuanList = Array.isArray(hasil.temuanUtama) ? hasil.temuanUtama : [hasil.temuanUtama];
+    temuanList.forEach((temuan: string, index: number) => {
       writeNumberedItem(doc, index + 1, temuan)
     })
     doc.moveDown(0.5)
@@ -695,12 +696,12 @@ function buildKesimpulanSection(
     writeParagraph(doc, kesimpulan.ringkasanHasil)
   }
 
-  if (
-    kesimpulan.jawabanRumusanMasalah &&
-    kesimpulan.jawabanRumusanMasalah.length > 0
-  ) {
+  const jawabanArr = Array.isArray(kesimpulan.jawabanRumusanMasalah)
+    ? kesimpulan.jawabanRumusanMasalah
+    : typeof kesimpulan.jawabanRumusanMasalah === "string" ? [kesimpulan.jawabanRumusanMasalah] : []
+  if (jawabanArr.length > 0) {
     writeHeading2(doc, "6.2 Jawaban Rumusan Masalah")
-    kesimpulan.jawabanRumusanMasalah.forEach((jawaban, index) => {
+    jawabanArr.forEach((jawaban, index) => {
       writeNumberedItem(doc, index + 1, jawaban)
     })
     doc.moveDown(0.5)

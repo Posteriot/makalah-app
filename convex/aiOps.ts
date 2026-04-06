@@ -168,10 +168,8 @@ export const getSessionDrillDown = query({
     const stageDetails = Object.entries(session.stageData || {}).map(
       ([stageId, data]: [string, Record<string, unknown>]) => ({
         stageId,
-        hasRingkasan: !!data?.ringkasan,
-        hasRingkasanDetail: !!data?.ringkasanDetail,
-        ringkasan: (data?.ringkasan as string) || null,
-        ringkasanDetail: (data?.ringkasanDetail as string) || null,
+        hasArtifact: !!data?.artifactId,
+        artifactId: (data?.artifactId as string) || null,
         validatedAt: (data?.validatedAt as number) || null,
         superseded: (data?.superseded as boolean) || false,
         revisionCount: (data?.revisionCount as number) || 0,
@@ -193,7 +191,7 @@ export const getSessionDrillDown = query({
         digestCount: (session.paperMemoryDigest || []).length,
         digest: (session.paperMemoryDigest || []).map((d) => ({
           stage: d.stage,
-          ringkasan: d.decision,
+          decision: d.decision,
           superseded: d.superseded || false,
         })),
       },

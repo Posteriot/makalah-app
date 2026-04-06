@@ -41,7 +41,8 @@ export function validateChoiceInteractionEvent(params: {
 }
 
 export function buildChoiceContextNote(
-  event: ParsedChoiceInteractionEvent
+  event: ParsedChoiceInteractionEvent,
+  options?: { hasExistingArtifact?: boolean }
 ): string {
   const selectedOptionIds = event.selectedOptionIds.map((id) => id.trim().toLowerCase())
   const requestedValidation =
@@ -70,7 +71,7 @@ export function buildChoiceContextNote(
     // daftar_pustaka has a special compilation step that must run before submit
     if (event.stage === "daftar_pustaka") {
       baseLines.push(
-        "- Next action: call compileDaftarPustaka with mode 'persist' and a ringkasan summarizing the bibliography. This compiles and deduplicates references server-side.",
+        "- Next action: call compileDaftarPustaka with mode 'persist'. This compiles and deduplicates references server-side.",
         "- After compileDaftarPustaka succeeds, call createArtifact with the compiled bibliography content.",
         "- Then call submitStageForValidation.",
         "- Do NOT call updateStageData directly — compileDaftarPustaka handles data persistence internally."
@@ -85,6 +86,67 @@ export function buildChoiceContextNote(
     }
 
     baseLines.push(
+      "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
+    )
+    return baseLines.join("\n")
+  }
+
+  // Lampiran "tidak ada" path: create minimal placeholder artifact
+  const NO_APPENDIX_IDS = new Set(["tidak-ada-lampiran", "option-tidak-ada-lampiran", "no-appendix"])
+  if (event.stage === "lampiran" && selectedOptionIds.some(id => NO_APPENDIX_IDS.has(id))) {
+    baseLines.push(
+      "- Mode: no-appendix-placeholder",
+      "- User has confirmed there are no appendices for this paper.",
+      "- You MUST call tools in this EXACT order:",
+      "  1. updateStageData({ tidakAdaLampiran: true, alasanTidakAda: '<brief reason>' })",
+      '  2. createArtifact({ type: "section", title: "Lampiran", content: "Tidak ada lampiran.\\n\\nAlasan: <reason from user or default>" })',
+      "  3. submitStageForValidation",
+      "- Do NOT output another choice card.",
+      "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
+      "- Keep chat response to 1-2 sentences confirming no appendix needed.",
+      "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
+    )
+    return baseLines.join("\n")
+  }
+
+  // Judul post-choice: user selected a title option
+  if (event.stage === "judul") {
+    baseLines.push(
+      "- Mode: post-choice-title-selection",
+      "- The user has selected a title from the options you presented. This is NOT a new decision turn.",
+      "- Identify which title text corresponds to the selected option ID. Use the EXACT title text from the option the user clicked — do NOT rephrase or modify it.",
+      "- You MUST call tools in this EXACT order:",
+      `  1. updateStageData (MUST include: judulTerpilih with the selected title text, alasanPemilihan with brief reason)`,
+      options?.hasExistingArtifact
+        ? "  2. updateArtifact (artifact already exists — update with selected title content)"
+        : '  2. createArtifact({ type: "section", title: "Pemilihan Judul", content: selected title + brief analysis of why it fits })',
+      "  3. submitStageForValidation",
+      "- Do NOT output another choice card.",
+      "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
+      "- Keep chat response to 1-3 sentences confirming the selected title.",
+      "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
+    )
+    return baseLines.join("\n")
+  }
+
+  // Hasil post-choice: artifact-first mandatory contract
+  if (event.stage === "hasil") {
+    baseLines.push(
+      "- Mode: post-choice-artifact-first",
+      "- The user has selected the presentation format. This is NOT a new decision turn.",
+      "- Translate the selected option into metodePenyajian immediately. Mapping: narasi/narrative → 'narrative', tabular/tabel → 'tabular', campuran/mixed → 'mixed'. The value MUST be one of these exact strings: 'narrative', 'tabular', or 'mixed'.",
+      "- Generate the full hasil draft NOW from approved material (metodologi, tinjauan literatur, rumusan masalah). Do NOT ask for more input.",
+      "- You MUST call tools in this EXACT order:",
+      "  1. updateStageData (MUST include: temuanUtama, metodePenyajian, dataPoints if available)",
+      options?.hasExistingArtifact
+        ? "  2. updateArtifact (full hasil draft — artifact already exists, do NOT call createArtifact)"
+        : "  2. createArtifact (full hasil draft as artifact content)",
+      "  3. submitStageForValidation",
+      "- Do NOT output another choice card.",
+      "- Do NOT write prose previewing the draft in chat (e.g. 'aku akan menyusun draf', 'draf ini akan', 'berikut adalah draf'). ALL draft content goes into the artifact tool call (createArtifact or updateArtifact as instructed above), not chat.",
+      "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
+      "- If submitStageForValidation fails with ARTIFACT_MISSING, retry it after createArtifact succeeds.",
+      "- Mention the validation panel ONLY if submitStageForValidation succeeds.",
       "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
     )
     return baseLines.join("\n")

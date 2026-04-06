@@ -61,7 +61,16 @@ export function useConversations() {
   }, [bulkDeleteConversationsMutation])
 
   const deleteAllConversations = useCallback(async () => {
-    return await deleteAllConversationsMutation({})
+    // Paginated: mutation deletes up to 5 conversations per call.
+    // Loop until all are deleted.
+    let totalDeleted = 0
+    let hasMore = true
+    while (hasMore) {
+      const result = await deleteAllConversationsMutation({})
+      totalDeleted += result.deletedCount
+      hasMore = result.hasMore
+    }
+    return { deletedCount: totalDeleted }
   }, [deleteAllConversationsMutation])
 
   const updateConversationTitle = useCallback(async (

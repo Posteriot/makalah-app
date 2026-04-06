@@ -57,6 +57,7 @@ import type * as migrations_checkDocumentationOrdering from "../migrations/check
 import type * as migrations_cleanupDuplicateSeedUser from "../migrations/cleanupDuplicateSeedUser.js";
 import type * as migrations_cleanupOldSearchSkillTelemetryFields from "../migrations/cleanupOldSearchSkillTelemetryFields.js";
 import type * as migrations_createContractAlignedSystemPrompt from "../migrations/createContractAlignedSystemPrompt.js";
+import type * as migrations_deployProductionSystemPrompt from "../migrations/deployProductionSystemPrompt.js";
 import type * as migrations_enableTwoFactorAllUsers from "../migrations/enableTwoFactorAllUsers.js";
 import type * as migrations_fix13TahapReference from "../migrations/fix13TahapReference.js";
 import type * as migrations_fixAgentPersonaAndCapabilities from "../migrations/fixAgentPersonaAndCapabilities.js";
@@ -95,6 +96,7 @@ import type * as migrations_upsertDocumentationLanggananTierPembayaranS11 from "
 import type * as migrations_upsertDocumentationLegalS7S8S10 from "../migrations/upsertDocumentationLegalS7S8S10.js";
 import type * as migrations_upsertDocumentationRefrasaS9 from "../migrations/upsertDocumentationRefrasaS9.js";
 import type * as migrations_upsertPrivacyPolicyGoogleOAuth from "../migrations/upsertPrivacyPolicyGoogleOAuth.js";
+import type * as migrations_wipeAndReseedStageSkills from "../migrations/wipeAndReseedStageSkills.js";
 import type * as pageContent from "../pageContent.js";
 import type * as paperSessions from "../paperSessions.js";
 import type * as paperSessions_constants from "../paperSessions/constants.js";
@@ -176,6 +178,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/cleanupDuplicateSeedUser": typeof migrations_cleanupDuplicateSeedUser;
   "migrations/cleanupOldSearchSkillTelemetryFields": typeof migrations_cleanupOldSearchSkillTelemetryFields;
   "migrations/createContractAlignedSystemPrompt": typeof migrations_createContractAlignedSystemPrompt;
+  "migrations/deployProductionSystemPrompt": typeof migrations_deployProductionSystemPrompt;
   "migrations/enableTwoFactorAllUsers": typeof migrations_enableTwoFactorAllUsers;
   "migrations/fix13TahapReference": typeof migrations_fix13TahapReference;
   "migrations/fixAgentPersonaAndCapabilities": typeof migrations_fixAgentPersonaAndCapabilities;
@@ -214,6 +217,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/upsertDocumentationLegalS7S8S10": typeof migrations_upsertDocumentationLegalS7S8S10;
   "migrations/upsertDocumentationRefrasaS9": typeof migrations_upsertDocumentationRefrasaS9;
   "migrations/upsertPrivacyPolicyGoogleOAuth": typeof migrations_upsertPrivacyPolicyGoogleOAuth;
+  "migrations/wipeAndReseedStageSkills": typeof migrations_wipeAndReseedStageSkills;
   pageContent: typeof pageContent;
   paperSessions: typeof paperSessions;
   "paperSessions/constants": typeof paperSessions_constants;

@@ -50,7 +50,7 @@ export interface CompiledPaperContent {
     etikaPenelitian: string | null
   } | null
   hasil: {
-    temuanUtama: string[] | null
+    temuanUtama: string[] | string | null
     metodePenyajian: "narrative" | "tabular" | "mixed" | null
     dataPoints: DataPoint[] | null
   } | null
@@ -90,9 +90,12 @@ export function compilePaperContent(session: Doc<"paperSessions">): CompiledPape
   const title = stageData.judul?.judulTerpilih ?? paperTitle ?? null
 
   // Get keywords — prefer updated from pembaruan_abstrak, fallback to original
-  const keywords = stageData.pembaruan_abstrak?.keywordsBaru
+  const rawKeywords = stageData.pembaruan_abstrak?.keywordsBaru
     ?? stageData.abstrak?.keywords
     ?? null
+  const keywords = Array.isArray(rawKeywords)
+    ? rawKeywords
+    : typeof rawKeywords === "string" ? rawKeywords.split(/\n|,/).map(s => s.trim()).filter(Boolean) : null
 
   // Compile abstract — prefer updated from pembaruan_abstrak, fallback to original
   const abstract = stageData.pembaruan_abstrak?.ringkasanPenelitianBaru
@@ -160,7 +163,11 @@ export function compilePaperContent(session: Doc<"paperSessions">): CompiledPape
   const kesimpulan = stageData.kesimpulan
     ? {
         ringkasanHasil: stageData.kesimpulan.ringkasanHasil ?? null,
-        jawabanRumusanMasalah: stageData.kesimpulan.jawabanRumusanMasalah ?? null,
+        jawabanRumusanMasalah: Array.isArray(stageData.kesimpulan.jawabanRumusanMasalah)
+            ? stageData.kesimpulan.jawabanRumusanMasalah
+            : typeof stageData.kesimpulan.jawabanRumusanMasalah === "string"
+              ? [stageData.kesimpulan.jawabanRumusanMasalah]
+              : null,
         implikasiPraktis: stageData.kesimpulan.implikasiPraktis ?? null,
         saranPraktisi: stageData.kesimpulan.saranPraktisi ?? null,
         saranPeneliti: stageData.kesimpulan.saranPeneliti ?? null,

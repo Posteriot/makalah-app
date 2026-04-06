@@ -1674,6 +1674,14 @@
 }
 
 /* ==========================================================================
+ * Sequential dot pulse for UnifiedProcessCard streaming indicator
+ * ========================================================================== */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* ==========================================================================
  * REDUCED MOTION - Accessibility Support
  * ========================================================================== */
 @media (prefers-reduced-motion: reduce) {

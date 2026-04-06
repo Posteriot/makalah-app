@@ -10,7 +10,7 @@ import { Id } from "../../../convex/_generated/dataModel"
 import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
 import { cn } from "@/lib/utils"
 import { SidebarChatHistory } from "./sidebar/SidebarChatHistory"
-import { SidebarProgress } from "./sidebar/SidebarProgress"
+import { SidebarQueueProgress } from "./sidebar/SidebarQueueProgress"
 import type { PanelType } from "./shell/ActivityBar"
 import { CreditMeter } from "@/components/billing/CreditMeter"
 import { UserDropdown } from "@/components/layout/header/UserDropdown"
@@ -146,7 +146,7 @@ export function ChatSidebar({
   const renderContent = () => {
     switch (activePanel) {
       case "progress":
-        return <SidebarProgress conversationId={currentConversationId} />
+        return <SidebarQueueProgress conversationId={currentConversationId} />
       case "chat-history":
       default:
         return (

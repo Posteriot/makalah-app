@@ -50,6 +50,25 @@ export const getMessages = query({
     },
 })
 
+// Get single message by uiMessageId (for server-side choice payload resolution)
+export const getMessageByUiMessageId = query({
+    args: {
+        uiMessageId: v.string(),
+        conversationId: v.id("conversations"),
+    },
+    handler: async (ctx, { uiMessageId, conversationId }) => {
+        const result = await getConversationIfOwner(ctx, conversationId)
+        if (!result) return null
+        // Search recent messages in this conversation for matching uiMessageId
+        const messages = await ctx.db
+            .query("messages")
+            .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+            .order("desc")
+            .take(50)
+        return messages.find(m => m.uiMessageId === uiMessageId) ?? null
+    },
+})
+
 // Hitung jumlah "pasang pesan" (user+assistant) untuk satu conversation.
 // Dipakai buat gating rename judul final oleh AI.
 export const countMessagePairsForConversation = query({
@@ -102,6 +121,8 @@ export const createMessage = mutation({
             uiMessageId: v.optional(v.string()),
             // Legacy V1 interaction data (backward compat for existing documents)
             interaction: v.optional(v.any()),
+            // Artifact ID recalled in completed-session flow (persists artifact card across refresh)
+            recallArtifactId: v.optional(v.string()),
         })),
         sources: v.optional(v.array(v.object({
             url: v.string(),

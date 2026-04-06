@@ -121,10 +121,7 @@ describe("createPaperTools.compileDaftarPustaka", () => {
       })
       .mockResolvedValueOnce({})
 
-    const result = await getCompileToolExecute()({
-      ringkasan: "Total 1 referensi lengkap",
-      ringkasanDetail: "Tidak ada duplikat",
-    })
+    const result = await getCompileToolExecute()({})
 
     expect(result.success).toBe(true)
     expect(result.mode).toBe("persist")
@@ -141,8 +138,6 @@ describe("createPaperTools.compileDaftarPustaka", () => {
       sessionId: "session_persist",
       stage: "daftar_pustaka",
       data: {
-        ringkasan: "Total 1 referensi lengkap",
-        ringkasanDetail: "Tidak ada duplikat",
         entries: [{ title: "Ref 1", isComplete: true }],
         totalCount: 1,
         incompleteCount: 0,
@@ -151,19 +146,4 @@ describe("createPaperTools.compileDaftarPustaka", () => {
     })
   })
 
-  it("mode persist wajib ringkasan", async () => {
-    const fetchQueryMock = vi.mocked(fetchQuery)
-    const fetchMutationMock = vi.mocked(fetchMutation)
-
-    fetchQueryMock.mockResolvedValue({
-      _id: "session_missing_ringkasan",
-      currentStage: "daftar_pustaka",
-    } as MockSession)
-
-    const result = await getCompileToolExecute()({ mode: "persist" })
-
-    expect(result.success).toBe(false)
-    expect(result.error).toContain("requires the ringkasan field")
-    expect(fetchMutationMock).not.toHaveBeenCalled()
-  })
 })

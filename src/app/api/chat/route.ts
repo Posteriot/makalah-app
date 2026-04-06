@@ -9,20 +9,21 @@ import { getSystemPrompt } from "@/lib/ai/chat-config"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
-import { retryMutation } from "@/lib/convex/retry"
+import { retryMutation, retryQuery, retryDelay } from "@/lib/convex/retry"
 import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 // isBlockedSourceDomain removed — blocklist enforcement via SKILL.md natural language
 // formatParagraphEndCitations now handled by orchestrator
-import { createPaperTools } from "@/lib/ai/paper-tools"
+import { createPaperTools, createPaperToolTracker } from "@/lib/ai/paper-tools"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
+import { resolveCompletedSessionHandling, getCompletedSessionClosingMessage, resolveRecallTargetStage } from "@/lib/ai/completed-session"
 import { ACTIVE_SEARCH_STAGES, PASSIVE_SEARCH_STAGES } from "@/lib/ai/stage-skill-contracts"
 import { getStageLabel, type PaperStageId } from "../../../../convex/paperSessions/constants"
 import {
     isStageResearchIncomplete,
-    PAPER_TOOLS_ONLY_NOTE,
+    getPaperToolsOnlyNote,
     getResearchIncompleteNote,
     getFunctionToolsModeNote,
     STAGE_RESEARCH_REQUIREMENTS,
@@ -106,7 +107,7 @@ export async function POST(req: Request) {
             }
 
             if (attempt < 3) {
-                await new Promise((resolve) => setTimeout(resolve, attempt * 150))
+                await retryDelay(attempt * 150)
             }
         }
         if (!convexToken) {
@@ -147,7 +148,10 @@ export async function POST(req: Request) {
         const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 
         // 3. Get Convex User ID
-        const userId = await fetchQueryWithToken(api.chatHelpers.getMyUserId, {})
+        const userId = await retryQuery(
+            () => fetchQueryWithToken(api.chatHelpers.getMyUserId, {}),
+            "chatHelpers.getMyUserId"
+        )
         if (!userId) {
             return new Response("User not found in database", { status: 404 })
         }
@@ -335,6 +339,7 @@ export async function POST(req: Request) {
                         content: userContent,
                         fileIds: effectiveFileIds.length > 0 ? effectiveFileIds : undefined,
                         attachmentMode,
+                        ...(lastMessage.id ? { uiMessageId: lastMessage.id } : {}),
                     }),
                     "messages.createMessage(user)"
                 )
@@ -362,6 +367,8 @@ export async function POST(req: Request) {
                 ? (paperSession.currentStage as PaperStageId)
                 : undefined
         const isDraftingStage = !!paperStageScope && paperSession?.stageStatus === "drafting"
+        const isHasilPostChoice = choiceInteractionEvent?.stage === "hasil"
+        const paperToolTracker = createPaperToolTracker()
 
         let choiceContextNote: string | undefined
         if (choiceInteractionEvent) {
@@ -371,7 +378,12 @@ export async function POST(req: Request) {
                 currentStage: paperStageScope ?? null,
                 isPaperMode: !!paperModePrompt,
             })
-            choiceContextNote = buildChoiceContextNote(choiceInteractionEvent)
+            const choiceStageData = paperSession?.stageData as Record<string, Record<string, unknown> | undefined> | undefined
+            const hasExistingArtifact = !!choiceStageData?.[choiceInteractionEvent.stage]?.artifactId
+            choiceContextNote = buildChoiceContextNote(choiceInteractionEvent, { hasExistingArtifact })
+            if (isHasilPostChoice) {
+                console.info("[HASIL][post-choice] entering artifact-first follow-up turn")
+            }
         }
 
         // Update billing context with paper session info
@@ -401,6 +413,9 @@ export async function POST(req: Request) {
             : ""
         const normalizedLastUserContent =
             typeof lastUserContent === "string" ? lastUserContent.trim() : ""
+
+        // Completed session guard moved post-router — see after search decision block
+
         const recentConversationMessagesForExactSource: ExactSourceConversationMessage[] = messages
             .slice(0, -1)
             .map((message: {
@@ -408,9 +423,7 @@ export async function POST(req: Request) {
                 content?: string
                 parts?: Array<{ type?: string; text?: string }>
             }) => {
-                const extractedContent = typeof message?.content === "string"
-                    ? message.content
-                    : message?.parts?.find((part) => part.type === "text")?.text
+                const extractedContent = message?.parts?.find((part) => part.type === "text")?.text
 
                 if ((message?.role !== "user" && message?.role !== "assistant") || !extractedContent?.trim()) {
                     return null
@@ -479,7 +492,7 @@ export async function POST(req: Request) {
             )
             if (hasPending) {
                 for (let attempt = 0; attempt < 16; attempt++) {
-                    await new Promise((r) => setTimeout(r, 500))
+                    await retryDelay(500)
                     files = await fetchQueryWithToken(api.files.getFilesByIds, {
                         userId: userId as Id<"users">,
                         fileIds: effectiveFileIds,
@@ -771,6 +784,56 @@ ${sourcesJson}`
             ...(isDraftingStage
                 ? [{ role: "system" as const, content: CHOICE_YAML_SYSTEM_PROMPT }]
                 : []),
+            // Hard enforcement note for review/finalization workflow stages
+            ...(() => {
+                if (!paperStageScope || !paperSession) return []
+                const stage = paperStageScope
+                const status = paperSession.stageStatus as string
+                const isReviewFinalization = [
+                    "hasil", "diskusi", "kesimpulan", "pembaruan_abstrak",
+                    "daftar_pustaka", "lampiran", "judul"
+                ].includes(stage)
+
+                if (!isReviewFinalization) return []
+
+                const lines: string[] = [
+                    "WORKFLOW RESPONSE DISCIPLINE (MANDATORY):",
+                    "- Do NOT narrate internal tool failures, retries, repair attempts, or technical diagnostics to the user.",
+                    "- Do NOT say 'mohon tunggu', 'ada kesalahan teknis', 'saya akan coba lagi', 'memperbaiki format', or similar.",
+                    "- If a tool fails but you recover in the same turn, present ONLY the successful outcome.",
+                    "- Only expose errors to the user when the turn cannot complete and user action is required.",
+                    "- Keep final response to 1-3 sentences maximum for workflow turns.",
+                ]
+
+                // Deterministic daftar_pustaka revision chain
+                if (stage === "daftar_pustaka" && status === "revision") {
+                    lines.push(
+                        "DAFTAR PUSTAKA REVISION — EXACT CHAIN:",
+                        "1. compileDaftarPustaka({ mode: 'persist' })",
+                        "2. updateArtifact (system will auto-resolve artifact ID — supply any ID)",
+                        "3. submitStageForValidation()",
+                        "Do NOT deviate. Do NOT call createArtifact. Do NOT call compileDaftarPustaka({ mode: 'preview' }) in this turn.",
+                    )
+                }
+
+                return [{ role: "system" as const, content: lines.join("\n") }]
+            })(),
+            // Completed-state dynamic note: always injected for completed sessions.
+            // If pre-stream guard short-circuits (workflow confusion), this note is unused.
+            // If model runs (informational/revision), this overrides closing-only constraints.
+            ...(() => {
+                if (paperSession?.currentStage !== "completed") return []
+                return [{ role: "system" as const, content:
+                    "COMPLETED SESSION — FOLLOW-UP OVERRIDE:\n" +
+                    "The paper is completed. If the user asks a follow-up question, answer it.\n" +
+                    "Artifact re-display requests are handled by the system before reaching you.\n" +
+                    "For informational or revision follow-up questions that do reach you, answer concisely. You may use readArtifact only when you need to inspect artifact content for answering a question.\n" +
+                    "You MAY answer questions about artifacts, sidebar, progress, export.\n" +
+                    "You MAY help with revision if the user explicitly asks to revise a stage.\n" +
+                    "Keep answers concise. Do NOT output choice cards. Do NOT pretend the session is still in progress.\n" +
+                    "If the user's message is just a generic acknowledgment (oke, lanjut, setuju), use the default closing response from the completed stage instructions."
+                }]
+            })(),
             ...trimmedModelMessages,
         ]
 
@@ -885,25 +948,10 @@ ${sourcesJson}`
                     const minCount = STAGE_RESEARCH_REQUIREMENTS.gagasan?.minCount ?? 1
                     return Array.isArray(data?.referensiAwal) && data.referensiAwal.length >= minCount
                 }
-                case "topik": {
-                    const data = stageData.topik as { referensiPendukung?: unknown[] } | undefined
-                    const minCount = STAGE_RESEARCH_REQUIREMENTS.topik?.minCount ?? 1
-                    return Array.isArray(data?.referensiPendukung) && data.referensiPendukung.length >= minCount
-                }
                 case "tinjauan_literatur": {
                     const data = stageData.tinjauan_literatur as { referensi?: unknown[] } | undefined
                     const minCount = STAGE_RESEARCH_REQUIREMENTS.tinjauan_literatur?.minCount ?? 1
                     return Array.isArray(data?.referensi) && data.referensi.length >= minCount
-                }
-                case "pendahuluan": {
-                    const data = stageData.pendahuluan as { sitasiAPA?: unknown[] } | undefined
-                    const minCount = STAGE_RESEARCH_REQUIREMENTS.pendahuluan?.minCount ?? 1
-                    return Array.isArray(data?.sitasiAPA) && data.sitasiAPA.length >= minCount
-                }
-                case "diskusi": {
-                    const data = stageData.diskusi as { sitasiTambahan?: unknown[] } | undefined
-                    const minCount = STAGE_RESEARCH_REQUIREMENTS.diskusi?.minCount ?? 1
-                    return Array.isArray(data?.sitasiTambahan) && data.sitasiTambahan.length >= minCount
                 }
                 case "daftar_pustaka": {
                     const data = stageData.daftar_pustaka as { entries?: unknown[] } | undefined
@@ -913,22 +961,6 @@ ${sourcesJson}`
                 default:
                     return null
             }
-        }
-
-        const hasStageRingkasan = (session: {
-            currentStage?: string
-            stageData?: Record<string, unknown>
-        } | null): boolean => {
-            if (!session || !session.stageData || !session.currentStage) {
-                return false
-            }
-            if (session.currentStage === "completed") {
-                return false
-            }
-
-            const stageKey = session.currentStage
-            const stageEntry = session.stageData[stageKey] as { ringkasan?: unknown } | undefined
-            return typeof stageEntry?.ringkasan === "string" && stageEntry.ringkasan.trim().length > 0
         }
 
         const hasStageArtifact = (session: {
@@ -1475,6 +1507,16 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                 }),
                 execute: async ({ type, title, content, format, description, sources }) => {
                     try {
+                        if (paperSession?.stageStatus === "pending_validation") {
+                            return {
+                                success: false,
+                                errorCode: "STAGE_PENDING_VALIDATION",
+                                retryable: false,
+                                error: "Stage is pending validation. Request revision first if you want to replace the artifact.",
+                                nextAction: "Do not create a new artifact now. Direct the user to the validation panel to approve or request revision first.",
+                            }
+                        }
+
                         const refValidation = skill.checkReferences({
                             toolName: 'createArtifact',
                             claimedSources: sources,
@@ -1533,11 +1575,14 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                             }
                         }
 
+                        console.log("[F1-F6-TEST] createArtifact", { stage: paperSession?.currentStage, artifactId: result.artifactId, title })
+                        if (paperToolTracker) paperToolTracker.sawCreateArtifactSuccess = true
                         return {
                             success: true,
                             artifactId: result.artifactId,
                             title,
                             message: `Artifact "${title}" berhasil dibuat. User dapat melihatnya di panel artifact.`,
+                            nextAction: "⚠️ MANDATORY: Artifact is created successfully. Do NOT restate the draft content in chat. Do NOT output markdown headings, fenced code blocks, or paragraphs from the artifact. Do NOT mention technical issues, errors, partial saves, or source/title problems — the operation SUCCEEDED. Respond with MAX 2-3 sentences ONLY: (1) confirm artifact was created, (2) direct user to review in artifact panel, (3) call submitStageForValidation() NOW.",
                         }
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : String(error)
@@ -1582,8 +1627,29 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                     })).optional()
                         .describe("Web sources if update is based on web search. If not provided, sources from previous version are retained."),
                 }),
-                execute: async ({ artifactId, content, title, sources }) => {
+                execute: async ({ artifactId: modelArtifactId, content, title, sources }) => {
                     try {
+                        if (paperSession?.stageStatus === "pending_validation") {
+                            return {
+                                success: false,
+                                errorCode: "STAGE_PENDING_VALIDATION",
+                                retryable: false,
+                                error: "Stage is pending validation. Request revision first if you want to update the artifact.",
+                                nextAction: "Do not update the artifact now. Direct the user to the validation panel to approve or request revision first.",
+                            }
+                        }
+
+                        // Auto-resolve artifactId from stage data when model supplies invalid ID
+                        let artifactId = modelArtifactId
+                        if (paperSession) {
+                            const stageDataMap = paperSession.stageData as Record<string, Record<string, unknown> | undefined> | undefined
+                            const stageArtifactId = stageDataMap?.[paperSession.currentStage]?.artifactId as string | undefined
+                            if (stageArtifactId && stageArtifactId !== modelArtifactId) {
+                                console.warn(`[updateArtifact] Auto-resolved artifactId: model supplied "${modelArtifactId}", using stage artifactId "${stageArtifactId}"`)
+                                artifactId = stageArtifactId
+                            }
+                        }
+
                         const refValidation = skill.checkReferences({
                             toolName: 'updateArtifact',
                             claimedSources: sources,
@@ -1625,12 +1691,15 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                             "artifacts.update"
                         )
 
+                        console.log("[F1-F6-TEST] updateArtifact", { stage: paperSession?.currentStage, artifactId })
+                        if (paperToolTracker) paperToolTracker.sawUpdateArtifactSuccess = true
                         return {
                             success: true,
                             newArtifactId: result.artifactId,
                             oldArtifactId: artifactId,
                             version: result.version,
                             message: `Artifact berhasil di-update ke versi ${result.version}. User dapat melihat versi baru di panel artifact.`,
+                            nextAction: "⚠️ Artifact updated. Do NOT repeat the revised content in chat. Respond with MAX 2-3 sentences confirming the update and directing user to review in artifact panel.",
                         }
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : String(error)
@@ -1644,16 +1713,16 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                 },
             }),
             readArtifact: tool({
-                description: `Baca isi lengkap sebuah artifact berdasarkan ID-nya. Gunakan tool ini jika perlu merujuk konten artifact secara utuh (bukan hanya ringkasan 500 karakter di system prompt).
+                description: `Baca isi lengkap sebuah artifact berdasarkan ID-nya. Gunakan tool ini jika perlu merujuk konten artifact secara utuh (bukan hanya summary singkat di system prompt).
 
 USE THIS TOOL WHEN:
 ✓ Perlu membaca ulang artifact dari stage sebelumnya sebagai rujukan
 ✓ User bertanya tentang isi spesifik sebuah artifact
 ✓ Perlu mengecek konten lengkap sebelum menulis revisi atau stage berikutnya
-✓ Perlu memverifikasi detail yang mungkin ter-truncate di ringkasan
+✓ Perlu memverifikasi detail yang mungkin ter-truncate di summary
 
 Tool ini mengembalikan: title, type, version, content lengkap, dan sources (jika ada).
-Artifact ID bisa didapat dari RINGKASAN ARTIFACT di system prompt atau dari getCurrentPaperState().`,
+Artifact ID bisa didapat dari ARTIFACT SUMMARY di system prompt atau dari getCurrentPaperState().`,
                 inputSchema: z.object({
                     artifactId: z.string()
                         .describe("ID artifact yang ingin dibaca."),
@@ -1773,6 +1842,7 @@ Aturan:
                 convexToken,
                 availableSources: recentSourcesList,
                 hasRecentSources: hasRecentSourcesInDb,
+                toolTracker: paperToolTracker,
             }),
         } satisfies ToolSet
 
@@ -1975,6 +2045,7 @@ Aturan:
             const recentForRouter = modelMessages.slice(-8)
             const currentStage = paperSession?.currentStage as PaperStageId | "completed" | undefined
             const stagePolicy = getStageSearchPolicy(currentStage)
+            console.log("[F1-F6-TEST] SearchPolicy", { stage: currentStage, policy: stagePolicy })
             const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession)
                 || (!paperSession && hasRecentSourcesInDb)
             // Check if RAG chunks are available for this conversation.
@@ -2004,6 +2075,7 @@ Aturan:
             let isSyncRequest = false
             let isSaveSubmitIntent = false
             let isCompileBibliographyIntent = false
+            let routerIntentType: string | undefined
 
             // --- Pre-router guardrails (structural state only, NO regex intent detection) ---
             // Intent detection is the LLM router's job. Regex cannot scale to language
@@ -2046,6 +2118,12 @@ Aturan:
                 })
                 console.log(`[⏱ LATENCY] searchRouter=${Date.now() - routerStart}ms decision=${webSearchDecision.enableWebSearch ? "SEARCH" : "NO-SEARCH"} intent=${webSearchDecision.intentType} confidence=${webSearchDecision.confidence}`)
 
+                // Capture router intent for completed-session guard (outer scope).
+                // IMPORTANT: The completed-session guard at ~line 2176 depends on this value.
+                // If you add a fast-path that skips the router for completed sessions,
+                // the guard will silently fall back to regex-only mode.
+                routerIntentType = webSearchDecision.intentType
+
                 // Trust the router decision. Router prompt handles stage policy rules.
                 // PASSIVE stages: router prompt says "ONLY if user EXPLICITLY requests."
                 // Router failure: safe default (enableWebSearch=true) — search is never harmful.
@@ -2067,8 +2145,9 @@ Aturan:
                     } else if (searchAlreadyDone) {
                         activeStageSearchNote = getFunctionToolsModeNote("Search completed")
                     } else {
-                        activeStageSearchNote = PAPER_TOOLS_ONLY_NOTE
+                        activeStageSearchNote = getPaperToolsOnlyNote(currentStage as string)
                     }
+                    console.log("[F1-F6-TEST] NoteInjected", { stage: currentStage, type: incomplete ? "research_incomplete" : searchAlreadyDone ? "search_done" : "tools_only" })
                 }
 
                 console.log(
@@ -2077,6 +2156,7 @@ Aturan:
                     `searchAlreadyDone: ${searchAlreadyDone}, ` +
                     `searchRequestedByPolicy: ${searchRequestedByPolicy}`
                 )
+                console.log("[F1-F6-TEST] SearchDecision", { stage: currentStage, policy: stagePolicy, search: searchRequestedByPolicy, reason: activeStageSearchReason, note: activeStageSearchNote ? "injected" : "none" })
 
                 // Post-router sync detection via intentType
                 isSyncRequest = !!paperModePrompt
@@ -2105,6 +2185,214 @@ Aturan:
                 isSaveSubmitIntent = !!paperModePrompt
                     && webSearchDecision.intentType === "save_submit"
 
+            }
+
+            // ════════════════════════════════════════════════════════════════
+            // PRE-STREAM GUARD: Completed session containment (post-router)
+            // Uses router intent as primary signal, regex only as fallback.
+            // Moved here from early pre-stream to leverage router intentType.
+            // ════════════════════════════════════════════════════════════════
+            if (paperSession?.currentStage === "completed") {
+                const completedDecision = resolveCompletedSessionHandling({
+                    routerIntent: routerIntentType,
+                    routerReason: activeStageSearchReason || undefined,
+                    lastUserContent: normalizedLastUserContent,
+                    hasChoiceInteractionEvent: !!choiceInteractionEvent,
+                })
+
+                console.info(
+                    `[PAPER][completed-prestream] decision=${completedDecision.handling} ` +
+                    `source=${completedDecision.source} reason=${completedDecision.reason}`
+                )
+
+                if (completedDecision.handling === "short_circuit_closing") {
+                    const completedClosingMessage = getCompletedSessionClosingMessage()
+
+                    // Generate consistent messageId for both persist and stream
+                    const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+
+                    // Persist to DB with uiMessageId parity
+                    await retryMutation(
+                        () => fetchMutationWithToken(api.messages.createMessage, {
+                            conversationId: currentConversationId as Id<"conversations">,
+                            role: "assistant",
+                            content: completedClosingMessage,
+                            metadata: {
+                                model: "system-completed-guard",
+                                uiMessageId: messageId,
+                            },
+                            uiMessageId: messageId,
+                        }),
+                        "messages.createMessage(assistant-completed-prestream)"
+                    )
+
+                    // Stream to client
+                    const textId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-text`
+                    const stream = createUIMessageStream({
+                        execute: async ({ writer }) => {
+                            writer.write({ type: "start", messageId })
+                            writer.write({ type: "text-start", id: textId })
+                            writer.write({ type: "text-delta", id: textId, delta: completedClosingMessage })
+                            writer.write({ type: "text-end", id: textId })
+                            writer.write({ type: "finish", finishReason: "stop" })
+                        },
+                    })
+
+                    return createUIMessageStreamResponse({ stream })
+                }
+
+                if (completedDecision.handling === "server_owned_artifact_recall") {
+                    // Resolve target stage from user text
+                    const targetStage = resolveRecallTargetStage(normalizedLastUserContent)
+                    const stageData = paperSession.stageData as Record<string, Record<string, unknown> | undefined> | undefined
+                    const targetArtifactId = targetStage
+                        ? (stageData?.[targetStage]?.artifactId as string | undefined)
+                        : undefined
+
+                    if (targetArtifactId) {
+                        // Fetch artifact data
+                        const artifact = await retryQuery(
+                            () => fetchQueryWithToken(api.artifacts.get, {
+                                artifactId: targetArtifactId as Id<"artifacts">,
+                                userId: userId as Id<"users">,
+                            }),
+                            "artifacts.get(completed-recall)"
+                        )
+
+                        if (!artifact) {
+                            // Artifact exists in stageData but missing from DB (deleted/corrupted)
+                            console.warn(`[PAPER][completed-recall] artifact ${targetArtifactId} not found in DB for stage=${targetStage}`)
+
+                            const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                            const notFoundText = `Artifact untuk tahap ${getStageLabel(targetStage!).toLowerCase()} tidak ditemukan. Kemungkinan sudah dihapus atau belum tersedia.`
+                            const textId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-text`
+
+                            await retryMutation(
+                                () => fetchMutationWithToken(api.messages.createMessage, {
+                                    conversationId: currentConversationId as Id<"conversations">,
+                                    role: "assistant",
+                                    content: notFoundText,
+                                    metadata: {
+                                        model: "system-completed-recall",
+                                        uiMessageId: messageId,
+                                    },
+                                    uiMessageId: messageId,
+                                }),
+                                "messages.createMessage(assistant-completed-recall-notfound)"
+                            )
+
+                            const stream = createUIMessageStream({
+                                execute: async ({ writer }) => {
+                                    writer.write({ type: "start", messageId })
+                                    writer.write({ type: "text-start", id: textId })
+                                    writer.write({ type: "text-delta", id: textId, delta: notFoundText })
+                                    writer.write({ type: "text-end", id: textId })
+                                    writer.write({ type: "finish", finishReason: "stop" })
+                                },
+                            })
+
+                            return createUIMessageStreamResponse({ stream })
+                        }
+
+                        if (artifact) {
+                            console.info(`[PAPER][completed-recall] targetStage=${targetStage} artifactId=${targetArtifactId}`)
+
+                            const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                            const stageLabel = getStageLabel(targetStage!)
+                            const proseText = `Menampilkan kembali artifact ${stageLabel.toLowerCase()}.`
+                            const toolCallId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-tool`
+                            const textId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-text`
+
+                            // Persist prose to DB
+                            await retryMutation(
+                                () => fetchMutationWithToken(api.messages.createMessage, {
+                                    conversationId: currentConversationId as Id<"conversations">,
+                                    role: "assistant",
+                                    content: proseText,
+                                    metadata: {
+                                        model: "system-completed-recall",
+                                        uiMessageId: messageId,
+                                        recallArtifactId: artifact._id,
+                                    },
+                                    uiMessageId: messageId,
+                                }),
+                                "messages.createMessage(assistant-completed-recall)"
+                            )
+
+                            // Build tool output matching readArtifact shape
+                            const toolOutput = {
+                                success: true,
+                                artifactId: artifact._id,
+                                title: artifact.title,
+                                type: artifact.type,
+                                version: artifact.version,
+                                content: artifact.content,
+                                format: artifact.format ?? null,
+                                sources: artifact.sources ?? [],
+                                createdAt: artifact.createdAt,
+                            }
+
+                            // Stream: prose + tool-readArtifact simulation
+                            const stream = createUIMessageStream({
+                                execute: async ({ writer }) => {
+                                    writer.write({ type: "start", messageId })
+                                    // Text part
+                                    writer.write({ type: "text-start", id: textId })
+                                    writer.write({ type: "text-delta", id: textId, delta: proseText })
+                                    writer.write({ type: "text-end", id: textId })
+                                    // Tool simulation: input + output
+                                    writer.write({
+                                        type: "tool-input-available",
+                                        toolCallId,
+                                        toolName: "readArtifact",
+                                        input: { artifactId: targetArtifactId },
+                                    })
+                                    writer.write({
+                                        type: "tool-output-available",
+                                        toolCallId,
+                                        output: toolOutput,
+                                    })
+                                    writer.write({ type: "finish", finishReason: "stop" })
+                                },
+                            })
+
+                            return createUIMessageStreamResponse({ stream })
+                        }
+                    }
+
+                    // Fallback: target unresolvable — system-owned clarification
+                    console.info(`[PAPER][completed-recall] unresolved target for request="${normalizedLastUserContent.slice(0, 80)}"`)
+
+                    const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                    const clarificationText = "Saya belum bisa menentukan artifact yang dimaksud. Sebutkan tahapnya, misalnya: judul, abstrak, pendahuluan, atau lampiran."
+                    const textId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-text`
+
+                    await retryMutation(
+                        () => fetchMutationWithToken(api.messages.createMessage, {
+                            conversationId: currentConversationId as Id<"conversations">,
+                            role: "assistant",
+                            content: clarificationText,
+                            metadata: {
+                                model: "system-completed-recall",
+                                uiMessageId: messageId,
+                            },
+                            uiMessageId: messageId,
+                        }),
+                        "messages.createMessage(assistant-completed-recall-clarify)"
+                    )
+
+                    const stream = createUIMessageStream({
+                        execute: async ({ writer }) => {
+                            writer.write({ type: "start", messageId })
+                            writer.write({ type: "text-start", id: textId })
+                            writer.write({ type: "text-delta", id: textId, delta: clarificationText })
+                            writer.write({ type: "text-end", id: textId })
+                            writer.write({ type: "finish", finishReason: "stop" })
+                        },
+                    })
+
+                    return createUIMessageStreamResponse({ stream })
+                }
             }
 
             // Build retriever chain once — reused for both mode resolution and execution
@@ -2147,7 +2435,7 @@ Aturan:
             }
 
             if (!enableWebSearch && paperModePrompt && !activeStageSearchNote) {
-                activeStageSearchNote = PAPER_TOOLS_ONLY_NOTE
+                activeStageSearchNote = getPaperToolsOnlyNote(currentStage as string)
             }
 
             const requestedResponseMode = inferSearchResponseMode({
@@ -2193,12 +2481,10 @@ Aturan:
                 && !shouldForceGetCurrentPaperState
                 && isSaveSubmitIntent
                 && paperSession?.stageStatus === "drafting"
-                && hasStageRingkasan(paperSession)
                 && hasStageArtifact(paperSession)
 
             missingArtifactNote = !shouldForceSubmitValidation
                 && !!paperModePrompt
-                && hasStageRingkasan(paperSession)
                 && !hasStageArtifact(paperSession)
                 && paperSession?.stageStatus === "drafting"
                 && isSaveSubmitIntent
@@ -2350,25 +2636,26 @@ Aturan:
                             result.capturedChoiceSpec ?? undefined,
                         )
 
-                        // ──── Non-critical ops: fire-and-forget (don't block response close) ────
-
                         // Auto-persist search references to paper stageData
+                        // Awaited (not fire-and-forget) so stageData is updated before
+                        // stream closes — UnifiedProcessCard task progress reflects immediately.
                         if (paperSession && result.sources.length > 0) {
-                            void fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
-                                sessionId: paperSession._id,
-                                references: result.sources.map(s => ({
-                                    url: s.url,
-                                    title: s.title,
-                                    ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
-                                        ? { publishedAt: s.publishedAt }
-                                        : {}),
-                                })),
-                            }).then(() => {
+                            try {
+                                await fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
+                                    sessionId: paperSession._id,
+                                    references: result.sources.map(s => ({
+                                        url: s.url,
+                                        title: s.title,
+                                        ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
+                                            ? { publishedAt: s.publishedAt }
+                                            : {}),
+                                    })),
+                                })
                                 console.log(`[Paper] Auto-persisted ${result.sources.length} search refs to stageData`)
-                            }).catch(err => {
+                            } catch (err) {
                                 Sentry.captureException(err, { tags: { subsystem: "paper" } })
                                 console.error("[Paper] Failed to auto-persist search references:", err)
-                            })
+                            }
                         }
 
                         // Auto-title generation
@@ -2475,9 +2762,274 @@ Aturan:
                             ""
                         ).replace(/\n{3,}/g, "\n\n").trim()
                         const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
-                        const persistedContent = shouldPersistForcedSyncFallback
+                        let persistedContent = shouldPersistForcedSyncFallback
                             ? buildForcedSyncStatusMessage(paperSession)
                             : normalizedText
+
+                        // Hasil post-choice observability
+                        if (isHasilPostChoice && normalizedText.length > 0) {
+                            if (
+                                paperToolTracker.sawSubmitValidationArtifactMissing &&
+                                paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[HASIL][ordering-bug] submitStageForValidation failed before artifact existed, createArtifact succeeded later, but submit was not retried.")
+                            }
+                            if (
+                                paperToolTracker.sawUpdateStageData &&
+                                !paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[HASIL][partial-save-stall] updateStageData called but createArtifact and submitStageForValidation were not called. Tool chain incomplete.")
+                            }
+                            if (
+                                /panel validasi|approve|revisi/i.test(normalizedText) &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[HASIL][false-validation-claim] response mentioned validation flow without successful submitStageForValidation.")
+                            }
+                            if (
+                                /aku akan menyusun|draf ini akan|berikut adalah draf/i.test(normalizedText) &&
+                                !paperToolTracker.sawCreateArtifactSuccess
+                            ) {
+                                console.warn("[HASIL][prose-leakage] post-choice response previewed draft content in chat before artifact creation.")
+                            }
+                        }
+
+                        // Daftar pustaka observability
+                        if (paperStageScope === "daftar_pustaka" && normalizedText.length > 0) {
+                            if (
+                                paperToolTracker.sawCompileDaftarPustakaPersist &&
+                                !paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawUpdateArtifactSuccess
+                            ) {
+                                console.warn("[DAFTAR_PUSTAKA][compiled-but-no-artifact] persist compilation succeeded but no artifact tool followed.")
+                            }
+                            if (
+                                /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki/i.test(normalizedText) &&
+                                (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess)
+                            ) {
+                                console.warn("[PAPER][nonfatal-error-leakage] response exposed internal failure narration even though artifact was created successfully.")
+                            }
+                            if (
+                                paperSession?.stageStatus === "revision" &&
+                                paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawUpdateArtifactSuccess
+                            ) {
+                                console.warn("[DAFTAR_PUSTAKA][revision-create-instead-of-update] revision turn created new artifact instead of updating existing one.")
+                            }
+                            if (
+                                (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess) &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[DAFTAR_PUSTAKA][artifact-without-submit] artifact created/updated but submitStageForValidation was not called.")
+                            }
+                        }
+
+                        // Outcome-gated persisted content: replace noisy model text with clean system message
+                        // for review/finalization workflow stages where tools succeeded
+                        if (paperStageScope && normalizedText.length > 0) {
+                            const isReviewStage = ["hasil", "diskusi", "kesimpulan", "pembaruan_abstrak", "daftar_pustaka", "lampiran", "judul"].includes(paperStageScope)
+                            const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
+                            const hasLeakage = /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki|mohon tunggu|coba lagi|ada kendala/i.test(normalizedText)
+
+                            if (isReviewStage && hasArtifactSuccess && hasLeakage) {
+                                if (paperToolTracker.sawSubmitValidationSuccess) {
+                                    persistedContent = "Artefak sudah diperbarui. Silakan review di panel validasi."
+                                    console.info("[PAPER][outcome-gated] replaced noisy persisted text with clean success_with_validation message")
+                                } else {
+                                    persistedContent = "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
+                                    console.info("[PAPER][outcome-gated] replaced noisy persisted text with clean success_without_validation message")
+                                }
+                            }
+                        }
+
+                        // System-owned closing message for completed session
+                        if (
+                            paperSession?.currentStage === "completed" &&
+                            normalizedText.length > 0 &&
+                            /tool_code|sekarang kita masuk ke tahap|yaml-spec|```yaml/i.test(normalizedText)
+                        ) {
+                            persistedContent = "Semua tahap penyusunan makalah sudah selesai dan disetujui.\n\nRiwayat percakapan di sidebar menyimpan artifact dari setiap tahap, mulai dari gagasan awal sampai pemilihan judul. Linimasa progres juga sudah penuh, menandakan seluruh tahapan penyusunan makalah telah terlewati."
+                            console.info("[PAPER][completed-guard] replaced corrupt/off-context model output with system-owned closing message")
+                        }
+
+                        // Server-owned fallback: lampiran "tidak ada" path
+                        // If model failed to create placeholder artifact, server does it
+                        const NO_APPENDIX_IDS = new Set(["tidak-ada-lampiran", "option-tidak-ada-lampiran", "no-appendix"])
+                        if (
+                            paperStageScope === "lampiran" &&
+                            choiceInteractionEvent?.stage === "lampiran" &&
+                            choiceInteractionEvent.selectedOptionIds.some(id => NO_APPENDIX_IDS.has(id.trim().toLowerCase())) &&
+                            paperToolTracker.sawUpdateStageData &&
+                            !paperToolTracker.sawCreateArtifactSuccess &&
+                            !paperToolTracker.sawUpdateArtifactSuccess
+                        ) {
+                            console.info("[LAMPIRAN][server-fallback] model failed to create placeholder artifact, server creating it now")
+                            try {
+                                // Read alasanTidakAda from stageData if available
+                                const lampiranStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["lampiran"]
+                                const alasan = typeof lampiranStageData?.alasanTidakAda === "string" ? lampiranStageData.alasanTidakAda : ""
+                                const placeholderContent = alasan
+                                    ? `Tidak ada lampiran.\n\nAlasan: ${alasan}`
+                                    : "Tidak ada lampiran."
+
+                                const placeholderResult = await retryMutation(
+                                    () => fetchMutationWithToken(api.artifacts.create, {
+                                        conversationId: currentConversationId as Id<"conversations">,
+                                        userId: userId as Id<"users">,
+                                        type: "section",
+                                        title: "Lampiran",
+                                        content: placeholderContent,
+                                    }),
+                                    "artifacts.create(lampiran-placeholder)"
+                                ) as { artifactId: string }
+
+                                // Link artifact to stage
+                                try {
+                                    await retryMutation(
+                                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                            sessionId: paperSession!._id,
+                                            stage: "lampiran",
+                                            data: { artifactId: placeholderResult.artifactId },
+                                        }),
+                                        "paperSessions.updateStageData(lampiran-link)"
+                                    )
+                                } catch { /* non-critical */ }
+
+                                // Submit for validation
+                                await retryMutation(
+                                    () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                                        sessionId: paperSession!._id,
+                                    }),
+                                    "paperSessions.submitForValidation(lampiran)"
+                                )
+                                paperToolTracker.sawCreateArtifactSuccess = true
+                                paperToolTracker.sawSubmitValidationSuccess = true
+                                persistedContent = "Tidak ada lampiran untuk paper ini. Silakan review di panel validasi."
+                                console.info("[LAMPIRAN][server-fallback] placeholder artifact created and submitted for validation")
+                            } catch (fallbackErr) {
+                                console.error("[LAMPIRAN][server-fallback] failed:", fallbackErr)
+                            }
+                        }
+
+                        // Server-owned fallback: judul title selection
+                        if (
+                            paperStageScope === "judul" &&
+                            choiceInteractionEvent?.stage === "judul" &&
+                            !paperToolTracker.sawUpdateStageData &&
+                            !paperToolTracker.sawCreateArtifactSuccess &&
+                            !paperToolTracker.sawUpdateArtifactSuccess &&
+                            normalizedText.length > 0
+                        ) {
+                            console.info("[JUDUL][server-fallback] model failed to execute tool calls, server completing judul lifecycle")
+                            try {
+                                // Deterministic title resolution from choice card payload
+                                let selectedTitle: string | undefined
+                                try {
+                                    const sourceMsg = await retryQuery(
+                                        () => fetchQueryWithToken(api.messages.getMessageByUiMessageId, {
+                                            uiMessageId: choiceInteractionEvent.sourceMessageId,
+                                            conversationId: currentConversationId as Id<"conversations">,
+                                        }),
+                                        "messages.getMessageByUiMessageId(judul-source)"
+                                    ) as { jsonRendererChoice?: string } | null
+                                    if (sourceMsg?.jsonRendererChoice) {
+                                        const spec = JSON.parse(sourceMsg.jsonRendererChoice)
+                                        const selectedId = choiceInteractionEvent.selectedOptionIds[0]
+                                        // Search elements for matching optionId
+                                        const elements = spec?.elements ?? {}
+                                        for (const el of Object.values(elements) as Array<{ type?: string; props?: { optionId?: string; label?: string } }>) {
+                                            if (el?.type === "ChoiceOptionButton" && el?.props?.optionId === selectedId && el?.props?.label) {
+                                                selectedTitle = el.props.label
+                                                break
+                                            }
+                                        }
+                                        if (selectedTitle) {
+                                            console.info(`[JUDUL][server-fallback] resolved title from choice payload: "${selectedTitle}"`)
+                                        } else {
+                                            console.warn(`[JUDUL][server-fallback][selected-option-unresolved] option ${selectedId} not found in spec elements`)
+                                        }
+                                    } else {
+                                        console.warn("[JUDUL][server-fallback][source-message-missing-choice-payload] no jsonRendererChoice in source message")
+                                    }
+                                } catch (resolveErr) {
+                                    console.warn("[JUDUL][server-fallback] choice payload resolution failed, falling back to text extraction:", resolveErr)
+                                }
+                                // Fallback: extract from model text if deterministic resolution failed
+                                if (!selectedTitle) {
+                                    const titleMatch = normalizedText.match(/judulTerpilih["\s:]*"([^"]+)"/i)
+                                        ?? normalizedText.match(/judul[^"]*"([^"]{20,})"/)
+                                        ?? normalizedText.match(/["""]([^"""]{20,})["""]/)
+                                    selectedTitle = titleMatch?.[1]?.trim()
+                                }
+
+                                if (selectedTitle) {
+                                    await retryMutation(
+                                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                            sessionId: paperSession!._id,
+                                            stage: "judul",
+                                            data: { judulTerpilih: selectedTitle, alasanPemilihan: "Dipilih oleh user via choice card." },
+                                        }),
+                                        "paperSessions.updateStageData(judul-fallback)"
+                                    )
+
+                                    // Revision-aware: updateArtifact if exists, createArtifact if not
+                                    const judulStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["judul"]
+                                    const existingJudulArtifactId = judulStageData?.artifactId as string | undefined
+
+                                    if (existingJudulArtifactId) {
+                                        await retryMutation(
+                                            () => fetchMutationWithToken(api.artifacts.update, {
+                                                artifactId: existingJudulArtifactId as Id<"artifacts">,
+                                                userId: userId as Id<"users">,
+                                                content: `Judul Terpilih:\n\n${selectedTitle}`,
+                                                title: "Pemilihan Judul",
+                                            }),
+                                            "artifacts.update(judul-fallback)"
+                                        )
+                                        paperToolTracker.sawUpdateArtifactSuccess = true
+                                    } else {
+                                        const judulArtifact = await retryMutation(
+                                            () => fetchMutationWithToken(api.artifacts.create, {
+                                                conversationId: currentConversationId as Id<"conversations">,
+                                                userId: userId as Id<"users">,
+                                                type: "section",
+                                                title: "Pemilihan Judul",
+                                                content: `Judul Terpilih:\n\n${selectedTitle}`,
+                                            }),
+                                            "artifacts.create(judul-fallback)"
+                                        ) as { artifactId: string }
+
+                                        try {
+                                            await retryMutation(
+                                                () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                                    sessionId: paperSession!._id,
+                                                    stage: "judul",
+                                                    data: { artifactId: judulArtifact.artifactId },
+                                                }),
+                                                "paperSessions.updateStageData(judul-link)"
+                                            )
+                                        } catch { /* non-critical */ }
+                                    }
+
+                                    await retryMutation(
+                                        () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                                            sessionId: paperSession!._id,
+                                        }),
+                                        "paperSessions.submitForValidation(judul-fallback)"
+                                    )
+                                    paperToolTracker.sawCreateArtifactSuccess = true
+                                    paperToolTracker.sawSubmitValidationSuccess = true
+                                    persistedContent = `Judul "${selectedTitle}" sudah dipilih. Silakan review di panel validasi.`
+                                    console.info("[JUDUL][server-fallback] title saved, artifact created, submitted for validation")
+                                } else {
+                                    console.warn("[JUDUL][server-fallback] could not extract title from model response")
+                                }
+                            } catch (fallbackErr) {
+                                console.error("[JUDUL][server-fallback] failed:", fallbackErr)
+                            }
+                        }
 
                         if (normalizedText.length > 0 && sources && sources.length > 0) {
                             sources = await enrichSourcesWithFetchedTitles(sources, {
@@ -2688,7 +3240,10 @@ Aturan:
                             if (chunk.type === "finish") {
                                 // Log captured YAML spec for persistence
                                 if (capturedChoiceSpec && capturedChoiceSpec.root) {
+                                    const elementTypes = Object.entries(capturedChoiceSpec.elements || {}).map(([id, el]) => `${id}:${(el as {type?:string}).type ?? '?'}`).join(", ")
+                                    const hasSubmitBtn = Object.values(capturedChoiceSpec.elements || {}).some((el) => (el as {type?:string}).type === "ChoiceSubmitButton")
                                     console.info(`[CHOICE-CARD][yaml-capture] primary stage=${paperStageScope} specKeys=${Object.keys(capturedChoiceSpec).join(",")}`)
+                                    console.info(`[F1-F6-TEST] ChoiceCardSpec { elements: "${elementTypes}", hasSubmitButton: ${hasSubmitBtn} }`)
                                 }
 
                                 if (reasoningAccumulator.hasReasoning()) {
@@ -2856,9 +3411,266 @@ Aturan:
                             ""
                         ).replace(/\n{3,}/g, "\n\n").trim()
                         const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
-                        const persistedContent = shouldPersistForcedSyncFallback
+                        let persistedContent = shouldPersistForcedSyncFallback
                             ? buildForcedSyncStatusMessage(paperSession)
                             : normalizedText
+
+                        // Hasil post-choice observability (fallback path — parity with primary)
+                        if (isHasilPostChoice && normalizedText.length > 0) {
+                            if (
+                                paperToolTracker.sawSubmitValidationArtifactMissing &&
+                                paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[HASIL][ordering-bug][fallback] submitStageForValidation failed before artifact existed, createArtifact succeeded later, but submit was not retried.")
+                            }
+                            if (
+                                paperToolTracker.sawUpdateStageData &&
+                                !paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[HASIL][partial-save-stall][fallback] updateStageData called but createArtifact and submitStageForValidation were not called. Tool chain incomplete.")
+                            }
+                            if (
+                                /panel validasi|approve|revisi/i.test(normalizedText) &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[HASIL][false-validation-claim][fallback] response mentioned validation flow without successful submitStageForValidation.")
+                            }
+                            if (
+                                /aku akan menyusun|draf ini akan|berikut adalah draf/i.test(normalizedText) &&
+                                !paperToolTracker.sawCreateArtifactSuccess
+                            ) {
+                                console.warn("[HASIL][prose-leakage][fallback] post-choice response previewed draft content in chat before artifact creation.")
+                            }
+                        }
+
+                        // Daftar pustaka observability (fallback path)
+                        if (paperStageScope === "daftar_pustaka" && normalizedText.length > 0) {
+                            if (
+                                paperToolTracker.sawCompileDaftarPustakaPersist &&
+                                !paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawUpdateArtifactSuccess
+                            ) {
+                                console.warn("[DAFTAR_PUSTAKA][compiled-but-no-artifact][fallback] persist compilation succeeded but no artifact tool followed.")
+                            }
+                            if (
+                                /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki/i.test(normalizedText) &&
+                                (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess)
+                            ) {
+                                console.warn("[PAPER][nonfatal-error-leakage][fallback] response exposed internal failure narration even though artifact was created successfully.")
+                            }
+                            if (
+                                paperSession?.stageStatus === "revision" &&
+                                paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawUpdateArtifactSuccess
+                            ) {
+                                console.warn("[DAFTAR_PUSTAKA][revision-create-instead-of-update][fallback] revision turn created new artifact instead of updating existing one.")
+                            }
+                            if (
+                                (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess) &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[DAFTAR_PUSTAKA][artifact-without-submit][fallback] artifact created/updated but submitStageForValidation was not called.")
+                            }
+                        }
+
+                        // System-owned closing message for completed session (fallback parity)
+                        if (
+                            paperSession?.currentStage === "completed" &&
+                            normalizedText.length > 0 &&
+                            /tool_code|sekarang kita masuk ke tahap|yaml-spec|```yaml/i.test(normalizedText)
+                        ) {
+                            persistedContent = "Semua tahap penyusunan makalah sudah selesai dan disetujui.\n\nRiwayat percakapan di sidebar menyimpan artifact dari setiap tahap, mulai dari gagasan awal sampai pemilihan judul. Linimasa progres juga sudah penuh, menandakan seluruh tahapan penyusunan makalah telah terlewati."
+                            console.info("[PAPER][completed-guard][fallback] replaced corrupt/off-context model output with system-owned closing message")
+                        }
+
+                        // Server-owned fallback: lampiran "tidak ada" path (fallback parity)
+                        const FALLBACK_NO_APPENDIX_IDS = new Set(["tidak-ada-lampiran", "option-tidak-ada-lampiran", "no-appendix"])
+                        if (
+                            paperStageScope === "lampiran" &&
+                            choiceInteractionEvent?.stage === "lampiran" &&
+                            choiceInteractionEvent.selectedOptionIds.some(id => FALLBACK_NO_APPENDIX_IDS.has(id.trim().toLowerCase())) &&
+                            paperToolTracker.sawUpdateStageData &&
+                            !paperToolTracker.sawCreateArtifactSuccess &&
+                            !paperToolTracker.sawUpdateArtifactSuccess
+                        ) {
+                            console.info("[LAMPIRAN][server-fallback][fallback] model failed to create placeholder artifact, server creating it now")
+                            try {
+                                const lampiranStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["lampiran"]
+                                const alasan = typeof lampiranStageData?.alasanTidakAda === "string" ? lampiranStageData.alasanTidakAda : ""
+                                const placeholderContent = alasan
+                                    ? `Tidak ada lampiran.\n\nAlasan: ${alasan}`
+                                    : "Tidak ada lampiran."
+
+                                const placeholderResult = await retryMutation(
+                                    () => fetchMutationWithToken(api.artifacts.create, {
+                                        conversationId: currentConversationId as Id<"conversations">,
+                                        userId: userId as Id<"users">,
+                                        type: "section",
+                                        title: "Lampiran",
+                                        content: placeholderContent,
+                                    }),
+                                    "artifacts.create(lampiran-placeholder-fallback)"
+                                ) as { artifactId: string }
+
+                                try {
+                                    await retryMutation(
+                                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                            sessionId: paperSession!._id,
+                                            stage: "lampiran",
+                                            data: { artifactId: placeholderResult.artifactId },
+                                        }),
+                                        "paperSessions.updateStageData(lampiran-link-fallback)"
+                                    )
+                                } catch { /* non-critical */ }
+
+                                await retryMutation(
+                                    () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                                        sessionId: paperSession!._id,
+                                    }),
+                                    "paperSessions.submitForValidation(lampiran-fallback)"
+                                )
+                                paperToolTracker.sawCreateArtifactSuccess = true
+                                paperToolTracker.sawSubmitValidationSuccess = true
+                                persistedContent = "Tidak ada lampiran untuk paper ini. Silakan review di panel validasi."
+                                console.info("[LAMPIRAN][server-fallback][fallback] placeholder artifact created and submitted for validation")
+                            } catch (fallbackErr) {
+                                console.error("[LAMPIRAN][server-fallback][fallback] failed:", fallbackErr)
+                            }
+                        }
+
+                        // Server-owned fallback: judul (fallback path parity)
+                        if (
+                            paperStageScope === "judul" &&
+                            choiceInteractionEvent?.stage === "judul" &&
+                            !paperToolTracker.sawUpdateStageData &&
+                            !paperToolTracker.sawCreateArtifactSuccess &&
+                            !paperToolTracker.sawUpdateArtifactSuccess &&
+                            normalizedText.length > 0
+                        ) {
+                            console.info("[JUDUL][server-fallback][fallback] model failed to execute tool calls, server completing judul lifecycle")
+                            try {
+                                // Deterministic title resolution from choice card payload (fallback path)
+                                let selectedTitle: string | undefined
+                                try {
+                                    const sourceMsg = await retryQuery(
+                                        () => fetchQueryWithToken(api.messages.getMessageByUiMessageId, {
+                                            uiMessageId: choiceInteractionEvent.sourceMessageId,
+                                            conversationId: currentConversationId as Id<"conversations">,
+                                        }),
+                                        "messages.getMessageByUiMessageId(judul-source-fb)"
+                                    ) as { jsonRendererChoice?: string } | null
+                                    if (sourceMsg?.jsonRendererChoice) {
+                                        const spec = JSON.parse(sourceMsg.jsonRendererChoice)
+                                        const selectedId = choiceInteractionEvent.selectedOptionIds[0]
+                                        const elements = spec?.elements ?? {}
+                                        for (const el of Object.values(elements) as Array<{ type?: string; props?: { optionId?: string; label?: string } }>) {
+                                            if (el?.type === "ChoiceOptionButton" && el?.props?.optionId === selectedId && el?.props?.label) {
+                                                selectedTitle = el.props.label
+                                                break
+                                            }
+                                        }
+                                        if (selectedTitle) {
+                                            console.info(`[JUDUL][server-fallback][fallback] resolved title from choice payload: "${selectedTitle}"`)
+                                        } else {
+                                            console.warn(`[JUDUL][server-fallback][fallback][selected-option-unresolved] option ${selectedId} not found in spec elements`)
+                                        }
+                                    } else {
+                                        console.warn("[JUDUL][server-fallback][fallback][source-message-missing-choice-payload] no jsonRendererChoice in source message")
+                                    }
+                                } catch (resolveErr) {
+                                    console.warn("[JUDUL][server-fallback][fallback] choice payload resolution failed:", resolveErr)
+                                }
+                                if (!selectedTitle) {
+                                    const titleMatch = normalizedText.match(/judulTerpilih["\s:]*"([^"]+)"/i)
+                                        ?? normalizedText.match(/judul[^"]*"([^"]{20,})"/)
+                                        ?? normalizedText.match(/["""]([^"""]{20,})["""]/)
+                                    selectedTitle = titleMatch?.[1]?.trim()
+                                }
+
+                                if (selectedTitle) {
+                                    await retryMutation(
+                                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                            sessionId: paperSession!._id,
+                                            stage: "judul",
+                                            data: { judulTerpilih: selectedTitle, alasanPemilihan: "Dipilih oleh user via choice card." },
+                                        }),
+                                        "paperSessions.updateStageData(judul-fallback-fb)"
+                                    )
+
+                                    const judulStageDataFb = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["judul"]
+                                    const existingJudulArtifactIdFb = judulStageDataFb?.artifactId as string | undefined
+
+                                    if (existingJudulArtifactIdFb) {
+                                        await retryMutation(
+                                            () => fetchMutationWithToken(api.artifacts.update, {
+                                                artifactId: existingJudulArtifactIdFb as Id<"artifacts">,
+                                                userId: userId as Id<"users">,
+                                                content: `Judul Terpilih:\n\n${selectedTitle}`,
+                                                title: "Pemilihan Judul",
+                                            }),
+                                            "artifacts.update(judul-fallback-fb)"
+                                        )
+                                        paperToolTracker.sawUpdateArtifactSuccess = true
+                                    } else {
+                                        const judulArtifact = await retryMutation(
+                                            () => fetchMutationWithToken(api.artifacts.create, {
+                                                conversationId: currentConversationId as Id<"conversations">,
+                                                userId: userId as Id<"users">,
+                                                type: "section",
+                                                title: "Pemilihan Judul",
+                                                content: `Judul Terpilih:\n\n${selectedTitle}`,
+                                            }),
+                                            "artifacts.create(judul-fallback-fb)"
+                                        ) as { artifactId: string }
+
+                                        try {
+                                            await retryMutation(
+                                                () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                                    sessionId: paperSession!._id,
+                                                    stage: "judul",
+                                                    data: { artifactId: judulArtifact.artifactId },
+                                                }),
+                                                "paperSessions.updateStageData(judul-link-fb)"
+                                            )
+                                        } catch { /* non-critical */ }
+                                    }
+
+                                    await retryMutation(
+                                        () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                                            sessionId: paperSession!._id,
+                                        }),
+                                        "paperSessions.submitForValidation(judul-fallback-fb)"
+                                    )
+                                    paperToolTracker.sawCreateArtifactSuccess = true
+                                    paperToolTracker.sawSubmitValidationSuccess = true
+                                    persistedContent = `Judul "${selectedTitle}" sudah dipilih. Silakan review di panel validasi.`
+                                    console.info("[JUDUL][server-fallback][fallback] title saved, artifact created, submitted for validation")
+                                } else {
+                                    console.warn("[JUDUL][server-fallback][fallback] could not extract title from model response")
+                                }
+                            } catch (fallbackErr) {
+                                console.error("[JUDUL][server-fallback][fallback] failed:", fallbackErr)
+                            }
+                        }
+
+                        // Outcome-gated persisted content (fallback path)
+                        if (paperStageScope && normalizedText.length > 0) {
+                            const isReviewStage = ["hasil", "diskusi", "kesimpulan", "pembaruan_abstrak", "daftar_pustaka", "lampiran", "judul"].includes(paperStageScope)
+                            const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
+                            const hasLeakage = /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki|mohon tunggu|coba lagi|ada kendala/i.test(normalizedText)
+
+                            if (isReviewStage && hasArtifactSuccess && hasLeakage) {
+                                if (paperToolTracker.sawSubmitValidationSuccess) {
+                                    persistedContent = "Artefak sudah diperbarui. Silakan review di panel validasi."
+                                    console.info("[PAPER][outcome-gated][fallback] replaced noisy persisted text with clean success_with_validation message")
+                                } else {
+                                    persistedContent = "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
+                                    console.info("[PAPER][outcome-gated][fallback] replaced noisy persisted text with clean success_without_validation message")
+                                }
+                            }
+                        }
 
                         if (persistedContent.length > 0) {
                             const persistedReasoningTrace = (() => {

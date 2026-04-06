@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import type { UIMessage } from "ai"
 import { describe, expect, it, vi } from "vitest"
+import { SPEC_DATA_PART_TYPE } from "@json-render/core"
 import { MessageBubble } from "./MessageBubble"
 
 vi.mock("./QuickActions", () => ({
@@ -47,7 +48,7 @@ describe("MessageBubble search status", () => {
       />
     )
 
-    expect(screen.getByText("Tool pencarian tidak tersedia")).toBeInTheDocument()
+    expect(screen.getAllByText("Tool pencarian tidak tersedia")[0]).toBeInTheDocument()
   })
 
   it("normalizes legacy assistant text with sources into paragraph-end citation markers", () => {
@@ -120,7 +121,7 @@ describe("MessageBubble search status", () => {
 
     render(<MessageBubble message={message} persistProcessIndicators />)
 
-    expect(screen.getByText("Tool pencarian tidak tersedia")).toBeInTheDocument()
+    expect(screen.getAllByText("Tool pencarian tidak tersedia")[0]).toBeInTheDocument()
     expect(screen.getAllByText(/Ini fallback jawaban tanpa sumber\./).length).toBeGreaterThan(0)
     expect(screen.getByTestId("internal-thought-block")).toHaveTextContent(/Bentar ya, aku cari dulu\./)
   })
@@ -158,7 +159,7 @@ describe("MessageBubble search status", () => {
 
     render(<MessageBubble message={message} persistProcessIndicators />)
 
-    expect(screen.getByText("Tool pencarian tidak tersedia")).toBeInTheDocument()
+    expect(screen.getAllByText("Tool pencarian tidak tersedia")[0]).toBeInTheDocument()
     expect(screen.queryByText(/^Link:\s*$/i)).not.toBeInTheDocument()
   })
 
@@ -207,9 +208,9 @@ describe("MessageBubble search status", () => {
 
     render(<MessageBubble message={message} persistProcessIndicators />)
 
-    expect(screen.getByText("Tool pencarian tidak tersedia")).toBeInTheDocument()
+    expect(screen.getAllByText("Tool pencarian tidak tersedia")[0]).toBeInTheDocument()
     expect(screen.queryByLabelText("Inventaris referensi")).not.toBeInTheDocument()
-    expect(screen.getByText("Ini fallback jawaban tanpa inventori inline.")).toBeInTheDocument()
+    expect(screen.getAllByText("Ini fallback jawaban tanpa inventori inline.")[0]).toBeInTheDocument()
     expect(screen.queryByText("https://example.com/a.pdf")).not.toBeInTheDocument()
   })
 
@@ -251,10 +252,40 @@ describe("MessageBubble search status", () => {
 
     render(<MessageBubble message={message} persistProcessIndicators />)
 
-    expect(screen.getByText("Tool pencarian tidak tersedia")).toBeInTheDocument()
+    expect(screen.getAllByText("Tool pencarian tidak tersedia")[0]).toBeInTheDocument()
     expect(screen.getByTestId("reference-inventory-body")).toHaveTextContent(
       "Berikut inventaris referensi yang ditemukan."
     )
+  })
+
+  it("does not crash when json-render spec contains null elements", () => {
+    const message = {
+      id: "m-bad-choice-spec",
+      role: "assistant",
+      parts: [
+        { type: "text", text: "Respons tetap tampil." },
+        {
+          type: SPEC_DATA_PART_TYPE,
+          data: {
+            type: "flat",
+            spec: {
+              root: "shell",
+              elements: {
+                shell: {
+                  type: "ChoiceCardShell",
+                  props: { title: "Pilihan fokus" },
+                  children: ["bad"],
+                },
+                bad: null,
+              },
+            },
+          },
+        },
+      ],
+    } as unknown as UIMessage
+
+    expect(() => render(<MessageBubble message={message} />)).not.toThrow()
+    expect(screen.getAllByText("Respons tetap tampil.").length).toBeGreaterThan(0)
   })
 
   it("feeds quick actions with structured inventory text instead of raw placeholder links", () => {

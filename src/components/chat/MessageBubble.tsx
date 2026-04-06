@@ -4,14 +4,15 @@ import { UIMessage } from "ai"
 import { EditPencil, Xmark, Send, CheckCircle, Page, MediaImage, Copy, Check } from "iconoir-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
-import { ToolStateIndicator } from "./ToolStateIndicator"
-import { SearchStatusIndicator, type SearchStatus } from "./SearchStatusIndicator"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { useState, useRef, useMemo, useEffect } from "react"
 import Image from "next/image"
 import { Id } from "../../../convex/_generated/dataModel"
 import { MarkdownRenderer } from "./MarkdownRenderer"
-import { isEditAllowed } from "@/lib/utils/paperPermissions"
+import { isEditAllowed, getMessageStage } from "@/lib/utils/paperPermissions"
+import { UnifiedProcessCard, type ProcessTool, type SearchStatusData } from "./UnifiedProcessCard"
+import { deriveTaskList } from "@/lib/paper/task-derivation"
+import type { PaperStageId } from "../../../convex/paperSessions/constants"
 import {
     Tooltip,
     TooltipContent,
@@ -62,19 +63,31 @@ type AutoUserAction =
     }
     | null;
 
-type ArtifactSignal = {
+export type ArtifactSignal = {
     artifactId: Id<"artifacts">
     title: string
-    status: "created" | "updated"
+    status: "created" | "updated" | "read"
     version?: number
 }
 
 /** Persisted artifact from Convex (for post-refresh signal reconstruction) */
-interface PersistedArtifact {
+export interface PersistedArtifact {
     _id: Id<"artifacts">
     title: string
     version: number
     parentId?: Id<"artifacts">
+    isRecall?: boolean
+}
+
+/** Map persisted artifacts to ArtifactSignal[] for post-refresh rendering.
+ *  Exported for testing. */
+export function mapPersistedToSignals(artifacts: PersistedArtifact[]): ArtifactSignal[] {
+    return artifacts.map((a) => ({
+        artifactId: a._id,
+        title: a.title,
+        status: a.isRecall ? "read" as const : a.parentId ? "updated" as const : "created" as const,
+        ...(a.version > 1 ? { version: a.version } : {}),
+    }))
 }
 
 type ChatSource = {
@@ -145,6 +158,7 @@ interface MessageBubbleProps {
     currentStageStartIndex?: number
     allMessages?: PermissionMessage[]
     stageData?: Record<string, StageDataEntry>
+    currentStage?: string
     /** Persisted artifacts matched to this message (survives page refresh) */
     persistedArtifacts?: PersistedArtifact[]
     /** File name lookup map (fileId → fileName) for history messages */
@@ -175,6 +189,7 @@ export function MessageBubble({
     currentStageStartIndex = 0,
     allMessages = [],
     stageData,
+    currentStage,
     persistedArtifacts,
     fileNameMap,
     fileMetaMap,
@@ -248,6 +263,21 @@ export function MessageBubble({
         })
     }, [message.role, allMessages, messageIndex, isPaperMode, currentStageStartIndex, stageData])
 
+    // Derive task summary for UnifiedProcessCard — use per-message stage, not global currentStage
+    const taskSummary = useMemo(() => {
+        if (!isPaperMode || !stageData || !currentStage || currentStage === "completed") return null
+
+        // Determine which stage THIS message belongs to
+        const messageCreatedAt = allMessages[messageIndex]?.createdAt ?? 0
+        const messageStage = messageCreatedAt > 0
+            ? getMessageStage(messageCreatedAt, stageData)
+            : currentStage  // Streaming message (no createdAt yet) → use current stage
+
+        const result = deriveTaskList(messageStage as PaperStageId, stageData)
+        return result
+    }, [isPaperMode, stageData, currentStage, allMessages, messageIndex])
+
+
     const extractArtifactSignals = (uiMessage: UIMessage): ArtifactSignal[] => {
         const signals: ArtifactSignal[] = []
 
@@ -309,6 +339,24 @@ export function MessageBubble({
                     status: "updated",
                     ...(parsedVersion ? { version: parsedVersion } : {}),
                 })
+                continue
+            }
+
+            if (maybeToolPart.type === "tool-readArtifact") {
+                const maybeOutput = (maybeToolPart.output ?? maybeToolPart.result) as unknown as {
+                    success?: unknown
+                    artifactId?: unknown
+                    title?: unknown
+                } | null
+
+                if (!maybeOutput || maybeOutput.success !== true) continue
+                if (typeof maybeOutput.artifactId !== "string") continue
+
+                signals.push({
+                    artifactId: maybeOutput.artifactId as Id<"artifacts">,
+                    title: typeof maybeOutput.title === "string" ? maybeOutput.title : "Artifact",
+                    status: "read",
+                })
             }
         }
 
@@ -316,7 +364,7 @@ export function MessageBubble({
     }
 
     const extractInProgressTools = (uiMessage: UIMessage) => {
-        const tools: { toolName: string; state: string; errorText?: string }[] = []
+        const tools: ProcessTool[] = []
 
         for (const part of uiMessage.parts ?? []) {
             if (!part || typeof part !== "object") continue
@@ -362,7 +410,7 @@ export function MessageBubble({
 
     const extractSearchStatus = (
         uiMessage: UIMessage
-    ): { status: SearchStatus; message?: string; sourceCount?: number } | null => {
+    ): SearchStatusData | null => {
         for (const part of uiMessage.parts ?? []) {
             if (!part || typeof part !== "object") continue
             const maybeDataPart = part as unknown as { type?: string; data?: unknown }
@@ -539,9 +587,33 @@ export function MessageBubble({
             }
         }
 
-        if (!spec) return null
+        if (!spec) {
+            // Check: does this message have parts at all? And do any look like spec parts?
+            const partTypes = (uiMessage.parts ?? []).map(p => (p as {type?:string})?.type).filter(Boolean)
+            if (partTypes.length > 0) {
+                console.log("[F1-F6-TEST] extractChoiceSpec: no spec found", { messageId: uiMessage.id, partTypes: partTypes.join(",") })
+            }
+            return null
+        }
 
+        const rawElements = (spec as unknown as Record<string, unknown>).elements
+        const elementTypes = Object.entries(
+            rawElements && typeof rawElements === "object" ? rawElements : {}
+        )
+            .map(([id, el]) => {
+                const elementType =
+                    el && typeof el === "object" && "type" in el
+                        ? (el as { type?: string }).type
+                        : "?"
+                return `${id}:${elementType ?? "?"}`
+            })
+            .join(", ")
         const parsedSpec = choiceSpecSchema.safeParse(spec)
+        if (!parsedSpec.success) {
+            console.warn("[F1-F6-TEST] ChoiceSpec validation FAILED", { errors: parsedSpec.error.issues.map(i => `${i.path.join(".")}: ${i.message}`), elementTypes })
+        } else {
+            console.log("[F1-F6-TEST] extractChoiceSpec OK", { messageId: uiMessage.id, elementTypes })
+        }
         return parsedSpec.success ? (spec as JsonRendererChoiceSpec) : null
     }
 
@@ -551,12 +623,80 @@ export function MessageBubble({
     const choiceBlockPayload = useMemo<JsonRendererChoiceRenderPayload | null>(() => {
         if (!choiceSpec) return null
 
-        const specWithState = choiceSpec as JsonRendererChoiceSpec & {
+        // Safety net: if model generated ChoiceOptionButtons but no ChoiceSubmitButton, inject one
+        const elements = choiceSpec.elements ?? {}
+        const choiceElements = Object.values(elements).filter(
+            (el) => !!el && typeof el === "object"
+        ) as Array<{ type?: string; props?: Record<string, unknown>; children?: string[] }>
+        const hasOptionButtons = choiceElements.some((el) => el.type === "ChoiceOptionButton")
+        const hasSubmitButton = choiceElements.some((el) => el.type === "ChoiceSubmitButton")
+
+        let normalizedSpec = choiceSpec
+
+        // Safety net 2: if ChoiceSubmitButton exists but has empty/missing label, fix it
+        if (hasSubmitButton) {
+            const submitEntry = Object.entries(elements).find(
+                ([, el]) => !!el && typeof el === "object" && (el as { type?: string }).type === "ChoiceSubmitButton"
+            )
+            if (submitEntry) {
+                const [submitKey, submitEl] = submitEntry
+                const submitProps = (submitEl as { props?: Record<string, unknown> }).props ?? {}
+                if (!submitProps.label || (typeof submitProps.label === "string" && submitProps.label.trim().length === 0)) {
+                    normalizedSpec = {
+                        ...choiceSpec,
+                        elements: {
+                            ...elements,
+                            [submitKey]: {
+                                ...submitEl,
+                                props: { ...submitProps, label: "Lanjutkan" },
+                            },
+                        },
+                    } as JsonRendererChoiceSpec
+                    console.warn("[F1-F6-TEST] ChoiceSubmitButton had empty label — set to 'Lanjutkan'")
+                }
+            }
+        }
+
+        if (hasOptionButtons && !hasSubmitButton) {
+            const submitId = "injected-submit-btn"
+            const rootElement = elements[choiceSpec.root]
+            const rootChildren = Array.isArray((rootElement as { children?: string[] })?.children)
+                ? [...(rootElement as { children: string[] }).children, submitId]
+                : [submitId]
+
+            normalizedSpec = {
+                ...choiceSpec,
+                elements: {
+                    ...elements,
+                    [choiceSpec.root]: {
+                        ...rootElement,
+                        children: rootChildren,
+                    },
+                    [submitId]: {
+                        type: "ChoiceSubmitButton",
+                        props: { label: "Lanjutkan", disabled: false },
+                        children: [],
+                        on: {
+                            press: {
+                                action: "submitChoice",
+                                params: {
+                                    selectedOptionId: { $state: "/selection/selectedOptionId" },
+                                    customText: { $state: "/selection/customText" },
+                                },
+                            },
+                        },
+                    },
+                },
+            } as JsonRendererChoiceSpec
+            console.warn("[F1-F6-TEST] ChoiceSubmitButton missing from model YAML — injected fallback")
+        }
+
+        const specWithState = normalizedSpec as JsonRendererChoiceSpec & {
             state?: JsonRendererChoiceRenderPayload["initialState"]
         }
 
         return {
-            spec: choiceSpec,
+            spec: normalizedSpec,
             initialState: specWithState.state ?? {
                 selection: {
                     selectedOptionId: null,
@@ -689,12 +829,7 @@ export function MessageBubble({
     const liveArtifactSignals = extractArtifactSignals(message)
     const artifactSignals: ArtifactSignal[] = liveArtifactSignals.length > 0
         ? liveArtifactSignals
-        : (persistedArtifacts ?? []).map((a) => ({
-            artifactId: a._id,
-            title: a.title,
-            status: a.parentId ? "updated" as const : "created" as const,
-            ...(a.version > 1 ? { version: a.version } : {}),
-        }))
+        : mapPersistedToSignals(persistedArtifacts ?? [])
     const inProgressTools = extractInProgressTools(message)
     const dedupedInProgressTools = inProgressTools.filter((tool, index, allTools) => {
         const normalizedErrorText = (tool.errorText ?? "").trim().toLowerCase() || "__no_error__"
@@ -738,22 +873,31 @@ export function MessageBubble({
         return true
     })
 
-    const searchTools = visibleProcessTools.filter((t) => t.toolName === "google_search")
-    const nonSearchTools = visibleProcessTools.filter((t) => t.toolName !== "google_search")
     const hasProcessError = visibleProcessTools.some((tool) => tool.state === "output-error" || tool.state === "error")
     const shouldShowProcessIndicators = !isEditing && isAssistant && (persistProcessIndicators || hasProcessError)
-    const showFallbackProcessIndicator =
-        persistProcessIndicators &&
-        nonSearchTools.length === 0 &&
-        searchTools.length === 0 &&
-        !searchStatus
-
+    const showUnifiedCard = isAssistant && (
+        taskSummary !== null || shouldShowProcessIndicators
+    )
     // Task 4.1: Extract sources (try annotations first, then fallback to property if we extend type)
     const sourcesFromAnnotation = (message as {
         annotations?: { type?: string; sources?: { url: string; title: string; publishedAt?: number | null }[] }[]
     }).annotations?.find((annotation) => annotation.type === "sources")?.sources
     const citedSources = extractCitedSources(message)
     const referenceInventory = extractReferenceInventory(message)
+    const correctiveFindings = useMemo(() => {
+        for (const part of message.parts ?? []) {
+            if (!part || typeof part !== "object") continue
+            const maybeDataPart = part as unknown as { type?: string; data?: unknown }
+            if (maybeDataPart.type !== "data-corrective-findings") continue
+            const data = maybeDataPart.data as {
+                sources?: Array<{ title?: string; url?: string; citedText?: string }>
+                sourceCount?: number
+            } | null
+            if (!data?.sources?.length) return null
+            return data
+        }
+        return null
+    }, [message.parts])
     const messageSources = (message as { sources?: { url: string; title: string; publishedAt?: number | null }[] }).sources
     const referenceInventorySources = referenceInventory?.items ?? []
     const persistedOrStreamedSources = citedSources || sourcesFromAnnotation || messageSources || []
@@ -829,7 +973,7 @@ export function MessageBubble({
             anchors: [],
         })
     })()
-    const isInlineReferenceInventory = referenceInventory?.responseMode === "reference_inventory"
+    const isInlineReferenceInventory = !isPaperMode && referenceInventory?.responseMode === "reference_inventory"
     const referenceInventoryIntroText = (() => {
         if (!isInlineReferenceInventory || !referenceInventory) return null
         if (typeof referenceInventory.introText === "string" && referenceInventory.introText.trim().length > 0) {
@@ -988,41 +1132,16 @@ export function MessageBubble({
                         return null
                     })}
 
-                    {/* Process Indicators - fixed slot above assistant content to prevent jumping */}
-                    {shouldShowProcessIndicators && (
-                        <div className="mb-3 space-y-2">
-                            {nonSearchTools.map((tool, index) => (
-                                <ToolStateIndicator
-                                    key={`tool-${index}`}
-                                    toolName={tool.toolName}
-                                    state={tool.state}
-                                    errorText={tool.errorText}
-                                    persistUntilDone={persistProcessIndicators}
-                                />
-                            ))}
-                            {(persistProcessIndicators || searchStatus?.status === "error") && searchStatus && (
-                                <SearchStatusIndicator
-                                    status={searchStatus.status}
-                                    message={searchStatus.message}
-                                    sourceCount={searchStatus.sourceCount}
-                                />
-                            )}
-                            {searchTools.map((tool, index) => (
-                                <ToolStateIndicator
-                                    key={`search-tool-${index}`}
-                                    toolName={tool.toolName}
-                                    state={tool.state}
-                                    errorText={tool.errorText}
-                                    persistUntilDone={persistProcessIndicators}
-                                />
-                            ))}
-                            {showFallbackProcessIndicator && (
-                                <ToolStateIndicator
-                                    toolName="assistant_response"
-                                    state="input-available"
-                                    persistUntilDone
-                                />
-                            )}
+                    {showUnifiedCard && (
+                        <div className="mb-4">
+                            <UnifiedProcessCard
+                                taskSummary={taskSummary}
+                                processTools={visibleProcessTools}
+                                searchStatus={searchStatus}
+                                persistProcessIndicators={persistProcessIndicators}
+                                isStreaming={persistProcessIndicators}
+                                defaultOpen={false}
+                            />
                         </div>
                     )}
 
@@ -1158,6 +1277,29 @@ export function MessageBubble({
                                     ))}
                                 </div>
                             )}
+                            {correctiveFindings && (
+                                <div className="mt-3 rounded-lg border border-border/50 bg-muted/30 p-3">
+                                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                                        Sumber yang ditemukan:
+                                    </p>
+                                    <ul className="space-y-1">
+                                        {correctiveFindings.sources?.map((s, i) => (
+                                            <li key={i} className="text-sm">
+                                                {s.url ? (
+                                                    <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                                        {s.title || s.url}
+                                                    </a>
+                                                ) : (
+                                                    <span>{s.title || "Source"}</span>
+                                                )}
+                                                {s.citedText && (
+                                                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{s.citedText}</p>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
                             {isAssistant && internalThoughtContent.trim().length > 0 && (
                                 <div
                                     className="border-y border-[color:var(--chat-border)] py-2 text-xs italic leading-relaxed text-[var(--chat-muted-foreground)]"
@@ -1197,6 +1339,7 @@ export function MessageBubble({
 
                             {choiceSpec && choiceBlockPayload && (
                                 <JsonRendererChoiceBlock
+                                    key={`${message.id}-choice-block`}
                                     payload={choiceBlockPayload}
                                     isSubmitted={isChoiceSubmitted}
                                     onSubmit={

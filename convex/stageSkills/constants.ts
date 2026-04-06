@@ -17,19 +17,20 @@ export const STAGE_SCOPE_VALUES: PaperStageId[] = [
     "judul",
 ];
 
+// Must match src/lib/ai/stage-skill-contracts.ts — only gagasan + tinjauan_literatur are active
 export const ACTIVE_SEARCH_STAGES: PaperStageId[] = [
     "gagasan",
-    "topik",
-    "pendahuluan",
     "tinjauan_literatur",
-    "metodologi",
-    "diskusi",
 ];
 
 export const PASSIVE_SEARCH_STAGES: PaperStageId[] = [
+    "topik",
     "outline",
     "abstrak",
+    "pendahuluan",
+    "metodologi",
     "hasil",
+    "diskusi",
     "kesimpulan",
     "pembaruan_abstrak",
     "daftar_pustaka",

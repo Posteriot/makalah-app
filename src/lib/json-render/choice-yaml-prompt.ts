@@ -96,7 +96,7 @@ RULES:
 - NEVER nest ChoiceCardShell inside another ChoiceCardShell.
 - NEVER use repeat, $item, $index, or dynamic lists.
 - Use 2-5 ChoiceOptionButton elements per card.
-- Always include a "Sudah cukup, lanjut validasi" option to let the user fast-track to validation.
+- Do NOT include validation/approval options (e.g. "Sudah cukup, lanjut validasi") — stage lifecycle is handled by the PaperValidationPanel, not by choice cards.
 - Always include state with selection.selectedOptionId and selection.customText.
 - Each ChoiceOptionButton MUST have an on.press action that sets /selection/selectedOptionId.
 - The ChoiceSubmitButton MUST use $state references in its on.press params.

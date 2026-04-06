@@ -185,21 +185,24 @@ function formatFullReference(entry: {
   url?: string;
   doi?: string;
 }): string {
-  const authors = toCleanString(entry.authors) ?? "Unknown author";
+  const authors = toCleanString(entry.authors);
   const yearLabel = entry.year ? String(entry.year) : "n.d.";
   const title = ensurePeriod(entry.title);
   const normalizedDoi = normalizeDoiForDedup(entry.doi);
 
-  if (normalizedDoi) {
-    return `${authors} (${yearLabel}). ${title} https://doi.org/${normalizedDoi}`;
-  }
+  // APA 7th: when no author, title moves to author position
+  // With author: Author. (Year). Title. URL
+  // Without author: Title. (Year). URL
+  const locationPart = normalizedDoi
+    ? ` https://doi.org/${normalizedDoi}`
+    : normalizeUrlForBibliographyDedup(entry.url)
+      ? ` ${normalizeUrlForBibliographyDedup(entry.url)}`
+      : "";
 
-  const url = normalizeUrlForBibliographyDedup(entry.url);
-  if (url) {
-    return `${authors} (${yearLabel}). ${title} ${url}`;
+  if (authors) {
+    return `${authors} (${yearLabel}). ${title}${locationPart}`;
   }
-
-  return `${authors} (${yearLabel}). ${title}`;
+  return `${title} (${yearLabel}).${locationPart}`;
 }
 
 function isCompleteEntry(entry: {

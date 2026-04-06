@@ -5,7 +5,7 @@
  * Shows completed stages' summaries in a clear, structured format.
  */
 
-import { STAGE_ORDER, getStageLabel, type PaperStageId } from "../../../../convex/paperSessions/constants";
+import { getStageLabel, type PaperStageId } from "../../../../convex/paperSessions/constants";
 import type {
     AbstrakData,
     DaftarPustakaData,
@@ -24,9 +24,6 @@ import type {
 } from "../../paper/stage-types";
 
 const SUMMARY_CHAR_LIMIT = 1000;
-const RINGKASAN_CHAR_LIMIT = 280;
-const DETAIL_WINDOW_SIZE = 3;
-const RINGKASAN_DETAIL_CHAR_LIMIT = 1000;
 const WEB_REFERENCES_CAP = 5;
 const CITATION_CAP = 5;
 
@@ -112,8 +109,6 @@ export function formatStageData(
 ): string {
     const sections: string[] = [];
 
-    sections.push(formatRingkasanTahapSelesai(stageData, currentStage));
-
     const activeStageBlock = formatActiveStageData(stageData, currentStage);
     if (activeStageBlock) {
         sections.push(activeStageBlock);
@@ -142,60 +137,6 @@ function hasContent(data: AllStageData): boolean {
         (v) => v !== undefined && v !== null && v !== "" &&
             !(Array.isArray(v) && v.length === 0)
     );
-}
-
-function truncateRingkasanDetail(text: string): string {
-    if (text.length <= RINGKASAN_DETAIL_CHAR_LIMIT) {
-        return text;
-    }
-    return `${text.slice(0, RINGKASAN_DETAIL_CHAR_LIMIT).trim()}...`;
-}
-
-function formatRingkasanTahapSelesai(
-    stageData: StageData,
-    currentStage: PaperStageId | "completed"
-): string {
-    const summaries: string[] = [];
-
-    // Determine which stages are completed (validated + not superseded)
-    const completedStageIds: PaperStageId[] = [];
-    STAGE_ORDER.forEach((stageId) => {
-        if (currentStage !== "completed" && stageId === currentStage) return;
-        const data = stageData[stageId] as AllStageData | undefined;
-        if (data?.validatedAt && !(data as Record<string, unknown>).superseded) {
-            completedStageIds.push(stageId);
-        }
-    });
-
-    // Determine which stages get detail injection (last 3 completed)
-    const detailStages = new Set(completedStageIds.slice(-DETAIL_WINDOW_SIZE));
-
-    completedStageIds.forEach((stageId) => {
-        const data = stageData[stageId] as AllStageData | undefined;
-        if (!data) return;
-
-        const ringkasanValue = typeof data.ringkasan === "string" && data.ringkasan.trim()
-            ? data.ringkasan.trim()
-            : "Summary not yet available.";
-
-        summaries.push(`- ${getStageLabel(stageId)}: ${truncateRingkasan(ringkasanValue)}`);
-
-        // Inject detail for last N completed stages (saves context budget)
-        const isDetailStage = detailStages.has(stageId);
-        const detail = isDetailStage && typeof (data as Record<string, unknown>).ringkasanDetail === "string"
-            ? ((data as Record<string, unknown>).ringkasanDetail as string).trim()
-            : null;
-
-        if (detail) {
-            summaries.push(`  (DETAIL): ${truncateRingkasanDetail(detail)}`);
-        }
-    });
-
-    if (summaries.length === 0) {
-        return "COMPLETED STAGE SUMMARIES:\n- No stages approved yet.";
-    }
-
-    return `COMPLETED STAGE SUMMARIES:\n${summaries.join("\n")}`;
 }
 
 function formatActiveStageData(
@@ -253,16 +194,6 @@ function truncateText(text: string, summaryMode: boolean): string {
     return `${text.slice(0, SUMMARY_CHAR_LIMIT).trim()}...`;
 }
 
-function truncateRingkasan(text: string): string {
-    if (text.length <= RINGKASAN_CHAR_LIMIT) {
-        return text;
-    }
-    return `${text.slice(0, RINGKASAN_CHAR_LIMIT).trim()}...`;
-}
-
-/**
- * Truncate text with custom character limit (for short summaries in Phase 4)
- */
 function normalizePercentage(value: number): number {
     if (Number.isNaN(value)) {
         return value;
@@ -282,7 +213,6 @@ function formatGagasanData(data: GagasanData, isCurrentStage: boolean, summaryMo
 
     let output = `=== STAGE 1: ${getStageLabel("gagasan")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.ideKasar) output += `Raw Idea: ${truncateText(data.ideKasar, summaryMode)}\n`;
     if (data.analisis) output += `Analysis: ${truncateText(data.analisis, summaryMode)}\n`;
     if (data.angle) output += `Writing Angle: ${truncateText(data.angle, summaryMode)}\n`;
@@ -308,7 +238,6 @@ function formatTopikData(data: TopikData, isCurrentStage: boolean, summaryMode =
 
     let output = `=== STAGE 2: ${getStageLabel("topik")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.definitif) output += `Definitive Topic: ${truncateText(data.definitif, summaryMode)}\n`;
     if (data.angleSpesifik) output += `Specific Angle: ${truncateText(data.angleSpesifik, summaryMode)}\n`;
     if (data.argumentasiKebaruan) output += `Novelty Argumentation: ${truncateText(data.argumentasiKebaruan, summaryMode)}\n`;
@@ -334,7 +263,6 @@ function formatAbstrakData(data: AbstrakData, isCurrentStage: boolean, summaryMo
 
     let output = `=== STAGE 4: ${getStageLabel("abstrak")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.ringkasanPenelitian) output += `Research Summary: ${truncateText(data.ringkasanPenelitian, summaryMode)}\n`;
     if (data.keywords && data.keywords.length > 0) {
         output += `Keywords: ${data.keywords.join(", ")}\n`;
@@ -353,7 +281,6 @@ function formatPendahuluanData(data: PendahuluanData, isCurrentStage: boolean, s
 
     let output = `=== STAGE 5: ${getStageLabel("pendahuluan")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.latarBelakang) output += `Background: ${truncateText(data.latarBelakang, summaryMode)}\n`;
     if (data.rumusanMasalah) output += `Problem Formulation: ${truncateText(data.rumusanMasalah, summaryMode)}\n`;
     if (data.researchGapAnalysis) output += `Research Gap Analysis: ${truncateText(data.researchGapAnalysis, summaryMode)}\n`;
@@ -386,7 +313,6 @@ function formatTinjauanLiteraturData(data: TinjauanLiteraturData, isCurrentStage
 
     let output = `=== STAGE 6: ${getStageLabel("tinjauan_literatur")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.kerangkaTeoretis) output += `Theoretical Framework: ${truncateText(data.kerangkaTeoretis, summaryMode)}\n`;
     if (data.reviewLiteratur) output += `Literature Review: ${truncateText(data.reviewLiteratur, summaryMode)}\n`;
     if (data.gapAnalysis) output += `Gap Analysis: ${truncateText(data.gapAnalysis, summaryMode)}\n`;
@@ -413,7 +339,6 @@ function formatMetodologiData(data: MetodologiData, isCurrentStage: boolean, sum
 
     let output = `=== STAGE 7: ${getStageLabel("metodologi")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.pendekatanPenelitian) output += `Approach: ${data.pendekatanPenelitian.toUpperCase()}\n`;
     if (data.desainPenelitian) output += `Research Design: ${truncateText(data.desainPenelitian, summaryMode)}\n`;
     if (data.metodePerolehanData) output += `Data Collection Method: ${truncateText(data.metodePerolehanData, summaryMode)}\n`;
@@ -433,13 +358,13 @@ function formatHasilData(data: HasilData, isCurrentStage: boolean, summaryMode =
 
     let output = `=== STAGE 8: ${getStageLabel("hasil")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.metodePenyajian) {
         output += `Presentation Method: ${data.metodePenyajian.toUpperCase()}\n`;
     }
     if (data.temuanUtama && data.temuanUtama.length > 0) {
         output += `Key Findings:\n`;
-        data.temuanUtama.forEach((item, i) => {
+        const findings = Array.isArray(data.temuanUtama) ? data.temuanUtama : [data.temuanUtama];
+        findings.forEach((item: string, i: number) => {
             output += `  ${i + 1}. ${truncateText(item, summaryMode)}\n`;
         });
     }
@@ -464,7 +389,6 @@ function formatDiskusiData(data: DiskusiData, isCurrentStage: boolean, summaryMo
 
     let output = `=== STAGE 9: ${getStageLabel("diskusi")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.interpretasiTemuan) output += `Findings Interpretation: ${truncateText(data.interpretasiTemuan, summaryMode)}\n`;
     if (data.perbandinganLiteratur) output += `Literature Comparison: ${truncateText(data.perbandinganLiteratur, summaryMode)}\n`;
     if (data.implikasiTeoretis) output += `Theoretical Implications: ${truncateText(data.implikasiTeoretis, summaryMode)}\n`;
@@ -487,11 +411,13 @@ function formatKesimpulanData(data: KesimpulanData, isCurrentStage: boolean, sum
 
     let output = `=== STAGE 10: ${getStageLabel("kesimpulan")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.ringkasanHasil) output += `Results Summary: ${truncateText(data.ringkasanHasil, summaryMode)}\n`;
-    if (data.jawabanRumusanMasalah && data.jawabanRumusanMasalah.length > 0) {
+    const jawabanArr = Array.isArray(data.jawabanRumusanMasalah)
+        ? data.jawabanRumusanMasalah
+        : typeof data.jawabanRumusanMasalah === "string" ? [data.jawabanRumusanMasalah] : [];
+    if (jawabanArr.length > 0) {
         output += `Problem Formulation Answers:\n`;
-        data.jawabanRumusanMasalah.forEach((item, i) => {
+        jawabanArr.forEach((item, i) => {
             output += `  ${i + 1}. ${truncateText(item, summaryMode)}\n`;
         });
     }
@@ -512,16 +438,21 @@ function formatPembaruanAbstrakData(data: PembaruanAbstrakData, isCurrentStage: 
 
     let output = `=== STAGE 11: ${getStageLabel("pembaruan_abstrak")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.ringkasanPenelitianBaru) output += `Updated Abstract: ${truncateText(data.ringkasanPenelitianBaru, summaryMode)}\n`;
-    if (data.perubahanUtama && data.perubahanUtama.length > 0) {
+    const perubahanArr = Array.isArray(data.perubahanUtama)
+        ? data.perubahanUtama
+        : typeof data.perubahanUtama === "string" ? data.perubahanUtama.split(/\n|,/).map(s => s.trim()).filter(Boolean) : [];
+    if (perubahanArr.length > 0) {
         output += `Key Changes:\n`;
-        data.perubahanUtama.forEach((item, i) => {
+        perubahanArr.forEach((item, i) => {
             output += `  ${i + 1}. ${truncateText(item, summaryMode)}\n`;
         });
     }
-    if (data.keywordsBaru && data.keywordsBaru.length > 0) {
-        output += `Updated Keywords: ${data.keywordsBaru.join(", ")}\n`;
+    const keywordsArr = Array.isArray(data.keywordsBaru)
+        ? data.keywordsBaru
+        : typeof data.keywordsBaru === "string" ? data.keywordsBaru.split(/\n|,/).map(s => s.trim()).filter(Boolean) : [];
+    if (keywordsArr.length > 0) {
+        output += `Updated Keywords: ${keywordsArr.join(", ")}\n`;
     }
     if (data.wordCount !== undefined) output += `Word Count: ${data.wordCount}\n`;
 
@@ -538,7 +469,6 @@ function formatDaftarPustakaData(data: DaftarPustakaData, isCurrentStage: boolea
     let output = `=== STAGE 12: ${getStageLabel("daftar_pustaka")} [${status}${revisions}] ===\n`;
 
     // Stats
-    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.totalCount !== undefined) {
         output += `Total References: ${data.totalCount}\n`;
     }
@@ -584,7 +514,6 @@ function formatLampiranData(data: LampiranData, isCurrentStage: boolean, summary
 
     let output = `=== STAGE 13: ${getStageLabel("lampiran")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.tidakAdaLampiran) {
         output += `Appendix: None\n`;
         if (data.alasanTidakAda) {
@@ -624,7 +553,6 @@ function formatJudulData(data: JudulData, isCurrentStage: boolean, summaryMode =
 
     let output = `=== STAGE 14: ${getStageLabel("judul")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     // Selected title (emphasized)
     if (data.judulTerpilih) {
         output += `**SELECTED TITLE:** ${data.judulTerpilih}\n`;
@@ -660,7 +588,6 @@ function formatOutlineData(data: OutlineData, isCurrentStage: boolean, summaryMo
     let output = `=== STAGE 3: ${getStageLabel("outline")} [${status}${revisions}] ===\n`;
 
     // Stats
-    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.totalWordCount !== undefined) {
         output += `Estimated Total: ${data.totalWordCount} words\n`;
     }

@@ -45,6 +45,7 @@ import {
   shouldShowTechnicalReportTrigger,
 } from "@/lib/technical-report/chatSnapshot"
 import { resolveTechnicalReportSearchStatus } from "@/lib/technical-report/searchStatus"
+import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import * as Sentry from "@sentry/nextjs"
 
 /** Minimal artifact shape from Convex query (only fields we need for signal reconstruction) */
@@ -56,6 +57,7 @@ interface ConversationArtifact {
   messageId?: Id<"messages">
   parentId?: Id<"artifacts">
   type: string
+  isRecall?: boolean
 }
 
 type ChatSourceForSheet = {
@@ -132,6 +134,36 @@ export function resolveArtifactSourceFocusTarget(
   }
 
   return null
+}
+
+function extractMessageTextForIntent(uiMessage: UIMessage): string {
+  const partsText = uiMessage.parts
+    ?.filter((part): part is Extract<UIMessage["parts"][number], { type: "text" }> => part.type === "text")
+    .map((part) => part.text)
+    .join("")
+    .trim()
+
+  if (partsText && partsText.length > 0) return partsText
+  return ""
+}
+
+export function shouldPreferUnifiedPaperLoadingUi(params: {
+  isPaperMode: boolean
+  hasPendingAssistantGeneration: boolean
+  messages: UIMessage[]
+}): boolean {
+  if (params.isPaperMode || !params.hasPendingAssistantGeneration) return false
+
+  const latestUserMessage = [...params.messages]
+    .reverse()
+    .find((message) => message.role === "user")
+
+  if (!latestUserMessage) return false
+
+  const latestUserText = extractMessageTextForIntent(latestUserMessage)
+  if (!latestUserText) return false
+
+  return hasPaperWritingIntent(latestUserText)
 }
 
 function setPendingStarterPrompt(conversationId: string, prompt: string) {
@@ -613,6 +645,7 @@ export function ChatWindow({
   const {
     session: paperSession,
     isPaperMode,
+    isLoading: isPaperSessionLoading,
     stageStatus,
     stageLabel,
     stageData,
@@ -826,6 +859,22 @@ export function ChatWindow({
       }
     }
 
+    // Second pass: match recall messages to artifacts via metadata.recallArtifactId
+    for (const msg of historyMessages) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex message metadata is loosely typed in history
+      const recallArtifactId = (msg as any)?.metadata?.recallArtifactId as string | undefined
+      if (!recallArtifactId) continue
+
+      const artifact = conversationArtifacts.find(a => a._id === recallArtifactId)
+      if (!artifact) continue
+
+      const existing = map.get(msg._id) ?? []
+      if (!existing.some(a => a._id === recallArtifactId)) {
+        existing.push({ ...artifact, isRecall: true })
+        map.set(msg._id, existing)
+      }
+    }
+
     return map
   }, [conversationArtifacts, historyMessages])
 
@@ -854,6 +903,7 @@ export function ChatWindow({
 
   const extractCreatedArtifacts = (uiMessage: UIMessage): CreatedArtifact[] => {
     const created: CreatedArtifact[] = []
+    const ARTIFACT_TOOL_TYPES = new Set(["tool-createArtifact", "tool-updateArtifact", "tool-readArtifact"])
 
     for (const part of uiMessage.parts ?? []) {
       if (!part || typeof part !== "object") continue
@@ -865,7 +915,7 @@ export function ChatWindow({
         result?: unknown
       }
 
-      if (maybeToolPart.type !== "tool-createArtifact") continue
+      if (!ARTIFACT_TOOL_TYPES.has(maybeToolPart.type as string)) continue
 
       const okState =
         maybeToolPart.state === "output-available" || maybeToolPart.state === "result"
@@ -874,14 +924,17 @@ export function ChatWindow({
       const maybeOutput = (maybeToolPart.output ?? maybeToolPart.result) as unknown as {
         success?: unknown
         artifactId?: unknown
+        newArtifactId?: unknown
         title?: unknown
       } | null
 
       if (!maybeOutput || maybeOutput.success !== true) continue
-      if (typeof maybeOutput.artifactId !== "string") continue
+      // updateArtifact returns newArtifactId (revised version), others use artifactId
+      const id = maybeOutput.newArtifactId ?? maybeOutput.artifactId
+      if (typeof id !== "string") continue
 
       created.push({
-        artifactId: maybeOutput.artifactId as Id<"artifacts">,
+        artifactId: id as Id<"artifacts">,
         title: typeof maybeOutput.title === "string" ? maybeOutput.title : undefined,
       })
     }
@@ -1194,6 +1247,7 @@ export function ChatWindow({
       (el) => el?.props?.optionId === params.selectedOptionId
     )
     const selectedLabel = matchedElement?.props?.label ?? params.selectedOptionId
+    console.log("[F1-F6-TEST] ChoiceSubmit", { submissionKey, selectedOptionId: params.selectedOptionId, selectedLabel })
 
     // Use current paper stage from session (spec doesn't carry stage info)
     const currentStage = (paperSession?.currentStage ?? "gagasan") as PaperStageId
@@ -1492,15 +1546,30 @@ export function ChatWindow({
         }
       }
     }
-    if (keys.size > 0) setSubmittedChoiceKeys((prev) => new Set([...prev, ...keys]))
+    if (keys.size > 0) {
+      setSubmittedChoiceKeys((prev) => new Set([...prev, ...keys]))
+      console.log("[F1-F6-TEST] ChoiceRehydrate", { rehydratedCount: keys.size, keys: [...keys] })
+    }
   }, [historyMessages])
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
 
   const hasPendingAssistantGeneration = isGenerating || isAwaitingAssistantStart
+  const prefersUnifiedPaperLoadingUi = useMemo(
+    () =>
+      shouldPreferUnifiedPaperLoadingUi({
+        isPaperMode,
+        hasPendingAssistantGeneration,
+        messages,
+      }),
+    [hasPendingAssistantGeneration, isPaperMode, messages]
+  )
+  const effectivePaperUiMode = isPaperMode || prefersUnifiedPaperLoadingUi
   const hasStandalonePendingIndicator =
     hasPendingAssistantGeneration &&
+    !effectivePaperUiMode &&
+    !isPaperSessionLoading &&
     messages.length > 0 &&
     messages[messages.length - 1]?.role !== "assistant"
 
@@ -1938,23 +2007,41 @@ export function ChatWindow({
     const isValidConvexId = /^[a-z0-9]{32}$/.test(messageId)
 
     if (isValidConvexId) {
-      actualMessageId = messageId as Id<"messages">
+      // Verify the Convex ID still exists in current history (may be stale after truncate)
+      const existsInHistory = historyMessages?.some(m => m._id === messageId)
+      if (existsInHistory) {
+        actualMessageId = messageId as Id<"messages">
+      } else {
+        // Stale Convex ID — try uiMessageId fallback
+        const byUiId = historyMessages?.find(m => m.uiMessageId === messageId)
+        if (byUiId) {
+          actualMessageId = byUiId._id
+        } else {
+          toast.error("Pesan sudah berubah. Refresh halaman dan coba lagi.")
+          return
+        }
+      }
     } else {
-      // For client-generated IDs, find the corresponding Convex ID from historyMessages
-      const messageIndex = messages.findIndex(m => m.id === messageId)
-      if (messageIndex !== -1 && historyMessages?.[messageIndex]) {
-        const historyMsg = historyMessages[messageIndex]
-        const currentMsg = messages[messageIndex]
-        // Verify it's the same message by checking role
-        if (historyMsg.role === currentMsg.role) {
-          actualMessageId = historyMsg._id
+      // Priority 1: Find by uiMessageId (stable correlation)
+      const byUiId = historyMessages?.find(m => m.uiMessageId === messageId)
+      if (byUiId) {
+        actualMessageId = byUiId._id
+      } else {
+        // Priority 2: Fallback to index mapping (legacy)
+        const messageIndex = messages.findIndex(m => m.id === messageId)
+        if (messageIndex !== -1 && historyMessages?.[messageIndex]) {
+          const historyMsg = historyMessages[messageIndex]
+          const currentMsg = messages[messageIndex]
+          if (historyMsg.role === currentMsg.role) {
+            actualMessageId = historyMsg._id
+          } else {
+            toast.error("Pesan belum tersimpan. Tunggu sebentar lalu coba lagi.")
+            return
+          }
         } else {
           toast.error("Pesan belum tersimpan. Tunggu sebentar lalu coba lagi.")
           return
         }
-      } else {
-        toast.error("Pesan belum tersimpan. Tunggu sebentar lalu coba lagi.")
-        return
       }
     }
 
@@ -2065,6 +2152,9 @@ export function ChatWindow({
 
   const handleApprove = async () => {
     if (!userId) return
+    // [F1-DEBUG] Trace who/what triggered this approval — check browser console
+    console.trace("[F1-DEBUG] handleApprove TRIGGERED — who called this?")
+    console.log("[F1-DEBUG] handleApprove context:", { stageLabel, stageStatus: paperSession?.stageStatus, userId })
     try {
       await approveStage(userId)
       // Auto-send message agar AI aware dan bisa lanjutkan ke tahap berikutnya
@@ -2452,6 +2542,8 @@ export function ChatWindow({
                 } as UIMessage
                 const shouldShowPendingIndicatorBeforeMessage =
                   hasPendingAssistantGeneration &&
+                  !effectivePaperUiMode &&
+                  !isPaperSessionLoading &&
                   index === messages.length - 1 &&
                   message.role === "assistant"
 
@@ -2491,6 +2583,7 @@ export function ChatWindow({
                         currentStageStartIndex={currentStageStartIndex}
                         allMessages={permissionMessages}
                         stageData={stageData}
+                        currentStage={paperSession?.currentStage}
                         // Persisted artifact signals (survive page refresh)
                         persistedArtifacts={historyMsg ? messageArtifactMap.get(historyMsg._id) : undefined}
                         // File name lookup for history messages
@@ -2602,7 +2695,7 @@ export function ChatWindow({
         </div>
 
         <ChatProcessStatusBar
-          visible={processUi.visible}
+          visible={processUi.visible && !effectivePaperUiMode}
           status={processUi.status}
           progress={processUi.progress}
           elapsedSeconds={processUi.elapsedSeconds}

@@ -20,6 +20,20 @@ export interface RetryOptions {
   operationName?: string
 }
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  return String(error)
+}
+
+function isNonRetryableError(error: unknown): boolean {
+  const message = getErrorMessage(error)
+  return (
+    message.includes("Value does not match validator") ||
+    message.includes("Stage is pending validation") ||
+    message.includes("Request revision first")
+  )
+}
+
 /**
  * Execute an async operation with exponential backoff retry
  *
@@ -50,6 +64,14 @@ export async function withRetry<T>(
     } catch (error) {
       lastError = error
 
+      if (isNonRetryableError(error)) {
+        console.error(
+          `[Retry] ${operationName} failed with non-retryable error:`,
+          error
+        )
+        break
+      }
+
       // Don't retry on final attempt
       if (attempt === maxRetries) {
         console.error(
@@ -72,6 +94,9 @@ export async function withRetry<T>(
 
   throw lastError
 }
+
+/** Short async delay for retry loops in serverless handlers. */
+export const retryDelay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 /**
  * Wrapper for Convex fetchMutation with retry
