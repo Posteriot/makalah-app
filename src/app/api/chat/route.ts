@@ -412,6 +412,65 @@ export async function POST(req: Request) {
             : ""
         const normalizedLastUserContent =
             typeof lastUserContent === "string" ? lastUserContent.trim() : ""
+
+        // ════════════════════════════════════════════════════════════════
+        // PRE-STREAM GUARD: Completed session containment
+        // Short-circuit BEFORE model streaming for non-revision intents
+        // on completed paper sessions. Defense-in-depth: onFinish guard
+        // still exists downstream as a fallback.
+        // ════════════════════════════════════════════════════════════════
+        if (paperSession?.currentStage === "completed") {
+            const revisionSignalPattern =
+                /revisi|ubah|edit|koreksi|review|cek\s*lagi|perbaiki|judul|abstrak|metodologi|hasil|diskusi|kesimpulan|daftar_pustaka|lampiran|pendahuluan|tinjauan|gagasan|topik|outline/i
+            const informationalSignalPattern =
+                /di\s*mana|bagaimana|export|unduh|download|artifact|artefak|sidebar|progress|linimasa|status|selesai|apa\s+semua|sudah\s+selesai/i
+            const hasRevisionIntent = revisionSignalPattern.test(normalizedLastUserContent)
+            const hasInformationalIntent = informationalSignalPattern.test(normalizedLastUserContent)
+
+            // Revision + informational intents pass through to normal AI path
+            if (!hasRevisionIntent && !hasInformationalIntent) {
+                const completedClosingMessage =
+                    "Semua tahap penyusunan makalah sudah selesai dan disetujui.\n\n" +
+                    "Riwayat percakapan di sidebar menyimpan artifact dari setiap tahap, mulai dari gagasan awal sampai pemilihan judul. " +
+                    "Linimasa progres juga sudah penuh, menandakan seluruh tahapan penyusunan makalah telah terlewati.\n\n" +
+                    "Jika kamu ingin mengubah bagian tertentu, sebutkan bagian yang ingin direvisi dan saya bantu buka alurnya kembali."
+
+                console.info("[PAPER][completed-prestream] short-circuiting non-revision/non-informational intent on completed session")
+
+                // Generate consistent messageId for both persist and stream
+                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+
+                // Persist to DB with uiMessageId parity
+                await retryMutation(
+                    () => fetchMutationWithToken(api.messages.createMessage, {
+                        conversationId: currentConversationId as Id<"conversations">,
+                        role: "assistant",
+                        content: completedClosingMessage,
+                        metadata: {
+                            model: "system-completed-guard",
+                            uiMessageId: messageId,
+                        },
+                        uiMessageId: messageId,
+                    }),
+                    "messages.createMessage(assistant-completed-prestream)"
+                )
+
+                // Stream to client
+                const textId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-text`
+                const stream = createUIMessageStream({
+                    execute: async ({ writer }) => {
+                        writer.write({ type: "start", messageId })
+                        writer.write({ type: "text-start", id: textId })
+                        writer.write({ type: "text-delta", id: textId, delta: completedClosingMessage })
+                        writer.write({ type: "text-end", id: textId })
+                        writer.write({ type: "finish", finishReason: "stop" })
+                    },
+                })
+
+                return createUIMessageStreamResponse({ stream })
+            }
+        }
+
         const recentConversationMessagesForExactSource: ExactSourceConversationMessage[] = messages
             .slice(0, -1)
             .map((message: {
