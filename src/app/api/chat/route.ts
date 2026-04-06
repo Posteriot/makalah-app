@@ -376,7 +376,9 @@ export async function POST(req: Request) {
                 currentStage: paperStageScope ?? null,
                 isPaperMode: !!paperModePrompt,
             })
-            choiceContextNote = buildChoiceContextNote(choiceInteractionEvent)
+            const choiceStageData = paperSession?.stageData as Record<string, Record<string, unknown> | undefined> | undefined
+            const hasExistingArtifact = !!choiceStageData?.[choiceInteractionEvent.stage]?.artifactId
+            choiceContextNote = buildChoiceContextNote(choiceInteractionEvent, { hasExistingArtifact })
             if (isHasilPostChoice) {
                 console.info("[HASIL][post-choice] entering artifact-first follow-up turn")
             }

@@ -41,7 +41,8 @@ export function validateChoiceInteractionEvent(params: {
 }
 
 export function buildChoiceContextNote(
-  event: ParsedChoiceInteractionEvent
+  event: ParsedChoiceInteractionEvent,
+  options?: { hasExistingArtifact?: boolean }
 ): string {
   const selectedOptionIds = event.selectedOptionIds.map((id) => id.trim().toLowerCase())
   const requestedValidation =
@@ -99,10 +100,12 @@ export function buildChoiceContextNote(
       "- Generate the full hasil draft NOW from approved material (metodologi, tinjauan literatur, rumusan masalah). Do NOT ask for more input.",
       "- You MUST call tools in this EXACT order:",
       "  1. updateStageData (MUST include: temuanUtama, metodePenyajian, dataPoints if available)",
-      "  2. createArtifact (full hasil draft as artifact content)",
+      options?.hasExistingArtifact
+        ? "  2. updateArtifact (full hasil draft — artifact already exists, do NOT call createArtifact)"
+        : "  2. createArtifact (full hasil draft as artifact content)",
       "  3. submitStageForValidation",
       "- Do NOT output another choice card.",
-      "- Do NOT write prose previewing the draft in chat (e.g. 'aku akan menyusun draf', 'draf ini akan', 'berikut adalah draf'). ALL draft content goes into createArtifact, not chat.",
+      "- Do NOT write prose previewing the draft in chat (e.g. 'aku akan menyusun draf', 'draf ini akan', 'berikut adalah draf'). ALL draft content goes into the artifact tool call (createArtifact or updateArtifact as instructed above), not chat.",
       "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
       "- If submitStageForValidation fails with ARTIFACT_MISSING, retry it after createArtifact succeeds.",
       "- Mention the validation panel ONLY if submitStageForValidation succeeds.",
