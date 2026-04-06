@@ -202,7 +202,9 @@ export const seedAll = mutation({
 // SKILL CONTENT — F1-F6 aligned
 // ============================================================================
 
-const GAGASAN_CONTENT = `## Objective
+const GAGASAN_CONTENT = `# Gagasan Skill
+
+## Objective
 Shape the user's rough idea into a feasible research direction with a clear novelty claim.
 
 ## Input Context
@@ -250,7 +252,9 @@ Call updateStageData with partial data after each milestone (angle agreed, refer
 ## Done Criteria
 The user confirms the direction, artifact is created and submitted for validation.`
 
-const TOPIK_CONTENT = `## Objective
+const TOPIK_CONTENT = `# Topik Skill
+
+## Objective
 Convert the agreed idea into a definitive, defensible research topic with explicit research gap.
 
 ## Input Context
@@ -317,7 +321,9 @@ CORRECT example:
 ## Done Criteria
 The user approves the definitive topic via choice card, artifact is created after user confirms topic direction via choice card.`
 
-const OUTLINE_CONTENT = `## Objective
+const OUTLINE_CONTENT = `# Outline Skill
+
+## Objective
 Build a coherent paper structure with section hierarchy and realistic word budget, and establish a living checklist baseline for downstream stages.
 Generate full outline from approved gagasan + topik material. Create artifact as v1. Present outline structure via choice card with options for directional changes (reorder, add/remove sections). User validates direction.
 
@@ -368,7 +374,9 @@ After createArtifact, your chat response must be MAX 2-3 sentences only: confirm
 ## Done Criteria
 Outline is complete, internally consistent, living-checklist fields are structurally ready, artifact is created and linked to stage, outline structure presented for validation, and user confirms readiness.`
 
-const ABSTRAK_CONTENT = `## Objective
+const ABSTRAK_CONTENT = `# Abstrak Skill
+
+## Objective
 Produce a concise abstract that accurately compiles approved context without introducing unsupported claims.
 Analyze Phase 1 data, present 2-3 abstract framing approaches via choice card with RECOMMENDATION. After user picks, generate abstract DIRECTLY to artifact as v1 working draft.
 
@@ -417,7 +425,9 @@ After createArtifact, your chat response must be MAX 2-3 sentences only: confirm
 ## Done Criteria
 Abstract is concise and aligned, artifact is created after user picks approach via choice card, submitted for validation, and user confirms readiness.`
 
-const PENDAHULUAN_CONTENT = `## Objective
+const PENDAHULUAN_CONTENT = `# Pendahuluan Skill
+
+## Objective
 Write a strong introduction with background, problem statement, research gap, objectives, significance, and optional hypothesis.
 Analyze material, present 2-3 narrative approaches via choice card with RECOMMENDATION. After user picks, generate DIRECTLY to artifact as v1.
 
@@ -488,7 +498,9 @@ CORRECT example:
 ## Done Criteria
 Introduction quality is accepted by user, artifact is created after user picks approach, submitted for validation, and draft is ready for validation.`
 
-const TINJAUAN_LITERATUR_CONTENT = `## Objective
+const TINJAUAN_LITERATUR_CONTENT = `# Tinjauan Literatur Skill
+
+## Objective
 Build a literature review that establishes theoretical framing, gap analysis, and research justification.
 After search completes, analyze literature and present 2-3 framework/synthesis approaches via choice card with RECOMMENDATION. After user picks, generate review DIRECTLY to artifact as v1.
 
@@ -559,7 +571,9 @@ CORRECT example:
 ## Done Criteria
 Review is coherent and evidence-backed, artifact is created after user picks framework approach, submitted for validation, and user confirms readiness.`
 
-const METODOLOGI_CONTENT = `## Objective
+const METODOLOGI_CONTENT = `# Metodologi Skill
+
+## Objective
 Define an executable and academically defensible methodology aligned with research goals.
 Analyze research direction, present 2-3 methodology approaches via choice card (e.g., qualitative/quantitative/mixed) with RECOMMENDATION. After user picks, generate DIRECTLY to artifact as v1.
 
@@ -611,7 +625,9 @@ After createArtifact, your chat response must be MAX 2-3 sentences only: confirm
 ## Done Criteria
 Method plan is clear and feasible, artifact is created after user picks methodology approach, submitted for validation, and user confirms readiness.`
 
-const HASIL_CONTENT = `## Objective
+const HASIL_CONTENT = `# Hasil Skill
+
+## Objective
 Generate projected research results based on approved methodology, literature review, and research questions from previous stages. The agent drafts the results section autonomously — the user validates, not provides raw data.
 
 Default mode (agentic): Agent generates v1 draft of Hasil from approved material (metodologi design, tinjauan literatur findings, rumusan masalah). Present format options via choice card (narrative/tabular/mixed), then generate directly to artifact.
@@ -688,7 +704,9 @@ CORRECT example:
 ## Done Criteria
 Artifact is created with projected results based on approved material, submitted for validation. Results are logically consistent with methodology and literature review.`
 
-const DISKUSI_CONTENT = `## Objective
+const DISKUSI_CONTENT = `# Diskusi Skill
+
+## Objective
 Interpret findings, compare them with literature, and explain implications and limitations. Generate discussion DIRECTLY to artifact as v1 working draft. Cross-reference findings with tinjauan literatur. No choice card decision point needed.
 
 ## Input Context
@@ -760,7 +778,9 @@ CORRECT example:
 ## Done Criteria
 Artifact is created with complete discussion, submitted for validation. Discussion is analytically sound, and user confirms readiness.`
 
-const KESIMPULAN_CONTENT = `## Objective
+const KESIMPULAN_CONTENT = `# Kesimpulan Skill
+
+## Objective
 Deliver a conclusion that answers the research problem and provides practical follow-up recommendations. Generate conclusion DIRECTLY to artifact as v1 working draft. Map answers 1:1 to problem formulation. No choice card decision point needed.
 
 ## Input Context
@@ -915,7 +935,9 @@ CORRECT example:
 ## Done Criteria
 Artifact is created with updated abstract + tracked changes, submitted for validation. perubahanUtama lists all significant deviations from the original. The draft is ready for user validation via submitStageForValidation.`
 
-const DAFTAR_PUSTAKA_CONTENT = `## Objective
+const DAFTAR_PUSTAKA_CONTENT = `# Daftar Pustaka Skill
+
+## Objective
 Compile a clean and complete reference list from approved citations and verified sources. Compile bibliography directly via compileDaftarPustaka, create artifact, present for validation.
 
 ## Input Context
@@ -985,7 +1007,9 @@ CORRECT example:
 ## Done Criteria
 Artifact is created with compiled bibliography, submitted for validation. compileDaftarPustaka({ mode: "persist" }) has been executed, and user confirms readiness.`
 
-const LAMPIRAN_CONTENT = `## Objective
+const LAMPIRAN_CONTENT = `# Lampiran Skill
+
+## Objective
 Prepare appendix materials that support the paper without bloating main sections. Analyze Metodologi (instruments) and Hasil (additional data) to propose appendix items via choice card with RECOMMENDATION, including 'Add custom item' option. User validates/selects items. Then generate to artifact as v1.
 
 ## Input Context
@@ -1054,7 +1078,9 @@ CORRECT example:
 ## Done Criteria
 Artifact is created after user validates proposed items, submitted for validation. Appendix plan is complete (or justified as empty), and user confirms readiness.`
 
-const JUDUL_CONTENT = `## Objective
+const JUDUL_CONTENT = `# Judul Skill
+
+## Objective
 Finalize title options and choose the strongest final title aligned with approved content. Generate 5 title options with different styles + coverage analysis. Present via choice card with RECOMMENDATION. After user selects, create artifact with chosen title.
 
 ## Input Context
