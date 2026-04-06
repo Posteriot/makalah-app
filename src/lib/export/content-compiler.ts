@@ -160,7 +160,11 @@ export function compilePaperContent(session: Doc<"paperSessions">): CompiledPape
   const kesimpulan = stageData.kesimpulan
     ? {
         ringkasanHasil: stageData.kesimpulan.ringkasanHasil ?? null,
-        jawabanRumusanMasalah: stageData.kesimpulan.jawabanRumusanMasalah ?? null,
+        jawabanRumusanMasalah: Array.isArray(stageData.kesimpulan.jawabanRumusanMasalah)
+            ? stageData.kesimpulan.jawabanRumusanMasalah
+            : typeof stageData.kesimpulan.jawabanRumusanMasalah === "string"
+              ? [stageData.kesimpulan.jawabanRumusanMasalah]
+              : null,
         implikasiPraktis: stageData.kesimpulan.implikasiPraktis ?? null,
         saranPraktisi: stageData.kesimpulan.saranPraktisi ?? null,
         saranPeneliti: stageData.kesimpulan.saranPeneliti ?? null,

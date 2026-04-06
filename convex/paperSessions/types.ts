@@ -172,7 +172,7 @@ export const DiskusiData = v.object({
 export const KesimpulanData = v.object({
     ...legacyRingkasanFields,
     ringkasanHasil: v.optional(v.string()),
-    jawabanRumusanMasalah: v.optional(v.array(v.string())),
+    jawabanRumusanMasalah: v.optional(v.union(v.array(v.string()), v.string())),
     implikasiPraktis: v.optional(v.string()), // Implikasi praktis dari temuan
     saranPraktisi: v.optional(v.string()),
     saranPeneliti: v.optional(v.string()),

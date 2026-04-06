@@ -491,14 +491,17 @@ function buildKesimpulanSection(
   }
 
   // Jawaban Rumusan Masalah
-  if (kesimpulan.jawabanRumusanMasalah && kesimpulan.jawabanRumusanMasalah.length > 0) {
+  const jawabanArr = Array.isArray(kesimpulan.jawabanRumusanMasalah)
+    ? kesimpulan.jawabanRumusanMasalah
+    : typeof kesimpulan.jawabanRumusanMasalah === "string" ? [kesimpulan.jawabanRumusanMasalah] : []
+  if (jawabanArr.length > 0) {
     paragraphs.push(
       createSectionHeading(
         "6.2 Jawaban Rumusan Masalah",
         HeadingLevel.HEADING_2
       )
     )
-    kesimpulan.jawabanRumusanMasalah.forEach((jawaban, index) => {
+    jawabanArr.forEach((jawaban, index) => {
       paragraphs.push(createNumberedItem(index + 1, jawaban))
     })
   }

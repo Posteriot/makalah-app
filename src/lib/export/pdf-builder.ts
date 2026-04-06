@@ -696,12 +696,12 @@ function buildKesimpulanSection(
     writeParagraph(doc, kesimpulan.ringkasanHasil)
   }
 
-  if (
-    kesimpulan.jawabanRumusanMasalah &&
-    kesimpulan.jawabanRumusanMasalah.length > 0
-  ) {
+  const jawabanArr = Array.isArray(kesimpulan.jawabanRumusanMasalah)
+    ? kesimpulan.jawabanRumusanMasalah
+    : typeof kesimpulan.jawabanRumusanMasalah === "string" ? [kesimpulan.jawabanRumusanMasalah] : []
+  if (jawabanArr.length > 0) {
     writeHeading2(doc, "6.2 Jawaban Rumusan Masalah")
-    kesimpulan.jawabanRumusanMasalah.forEach((jawaban, index) => {
+    jawabanArr.forEach((jawaban, index) => {
       writeNumberedItem(doc, index + 1, jawaban)
     })
     doc.moveDown(0.5)

@@ -412,9 +412,12 @@ function formatKesimpulanData(data: KesimpulanData, isCurrentStage: boolean, sum
     let output = `=== STAGE 10: ${getStageLabel("kesimpulan")} [${status}${revisions}] ===\n`;
 
     if (data.ringkasanHasil) output += `Results Summary: ${truncateText(data.ringkasanHasil, summaryMode)}\n`;
-    if (data.jawabanRumusanMasalah && data.jawabanRumusanMasalah.length > 0) {
+    const jawabanArr = Array.isArray(data.jawabanRumusanMasalah)
+        ? data.jawabanRumusanMasalah
+        : typeof data.jawabanRumusanMasalah === "string" ? [data.jawabanRumusanMasalah] : [];
+    if (jawabanArr.length > 0) {
         output += `Problem Formulation Answers:\n`;
-        data.jawabanRumusanMasalah.forEach((item, i) => {
+        jawabanArr.forEach((item, i) => {
             output += `  ${i + 1}. ${truncateText(item, summaryMode)}\n`;
         });
     }

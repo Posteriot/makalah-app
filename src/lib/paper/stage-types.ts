@@ -143,7 +143,7 @@ export interface DiskusiData {
 
 export interface KesimpulanData {
   ringkasanHasil?: string
-  jawabanRumusanMasalah?: string[]
+  jawabanRumusanMasalah?: string[] | string
   implikasiPraktis?: string
   saranPraktisi?: string
   saranPeneliti?: string
