@@ -306,6 +306,10 @@ The tool will:
                                 title: string;
                                 authors?: string;
                                 year?: number;
+                                url?: string;
+                                doi?: string;
+                                fullReference?: string;
+                                inTextCitation?: string;
                                 sourceStage?: string;
                                 isComplete?: boolean;
                             }>;
@@ -359,6 +363,19 @@ The tool will:
                         warnings.push(updateResult.warning);
                     }
 
+                    // Format entries as APA 7th for artifact creation
+                    const formattedEntries = compileResult.compiled.entries.map((entry, i) => {
+                        if (entry.fullReference) return `${i + 1}. ${entry.fullReference}`;
+                        const yearPart = entry.year ? `(${entry.year}).` : "(n.d.).";
+                        // APA: when no author, title moves to author position
+                        if (entry.authors) {
+                            const urlPart = entry.url ? ` Retrieved from ${entry.url}` : "";
+                            return `${i + 1}. ${entry.authors} ${yearPart} ${entry.title}.${urlPart}`;
+                        }
+                        const urlPart = entry.url ? ` Retrieved from ${entry.url}` : "";
+                        return `${i + 1}. ${entry.title}. ${yearPart}${urlPart}`;
+                    });
+
                     return {
                         success: true,
                         mode: "persist" as const,
@@ -367,7 +384,9 @@ The tool will:
                         totalCount: compileResult.compiled.totalCount,
                         incompleteCount: compileResult.compiled.incompleteCount,
                         duplicatesMerged: compileResult.compiled.duplicatesMerged,
+                        formattedEntries,
                         ...(warnings.length > 0 ? { warning: warnings.join(" | ") } : {}),
+                        nextAction: "⚠️ MANDATORY: Bibliography is compiled. You MUST call createArtifact() NOW in this same response. Join the formattedEntries array with newlines (one entry per line) to build the artifact content. AFTER createArtifact, MUST call submitStageForValidation(). Do NOT stop here. Do NOT call compileDaftarPustaka again.",
                     };
                 } catch (error) {
                     console.error("Error in compileDaftarPustaka tool:", error);
