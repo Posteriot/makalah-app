@@ -1,19 +1,22 @@
 import { mutation } from "../_generated/server"
 import { v } from "convex/values"
+import { requireRole } from "../permissions"
+import type { Id } from "../_generated/dataModel"
 
 /**
  * Migration: Wipe all stage skills and reseed with F1-F6 aligned versions.
  *
- * Run via: npx convex run migrations/wipeAndReseedStageSkills:wipeAll
- * Then:    npx convex run migrations/wipeAndReseedStageSkills:seedAll
+ * Run via: npx convex run migrations/wipeAndReseedStageSkills:wipeAll '{"requestorUserId":"<admin-user-id>"}'
+ * Then:    npx convex run migrations/wipeAndReseedStageSkills:seedAll '{"requestorUserId":"<admin-user-id>"}'
  *
  * Step 1 (wipeAll): Deletes ALL rows from stageSkills, stageSkillVersions, stageSkillAuditLogs.
  * Step 2 (seedAll): Creates fresh skills with F1-F6 aligned content, published + activated.
  */
 
 export const wipeAll = mutation({
-    args: {},
-    handler: async (ctx) => {
+    args: { requestorUserId: v.id("users") },
+    handler: async (ctx, args) => {
+        await requireRole(ctx.db, args.requestorUserId, "superadmin")
         // Delete all versions first (FK to stageSkills)
         const versions = await ctx.db.query("stageSkillVersions").collect()
         for (const v of versions) {
@@ -156,8 +159,9 @@ const DEFAULT_ALLOWED_TOOLS = [
 ]
 
 export const seedAll = mutation({
-    args: {},
-    handler: async (ctx) => {
+    args: { requestorUserId: v.id("users") },
+    handler: async (ctx, args) => {
+        await requireRole(ctx.db, args.requestorUserId, "superadmin")
         const now = Date.now()
         const results: string[] = []
 
