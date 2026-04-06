@@ -2668,6 +2668,124 @@ Aturan:
                             }
                         }
 
+                        // Server-owned fallback: judul title selection
+                        if (
+                            paperStageScope === "judul" &&
+                            choiceInteractionEvent?.stage === "judul" &&
+                            !paperToolTracker.sawUpdateStageData &&
+                            !paperToolTracker.sawCreateArtifactSuccess &&
+                            !paperToolTracker.sawUpdateArtifactSuccess &&
+                            normalizedText.length > 0
+                        ) {
+                            console.info("[JUDUL][server-fallback] model failed to execute tool calls, server completing judul lifecycle")
+                            try {
+                                // Deterministic title resolution from choice card payload
+                                let selectedTitle: string | undefined
+                                try {
+                                    const sourceMsg = await retryQuery(
+                                        () => fetchQueryWithToken(api.messages.getMessageByUiMessageId, {
+                                            uiMessageId: choiceInteractionEvent.sourceMessageId,
+                                            conversationId: currentConversationId as Id<"conversations">,
+                                        }),
+                                        "messages.getMessageByUiMessageId(judul-source)"
+                                    ) as { jsonRendererChoice?: string } | null
+                                    if (sourceMsg?.jsonRendererChoice) {
+                                        const spec = JSON.parse(sourceMsg.jsonRendererChoice)
+                                        const selectedId = choiceInteractionEvent.selectedOptionIds[0]
+                                        // Search elements for matching optionId
+                                        const elements = spec?.elements ?? {}
+                                        for (const el of Object.values(elements) as Array<{ type?: string; props?: { optionId?: string; label?: string } }>) {
+                                            if (el?.type === "ChoiceOptionButton" && el?.props?.optionId === selectedId && el?.props?.label) {
+                                                selectedTitle = el.props.label
+                                                break
+                                            }
+                                        }
+                                        if (selectedTitle) {
+                                            console.info(`[JUDUL][server-fallback] resolved title from choice payload: "${selectedTitle}"`)
+                                        } else {
+                                            console.warn(`[JUDUL][server-fallback][selected-option-unresolved] option ${selectedId} not found in spec elements`)
+                                        }
+                                    } else {
+                                        console.warn("[JUDUL][server-fallback][source-message-missing-choice-payload] no jsonRendererChoice in source message")
+                                    }
+                                } catch (resolveErr) {
+                                    console.warn("[JUDUL][server-fallback] choice payload resolution failed, falling back to text extraction:", resolveErr)
+                                }
+                                // Fallback: extract from model text if deterministic resolution failed
+                                if (!selectedTitle) {
+                                    const titleMatch = normalizedText.match(/judulTerpilih["\s:]*"([^"]+)"/i)
+                                        ?? normalizedText.match(/judul[^"]*"([^"]{20,})"/)
+                                        ?? normalizedText.match(/["""]([^"""]{20,})["""]/)
+                                    selectedTitle = titleMatch?.[1]?.trim()
+                                }
+
+                                if (selectedTitle) {
+                                    await retryMutation(
+                                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                            sessionId: paperSession!._id,
+                                            stage: "judul",
+                                            data: { judulTerpilih: selectedTitle, alasanPemilihan: "Dipilih oleh user via choice card." },
+                                        }),
+                                        "paperSessions.updateStageData(judul-fallback)"
+                                    )
+
+                                    // Revision-aware: updateArtifact if exists, createArtifact if not
+                                    const judulStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["judul"]
+                                    const existingJudulArtifactId = judulStageData?.artifactId as string | undefined
+
+                                    if (existingJudulArtifactId) {
+                                        await retryMutation(
+                                            () => fetchMutationWithToken(api.artifacts.update, {
+                                                artifactId: existingJudulArtifactId as Id<"artifacts">,
+                                                userId: userId as Id<"users">,
+                                                content: `Judul Terpilih:\n\n${selectedTitle}`,
+                                                title: "Pemilihan Judul",
+                                            }),
+                                            "artifacts.update(judul-fallback)"
+                                        )
+                                        paperToolTracker.sawUpdateArtifactSuccess = true
+                                    } else {
+                                        const judulArtifact = await retryMutation(
+                                            () => fetchMutationWithToken(api.artifacts.create, {
+                                                conversationId: currentConversationId as Id<"conversations">,
+                                                userId: userId as Id<"users">,
+                                                type: "section",
+                                                title: "Pemilihan Judul",
+                                                content: `Judul Terpilih:\n\n${selectedTitle}`,
+                                            }),
+                                            "artifacts.create(judul-fallback)"
+                                        ) as { artifactId: string }
+
+                                        try {
+                                            await retryMutation(
+                                                () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                                    sessionId: paperSession!._id,
+                                                    stage: "judul",
+                                                    data: { artifactId: judulArtifact.artifactId },
+                                                }),
+                                                "paperSessions.updateStageData(judul-link)"
+                                            )
+                                        } catch { /* non-critical */ }
+                                    }
+
+                                    await retryMutation(
+                                        () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                                            sessionId: paperSession!._id,
+                                        }),
+                                        "paperSessions.submitForValidation(judul-fallback)"
+                                    )
+                                    paperToolTracker.sawCreateArtifactSuccess = true
+                                    paperToolTracker.sawSubmitValidationSuccess = true
+                                    persistedContent = `Judul "${selectedTitle}" sudah dipilih. Silakan review di panel validasi.`
+                                    console.info("[JUDUL][server-fallback] title saved, artifact created, submitted for validation")
+                                } else {
+                                    console.warn("[JUDUL][server-fallback] could not extract title from model response")
+                                }
+                            } catch (fallbackErr) {
+                                console.error("[JUDUL][server-fallback] failed:", fallbackErr)
+                            }
+                        }
+
                         if (normalizedText.length > 0 && sources && sources.length > 0) {
                             sources = await enrichSourcesWithFetchedTitles(sources, {
                                 concurrency: 4,
@@ -3164,6 +3282,121 @@ Aturan:
                                 console.info("[LAMPIRAN][server-fallback][fallback] placeholder artifact created and submitted for validation")
                             } catch (fallbackErr) {
                                 console.error("[LAMPIRAN][server-fallback][fallback] failed:", fallbackErr)
+                            }
+                        }
+
+                        // Server-owned fallback: judul (fallback path parity)
+                        if (
+                            paperStageScope === "judul" &&
+                            choiceInteractionEvent?.stage === "judul" &&
+                            !paperToolTracker.sawUpdateStageData &&
+                            !paperToolTracker.sawCreateArtifactSuccess &&
+                            !paperToolTracker.sawUpdateArtifactSuccess &&
+                            normalizedText.length > 0
+                        ) {
+                            console.info("[JUDUL][server-fallback][fallback] model failed to execute tool calls, server completing judul lifecycle")
+                            try {
+                                // Deterministic title resolution from choice card payload (fallback path)
+                                let selectedTitle: string | undefined
+                                try {
+                                    const sourceMsg = await retryQuery(
+                                        () => fetchQueryWithToken(api.messages.getMessageByUiMessageId, {
+                                            uiMessageId: choiceInteractionEvent.sourceMessageId,
+                                            conversationId: currentConversationId as Id<"conversations">,
+                                        }),
+                                        "messages.getMessageByUiMessageId(judul-source-fb)"
+                                    ) as { jsonRendererChoice?: string } | null
+                                    if (sourceMsg?.jsonRendererChoice) {
+                                        const spec = JSON.parse(sourceMsg.jsonRendererChoice)
+                                        const selectedId = choiceInteractionEvent.selectedOptionIds[0]
+                                        const elements = spec?.elements ?? {}
+                                        for (const el of Object.values(elements) as Array<{ type?: string; props?: { optionId?: string; label?: string } }>) {
+                                            if (el?.type === "ChoiceOptionButton" && el?.props?.optionId === selectedId && el?.props?.label) {
+                                                selectedTitle = el.props.label
+                                                break
+                                            }
+                                        }
+                                        if (selectedTitle) {
+                                            console.info(`[JUDUL][server-fallback][fallback] resolved title from choice payload: "${selectedTitle}"`)
+                                        } else {
+                                            console.warn(`[JUDUL][server-fallback][fallback][selected-option-unresolved] option ${selectedId} not found in spec elements`)
+                                        }
+                                    } else {
+                                        console.warn("[JUDUL][server-fallback][fallback][source-message-missing-choice-payload] no jsonRendererChoice in source message")
+                                    }
+                                } catch (resolveErr) {
+                                    console.warn("[JUDUL][server-fallback][fallback] choice payload resolution failed:", resolveErr)
+                                }
+                                if (!selectedTitle) {
+                                    const titleMatch = normalizedText.match(/judulTerpilih["\s:]*"([^"]+)"/i)
+                                        ?? normalizedText.match(/judul[^"]*"([^"]{20,})"/)
+                                        ?? normalizedText.match(/["""]([^"""]{20,})["""]/)
+                                    selectedTitle = titleMatch?.[1]?.trim()
+                                }
+
+                                if (selectedTitle) {
+                                    await retryMutation(
+                                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                            sessionId: paperSession!._id,
+                                            stage: "judul",
+                                            data: { judulTerpilih: selectedTitle, alasanPemilihan: "Dipilih oleh user via choice card." },
+                                        }),
+                                        "paperSessions.updateStageData(judul-fallback-fb)"
+                                    )
+
+                                    const judulStageDataFb = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["judul"]
+                                    const existingJudulArtifactIdFb = judulStageDataFb?.artifactId as string | undefined
+
+                                    if (existingJudulArtifactIdFb) {
+                                        await retryMutation(
+                                            () => fetchMutationWithToken(api.artifacts.update, {
+                                                artifactId: existingJudulArtifactIdFb as Id<"artifacts">,
+                                                userId: userId as Id<"users">,
+                                                content: `Judul Terpilih:\n\n${selectedTitle}`,
+                                                title: "Pemilihan Judul",
+                                            }),
+                                            "artifacts.update(judul-fallback-fb)"
+                                        )
+                                        paperToolTracker.sawUpdateArtifactSuccess = true
+                                    } else {
+                                        const judulArtifact = await retryMutation(
+                                            () => fetchMutationWithToken(api.artifacts.create, {
+                                                conversationId: currentConversationId as Id<"conversations">,
+                                                userId: userId as Id<"users">,
+                                                type: "section",
+                                                title: "Pemilihan Judul",
+                                                content: `Judul Terpilih:\n\n${selectedTitle}`,
+                                            }),
+                                            "artifacts.create(judul-fallback-fb)"
+                                        ) as { artifactId: string }
+
+                                        try {
+                                            await retryMutation(
+                                                () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                                    sessionId: paperSession!._id,
+                                                    stage: "judul",
+                                                    data: { artifactId: judulArtifact.artifactId },
+                                                }),
+                                                "paperSessions.updateStageData(judul-link-fb)"
+                                            )
+                                        } catch { /* non-critical */ }
+                                    }
+
+                                    await retryMutation(
+                                        () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                                            sessionId: paperSession!._id,
+                                        }),
+                                        "paperSessions.submitForValidation(judul-fallback-fb)"
+                                    )
+                                    paperToolTracker.sawCreateArtifactSuccess = true
+                                    paperToolTracker.sawSubmitValidationSuccess = true
+                                    persistedContent = `Judul "${selectedTitle}" sudah dipilih. Silakan review di panel validasi.`
+                                    console.info("[JUDUL][server-fallback][fallback] title saved, artifact created, submitted for validation")
+                                } else {
+                                    console.warn("[JUDUL][server-fallback][fallback] could not extract title from model response")
+                                }
+                            } catch (fallbackErr) {
+                                console.error("[JUDUL][server-fallback][fallback] failed:", fallbackErr)
                             }
                         }
 
