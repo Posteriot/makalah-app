@@ -818,6 +818,31 @@ ${sourcesJson}`
 
                 return [{ role: "system" as const, content: lines.join("\n") }]
             })(),
+            // Completed-state dynamic note: override static closing template when AI normal path allowed
+            ...(() => {
+                if (paperSession?.currentStage !== "completed") return []
+                // Check if pre-stream guard allowed normal AI (informational/revision intent)
+                // If so, override the restrictive completed prompt to allow tool use and normal answers
+                const revisionSignalPattern =
+                    /revisi|ubah|edit|koreksi|review|cek\s*lagi|perbaiki|judul|abstrak|metodologi|hasil|diskusi|kesimpulan|daftar_pustaka|lampiran|pendahuluan|tinjauan|gagasan|topik|outline/i
+                const informationalSignalPattern =
+                    /di\s*mana|bagaimana|export|unduh|download|artifact|artefak|sidebar|progress|linimasa|status|selesai|apa\s+semua|sudah\s+selesai|lihat|tampilkan/i
+                const hasRevisionIntent = revisionSignalPattern.test(normalizedLastUserContent)
+                const hasInformationalIntent = informationalSignalPattern.test(normalizedLastUserContent)
+
+                if (hasRevisionIntent || hasInformationalIntent) {
+                    return [{ role: "system" as const, content:
+                        "COMPLETED SESSION — OVERRIDE:\n" +
+                        "The paper is completed, but the user is asking a follow-up question (informational or revision).\n" +
+                        "IGNORE the closing-only instructions from the completed stage prompt.\n" +
+                        "You MAY use readArtifact to show artifact content if the user asks.\n" +
+                        "You MAY answer questions about artifacts, sidebar, progress, export.\n" +
+                        "You MAY help with revision if the user explicitly asks to revise a stage.\n" +
+                        "Keep answers concise. Do NOT output choice cards. Do NOT pretend the session is still in progress."
+                    }]
+                }
+                return []
+            })(),
             ...trimmedModelMessages,
         ]
 
@@ -2102,7 +2127,10 @@ Aturan:
                 })
                 console.log(`[⏱ LATENCY] searchRouter=${Date.now() - routerStart}ms decision=${webSearchDecision.enableWebSearch ? "SEARCH" : "NO-SEARCH"} intent=${webSearchDecision.intentType} confidence=${webSearchDecision.confidence}`)
 
-                // Capture router intent for completed-session guard (outer scope)
+                // Capture router intent for completed-session guard (outer scope).
+                // IMPORTANT: The completed-session guard at ~line 2176 depends on this value.
+                // If you add a fast-path that skips the router for completed sessions,
+                // the guard will silently fall back to regex-only mode.
                 routerIntentType = webSearchDecision.intentType
 
                 // Trust the router decision. Router prompt handles stage policy rules.
