@@ -779,6 +779,40 @@ ${sourcesJson}`
             ...(isDraftingStage
                 ? [{ role: "system" as const, content: CHOICE_YAML_SYSTEM_PROMPT }]
                 : []),
+            // Hard enforcement note for review/finalization workflow stages
+            ...(() => {
+                if (!paperStageScope || !paperSession) return []
+                const stage = paperStageScope
+                const status = paperSession.stageStatus as string
+                const isReviewFinalization = [
+                    "hasil", "diskusi", "kesimpulan", "pembaruan_abstrak",
+                    "daftar_pustaka", "lampiran", "judul"
+                ].includes(stage)
+
+                if (!isReviewFinalization) return []
+
+                const lines: string[] = [
+                    "WORKFLOW RESPONSE DISCIPLINE (MANDATORY):",
+                    "- Do NOT narrate internal tool failures, retries, repair attempts, or technical diagnostics to the user.",
+                    "- Do NOT say 'mohon tunggu', 'ada kesalahan teknis', 'saya akan coba lagi', 'memperbaiki format', or similar.",
+                    "- If a tool fails but you recover in the same turn, present ONLY the successful outcome.",
+                    "- Only expose errors to the user when the turn cannot complete and user action is required.",
+                    "- Keep final response to 1-3 sentences maximum for workflow turns.",
+                ]
+
+                // Deterministic daftar_pustaka revision chain
+                if (stage === "daftar_pustaka" && status === "revision") {
+                    lines.push(
+                        "DAFTAR PUSTAKA REVISION — EXACT CHAIN:",
+                        "1. compileDaftarPustaka({ mode: 'persist' })",
+                        "2. updateArtifact (system will auto-resolve artifact ID — supply any ID)",
+                        "3. submitStageForValidation()",
+                        "Do NOT deviate. Do NOT call createArtifact. Do NOT call compileDaftarPustaka({ mode: 'preview' }) in this turn.",
+                    )
+                }
+
+                return [{ role: "system" as const, content: lines.join("\n") }]
+            })(),
             ...trimmedModelMessages,
         ]
 
@@ -2492,7 +2526,7 @@ Aturan:
                             ""
                         ).replace(/\n{3,}/g, "\n\n").trim()
                         const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
-                        const persistedContent = shouldPersistForcedSyncFallback
+                        let persistedContent = shouldPersistForcedSyncFallback
                             ? buildForcedSyncStatusMessage(paperSession)
                             : normalizedText
 
@@ -2553,6 +2587,24 @@ Aturan:
                                 !paperToolTracker.sawSubmitValidationSuccess
                             ) {
                                 console.warn("[DAFTAR_PUSTAKA][artifact-without-submit] artifact created/updated but submitStageForValidation was not called.")
+                            }
+                        }
+
+                        // Outcome-gated persisted content: replace noisy model text with clean system message
+                        // for review/finalization workflow stages where tools succeeded
+                        if (paperStageScope && normalizedText.length > 0) {
+                            const isReviewStage = ["hasil", "diskusi", "kesimpulan", "pembaruan_abstrak", "daftar_pustaka", "lampiran", "judul"].includes(paperStageScope)
+                            const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
+                            const hasLeakage = /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki|mohon tunggu|coba lagi|ada kendala/i.test(normalizedText)
+
+                            if (isReviewStage && hasArtifactSuccess && hasLeakage) {
+                                if (paperToolTracker.sawSubmitValidationSuccess) {
+                                    persistedContent = "Artefak sudah diperbarui. Silakan review di panel validasi."
+                                    console.info("[PAPER][outcome-gated] replaced noisy persisted text with clean success_with_validation message")
+                                } else {
+                                    persistedContent = "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
+                                    console.info("[PAPER][outcome-gated] replaced noisy persisted text with clean success_without_validation message")
+                                }
                             }
                         }
 
@@ -2936,7 +2988,7 @@ Aturan:
                             ""
                         ).replace(/\n{3,}/g, "\n\n").trim()
                         const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
-                        const persistedContent = shouldPersistForcedSyncFallback
+                        let persistedContent = shouldPersistForcedSyncFallback
                             ? buildForcedSyncStatusMessage(paperSession)
                             : normalizedText
 
@@ -2997,6 +3049,23 @@ Aturan:
                                 !paperToolTracker.sawSubmitValidationSuccess
                             ) {
                                 console.warn("[DAFTAR_PUSTAKA][artifact-without-submit][fallback] artifact created/updated but submitStageForValidation was not called.")
+                            }
+                        }
+
+                        // Outcome-gated persisted content (fallback path)
+                        if (paperStageScope && normalizedText.length > 0) {
+                            const isReviewStage = ["hasil", "diskusi", "kesimpulan", "pembaruan_abstrak", "daftar_pustaka", "lampiran", "judul"].includes(paperStageScope)
+                            const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
+                            const hasLeakage = /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki|mohon tunggu|coba lagi|ada kendala/i.test(normalizedText)
+
+                            if (isReviewStage && hasArtifactSuccess && hasLeakage) {
+                                if (paperToolTracker.sawSubmitValidationSuccess) {
+                                    persistedContent = "Artefak sudah diperbarui. Silakan review di panel validasi."
+                                    console.info("[PAPER][outcome-gated][fallback] replaced noisy persisted text with clean success_with_validation message")
+                                } else {
+                                    persistedContent = "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
+                                    console.info("[PAPER][outcome-gated][fallback] replaced noisy persisted text with clean success_without_validation message")
+                                }
                             }
                         }
 
