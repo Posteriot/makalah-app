@@ -91,6 +91,24 @@ export function buildChoiceContextNote(
     return baseLines.join("\n")
   }
 
+  // Lampiran "tidak ada" path: create minimal placeholder artifact
+  const NO_APPENDIX_IDS = new Set(["tidak-ada-lampiran", "option-tidak-ada-lampiran", "no-appendix"])
+  if (event.stage === "lampiran" && selectedOptionIds.some(id => NO_APPENDIX_IDS.has(id))) {
+    baseLines.push(
+      "- Mode: no-appendix-placeholder",
+      "- User has confirmed there are no appendices for this paper.",
+      "- You MUST call tools in this EXACT order:",
+      "  1. updateStageData({ tidakAdaLampiran: true, alasanTidakAda: '<brief reason>' })",
+      '  2. createArtifact({ type: "section", title: "Lampiran", content: "Tidak ada lampiran.\\n\\nAlasan: <reason from user or default>" })',
+      "  3. submitStageForValidation",
+      "- Do NOT output another choice card.",
+      "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
+      "- Keep chat response to 1-2 sentences confirming no appendix needed.",
+      "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
+    )
+    return baseLines.join("\n")
+  }
+
   // Hasil post-choice: artifact-first mandatory contract
   if (event.stage === "hasil") {
     baseLines.push(
