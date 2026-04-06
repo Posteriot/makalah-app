@@ -109,6 +109,26 @@ export function buildChoiceContextNote(
     return baseLines.join("\n")
   }
 
+  // Judul post-choice: user selected a title option
+  if (event.stage === "judul") {
+    baseLines.push(
+      "- Mode: post-choice-title-selection",
+      "- The user has selected a title from the options you presented. This is NOT a new decision turn.",
+      "- Identify which title text corresponds to the selected option ID. Use the EXACT title text from the option the user clicked — do NOT rephrase or modify it.",
+      "- You MUST call tools in this EXACT order:",
+      `  1. updateStageData (MUST include: judulTerpilih with the selected title text, alasanPemilihan with brief reason)`,
+      options?.hasExistingArtifact
+        ? "  2. updateArtifact (artifact already exists — update with selected title content)"
+        : '  2. createArtifact({ type: "section", title: "Pemilihan Judul", content: selected title + brief analysis of why it fits })',
+      "  3. submitStageForValidation",
+      "- Do NOT output another choice card.",
+      "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
+      "- Keep chat response to 1-3 sentences confirming the selected title.",
+      "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
+    )
+    return baseLines.join("\n")
+  }
+
   // Hasil post-choice: artifact-first mandatory contract
   if (event.stage === "hasil") {
     baseLines.push(

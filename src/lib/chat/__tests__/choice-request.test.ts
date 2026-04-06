@@ -62,4 +62,49 @@ describe("buildChoiceContextNote", () => {
     })
     expect(note).toContain("Custom note: Tambahan info")
   })
+
+  it("builds post-choice-title-selection note for judul stage", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "judul",
+      selectedOptionIds: ["option-1"],
+    })
+    expect(note).toContain("Mode: post-choice-title-selection")
+    expect(note).toContain("judulTerpilih")
+    expect(note).toContain("submitStageForValidation")
+    expect(note).not.toContain("Mode: decision-to-draft")
+  })
+
+  it("builds post-choice-artifact-first note for hasil stage", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "hasil",
+      selectedOptionIds: ["option-narasi"],
+    })
+    expect(note).toContain("Mode: post-choice-artifact-first")
+    expect(note).toContain("metodePenyajian")
+    expect(note).toContain("submitStageForValidation")
+    expect(note).not.toContain("Mode: decision-to-draft")
+  })
+
+  it("builds no-appendix-placeholder note for lampiran tidak-ada", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "lampiran",
+      selectedOptionIds: ["tidak-ada-lampiran"],
+    })
+    expect(note).toContain("Mode: no-appendix-placeholder")
+    expect(note).toContain("tidakAdaLampiran")
+    expect(note).toContain("submitStageForValidation")
+    expect(note).not.toContain("Mode: decision-to-draft")
+  })
+
+  it("falls through to decision-to-draft for lampiran with appendix", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "lampiran",
+      selectedOptionIds: ["option-tabel-data"],
+    })
+    expect(note).toContain("Mode: decision-to-draft")
+  })
 })
