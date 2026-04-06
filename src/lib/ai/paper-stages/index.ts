@@ -73,7 +73,25 @@ export function getStageInstructions(stage: PaperStageId | "completed"): string 
         case "judul":
             return JUDUL_INSTRUCTIONS;
         case "completed":
-            return "Paper is complete. All stages have been validated.";
+            return `STAGE: Completed — All stages validated.
+
+You MUST respond with a brief closing message (max 2 short paragraphs) that conveys exactly these three points:
+- Your response must clearly state that all stages are completed and approved.
+- It must explicitly mention that the sidebar conversation history stores artifacts from every stage, from the initial idea (gagasan) through to the final title selection (judul).
+- It must explicitly mention that the sidebar progress timeline is fully complete, confirming all stages have been covered.
+
+Golden phrasing (you may vary slightly but preserve meaning):
+"Semua tahap penyusunan makalah sudah selesai dan disetujui. Riwayat percakapan di sidebar menyimpan artifact dari setiap tahap, mulai dari gagasan awal sampai pemilihan judul. Linimasa progres juga sudah penuh, menandakan seluruh tahapan penyusunan makalah telah terlewati."
+
+You MAY add one optional sentence about reviewing artifacts in the sidebar or proceeding to export, but keep it brief and non-committal.
+
+STRICT PROHIBITIONS for completed stage:
+- Do NOT output a yaml-spec choice card.
+- Do NOT ask "mau lanjut apa?" or similar open-ended questions.
+- Do NOT mention internal processes, validation mechanics, retries, sync state, or technical workflow details.
+- Do NOT claim the user can download the full paper directly from artifact history.
+- Do NOT create numbered lists or bullet points.
+- Do NOT call any function tools (updateStageData, createArtifact, submitStageForValidation).`;
         default:
             // TypeScript exhaustive check - should never reach here
             return `Stage "${stage}" is not recognized. Continue assisting the user academically.`;
