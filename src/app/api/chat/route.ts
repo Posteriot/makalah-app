@@ -2609,6 +2609,65 @@ Aturan:
                             }
                         }
 
+                        // Server-owned fallback: lampiran "tidak ada" path
+                        // If model failed to create placeholder artifact, server does it
+                        const NO_APPENDIX_IDS = new Set(["tidak-ada-lampiran", "option-tidak-ada-lampiran", "no-appendix"])
+                        if (
+                            paperStageScope === "lampiran" &&
+                            choiceInteractionEvent?.stage === "lampiran" &&
+                            choiceInteractionEvent.selectedOptionIds.some(id => NO_APPENDIX_IDS.has(id.trim().toLowerCase())) &&
+                            paperToolTracker.sawUpdateStageData &&
+                            !paperToolTracker.sawCreateArtifactSuccess &&
+                            !paperToolTracker.sawUpdateArtifactSuccess
+                        ) {
+                            console.info("[LAMPIRAN][server-fallback] model failed to create placeholder artifact, server creating it now")
+                            try {
+                                // Read alasanTidakAda from stageData if available
+                                const lampiranStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["lampiran"]
+                                const alasan = typeof lampiranStageData?.alasanTidakAda === "string" ? lampiranStageData.alasanTidakAda : ""
+                                const placeholderContent = alasan
+                                    ? `Tidak ada lampiran.\n\nAlasan: ${alasan}`
+                                    : "Tidak ada lampiran."
+
+                                const placeholderResult = await retryMutation(
+                                    () => fetchMutationWithToken(api.artifacts.create, {
+                                        conversationId: currentConversationId as Id<"conversations">,
+                                        userId: userId as Id<"users">,
+                                        type: "section",
+                                        title: "Lampiran",
+                                        content: placeholderContent,
+                                    }),
+                                    "artifacts.create(lampiran-placeholder)"
+                                ) as { artifactId: string }
+
+                                // Link artifact to stage
+                                try {
+                                    await retryMutation(
+                                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                            sessionId: paperSession!._id,
+                                            stage: "lampiran",
+                                            data: { artifactId: placeholderResult.artifactId },
+                                        }),
+                                        "paperSessions.updateStageData(lampiran-link)"
+                                    )
+                                } catch { /* non-critical */ }
+
+                                // Submit for validation
+                                await retryMutation(
+                                    () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                                        sessionId: paperSession!._id,
+                                    }),
+                                    "paperSessions.submitForValidation(lampiran)"
+                                )
+                                paperToolTracker.sawCreateArtifactSuccess = true
+                                paperToolTracker.sawSubmitValidationSuccess = true
+                                persistedContent = "Tidak ada lampiran untuk paper ini. Silakan review di panel validasi."
+                                console.info("[LAMPIRAN][server-fallback] placeholder artifact created and submitted for validation")
+                            } catch (fallbackErr) {
+                                console.error("[LAMPIRAN][server-fallback] failed:", fallbackErr)
+                            }
+                        }
+
                         if (normalizedText.length > 0 && sources && sources.length > 0) {
                             sources = await enrichSourcesWithFetchedTitles(sources, {
                                 concurrency: 4,
@@ -3050,6 +3109,61 @@ Aturan:
                                 !paperToolTracker.sawSubmitValidationSuccess
                             ) {
                                 console.warn("[DAFTAR_PUSTAKA][artifact-without-submit][fallback] artifact created/updated but submitStageForValidation was not called.")
+                            }
+                        }
+
+                        // Server-owned fallback: lampiran "tidak ada" path (fallback parity)
+                        const FALLBACK_NO_APPENDIX_IDS = new Set(["tidak-ada-lampiran", "option-tidak-ada-lampiran", "no-appendix"])
+                        if (
+                            paperStageScope === "lampiran" &&
+                            choiceInteractionEvent?.stage === "lampiran" &&
+                            choiceInteractionEvent.selectedOptionIds.some(id => FALLBACK_NO_APPENDIX_IDS.has(id.trim().toLowerCase())) &&
+                            paperToolTracker.sawUpdateStageData &&
+                            !paperToolTracker.sawCreateArtifactSuccess &&
+                            !paperToolTracker.sawUpdateArtifactSuccess
+                        ) {
+                            console.info("[LAMPIRAN][server-fallback][fallback] model failed to create placeholder artifact, server creating it now")
+                            try {
+                                const lampiranStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["lampiran"]
+                                const alasan = typeof lampiranStageData?.alasanTidakAda === "string" ? lampiranStageData.alasanTidakAda : ""
+                                const placeholderContent = alasan
+                                    ? `Tidak ada lampiran.\n\nAlasan: ${alasan}`
+                                    : "Tidak ada lampiran."
+
+                                const placeholderResult = await retryMutation(
+                                    () => fetchMutationWithToken(api.artifacts.create, {
+                                        conversationId: currentConversationId as Id<"conversations">,
+                                        userId: userId as Id<"users">,
+                                        type: "section",
+                                        title: "Lampiran",
+                                        content: placeholderContent,
+                                    }),
+                                    "artifacts.create(lampiran-placeholder-fallback)"
+                                ) as { artifactId: string }
+
+                                try {
+                                    await retryMutation(
+                                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                            sessionId: paperSession!._id,
+                                            stage: "lampiran",
+                                            data: { artifactId: placeholderResult.artifactId },
+                                        }),
+                                        "paperSessions.updateStageData(lampiran-link-fallback)"
+                                    )
+                                } catch { /* non-critical */ }
+
+                                await retryMutation(
+                                    () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                                        sessionId: paperSession!._id,
+                                    }),
+                                    "paperSessions.submitForValidation(lampiran-fallback)"
+                                )
+                                paperToolTracker.sawCreateArtifactSuccess = true
+                                paperToolTracker.sawSubmitValidationSuccess = true
+                                persistedContent = "Tidak ada lampiran untuk paper ini. Silakan review di panel validasi."
+                                console.info("[LAMPIRAN][server-fallback][fallback] placeholder artifact created and submitted for validation")
+                            } catch (fallbackErr) {
+                                console.error("[LAMPIRAN][server-fallback][fallback] failed:", fallbackErr)
                             }
                         }
 
