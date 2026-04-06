@@ -187,8 +187,8 @@ export const KesimpulanData = v.object({
 export const PembaruanAbstrakData = v.object({
     ...legacyRingkasanFields,
     ringkasanPenelitianBaru: v.optional(v.string()),
-    perubahanUtama: v.optional(v.array(v.string())),
-    keywordsBaru: v.optional(v.array(v.string())),
+    perubahanUtama: v.optional(v.union(v.array(v.string()), v.string())),
+    keywordsBaru: v.optional(v.union(v.array(v.string()), v.string())),
     wordCount: v.optional(v.number()),
     webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),

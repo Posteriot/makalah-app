@@ -439,14 +439,20 @@ function formatPembaruanAbstrakData(data: PembaruanAbstrakData, isCurrentStage: 
     let output = `=== STAGE 11: ${getStageLabel("pembaruan_abstrak")} [${status}${revisions}] ===\n`;
 
     if (data.ringkasanPenelitianBaru) output += `Updated Abstract: ${truncateText(data.ringkasanPenelitianBaru, summaryMode)}\n`;
-    if (data.perubahanUtama && data.perubahanUtama.length > 0) {
+    const perubahanArr = Array.isArray(data.perubahanUtama)
+        ? data.perubahanUtama
+        : typeof data.perubahanUtama === "string" ? data.perubahanUtama.split(/\n|,/).map(s => s.trim()).filter(Boolean) : [];
+    if (perubahanArr.length > 0) {
         output += `Key Changes:\n`;
-        data.perubahanUtama.forEach((item, i) => {
+        perubahanArr.forEach((item, i) => {
             output += `  ${i + 1}. ${truncateText(item, summaryMode)}\n`;
         });
     }
-    if (data.keywordsBaru && data.keywordsBaru.length > 0) {
-        output += `Updated Keywords: ${data.keywordsBaru.join(", ")}\n`;
+    const keywordsArr = Array.isArray(data.keywordsBaru)
+        ? data.keywordsBaru
+        : typeof data.keywordsBaru === "string" ? data.keywordsBaru.split(/\n|,/).map(s => s.trim()).filter(Boolean) : [];
+    if (keywordsArr.length > 0) {
+        output += `Updated Keywords: ${keywordsArr.join(", ")}\n`;
     }
     if (data.wordCount !== undefined) output += `Word Count: ${data.wordCount}\n`;
 

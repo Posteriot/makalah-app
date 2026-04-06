@@ -90,9 +90,12 @@ export function compilePaperContent(session: Doc<"paperSessions">): CompiledPape
   const title = stageData.judul?.judulTerpilih ?? paperTitle ?? null
 
   // Get keywords — prefer updated from pembaruan_abstrak, fallback to original
-  const keywords = stageData.pembaruan_abstrak?.keywordsBaru
+  const rawKeywords = stageData.pembaruan_abstrak?.keywordsBaru
     ?? stageData.abstrak?.keywords
     ?? null
+  const keywords = Array.isArray(rawKeywords)
+    ? rawKeywords
+    : typeof rawKeywords === "string" ? rawKeywords.split(/\n|,/).map(s => s.trim()).filter(Boolean) : null
 
   // Compile abstract — prefer updated from pembaruan_abstrak, fallback to original
   const abstract = stageData.pembaruan_abstrak?.ringkasanPenelitianBaru

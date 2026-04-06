@@ -157,8 +157,8 @@ export interface KesimpulanData {
 // Phase 5: Refinement
 export interface PembaruanAbstrakData {
   ringkasanPenelitianBaru?: string
-  perubahanUtama?: string[]
-  keywordsBaru?: string[]
+  perubahanUtama?: string[] | string
+  keywordsBaru?: string[] | string
   wordCount?: number
   webSearchReferences?: WebSearchReference[]
   artifactId?: string
