@@ -1986,23 +1986,41 @@ export function ChatWindow({
     const isValidConvexId = /^[a-z0-9]{32}$/.test(messageId)
 
     if (isValidConvexId) {
-      actualMessageId = messageId as Id<"messages">
+      // Verify the Convex ID still exists in current history (may be stale after truncate)
+      const existsInHistory = historyMessages?.some(m => m._id === messageId)
+      if (existsInHistory) {
+        actualMessageId = messageId as Id<"messages">
+      } else {
+        // Stale Convex ID — try uiMessageId fallback
+        const byUiId = historyMessages?.find(m => m.uiMessageId === messageId)
+        if (byUiId) {
+          actualMessageId = byUiId._id
+        } else {
+          toast.error("Pesan sudah berubah. Refresh halaman dan coba lagi.")
+          return
+        }
+      }
     } else {
-      // For client-generated IDs, find the corresponding Convex ID from historyMessages
-      const messageIndex = messages.findIndex(m => m.id === messageId)
-      if (messageIndex !== -1 && historyMessages?.[messageIndex]) {
-        const historyMsg = historyMessages[messageIndex]
-        const currentMsg = messages[messageIndex]
-        // Verify it's the same message by checking role
-        if (historyMsg.role === currentMsg.role) {
-          actualMessageId = historyMsg._id
+      // Priority 1: Find by uiMessageId (stable correlation)
+      const byUiId = historyMessages?.find(m => m.uiMessageId === messageId)
+      if (byUiId) {
+        actualMessageId = byUiId._id
+      } else {
+        // Priority 2: Fallback to index mapping (legacy)
+        const messageIndex = messages.findIndex(m => m.id === messageId)
+        if (messageIndex !== -1 && historyMessages?.[messageIndex]) {
+          const historyMsg = historyMessages[messageIndex]
+          const currentMsg = messages[messageIndex]
+          if (historyMsg.role === currentMsg.role) {
+            actualMessageId = historyMsg._id
+          } else {
+            toast.error("Pesan belum tersimpan. Tunggu sebentar lalu coba lagi.")
+            return
+          }
         } else {
           toast.error("Pesan belum tersimpan. Tunggu sebentar lalu coba lagi.")
           return
         }
-      } else {
-        toast.error("Pesan belum tersimpan. Tunggu sebentar lalu coba lagi.")
-        return
       }
     }
 

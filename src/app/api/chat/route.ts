@@ -338,6 +338,7 @@ export async function POST(req: Request) {
                         content: userContent,
                         fileIds: effectiveFileIds.length > 0 ? effectiveFileIds : undefined,
                         attachmentMode,
+                        ...(lastMessage.id ? { uiMessageId: lastMessage.id } : {}),
                     }),
                     "messages.createMessage(user)"
                 )
