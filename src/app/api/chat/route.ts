@@ -1572,7 +1572,7 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                     })).optional()
                         .describe("Web sources if update is based on web search. If not provided, sources from previous version are retained."),
                 }),
-                execute: async ({ artifactId, content, title, sources }) => {
+                execute: async ({ artifactId: modelArtifactId, content, title, sources }) => {
                     try {
                         if (paperSession?.stageStatus === "pending_validation") {
                             return {
@@ -1581,6 +1581,17 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                                 retryable: false,
                                 error: "Stage is pending validation. Request revision first if you want to update the artifact.",
                                 nextAction: "Do not update the artifact now. Direct the user to the validation panel to approve or request revision first.",
+                            }
+                        }
+
+                        // Auto-resolve artifactId from stage data when model supplies invalid ID
+                        let artifactId = modelArtifactId
+                        if (paperSession) {
+                            const stageDataMap = paperSession.stageData as Record<string, Record<string, unknown> | undefined> | undefined
+                            const stageArtifactId = stageDataMap?.[paperSession.currentStage]?.artifactId as string | undefined
+                            if (stageArtifactId && stageArtifactId !== modelArtifactId) {
+                                console.warn(`[updateArtifact] Auto-resolved artifactId: model supplied "${modelArtifactId}", using stage artifactId "${stageArtifactId}"`)
+                                artifactId = stageArtifactId
                             }
                         }
 
