@@ -2609,6 +2609,16 @@ Aturan:
                             }
                         }
 
+                        // System-owned closing message for completed session
+                        if (
+                            paperSession?.currentStage === "completed" &&
+                            normalizedText.length > 0 &&
+                            /tool_code|sekarang kita masuk ke tahap|yaml-spec|```yaml/i.test(normalizedText)
+                        ) {
+                            persistedContent = "Semua tahap penyusunan makalah sudah selesai dan disetujui.\n\nRiwayat percakapan di sidebar menyimpan artifact dari setiap tahap, mulai dari gagasan awal sampai pemilihan judul. Linimasa progres juga sudah penuh, menandakan seluruh tahapan penyusunan makalah telah terlewati."
+                            console.info("[PAPER][completed-guard] replaced corrupt/off-context model output with system-owned closing message")
+                        }
+
                         // Server-owned fallback: lampiran "tidak ada" path
                         // If model failed to create placeholder artifact, server does it
                         const NO_APPENDIX_IDS = new Set(["tidak-ada-lampiran", "option-tidak-ada-lampiran", "no-appendix"])
@@ -3228,6 +3238,16 @@ Aturan:
                             ) {
                                 console.warn("[DAFTAR_PUSTAKA][artifact-without-submit][fallback] artifact created/updated but submitStageForValidation was not called.")
                             }
+                        }
+
+                        // System-owned closing message for completed session (fallback parity)
+                        if (
+                            paperSession?.currentStage === "completed" &&
+                            normalizedText.length > 0 &&
+                            /tool_code|sekarang kita masuk ke tahap|yaml-spec|```yaml/i.test(normalizedText)
+                        ) {
+                            persistedContent = "Semua tahap penyusunan makalah sudah selesai dan disetujui.\n\nRiwayat percakapan di sidebar menyimpan artifact dari setiap tahap, mulai dari gagasan awal sampai pemilihan judul. Linimasa progres juga sudah penuh, menandakan seluruh tahapan penyusunan makalah telah terlewati."
+                            console.info("[PAPER][completed-guard][fallback] replaced corrupt/off-context model output with system-owned closing message")
                         }
 
                         // Server-owned fallback: lampiran "tidak ada" path (fallback parity)
