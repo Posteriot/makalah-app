@@ -826,7 +826,7 @@ ${sourcesJson}`
                 return [{ role: "system" as const, content:
                     "COMPLETED SESSION — FOLLOW-UP OVERRIDE:\n" +
                     "The paper is completed. If the user asks a follow-up question, answer it.\n" +
-                    "You MAY use readArtifact to show artifact content if the user asks to see it.\n" +
+                    "When the user asks to see/show/view an existing artifact, you MUST call readArtifact with the artifact ID from the artifact summaries above. Do NOT just describe the artifact in prose — call the tool so the artifact card appears in the UI.\n" +
                     "You MAY answer questions about artifacts, sidebar, progress, export.\n" +
                     "You MAY help with revision if the user explicitly asks to revise a stage.\n" +
                     "Keep answers concise. Do NOT output choice cards. Do NOT pretend the session is still in progress.\n" +

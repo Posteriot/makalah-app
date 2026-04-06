@@ -886,6 +886,7 @@ export function ChatWindow({
 
   const extractCreatedArtifacts = (uiMessage: UIMessage): CreatedArtifact[] => {
     const created: CreatedArtifact[] = []
+    const ARTIFACT_TOOL_TYPES = new Set(["tool-createArtifact", "tool-updateArtifact", "tool-readArtifact"])
 
     for (const part of uiMessage.parts ?? []) {
       if (!part || typeof part !== "object") continue
@@ -897,7 +898,7 @@ export function ChatWindow({
         result?: unknown
       }
 
-      if (maybeToolPart.type !== "tool-createArtifact") continue
+      if (!ARTIFACT_TOOL_TYPES.has(maybeToolPart.type as string)) continue
 
       const okState =
         maybeToolPart.state === "output-available" || maybeToolPart.state === "result"
@@ -906,14 +907,17 @@ export function ChatWindow({
       const maybeOutput = (maybeToolPart.output ?? maybeToolPart.result) as unknown as {
         success?: unknown
         artifactId?: unknown
+        newArtifactId?: unknown
         title?: unknown
       } | null
 
       if (!maybeOutput || maybeOutput.success !== true) continue
-      if (typeof maybeOutput.artifactId !== "string") continue
+      // updateArtifact returns newArtifactId (revised version), others use artifactId
+      const id = maybeOutput.newArtifactId ?? maybeOutput.artifactId
+      if (typeof id !== "string") continue
 
       created.push({
-        artifactId: maybeOutput.artifactId as Id<"artifacts">,
+        artifactId: id as Id<"artifacts">,
         title: typeof maybeOutput.title === "string" ? maybeOutput.title : undefined,
       })
     }

@@ -66,7 +66,7 @@ type AutoUserAction =
 type ArtifactSignal = {
     artifactId: Id<"artifacts">
     title: string
-    status: "created" | "updated"
+    status: "created" | "updated" | "read"
     version?: number
 }
 
@@ -326,6 +326,24 @@ export function MessageBubble({
                     title: typeof maybeOutput.title === "string" ? maybeOutput.title : fallbackTitle,
                     status: "updated",
                     ...(parsedVersion ? { version: parsedVersion } : {}),
+                })
+                continue
+            }
+
+            if (maybeToolPart.type === "tool-readArtifact") {
+                const maybeOutput = (maybeToolPart.output ?? maybeToolPart.result) as unknown as {
+                    success?: unknown
+                    artifactId?: unknown
+                    title?: unknown
+                } | null
+
+                if (!maybeOutput || maybeOutput.success !== true) continue
+                if (typeof maybeOutput.artifactId !== "string") continue
+
+                signals.push({
+                    artifactId: maybeOutput.artifactId as Id<"artifacts">,
+                    title: typeof maybeOutput.title === "string" ? maybeOutput.title : "Artifact",
+                    status: "read",
                 })
             }
         }

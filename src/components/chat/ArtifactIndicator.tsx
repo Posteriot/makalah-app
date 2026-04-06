@@ -8,7 +8,7 @@ import { useId } from "react"
 interface ArtifactIndicatorProps {
   artifactId: Id<"artifacts">
   title: string
-  status?: "created" | "updated"
+  status?: "created" | "updated" | "read"
   version?: number
   onSelect: (id: Id<"artifacts">) => void
 }
@@ -22,6 +22,7 @@ export function ArtifactIndicator({
 }: ArtifactIndicatorProps) {
   const hintId = useId()
   const isUpdated = status === "updated"
+  const isRead = status === "read"
 
   return (
     <button
@@ -33,7 +34,7 @@ export function ArtifactIndicator({
         "border-[color:var(--chat-border)] bg-[var(--chat-card)] hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-border)]",
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
       )}
-      aria-label={`${isUpdated ? "Buka artifak revisi" : "Buka artifak baru"}: ${title}`}
+      aria-label={`${isUpdated ? "Buka artifak revisi" : isRead ? "Buka artifak" : "Buka artifak baru"}: ${title}`}
       aria-describedby={hintId}
     >
       <div className="flex items-start gap-3">
