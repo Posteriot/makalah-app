@@ -1,22 +1,21 @@
-import { mutation } from "../_generated/server"
-import { v } from "convex/values"
-import { requireRole } from "../permissions"
+import { internalMutation } from "../_generated/server"
 import type { Id } from "../_generated/dataModel"
 
 /**
  * Migration: Wipe all stage skills and reseed with F1-F6 aligned versions.
  *
- * Run via: npx convex run migrations/wipeAndReseedStageSkills:wipeAll '{"requestorUserId":"<admin-user-id>"}'
- * Then:    npx convex run migrations/wipeAndReseedStageSkills:seedAll '{"requestorUserId":"<admin-user-id>"}'
+ * Run via: npx convex run migrations/wipeAndReseedStageSkills:wipeAll --prod
+ * Then:    npx convex run migrations/wipeAndReseedStageSkills:seedAll --prod
+ *
+ * These are internalMutations — not callable from client, only via CLI or internal actions.
  *
  * Step 1 (wipeAll): Deletes ALL rows from stageSkills, stageSkillVersions, stageSkillAuditLogs.
  * Step 2 (seedAll): Creates fresh skills with F1-F6 aligned content, published + activated.
  */
 
-export const wipeAll = mutation({
-    args: { requestorUserId: v.id("users") },
-    handler: async (ctx, args) => {
-        await requireRole(ctx.db, args.requestorUserId, "superadmin")
+export const wipeAll = internalMutation({
+    args: {},
+    handler: async (ctx) => {
         // Delete all versions first (FK to stageSkills)
         const versions = await ctx.db.query("stageSkillVersions").collect()
         for (const v of versions) {
@@ -42,7 +41,7 @@ export const wipeAll = mutation({
     },
 })
 
-const ADMIN_USER_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48" as any
+const ADMIN_USER_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48" as Id<"users">
 
 function getSkills(): Array<{
     stageScope: string
@@ -158,10 +157,9 @@ const DEFAULT_ALLOWED_TOOLS = [
     "submitStageForValidation",
 ]
 
-export const seedAll = mutation({
-    args: { requestorUserId: v.id("users") },
-    handler: async (ctx, args) => {
-        await requireRole(ctx.db, args.requestorUserId, "superadmin")
+export const seedAll = internalMutation({
+    args: {},
+    handler: async (ctx) => {
         const now = Date.now()
         const results: string[] = []
 
@@ -169,6 +167,7 @@ export const seedAll = mutation({
             // Create skill catalog
             const skillRefId = await ctx.db.insert("stageSkills", {
                 skillId: skill.skillId,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- stageScope is a valid union literal from getSkills()
                 stageScope: skill.stageScope as any,
                 name: skill.name,
                 description: skill.description,

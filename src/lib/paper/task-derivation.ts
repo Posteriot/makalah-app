@@ -1,5 +1,4 @@
 import {
-  STAGE_ORDER,
   getStageLabel,
   type PaperStageId,
 } from "../../../convex/paperSessions/constants"

@@ -861,6 +861,7 @@ export function ChatWindow({
 
     // Second pass: match recall messages to artifacts via metadata.recallArtifactId
     for (const msg of historyMessages) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex message metadata is loosely typed in history
       const recallArtifactId = (msg as any)?.metadata?.recallArtifactId as string | undefined
       if (!recallArtifactId) continue
 

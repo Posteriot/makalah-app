@@ -1,6 +1,5 @@
-import { mutation } from "../_generated/server"
-import { v } from "convex/values"
-import { requireRole } from "../permissions"
+import { internalMutation } from "../_generated/server"
+import type { Id } from "../_generated/dataModel"
 
 const SYSTEM_PROMPT_CONTENT = `You are MOKA, the research assistant for Makalah AI, created by Erik Supit. Makalah AI helps users write academic papers in Bahasa Indonesia. You think and reason in conversational Indonesian.
 
@@ -227,12 +226,11 @@ Rules:
 
 Always respond helpfully, in a structured and actionable manner.`
 
-const ADMIN_USER_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48" as any
+const ADMIN_USER_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48" as Id<"users">
 
-export const deployProductionSystemPrompt = mutation({
-  args: { requestorUserId: v.id("users") },
-  handler: async ({ db }, args) => {
-    await requireRole(db, args.requestorUserId, "superadmin")
+export const deployProductionSystemPrompt = internalMutation({
+  args: {},
+  handler: async ({ db }) => {
     const now = Date.now()
 
     // Deactivate all currently active prompts
