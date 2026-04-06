@@ -57,6 +57,7 @@ interface ConversationArtifact {
   messageId?: Id<"messages">
   parentId?: Id<"artifacts">
   type: string
+  isRecall?: boolean
 }
 
 type ChatSourceForSheet = {
@@ -855,6 +856,21 @@ export function ChatWindow({
           map.set(msg._id, existing)
           break
         }
+      }
+    }
+
+    // Second pass: match recall messages to artifacts via metadata.recallArtifactId
+    for (const msg of historyMessages) {
+      const recallArtifactId = (msg as any)?.metadata?.recallArtifactId as string | undefined
+      if (!recallArtifactId) continue
+
+      const artifact = conversationArtifacts.find(a => a._id === recallArtifactId)
+      if (!artifact) continue
+
+      const existing = map.get(msg._id) ?? []
+      if (!existing.some(a => a._id === recallArtifactId)) {
+        existing.push({ ...artifact, isRecall: true })
+        map.set(msg._id, existing)
       }
     }
 

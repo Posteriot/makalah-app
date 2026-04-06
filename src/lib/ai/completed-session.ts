@@ -1,4 +1,6 @@
-export type CompletedSessionHandling = "short_circuit_closing" | "allow_normal_ai"
+import type { PaperStageId } from "../../../convex/paperSessions/constants"
+
+export type CompletedSessionHandling = "short_circuit_closing" | "allow_normal_ai" | "server_owned_artifact_recall"
 
 export interface CompletedSessionDecision {
     handling: CompletedSessionHandling
@@ -17,6 +19,79 @@ const INFORMATIONAL_PATTERN =
 const CONTINUE_LIKE_PATTERN =
     /^(lanjut|oke?|ya|setuju|ok|next|done|selesai|yes|yep|yap|sip|gas|mantap|ayo|go|continue)$/i
 
+// ── Artifact recall detection ──
+// Requires BOTH a display/show verb AND an artifact/stage target.
+const RECALL_DISPLAY_VERB = /\b(lihat|tampilkan|munculkan|buka|tunjukkan|perlihatkan|show|open|display)\b/i
+const RECALL_ARTIFACT_TARGET = /\b(artifact|artefak|gagasan|topik|outline|abstrak|pendahuluan|tinjauan.?literatur|metodologi|hasil|diskusi|kesimpulan|pembaruan.?abstrak|daftar.?pustaka|lampiran|judul)\b/i
+// Question-form exclusion: if the input starts with a question word, it's informational, not recall.
+const RECALL_QUESTION_EXCLUSION = /^(di\s*mana|bagaimana|apa\b|apakah|kenapa|mengapa)/i
+
+/**
+ * Check if user input is an explicit artifact recall request.
+ * Requires display verb + artifact/stage target, excludes question forms.
+ */
+export function isArtifactRecallRequest(input: string): boolean {
+    const normalized = input.trim()
+    if (!normalized) return false
+    if (RECALL_QUESTION_EXCLUSION.test(normalized)) return false
+    return RECALL_DISPLAY_VERB.test(normalized) && RECALL_ARTIFACT_TARGET.test(normalized)
+}
+
+// ── Router reason recall hint ──
+// Secondary semantic signal from the LLM router's reason text.
+// Requires "artifact" + a retrieval verb in the reason string.
+// NEVER used alone — always gated by question-form exclusion on user input.
+const REASON_ARTIFACT_PATTERN = /\bartifact\b/i
+const REASON_RETRIEVAL_PATTERN = /\b(retrieve|re-?display|display|show|previously generated artifact|existing artifact)\b/i
+
+/**
+ * Check if the router reason text hints at artifact retrieval intent.
+ * This is a secondary signal — must be combined with user input guards.
+ */
+export function isArtifactRecallReason(reason: string): boolean {
+    if (!reason) return false
+    return REASON_ARTIFACT_PATTERN.test(reason) && REASON_RETRIEVAL_PATTERN.test(reason)
+}
+
+/**
+ * Resolve which stage the user wants to recall an artifact from.
+ * Returns null if ambiguous (e.g., "lihat artifact" without a stage name).
+ */
+export function resolveRecallTargetStage(input: string): PaperStageId | null {
+    const normalized = input.trim().toLowerCase()
+
+    // Check compound names first (must come before single-word checks)
+    const compoundMap: Array<[RegExp, PaperStageId]> = [
+        [/tinjauan.?literatur/, "tinjauan_literatur"],
+        [/pembaruan.?abstrak/, "pembaruan_abstrak"],
+        [/daftar.?pustaka/, "daftar_pustaka"],
+    ]
+    for (const [pattern, stageId] of compoundMap) {
+        if (pattern.test(normalized)) return stageId
+    }
+
+    // Single-word stage names
+    const singleMap: Array<[string, PaperStageId]> = [
+        ["gagasan", "gagasan"],
+        ["topik", "topik"],
+        ["outline", "outline"],
+        ["abstrak", "abstrak"],
+        ["pendahuluan", "pendahuluan"],
+        ["metodologi", "metodologi"],
+        ["hasil", "hasil"],
+        ["diskusi", "diskusi"],
+        ["kesimpulan", "kesimpulan"],
+        ["lampiran", "lampiran"],
+        ["judul", "judul"],
+    ]
+    for (const [keyword, stageId] of singleMap) {
+        if (new RegExp(`\\b${keyword}\\b`).test(normalized)) return stageId
+    }
+
+    // "artifact" or "artefak" mentioned but no stage name → ambiguous
+    return null
+}
+
 /**
  * Resolve how a completed-session user message should be handled.
  *
@@ -26,10 +101,11 @@ const CONTINUE_LIKE_PATTERN =
  */
 export function resolveCompletedSessionHandling(args: {
     routerIntent?: string
+    routerReason?: string
     lastUserContent: string
     hasChoiceInteractionEvent?: boolean
 }): CompletedSessionDecision {
-    const { routerIntent, lastUserContent, hasChoiceInteractionEvent } = args
+    const { routerIntent, routerReason, lastUserContent, hasChoiceInteractionEvent } = args
     const normalized = typeof lastUserContent === "string" ? lastUserContent.trim() : ""
 
     // ── Router intent path (primary) ──
@@ -47,6 +123,27 @@ export function resolveCompletedSessionHandling(args: {
             routerIntent === "search" ||
             routerIntent === "compile_daftar_pustaka"
         ) {
+            // Within discussion intent, check for artifact recall requests.
+            // Two signals: (1) regex on user input, (2) router reason semantic hint.
+            // Both are gated by question-form exclusion to prevent false positives.
+            if (routerIntent === "discussion" && !RECALL_QUESTION_EXCLUSION.test(normalized)) {
+                if (isArtifactRecallRequest(normalized)) {
+                    return {
+                        handling: "server_owned_artifact_recall",
+                        source: "router_intent",
+                        reason: "artifact_recall",
+                    }
+                }
+                // Secondary: router reason hints at artifact retrieval
+                // Only when user input mentions an artifact/stage target (not bare questions)
+                if (routerReason && isArtifactRecallReason(routerReason) && RECALL_ARTIFACT_TARGET.test(normalized)) {
+                    return {
+                        handling: "server_owned_artifact_recall",
+                        source: "router_intent",
+                        reason: "artifact_recall_from_reason",
+                    }
+                }
+            }
             return {
                 handling: "allow_normal_ai",
                 source: "router_intent",
@@ -70,6 +167,15 @@ export function resolveCompletedSessionHandling(args: {
             handling: "short_circuit_closing",
             source: "fallback_heuristic",
             reason: "choice_interaction_event",
+        }
+    }
+
+    // Artifact recall requests → server-owned recall
+    if (isArtifactRecallRequest(normalized)) {
+        return {
+            handling: "server_owned_artifact_recall",
+            source: "fallback_heuristic",
+            reason: "artifact_recall",
         }
     }
 

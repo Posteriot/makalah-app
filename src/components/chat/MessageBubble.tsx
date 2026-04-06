@@ -63,7 +63,7 @@ type AutoUserAction =
     }
     | null;
 
-type ArtifactSignal = {
+export type ArtifactSignal = {
     artifactId: Id<"artifacts">
     title: string
     status: "created" | "updated" | "read"
@@ -71,11 +71,23 @@ type ArtifactSignal = {
 }
 
 /** Persisted artifact from Convex (for post-refresh signal reconstruction) */
-interface PersistedArtifact {
+export interface PersistedArtifact {
     _id: Id<"artifacts">
     title: string
     version: number
     parentId?: Id<"artifacts">
+    isRecall?: boolean
+}
+
+/** Map persisted artifacts to ArtifactSignal[] for post-refresh rendering.
+ *  Exported for testing. */
+export function mapPersistedToSignals(artifacts: PersistedArtifact[]): ArtifactSignal[] {
+    return artifacts.map((a) => ({
+        artifactId: a._id,
+        title: a.title,
+        status: a.isRecall ? "read" as const : a.parentId ? "updated" as const : "created" as const,
+        ...(a.version > 1 ? { version: a.version } : {}),
+    }))
 }
 
 type ChatSource = {
@@ -817,12 +829,7 @@ export function MessageBubble({
     const liveArtifactSignals = extractArtifactSignals(message)
     const artifactSignals: ArtifactSignal[] = liveArtifactSignals.length > 0
         ? liveArtifactSignals
-        : (persistedArtifacts ?? []).map((a) => ({
-            artifactId: a._id,
-            title: a.title,
-            status: a.parentId ? "updated" as const : "created" as const,
-            ...(a.version > 1 ? { version: a.version } : {}),
-        }))
+        : mapPersistedToSignals(persistedArtifacts ?? [])
     const inProgressTools = extractInProgressTools(message)
     const dedupedInProgressTools = inProgressTools.filter((tool, index, allTools) => {
         const normalizedErrorText = (tool.errorText ?? "").trim().toLowerCase() || "__no_error__"

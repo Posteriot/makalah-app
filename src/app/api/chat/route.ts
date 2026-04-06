@@ -18,7 +18,7 @@ import { createPaperTools, createPaperToolTracker } from "@/lib/ai/paper-tools"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
-import { resolveCompletedSessionHandling, getCompletedSessionClosingMessage } from "@/lib/ai/completed-session"
+import { resolveCompletedSessionHandling, getCompletedSessionClosingMessage, resolveRecallTargetStage } from "@/lib/ai/completed-session"
 import { ACTIVE_SEARCH_STAGES, PASSIVE_SEARCH_STAGES } from "@/lib/ai/stage-skill-contracts"
 import { getStageLabel, type PaperStageId } from "../../../../convex/paperSessions/constants"
 import {
@@ -826,7 +826,8 @@ ${sourcesJson}`
                 return [{ role: "system" as const, content:
                     "COMPLETED SESSION — FOLLOW-UP OVERRIDE:\n" +
                     "The paper is completed. If the user asks a follow-up question, answer it.\n" +
-                    "When the user asks to see/show/view an existing artifact, you MUST call readArtifact with the artifact ID from the artifact summaries above. Do NOT just describe the artifact in prose — call the tool so the artifact card appears in the UI.\n" +
+                    "Artifact re-display requests are handled by the system before reaching you.\n" +
+                    "For informational or revision follow-up questions that do reach you, answer concisely. You may use readArtifact only when you need to inspect artifact content for answering a question.\n" +
                     "You MAY answer questions about artifacts, sidebar, progress, export.\n" +
                     "You MAY help with revision if the user explicitly asks to revise a stage.\n" +
                     "Keep answers concise. Do NOT output choice cards. Do NOT pretend the session is still in progress.\n" +
@@ -2194,6 +2195,7 @@ Aturan:
             if (paperSession?.currentStage === "completed") {
                 const completedDecision = resolveCompletedSessionHandling({
                     routerIntent: routerIntentType,
+                    routerReason: activeStageSearchReason || undefined,
                     lastUserContent: normalizedLastUserContent,
                     hasChoiceInteractionEvent: !!choiceInteractionEvent,
                 })
@@ -2231,6 +2233,159 @@ Aturan:
                             writer.write({ type: "start", messageId })
                             writer.write({ type: "text-start", id: textId })
                             writer.write({ type: "text-delta", id: textId, delta: completedClosingMessage })
+                            writer.write({ type: "text-end", id: textId })
+                            writer.write({ type: "finish", finishReason: "stop" })
+                        },
+                    })
+
+                    return createUIMessageStreamResponse({ stream })
+                }
+
+                if (completedDecision.handling === "server_owned_artifact_recall") {
+                    // Resolve target stage from user text
+                    const targetStage = resolveRecallTargetStage(normalizedLastUserContent)
+                    const stageData = paperSession.stageData as Record<string, Record<string, unknown> | undefined> | undefined
+                    const targetArtifactId = targetStage
+                        ? (stageData?.[targetStage]?.artifactId as string | undefined)
+                        : undefined
+
+                    if (targetArtifactId) {
+                        // Fetch artifact data
+                        const artifact = await retryQuery(
+                            () => fetchQueryWithToken(api.artifacts.get, {
+                                artifactId: targetArtifactId as Id<"artifacts">,
+                                userId: userId as Id<"users">,
+                            }),
+                            "artifacts.get(completed-recall)"
+                        )
+
+                        if (!artifact) {
+                            // Artifact exists in stageData but missing from DB (deleted/corrupted)
+                            console.warn(`[PAPER][completed-recall] artifact ${targetArtifactId} not found in DB for stage=${targetStage}`)
+
+                            const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                            const notFoundText = `Artifact untuk tahap ${getStageLabel(targetStage!).toLowerCase()} tidak ditemukan. Kemungkinan sudah dihapus atau belum tersedia.`
+                            const textId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-text`
+
+                            await retryMutation(
+                                () => fetchMutationWithToken(api.messages.createMessage, {
+                                    conversationId: currentConversationId as Id<"conversations">,
+                                    role: "assistant",
+                                    content: notFoundText,
+                                    metadata: {
+                                        model: "system-completed-recall",
+                                        uiMessageId: messageId,
+                                    },
+                                    uiMessageId: messageId,
+                                }),
+                                "messages.createMessage(assistant-completed-recall-notfound)"
+                            )
+
+                            const stream = createUIMessageStream({
+                                execute: async ({ writer }) => {
+                                    writer.write({ type: "start", messageId })
+                                    writer.write({ type: "text-start", id: textId })
+                                    writer.write({ type: "text-delta", id: textId, delta: notFoundText })
+                                    writer.write({ type: "text-end", id: textId })
+                                    writer.write({ type: "finish", finishReason: "stop" })
+                                },
+                            })
+
+                            return createUIMessageStreamResponse({ stream })
+                        }
+
+                        if (artifact) {
+                            console.info(`[PAPER][completed-recall] targetStage=${targetStage} artifactId=${targetArtifactId}`)
+
+                            const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                            const stageLabel = getStageLabel(targetStage!)
+                            const proseText = `Menampilkan kembali artifact ${stageLabel.toLowerCase()}.`
+                            const toolCallId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-tool`
+                            const textId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-text`
+
+                            // Persist prose to DB
+                            await retryMutation(
+                                () => fetchMutationWithToken(api.messages.createMessage, {
+                                    conversationId: currentConversationId as Id<"conversations">,
+                                    role: "assistant",
+                                    content: proseText,
+                                    metadata: {
+                                        model: "system-completed-recall",
+                                        uiMessageId: messageId,
+                                        recallArtifactId: artifact._id,
+                                    },
+                                    uiMessageId: messageId,
+                                }),
+                                "messages.createMessage(assistant-completed-recall)"
+                            )
+
+                            // Build tool output matching readArtifact shape
+                            const toolOutput = {
+                                success: true,
+                                artifactId: artifact._id,
+                                title: artifact.title,
+                                type: artifact.type,
+                                version: artifact.version,
+                                content: artifact.content,
+                                format: artifact.format ?? null,
+                                sources: artifact.sources ?? [],
+                                createdAt: artifact.createdAt,
+                            }
+
+                            // Stream: prose + tool-readArtifact simulation
+                            const stream = createUIMessageStream({
+                                execute: async ({ writer }) => {
+                                    writer.write({ type: "start", messageId })
+                                    // Text part
+                                    writer.write({ type: "text-start", id: textId })
+                                    writer.write({ type: "text-delta", id: textId, delta: proseText })
+                                    writer.write({ type: "text-end", id: textId })
+                                    // Tool simulation: input + output
+                                    writer.write({
+                                        type: "tool-input-available",
+                                        toolCallId,
+                                        toolName: "readArtifact",
+                                        input: { artifactId: targetArtifactId },
+                                    })
+                                    writer.write({
+                                        type: "tool-output-available",
+                                        toolCallId,
+                                        output: toolOutput,
+                                    })
+                                    writer.write({ type: "finish", finishReason: "stop" })
+                                },
+                            })
+
+                            return createUIMessageStreamResponse({ stream })
+                        }
+                    }
+
+                    // Fallback: target unresolvable — system-owned clarification
+                    console.info(`[PAPER][completed-recall] unresolved target for request="${normalizedLastUserContent.slice(0, 80)}"`)
+
+                    const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                    const clarificationText = "Saya belum bisa menentukan artifact yang dimaksud. Sebutkan tahapnya, misalnya: judul, abstrak, pendahuluan, atau lampiran."
+                    const textId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-text`
+
+                    await retryMutation(
+                        () => fetchMutationWithToken(api.messages.createMessage, {
+                            conversationId: currentConversationId as Id<"conversations">,
+                            role: "assistant",
+                            content: clarificationText,
+                            metadata: {
+                                model: "system-completed-recall",
+                                uiMessageId: messageId,
+                            },
+                            uiMessageId: messageId,
+                        }),
+                        "messages.createMessage(assistant-completed-recall-clarify)"
+                    )
+
+                    const stream = createUIMessageStream({
+                        execute: async ({ writer }) => {
+                            writer.write({ type: "start", messageId })
+                            writer.write({ type: "text-start", id: textId })
+                            writer.write({ type: "text-delta", id: textId, delta: clarificationText })
                             writer.write({ type: "text-end", id: textId })
                             writer.write({ type: "finish", finishReason: "stop" })
                         },

@@ -121,6 +121,8 @@ export const createMessage = mutation({
             uiMessageId: v.optional(v.string()),
             // Legacy V1 interaction data (backward compat for existing documents)
             interaction: v.optional(v.any()),
+            // Artifact ID recalled in completed-session flow (persists artifact card across refresh)
+            recallArtifactId: v.optional(v.string()),
         })),
         sources: v.optional(v.array(v.object({
             url: v.string(),
