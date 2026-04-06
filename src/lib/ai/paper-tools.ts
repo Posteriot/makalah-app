@@ -35,6 +35,8 @@ const buildExactAvailability = (document: ExactSourceDocument | null) => ({
 export type PaperToolTracker = {
     sawUpdateStageData: boolean
     sawCreateArtifactSuccess: boolean
+    sawUpdateArtifactSuccess: boolean
+    sawCompileDaftarPustakaPersist: boolean
     sawSubmitValidationSuccess: boolean
     sawSubmitValidationArtifactMissing: boolean
 }
@@ -42,6 +44,8 @@ export type PaperToolTracker = {
 export const createPaperToolTracker = (): PaperToolTracker => ({
     sawUpdateStageData: false,
     sawCreateArtifactSuccess: false,
+    sawUpdateArtifactSuccess: false,
+    sawCompileDaftarPustakaPersist: false,
     sawSubmitValidationSuccess: false,
     sawSubmitValidationArtifactMissing: false,
 })
@@ -376,6 +380,10 @@ The tool will:
                         return `${i + 1}. ${entry.title}. ${yearPart}${urlPart}`;
                     });
 
+                    const stageDataMap = session.stageData as Record<string, Record<string, unknown> | undefined> | undefined;
+                    const hasExistingArtifact = !!stageDataMap?.[stage]?.artifactId;
+                    if (context.toolTracker) context.toolTracker.sawCompileDaftarPustakaPersist = true
+
                     return {
                         success: true,
                         mode: "persist" as const,
@@ -386,7 +394,9 @@ The tool will:
                         duplicatesMerged: compileResult.compiled.duplicatesMerged,
                         formattedEntries,
                         ...(warnings.length > 0 ? { warning: warnings.join(" | ") } : {}),
-                        nextAction: "⚠️ MANDATORY: Bibliography is compiled. You MUST call createArtifact() NOW in this same response. Join the formattedEntries array with newlines (one entry per line) to build the artifact content. AFTER createArtifact, MUST call submitStageForValidation(). Do NOT stop here. Do NOT call compileDaftarPustaka again.",
+                        nextAction: hasExistingArtifact
+                            ? "⚠️ MANDATORY: Bibliography is compiled. You MUST call updateArtifact() NOW in this same response using the existing artifact. Join formattedEntries with newlines to build updated content. AFTER updateArtifact, MUST call submitStageForValidation(). Do NOT mention technical issues or retries to the user. Do NOT call compileDaftarPustaka again."
+                            : "⚠️ MANDATORY: Bibliography is compiled. You MUST call createArtifact() NOW in this same response. Join formattedEntries with newlines to build the artifact content. AFTER createArtifact, MUST call submitStageForValidation(). Do NOT mention technical issues or retries to the user. Do NOT call compileDaftarPustaka again.",
                     };
                 } catch (error) {
                     console.error("Error in compileDaftarPustaka tool:", error);

@@ -1626,6 +1626,7 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                         )
 
                         console.log("[F1-F6-TEST] updateArtifact", { stage: paperSession?.currentStage, artifactId })
+                        if (paperToolTracker) paperToolTracker.sawUpdateArtifactSuccess = true
                         return {
                             success: true,
                             newArtifactId: result.artifactId,
@@ -2514,6 +2515,36 @@ Aturan:
                             }
                         }
 
+                        // Daftar pustaka observability
+                        if (paperStageScope === "daftar_pustaka" && normalizedText.length > 0) {
+                            if (
+                                paperToolTracker.sawCompileDaftarPustakaPersist &&
+                                !paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawUpdateArtifactSuccess
+                            ) {
+                                console.warn("[DAFTAR_PUSTAKA][compiled-but-no-artifact] persist compilation succeeded but no artifact tool followed.")
+                            }
+                            if (
+                                /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki/i.test(normalizedText) &&
+                                (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess)
+                            ) {
+                                console.warn("[PAPER][nonfatal-error-leakage] response exposed internal failure narration even though artifact was created successfully.")
+                            }
+                            if (
+                                paperSession?.stageStatus === "revision" &&
+                                paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawUpdateArtifactSuccess
+                            ) {
+                                console.warn("[DAFTAR_PUSTAKA][revision-create-instead-of-update] revision turn created new artifact instead of updating existing one.")
+                            }
+                            if (
+                                (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess) &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[DAFTAR_PUSTAKA][artifact-without-submit] artifact created/updated but submitStageForValidation was not called.")
+                            }
+                        }
+
                         if (normalizedText.length > 0 && sources && sources.length > 0) {
                             sources = await enrichSourcesWithFetchedTitles(sources, {
                                 concurrency: 4,
@@ -2925,6 +2956,36 @@ Aturan:
                                 !paperToolTracker.sawCreateArtifactSuccess
                             ) {
                                 console.warn("[HASIL][prose-leakage][fallback] post-choice response previewed draft content in chat before artifact creation.")
+                            }
+                        }
+
+                        // Daftar pustaka observability (fallback path)
+                        if (paperStageScope === "daftar_pustaka" && normalizedText.length > 0) {
+                            if (
+                                paperToolTracker.sawCompileDaftarPustakaPersist &&
+                                !paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawUpdateArtifactSuccess
+                            ) {
+                                console.warn("[DAFTAR_PUSTAKA][compiled-but-no-artifact][fallback] persist compilation succeeded but no artifact tool followed.")
+                            }
+                            if (
+                                /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki/i.test(normalizedText) &&
+                                (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess)
+                            ) {
+                                console.warn("[PAPER][nonfatal-error-leakage][fallback] response exposed internal failure narration even though artifact was created successfully.")
+                            }
+                            if (
+                                paperSession?.stageStatus === "revision" &&
+                                paperToolTracker.sawCreateArtifactSuccess &&
+                                !paperToolTracker.sawUpdateArtifactSuccess
+                            ) {
+                                console.warn("[DAFTAR_PUSTAKA][revision-create-instead-of-update][fallback] revision turn created new artifact instead of updating existing one.")
+                            }
+                            if (
+                                (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess) &&
+                                !paperToolTracker.sawSubmitValidationSuccess
+                            ) {
+                                console.warn("[DAFTAR_PUSTAKA][artifact-without-submit][fallback] artifact created/updated but submitStageForValidation was not called.")
                             }
                         }
 

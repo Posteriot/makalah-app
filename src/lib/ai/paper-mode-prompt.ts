@@ -258,7 +258,7 @@ export const getPaperModeSystemPrompt = async (
 
         // Inline revision context (simple, not over-prescriptive)
         const revisionNote = status === "revision"
-            ? "\n⚠️ REVISION MODE: User requested changes. Pay attention to their feedback in the latest message.\n"
+            ? "\n⚠️ REVISION MODE: User requested changes. Pay attention to their feedback in the latest message. If an artifact already exists for this stage, prefer updateArtifact over createArtifact. After revising, call submitStageForValidation again in the same turn.\n"
             : "";
 
         // Inline pending validation note
@@ -321,6 +321,7 @@ GENERAL RULES:
   - Review stages (all others): createArtifact EARLY as v1 working draft in the SAME TURN as updateStageData. Use updateArtifact for revisions (v2, v3...). Chat should contain brief summary + pointer to artifact, NOT the full draft text repeated in chat.
   - Include 'sources' from AVAILABLE_WEB_SOURCES if available.
   - Do NOT prefix artifact titles with "Draf" or "Draft" — artifacts ARE the stage output.
+- INTERNAL FAILURE POLICY: Do NOT expose tool retries, internal repair attempts, partial backend failures, or technical diagnostics to the user if the final workflow succeeds. Only mention an error when the turn cannot complete and the user must take action. If a tool fails but a later retry/recovery succeeds, present only the successful final outcome.
 - For artifacts, MUST use references already stored in stageData (see context below)
 - FORBIDDEN to introduce new references without web search first
 - submitStageForValidation():
