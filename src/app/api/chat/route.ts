@@ -1545,6 +1545,19 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                 }),
                 execute: async ({ type, title, content, format, description, sources }) => {
                     try {
+                        // Guard: block duplicate createArtifact in the same turn.
+                        // Model sometimes retries after wrong tool ordering triggers auto-rescue.
+                        if (paperToolTracker?.sawCreateArtifactSuccess) {
+                            console.log(`[create-artifact-blocked-duplicate] stage=${paperSession?.currentStage} — artifact already created this turn`);
+                            return {
+                                success: false,
+                                errorCode: "CREATE_BLOCKED_DUPLICATE_TURN",
+                                retryable: false,
+                                error: "An artifact was already created in this turn. Use updateArtifact to make changes to the existing artifact.",
+                                nextAction: "Call updateArtifact if content needs changes, or submitStageForValidation if not yet submitted.",
+                            }
+                        }
+
                         // Guard: block createArtifact when a valid artifact already exists (pending_validation OR revision).
                         // During revision, model should use updateArtifact to create v2/v3 — not createArtifact.
                         // createArtifact is only allowed as exceptional fallback when artifact is missing/invalidated.
