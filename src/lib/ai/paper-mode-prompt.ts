@@ -207,6 +207,7 @@ export const getPaperModeSystemPrompt = async (
 
         // Artifact summaries: non-critical — empty string on failure
         let artifactSummariesSection = "";
+        let currentArtifactContext = "";
         if (artifactsResult.status === "fulfilled") {
             try {
                 const allArtifacts = artifactsResult.value;
@@ -237,6 +238,24 @@ export const getPaperModeSystemPrompt = async (
                     }
                 }
                 artifactSummariesSection = formatArtifactSummaries(completedArtifacts);
+
+                // Current artifact context: inject full content during revision/pending_validation.
+                // The artifact summaries loop above skips the current stage (line 224) and requires
+                // validatedAt (line 226), so the artifact being revised is never visible to the model.
+                // This section bypasses both filters to give the model the content it needs to revise.
+                if (status === "revision" || status === "pending_validation") {
+                    const currentStageArtifactId = stageData[stage]?.artifactId;
+                    if (currentStageArtifactId) {
+                        const currentArtifact = artifactMap.get(currentStageArtifactId);
+                        if (currentArtifact) {
+                            currentArtifactContext = `\n📄 CURRENT ARTIFACT — this is the artifact you must revise (artifactId: ${currentStageArtifactId}, version: ${currentArtifact.version}, title: "${currentArtifact.title}"):
+---
+${currentArtifact.content}
+---
+Use updateArtifact with the FULL revised content based on user feedback. Do NOT regenerate from scratch unless explicitly asked.\n`;
+                        }
+                    }
+                }
             } catch (err) {
                 console.error("Error building artifact summaries:", err);
             }
@@ -310,7 +329,7 @@ When uncertain: ask ONLY if the difference between "discuss" vs "revise" is trul
             ? "\n⚠️ SYNC CONTRACT: Stage data is not yet synced. If user asks to sync or continue from state, you MUST explain that the update cannot be finalized until the user requests a revision first.\n"
             : "";
 
-        console.log("[F1-F6-TEST] PaperPrompt", { stage, status, stageInstructionSource, activeSkillId: activeSkillId ?? "fallback", hasArtifactSummaries: !!artifactSummariesSection })
+        console.log("[F1-F6-TEST] PaperPrompt", { stage, status, stageInstructionSource, activeSkillId: activeSkillId ?? "fallback", hasArtifactSummaries: !!artifactSummariesSection, hasCurrentArtifact: !!currentArtifactContext })
         logPaperPromptLatency("paperPrompt.total", paperPromptStart, {
             hasPrompt: true,
             stage,
@@ -320,7 +339,7 @@ When uncertain: ask ONLY if the difference between "discuss" vs "revise" is trul
 ---
 [PAPER WRITING MODE]
 Tahap: ${stageLabel} (${stage}) | Status: ${status}
-${revisionNote}${pendingNote}${artifactMissingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}
+${revisionNote}${pendingNote}${currentArtifactContext}${artifactMissingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}
 GENERAL RULES:
 - STAGE MODES:
   - gagasan = discussion hub + proactive dual search (academic + non-academic)
