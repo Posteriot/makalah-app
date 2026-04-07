@@ -1508,8 +1508,10 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                 }),
                 execute: async ({ type, title, content, format, description, sources }) => {
                     try {
-                        if (paperSession?.stageStatus === "pending_validation") {
-                            // Check if a valid, accessible artifact exists in DB — not just stageData pointer
+                        // Guard: block createArtifact when a valid artifact already exists (pending_validation OR revision).
+                        // During revision, model should use updateArtifact to create v2/v3 — not createArtifact.
+                        // createArtifact is only allowed as exceptional fallback when artifact is missing/invalidated.
+                        if (paperSession?.stageStatus === "pending_validation" || paperSession?.stageStatus === "revision") {
                             const currentStageData = (paperSession.stageData as Record<string, Record<string, unknown>>)?.[paperSession.currentStage];
                             const existingArtifactId = currentStageData?.artifactId as string | undefined;
 
@@ -1520,16 +1522,14 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                                         artifactId: existingArtifactId as Id<"artifacts">,
                                         userId: userId as Id<"users">,
                                     });
-                                    // Artifact is valid if it exists in DB AND is not invalidated
                                     artifactIsValid = !!existingArtifact && !existingArtifact.invalidatedAt;
                                 } catch {
-                                    // DB lookup failed — treat as invalid/missing
                                     artifactIsValid = false;
                                 }
                             }
 
                             if (artifactIsValid) {
-                                console.log(`[create-artifact-blocked-valid-exists] stage=${paperSession.currentStage} artifactId=${existingArtifactId}`);
+                                console.log(`[create-artifact-blocked-valid-exists] stage=${paperSession.currentStage} stageStatus=${paperSession.stageStatus} artifactId=${existingArtifactId}`);
                                 return {
                                     success: false,
                                     errorCode: "CREATE_BLOCKED_VALID_EXISTS",
@@ -1539,30 +1539,32 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                                 }
                             }
 
-                            // Artifact missing, invalidated, or inaccessible — allow createArtifact as fallback
-                            // Auto-rescue via autoRescueRevision (NOT requestRevision — preserves trigger provenance)
-                            try {
-                                const rescueResult = await fetchMutationWithToken(api.paperSessions.autoRescueRevision, {
-                                    sessionId: paperSession._id,
-                                    userId: userId as Id<"users">,
-                                    source: "createArtifact",
-                                });
-                                if (rescueResult.rescued) {
-                                    console.log(`[create-artifact-fallback-no-valid] stage=${paperSession.currentStage} — auto-rescued, proceeding with createArtifact`);
-                                    const refreshed = await fetchQueryWithToken(api.paperSessions.getByConversation, {
-                                        conversationId: currentConversationId
+                            // Artifact missing/invalidated/inaccessible — allow createArtifact as exceptional fallback.
+                            // Auto-rescue only for pending_validation (revision is already correct state).
+                            if (paperSession.stageStatus === "pending_validation") {
+                                try {
+                                    const rescueResult = await fetchMutationWithToken(api.paperSessions.autoRescueRevision, {
+                                        sessionId: paperSession._id,
+                                        userId: userId as Id<"users">,
+                                        source: "createArtifact",
                                     });
-                                    if (refreshed) Object.assign(paperSession, refreshed);
+                                    if (rescueResult.rescued) {
+                                        console.log(`[create-artifact-fallback-no-valid] stage=${paperSession.currentStage} — auto-rescued, proceeding with createArtifact`);
+                                        const refreshed = await fetchQueryWithToken(api.paperSessions.getByConversation, {
+                                            conversationId: currentConversationId
+                                        });
+                                        if (refreshed) Object.assign(paperSession, refreshed);
+                                    }
+                                } catch (autoRescueError) {
+                                    console.error("[createArtifact] Auto-rescue failed:", autoRescueError);
+                                    return {
+                                        success: false,
+                                        errorCode: "AUTO_RESCUE_FAILED",
+                                        retryable: true,
+                                        error: "Failed to auto-transition stage to revision. Try calling requestRevision explicitly first.",
+                                        nextAction: "Call requestRevision(feedback) first, then retry createArtifact.",
+                                    };
                                 }
-                            } catch (autoRescueError) {
-                                console.error("[createArtifact] Auto-rescue failed:", autoRescueError);
-                                return {
-                                    success: false,
-                                    errorCode: "AUTO_RESCUE_FAILED",
-                                    retryable: true,
-                                    error: "Failed to auto-transition stage to revision. Try calling requestRevision explicitly first.",
-                                    nextAction: "Call requestRevision(feedback) first, then retry createArtifact.",
-                                };
                             }
                         }
 
