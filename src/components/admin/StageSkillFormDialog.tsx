@@ -247,9 +247,7 @@ export function StageSkillFormDialog({
         reason: deleteDraftReason.trim(),
       })
       toast.success(result.message)
-      setShowDeleteDraft(false)
-      setDeleteDraftReason("")
-      onClose()
+      handleCloseDialog()
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Hapus draft gagal")
     } finally {
@@ -284,7 +282,7 @@ export function StageSkillFormDialog({
         changeNote: changeNote.trim() || undefined,
       })
       toast.success(result.message ?? "Draft stage skill tersimpan.")
-      onClose()
+      handleCloseDialog()
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Gagal menyimpan draft stage skill.")
     } finally {
@@ -292,8 +290,14 @@ export function StageSkillFormDialog({
     }
   }
 
+  const handleCloseDialog = () => {
+    setShowDeleteDraft(false)
+    setDeleteDraftReason("")
+    onClose()
+  }
+
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleCloseDialog()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>
@@ -429,7 +433,7 @@ export function StageSkillFormDialog({
               <div />
             )}
             <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={isSubmitting}>
                 Batal
               </Button>
               <Button type="submit" disabled={!canSubmit}>
