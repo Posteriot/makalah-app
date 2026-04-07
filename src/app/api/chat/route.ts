@@ -2644,6 +2644,8 @@ Aturan:
             shouldForceGetCurrentPaperState = !enableWebSearch
                 && !!paperModePrompt
                 && isSyncRequest
+                && paperSession?.stageStatus !== "pending_validation"
+                && paperSession?.stageStatus !== "revision"
 
             // Force submit validation when user explicitly requests save/submit
             shouldForceSubmitValidation = !enableWebSearch
