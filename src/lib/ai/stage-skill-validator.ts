@@ -119,6 +119,20 @@ function hasDangerousOverridePhrase(content: string): boolean {
     return matched.length > 0;
 }
 
+function hasVisualLanguageContract(content: string): boolean {
+    return /interactive choice card/i.test(content) && /PaperValidationPanel/i.test(content);
+}
+
+function hasChoiceCardContradiction(content: string): boolean {
+    const contradictoryPatterns = [
+        /\bno choice card decision point needed\b/i,
+        /\bdo not use choice cards for content decisions\b/i,
+        /\bdisallowed:\s*[\s\S]*emitChoiceCard\b/i,
+    ];
+
+    return contradictoryPatterns.some((pattern) => pattern.test(content));
+}
+
 export function validateStageSkillContent(input: StageSkillValidationInput): StageSkillValidationResult {
     const issues: ValidationIssue[] = [];
     const content = input.content.trim();
@@ -192,6 +206,20 @@ export function validateStageSkillContent(input: StageSkillValidationInput): Sta
         issues.push({
             code: "forbidden_phrase_detected",
             message: "Konten skill mengandung instruksi override guard runtime (stage lock/tool routing/submit guard).",
+        });
+    }
+
+    if (!hasVisualLanguageContract(content)) {
+        issues.push({
+            code: "missing_visual_language_contract",
+            message: `Stage "${input.stageScope}" wajib mendeklarasikan kontrak visual language (interactive choice card + PaperValidationPanel boundary).`,
+        });
+    }
+
+    if (hasChoiceCardContradiction(content)) {
+        issues.push({
+            code: "choice_card_contract_violation",
+            message: `Stage "${input.stageScope}" mengandung instruksi yang menonaktifkan atau menabrak kontrak choice card.`,
         });
     }
 

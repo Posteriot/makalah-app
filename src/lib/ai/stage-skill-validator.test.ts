@@ -43,6 +43,10 @@ Never fabricate references and never skip user confirmation before submit.
 
 ## Done Criteria
 Stage draft is agreed, artifact is created, and draft is ready for validation.
+
+## Visual Language
+Use the interactive choice card when showing options is clearer than prose.
+Never replace the PaperValidationPanel for approval or stage transitions.
 `
 
 describe("validateStageSkillContent", () => {
@@ -103,6 +107,68 @@ describe("validateStageSkillContent", () => {
 
     expect(result.ok).toBe(false)
     expect(result.issues.some((issue) => issue.code === "missing_create_artifact_in_function_tools")).toBe(true)
+  })
+
+  it("rejects content that disables choice cards for direct-generate stages", () => {
+    const result = validateStageSkillContent({
+      stageScope: "diskusi",
+      skillId: "diskusi-skill",
+      name: "diskusi-skill",
+      description: "Stage instruction for diskusi in Makalah AI paper workflow.",
+      content: `
+## Objective
+Interpret findings with literature.
+
+## Input Context
+Read approved hasil and tinjauan literatur.
+
+## Web Search
+Policy: passive.
+Only search on explicit request.
+
+## Function Tools
+Allowed:
+- updateStageData — save stage progress
+- createArtifact — create stage output artifact
+- submitStageForValidation — submit for user approval
+- compileDaftarPustaka (mode: preview) — bibliography audit
+Disallowed:
+- emitChoiceCard — this is a direct-generate stage; no choice card decision point needed
+
+## Output Contract
+Required:
+- interpretasiTemuan
+
+## Guardrails
+Do NOT use choice cards for content decisions.
+
+## Done Criteria
+Artifact is ready for validation.
+
+## Visual Language
+Use the interactive choice card when showing options is clearer than prose.
+Never replace the PaperValidationPanel for approval or stage transitions.
+`,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.issues.some((issue) => issue.code === "choice_card_contract_violation")).toBe(true)
+  })
+
+  it("rejects content missing the visual language contract", () => {
+    const result = validateStageSkillContent({
+      stageScope: "topik",
+      skillId: "topik-skill",
+      name: "topik-skill",
+      description: "Stage instruction for topik in Makalah AI paper workflow.",
+      content: VALID_GAGASAN_CONTENT.replace(
+        /\n## Visual Language[\s\S]*$/m,
+        ""
+      ),
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.issues.some((issue) => issue.code === "missing_visual_language_contract")).toBe(true)
   })
 
   it("rejects persist compile instruction on non-daftar_pustaka stage", () => {

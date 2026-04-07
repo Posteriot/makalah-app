@@ -6,10 +6,12 @@ import { validateStageSkillContent } from "./stage-skill-validator";
 const ARTIFACT_CREATION_FOOTER = `
 
 ═══ MANDATORY ARTIFACT RULE ═══
-⚠️ You MUST call createArtifact() to produce the artifact for this stage's output.
-- Call in the SAME TURN as updateStageData, BEFORE submitStageForValidation.
+⚠️ You MUST produce an artifact for this stage's output:
+- FIRST DRAFT: call createArtifact() in the SAME TURN as updateStageData, BEFORE submitStageForValidation.
+- REVISION: call updateArtifact() (NOT createArtifact) in the SAME TURN, THEN call submitStageForValidation().
 - Include the 'sources' parameter from AVAILABLE_WEB_SOURCES if available.
 - The artifact is the FINAL OUTPUT that will be reviewed and approved by the user.
+- After createArtifact OR updateArtifact succeeds → MUST call submitStageForValidation() in the SAME turn.
 ═══════════════════════════════`;
 
 type ResolveResult = {

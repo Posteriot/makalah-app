@@ -67,6 +67,9 @@ Recommended:
 Never fabricate references.
 ## Done Criteria
 Ready for validation after user confirmation.
+## Visual Language
+Use the interactive choice card when showing options is clearer than prose.
+Never replace the PaperValidationPanel for approval or stage transitions.
 `,
     })
 
