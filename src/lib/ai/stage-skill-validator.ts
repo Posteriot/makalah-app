@@ -256,14 +256,27 @@ export function validateStageSkillContent(input: StageSkillValidationInput): Sta
         }
     }
 
-    // Validate that Function Tools mentions createArtifact
-    // Required for all stages — artifact is the mandatory output reviewed by user
+    // Validate that Function Tools mentions required artifact lifecycle tools
     const functionToolsSection = getSection(content, "Function Tools");
-    if (functionToolsSection && !/createArtifact/i.test(functionToolsSection)) {
-        issues.push({
-            code: "missing_create_artifact_in_function_tools",
-            message: `Function Tools wajib menyebut createArtifact untuk stage "${input.stageScope}". Artifact adalah hasil akhir yang di-review user.`,
-        });
+    if (functionToolsSection) {
+        if (!/createArtifact/i.test(functionToolsSection)) {
+            issues.push({
+                code: "missing_create_artifact_in_function_tools",
+                message: `Function Tools wajib menyebut createArtifact untuk stage "${input.stageScope}". Artifact adalah hasil akhir yang di-review user.`,
+            });
+        }
+        if (!/requestRevision/i.test(functionToolsSection)) {
+            issues.push({
+                code: "missing_request_revision_in_function_tools",
+                message: `Function Tools wajib menyebut requestRevision untuk stage "${input.stageScope}". Required for chat-triggered revision during pending_validation.`,
+            });
+        }
+        if (!/updateArtifact/i.test(functionToolsSection)) {
+            issues.push({
+                code: "missing_update_artifact_in_function_tools",
+                message: `Function Tools wajib menyebut updateArtifact untuk stage "${input.stageScope}". Required for revision path (v2/v3 instead of new artifact).`,
+            });
+        }
     }
 
     return {

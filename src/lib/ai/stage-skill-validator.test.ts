@@ -21,7 +21,9 @@ Do not fabricate references — if evidence is needed, request a search.
 ## Function Tools
 Allowed:
 - updateStageData — save stage progress
-- createArtifact — create stage output artifact
+- createArtifact — create stage output artifact (first draft)
+- updateArtifact — create new version of existing artifact (revision)
+- requestRevision — transition from pending_validation to revision when user requests changes via chat
 - submitStageForValidation — submit for user approval (only after explicit user confirmation)
 - compileDaftarPustaka (mode: preview) — cross-stage bibliography audit without persistence
 Disallowed:
@@ -94,7 +96,7 @@ describe("validateStageSkillContent", () => {
 
   it("rejects content missing createArtifact in Function Tools", () => {
     const noCreateArtifact = VALID_GAGASAN_CONTENT.replace(
-      "- createArtifact — create stage output artifact\n",
+      /- createArtifact —[^\n]*\n/,
       ""
     )
     const result = validateStageSkillContent({
@@ -129,7 +131,9 @@ Only search on explicit request.
 ## Function Tools
 Allowed:
 - updateStageData — save stage progress
-- createArtifact — create stage output artifact
+- createArtifact — create stage output artifact (first draft)
+- updateArtifact — create new version (revision)
+- requestRevision — transition to revision on chat request
 - submitStageForValidation — submit for user approval
 - compileDaftarPustaka (mode: preview) — bibliography audit
 Disallowed:
@@ -195,6 +199,40 @@ Never replace the PaperValidationPanel for approval or stage transitions.
 
     expect(result.ok).toBe(false)
     expect(result.issues.some((issue) => issue.code === "output_keys_not_whitelisted")).toBe(true)
+  })
+
+  it("rejects content missing requestRevision in Function Tools", () => {
+    const contentWithoutRequestRevision = VALID_GAGASAN_CONTENT.replace(
+      /- requestRevision —[^\n]*\n/,
+      ""
+    )
+    const result = validateStageSkillContent({
+      stageScope: "gagasan",
+      skillId: "gagasan-skill",
+      name: "gagasan-skill",
+      description: "Stage instruction for gagasan in Makalah AI paper workflow.",
+      content: contentWithoutRequestRevision,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.issues.some((issue) => issue.code === "missing_request_revision_in_function_tools")).toBe(true)
+  })
+
+  it("rejects content missing updateArtifact in Function Tools", () => {
+    const contentWithoutUpdateArtifact = VALID_GAGASAN_CONTENT.replace(
+      /- updateArtifact —[^\n]*\n/,
+      ""
+    )
+    const result = validateStageSkillContent({
+      stageScope: "gagasan",
+      skillId: "gagasan-skill",
+      name: "gagasan-skill",
+      description: "Stage instruction for gagasan in Makalah AI paper workflow.",
+      content: contentWithoutUpdateArtifact,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.issues.some((issue) => issue.code === "missing_update_artifact_in_function_tools")).toBe(true)
   })
 
   it("rejects low-confidence non-English content", () => {
