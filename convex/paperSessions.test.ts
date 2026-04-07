@@ -135,6 +135,51 @@ describe("requestRevision — trigger parameter", () => {
 
     expect(result).toMatchObject({ trigger: "model" });
   });
+
+  it("rejects when stageStatus is 'drafting'", async () => {
+    const session = makeSession({
+      stageStatus: "drafting",
+      stageData: { gagasan: { revisionCount: 0 } },
+    });
+    const { ctx } = makeMockCtxWithGet(session);
+
+    await expect(callRevisionHandler(ctx, {
+      sessionId: "paperSessions_1",
+      userId: "users_1",
+      feedback: "Fix something",
+      trigger: "panel",
+    })).rejects.toThrow(/NOT_PENDING_VALIDATION/);
+  });
+
+  it("rejects when stageStatus is 'revision'", async () => {
+    const session = makeSession({
+      stageStatus: "revision",
+      stageData: { gagasan: { revisionCount: 1 } },
+    });
+    const { ctx } = makeMockCtxWithGet(session);
+
+    await expect(callRevisionHandler(ctx, {
+      sessionId: "paperSessions_1",
+      userId: "users_1",
+      feedback: "More changes",
+      trigger: "model",
+    })).rejects.toThrow(/NOT_PENDING_VALIDATION/);
+  });
+
+  it("rejects when stageStatus is 'approved'", async () => {
+    const session = makeSession({
+      stageStatus: "approved",
+      stageData: { gagasan: { revisionCount: 0 } },
+    });
+    const { ctx } = makeMockCtxWithGet(session);
+
+    await expect(callRevisionHandler(ctx, {
+      sessionId: "paperSessions_1",
+      userId: "users_1",
+      feedback: "Rejected",
+      trigger: "panel",
+    })).rejects.toThrow(/NOT_PENDING_VALIDATION/);
+  });
 });
 
 describe("updateStageData — auto-revision safety net", () => {

@@ -251,4 +251,33 @@ describe("validateChoiceInteractionEvent — stale choice guard", () => {
       })
     ).toThrow(/CHOICE_REJECTED_STALE_STATE/)
   })
+
+  it("error message includes actual stageStatus for route handler extraction", () => {
+    try {
+      validateChoiceInteractionEvent({
+        event: validEvent,
+        conversationId: "conv-123",
+        currentStage: "outline",
+        isPaperMode: true,
+        stageStatus: "pending_validation",
+      })
+      expect.unreachable("should have thrown")
+    } catch (error) {
+      const msg = (error as Error).message
+      expect(msg).toContain("CHOICE_REJECTED_STALE_STATE")
+      expect(msg).toContain('"pending_validation"')
+      expect(msg).toContain('expected "drafting"')
+    }
+  })
+
+  it("passes when stageStatus is undefined (backwards compatibility)", () => {
+    expect(() =>
+      validateChoiceInteractionEvent({
+        event: validEvent,
+        conversationId: "conv-123",
+        currentStage: "outline",
+        isPaperMode: true,
+      })
+    ).not.toThrow()
+  })
 })
