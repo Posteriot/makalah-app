@@ -2622,24 +2622,6 @@ Aturan:
                 && paperSession?.stageStatus === "drafting"
                 && hasStageArtifact(paperSession)
 
-            // Force requestRevision when user sends revision intent during pending_validation.
-            // This is a deterministic architectural guard — model MUST call requestRevision via
-            // tool calling API, not write it as text. Without this, some models (e.g., Gemini Flash)
-            // simulate tool calls as text output, which never executes.
-            const revisionIntentPattern = /\b(revisi|edit|ubah|ganti|perbaiki|resend|generate ulang|tulis ulang|koreksi|buat ulang|ulangi|dari awal|tambah(kan)?|hapus|perbaiki|perbarui)\b/i
-            // Note: unlike shouldForceSubmitValidation, this does NOT require !enableWebSearch.
-            // Search router already decides NO-SEARCH for revision intent, and toolChoice
-            // forcing must work even when search pipeline is enabled (e.g., gagasan = active policy).
-            shouldForceRequestRevision = !!paperModePrompt
-                && !shouldForceGetCurrentPaperState
-                && !shouldForceSubmitValidation
-                && paperSession?.stageStatus === "pending_validation"
-                && !!normalizedLastUserContent
-                && revisionIntentPattern.test(normalizedLastUserContent)
-            if (shouldForceRequestRevision) {
-                console.info(`[REVISION][force-tool-choice] stage=${paperSession?.currentStage} — forcing requestRevision via toolChoice`)
-            }
-
             missingArtifactNote = !shouldForceSubmitValidation
                 && !!paperModePrompt
                 && !hasStageArtifact(paperSession)
@@ -2684,36 +2666,12 @@ Aturan:
 
             const forcedToolChoice = shouldForceSubmitValidation
                     ? ({ type: "tool", toolName: "submitStageForValidation" } as const)
-                    : shouldForceRequestRevision
-                    ? ({ type: "tool", toolName: "requestRevision" } as const)
                     : undefined
             // Explicit sync mode: force 2-step flow
             // step 0: force getCurrentPaperState, step 1: force plain answer (no tools)
             const maxToolSteps = shouldForceGetCurrentPaperState
                     ? 2
-                    : shouldForceRequestRevision
-                    ? 5 // requestRevision → updateArtifact → submitStageForValidation + margin
                     : 5
-            // Revision chain: force tool calling for the full chain.
-            // Step 0: requestRevision (forced by toolChoice above)
-            // Steps 1-2: "required" — model MUST call a tool (updateArtifact, submitStageForValidation)
-            // Step 3+: auto — model can finish with text
-            const revisionChainPrepareStep = shouldForceRequestRevision
-                ? ({ stepNumber }: { stepNumber: number }) => {
-                    if (stepNumber === 0) {
-                        return {
-                            toolChoice: { type: "tool", toolName: "requestRevision" } as const,
-                        }
-                    }
-                    if (stepNumber <= 3) {
-                        // Force model to call tools, not write text
-                        return {
-                            toolChoice: "required" as const,
-                        }
-                    }
-                    return undefined
-                }
-                : undefined
             const deterministicSyncPrepareStep = shouldForceGetCurrentPaperState
                 ? ({ stepNumber }: { stepNumber: number }) => {
                     if (stepNumber === 0) {
@@ -2909,7 +2867,7 @@ Aturan:
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
                 toolChoice: forcedToolChoice,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                prepareStep: (revisionChainPrepareStep ?? primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
+                prepareStep: (primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
                 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
                 onFinish: async ({ text, providerMetadata, usage }) => {
@@ -3607,7 +3565,7 @@ Aturan:
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    prepareStep: (revisionChainPrepareStep ?? fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
+                    prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
                     stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {
