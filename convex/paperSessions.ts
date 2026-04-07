@@ -1168,6 +1168,14 @@ export const requestRevision = mutation({
         if (!session) throw new Error("Session not found");
         if (session.userId !== args.userId) throw new Error("Unauthorized");
 
+        // Backend contract: requestRevision only valid when pending_validation
+        if (session.stageStatus !== "pending_validation") {
+            throw new Error(
+                `NOT_PENDING_VALIDATION: requestRevision rejected — stageStatus is "${session.stageStatus}", expected "pending_validation". ` +
+                `Revision can only be requested when stage is awaiting validation.`
+            );
+        }
+
         const now = Date.now();
         const currentStage = session.currentStage;
         const previousStatus = session.stageStatus;
