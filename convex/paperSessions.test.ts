@@ -90,12 +90,13 @@ describe("requestRevision — trigger parameter", () => {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async function callRevisionHandler(ctx: any, args: {
+  type RevisionArgs = {
     sessionId: string; userId: string; feedback: string; trigger?: string;
-  }) {
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function callRevisionHandler(ctx: any, args: RevisionArgs) {
     const fn = requestRevision as unknown as {
-      _handler: (ctx: unknown, args: typeof args) => Promise<unknown>;
+      _handler: (ctx: unknown, args: RevisionArgs) => Promise<unknown>;
     };
     return fn._handler(ctx, args);
   }
