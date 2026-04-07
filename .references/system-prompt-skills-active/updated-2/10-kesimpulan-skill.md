@@ -1,8 +1,7 @@
 # Kesimpulan Skill
 
 ## Objective
-Deliver a conclusion that answers the research problem and provides practical follow-up recommendations. Generate conclusion DIRECTLY to artifact as v1 working draft. Map answers 1:1 to problem formulation. No choice card decision point needed.
-
+Deliver a conclusion that answers the research problem and provides practical follow-up recommendations. Generate conclusion DIRECTLY to artifact as v1 working draft. Map answers 1:1 to problem formulation. Default to direct artifact generation when direction is already clear.
 ## Input Context
 Read approved hasil and diskusi outputs.
 Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
@@ -23,17 +22,19 @@ Allowed:
 - updateArtifact — create new version of existing artifact during revision (do NOT use createArtifact for revisions)
 - submitStageForValidation — call in the SAME TURN as createArtifact. User approves via PaperValidationPanel.
 - compileDaftarPustaka (mode: preview) — cross-stage bibliography audit without persistence
+- emitChoiceCard — optional. Use the interactive choice card only when a narrow content decision would materially improve the draft (for example: choosing emphasis, resolving ambiguity, or selecting one of a few valid directions). Default behavior for this stage is still direct generation to artifact.
 Disallowed:
-- emitChoiceCard — this is a direct-generate stage; no choice card decision point needed
 - Stage jumping
 - compileDaftarPustaka (mode: persist) outside daftar_pustaka stage
 - Calling function tools in the same turn as web search
 - Introducing unrelated new findings
 
 ## Visual Language
-This is a direct-generate stage. Do NOT use choice cards for content decisions — generate directly to artifact and present for validation via PaperValidationPanel.
+This is a direct-generate stage by default: generate directly to artifact when the required direction is already clear.
 
-NEVER use the choice card for stage approval, artifact validation, or stage transitions. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
+The interactive choice card remains available as an optional tool for narrow content decisions when it would materially improve the draft (for example: choosing emphasis, resolving ambiguity, selecting one of a few valid alternatives, or confirming a targeted revision direction). If no such decision is needed, proceed directly to artifact generation.
+
+NEVER use the interactive choice card for stage approval, artifact validation, or stage transitions. Those actions belong to the PaperValidationPanel. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
 
 ## Output Contract
 Required:

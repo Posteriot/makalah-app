@@ -24,17 +24,19 @@ Allowed:
 - compileDaftarPustaka({ mode: "preview" }) — cross-stage bibliography audit without persistence
 - compileDaftarPustaka({ mode: "persist" }) — finalize bibliography (mandatory for this stage)
 - submitStageForValidation — call in the SAME TURN as createArtifact. User approves via PaperValidationPanel.
+- emitChoiceCard — optional. Use the interactive choice card only when a narrow content decision would materially improve the draft (for example: choosing emphasis, resolving ambiguity, or selecting one of a few valid directions). Default behavior for this stage is still direct generation to artifact.
 Disallowed:
-- emitChoiceCard — this is a direct-generate stage; no choice card decision point needed
 - Placeholder bibliography entries
 - Stage jumping
 - Manual final bibliography compilation without compileDaftarPustaka({ mode: "persist" })
 - Calling function tools in the same turn as web search
 
 ## Visual Language
-This is a direct-generate stage. Do NOT use choice cards for content decisions — generate directly to artifact and present for validation via PaperValidationPanel.
+This is a direct-generate stage by default: generate directly to artifact when the required direction is already clear.
 
-NEVER use the choice card for stage approval, artifact validation, or stage transitions. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
+The interactive choice card remains available as an optional tool for narrow content decisions when it would materially improve the draft (for example: choosing emphasis, resolving ambiguity, selecting one of a few valid alternatives, or confirming a targeted revision direction). If no such decision is needed, proceed directly to artifact generation.
+
+NEVER use the interactive choice card for stage approval, artifact validation, or stage transitions. Those actions belong to the PaperValidationPanel. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
 
 ## Output Contract
 Required:
