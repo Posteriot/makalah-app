@@ -1198,7 +1198,8 @@ export const requestRevision = mutation({
             updatedAt: now,
         });
 
-        console.log(`[Revision] stage=${currentStage} trigger=${trigger} revisionCount=${currentRevisionCount + 1} previousStatus=${previousStatus}`);
+        const eventId = trigger === "panel" ? "revision-triggered-by-panel" : "revision-triggered-by-model";
+        console.log(`[${eventId}] stage=${currentStage} trigger=${trigger} revisionCount=${currentRevisionCount + 1} previousStatus=${previousStatus}`);
 
         return {
             stage: currentStage,
