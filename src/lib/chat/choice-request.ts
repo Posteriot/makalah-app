@@ -27,26 +27,34 @@ const STAGE_MATURITY_KEYS: Partial<Record<PaperStageId, string[]>> = {
 
 /**
  * Determine if a post-choice turn should finalize (artifact + submit) or stay exploratory.
- * Reusable across all stages — checks both static stage membership and dynamic maturity.
+ *
+ * Priority order:
+ * 1. decisionMode from choice card metadata (primary — model declares intent)
+ * 2. Stage maturity heuristics (fallback — state-based)
+ * 3. Static stage membership (fallback — legacy compatibility)
  */
 export function shouldFinalizeAfterChoice(params: {
   stage: PaperStageId
   stageData?: Record<string, unknown> | null
   hasExistingArtifact?: boolean
+  decisionMode?: "exploration" | "commit"
 }): { finalize: boolean; reason: string } {
-  const { stage, stageData, hasExistingArtifact } = params
+  const { stage, stageData, hasExistingArtifact, decisionMode } = params
 
   // daftar_pustaka has its own compile flow — handled separately in buildChoiceContextNote
   if (stage === "daftar_pustaka") {
     return { finalize: false, reason: "daftar_pustaka_compile_flow" }
   }
 
-  // Always-finalize stages
-  if (ALWAYS_FINALIZE_STAGES.has(stage)) {
-    return { finalize: true, reason: "always_finalize_stage" }
+  // Priority 1: decisionMode from choice card metadata
+  if (decisionMode === "commit") {
+    return { finalize: true, reason: "decision_mode_commit" }
+  }
+  if (decisionMode === "exploration") {
+    return { finalize: false, reason: "decision_mode_exploration" }
   }
 
-  // Maturity-based: check if stageData has required keys
+  // Priority 2: Stage maturity heuristics (for stages without decisionMode metadata)
   const requiredKeys = STAGE_MATURITY_KEYS[stage]
   if (requiredKeys && stageData) {
     const hasAllKeys = requiredKeys.every(key => {
@@ -58,7 +66,12 @@ export function shouldFinalizeAfterChoice(params: {
     }
   }
 
-  // If artifact already exists, stage is past exploration
+  // Priority 3: Static stage membership (legacy fallback)
+  if (ALWAYS_FINALIZE_STAGES.has(stage)) {
+    return { finalize: true, reason: "always_finalize_stage" }
+  }
+
+  // Supplementary: artifact exists suggests past exploration
   if (hasExistingArtifact) {
     return { finalize: true, reason: "artifact_already_exists" }
   }
@@ -76,6 +89,7 @@ const choiceInteractionEventSchema = z.object({
   kind: z.literal("single-select"),
   selectedOptionIds: z.array(z.string().min(1)).min(1),
   customText: z.string().optional(),
+  decisionMode: z.enum(["exploration", "commit"]).optional(),
   submittedAt: z.number(),
 })
 

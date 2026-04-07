@@ -10,6 +10,7 @@ export interface ChoiceInteractionEvent {
   kind: "single-select"
   selectedOptionIds: string[]
   customText?: string
+  decisionMode?: "exploration" | "commit"
   submittedAt: number
 }
 
@@ -21,6 +22,7 @@ export function buildChoiceInteractionEvent(params: {
   kind: "single-select"
   selectedOptionId: string
   customText?: string
+  decisionMode?: "exploration" | "commit"
 }): ChoiceInteractionEvent {
   return {
     type: "paper.choice.submit",
@@ -34,6 +36,7 @@ export function buildChoiceInteractionEvent(params: {
     ...(params.customText?.trim()
       ? { customText: params.customText.trim() }
       : {}),
+    ...(params.decisionMode ? { decisionMode: params.decisionMode } : {}),
     submittedAt: Date.now(),
   }
 }

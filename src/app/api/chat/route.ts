@@ -373,6 +373,7 @@ export async function POST(req: Request) {
         const paperToolTracker = createPaperToolTracker()
 
         let choiceContextNote: string | undefined
+        let choiceFinalizeDecision: { finalize: boolean; reason: string } | undefined
         if (choiceInteractionEvent) {
             try {
                 validateChoiceInteractionEvent({
@@ -402,23 +403,24 @@ export async function POST(req: Request) {
             const currentStageChoiceData = choiceStageData?.[choiceInteractionEvent.stage]
             const hasExistingArtifact = !!currentStageChoiceData?.artifactId
 
-            // Compute finalize decision via reusable helper
-            const finalizeDecision = shouldFinalizeAfterChoice({
+            // Compute finalize decision via reusable helper — decisionMode from card metadata is primary signal
+            choiceFinalizeDecision = shouldFinalizeAfterChoice({
                 stage: choiceInteractionEvent.stage as PaperStageId,
                 stageData: currentStageChoiceData as Record<string, unknown> | undefined,
                 hasExistingArtifact,
+                decisionMode: choiceInteractionEvent.decisionMode,
             })
 
             choiceContextNote = buildChoiceContextNote(choiceInteractionEvent, {
                 hasExistingArtifact,
-                forceFinalize: finalizeDecision.finalize,
+                forceFinalize: choiceFinalizeDecision.finalize,
             })
 
             // Observability: log choice commit semantics
-            if (finalizeDecision.finalize) {
-                console.info(`[CHOICE][commit-point-finalize] stage=${choiceInteractionEvent.stage} reason=${finalizeDecision.reason} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
+            if (choiceFinalizeDecision.finalize) {
+                console.info(`[CHOICE][commit-point-finalize] stage=${choiceInteractionEvent.stage} reason=${choiceFinalizeDecision.reason} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
             } else {
-                console.info(`[CHOICE][exploration-loop] stage=${choiceInteractionEvent.stage} reason=${finalizeDecision.reason} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
+                console.info(`[CHOICE][exploration-loop] stage=${choiceInteractionEvent.stage} reason=${choiceFinalizeDecision.reason} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
             }
         }
 
@@ -2971,6 +2973,19 @@ Aturan:
                             const revisionSignals = /\b(revisi|edit|ubah|ganti|perbaiki|resend|generate ulang|tulis ulang|koreksi|buat ulang|ulangi|dari awal)\b/i;
                             if (normalizedLastUserContent && revisionSignals.test(normalizedLastUserContent)) {
                                 console.warn(`[revision-intent-answered-without-tools] stage=${paperSession.currentStage} — model responded to apparent revision intent with prose only`);
+                            }
+                        }
+
+                        // Generic cross-stage partial-save-stall detection (post-choice commit point)
+                        if (choiceInteractionEvent && paperStageScope) {
+                            const wasCommitPoint = choiceInteractionEvent.decisionMode === "commit"
+                                || (choiceFinalizeDecision?.finalize === true)
+                            if (wasCommitPoint
+                                && paperToolTracker.sawUpdateStageData
+                                && !paperToolTracker.sawCreateArtifactSuccess
+                                && !paperToolTracker.sawUpdateArtifactSuccess
+                                && !paperToolTracker.sawSubmitValidationSuccess) {
+                                console.warn(`[CHOICE][partial-save-stall] stage=${paperStageScope} — commit-point choice resulted in updateStageData only, no artifact or submit`)
                             }
                         }
 

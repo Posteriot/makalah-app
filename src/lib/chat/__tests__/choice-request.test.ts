@@ -202,7 +202,59 @@ describe("buildChoiceContextNote", () => {
 })
 
 describe("shouldFinalizeAfterChoice", () => {
-  it("always finalizes for topik, outline, abstrak, etc.", () => {
+  // --- decisionMode as primary signal ---
+
+  it("decisionMode 'commit' overrides everything → finalize", () => {
+    const result = shouldFinalizeAfterChoice({
+      stage: "gagasan",
+      stageData: {},
+      decisionMode: "commit",
+    })
+    expect(result.finalize).toBe(true)
+    expect(result.reason).toBe("decision_mode_commit")
+  })
+
+  it("decisionMode 'exploration' overrides everything → no finalize", () => {
+    // Even for a stage that would normally always finalize
+    const result = shouldFinalizeAfterChoice({
+      stage: "topik",
+      stageData: {},
+      decisionMode: "exploration",
+    })
+    expect(result.finalize).toBe(false)
+    expect(result.reason).toBe("decision_mode_exploration")
+  })
+
+  it("same stage, exploration card → loop; commit card → finalize", () => {
+    const exploration = shouldFinalizeAfterChoice({
+      stage: "gagasan",
+      stageData: { angle: "X", analisis: "Y" },
+      decisionMode: "exploration",
+    })
+    expect(exploration.finalize).toBe(false)
+
+    const commit = shouldFinalizeAfterChoice({
+      stage: "gagasan",
+      stageData: { angle: "X", analisis: "Y" },
+      decisionMode: "commit",
+    })
+    expect(commit.finalize).toBe(true)
+  })
+
+  it("artifact exists but card is exploration → no auto-finalize", () => {
+    const result = shouldFinalizeAfterChoice({
+      stage: "gagasan",
+      stageData: {},
+      hasExistingArtifact: true,
+      decisionMode: "exploration",
+    })
+    expect(result.finalize).toBe(false)
+    expect(result.reason).toBe("decision_mode_exploration")
+  })
+
+  // --- Fallback: no decisionMode ---
+
+  it("always finalizes for topik, outline, etc. when no decisionMode", () => {
     for (const stage of ["topik", "outline", "abstrak", "pendahuluan", "hasil", "judul"] as const) {
       const result = shouldFinalizeAfterChoice({ stage, stageData: {} })
       expect(result.finalize).toBe(true)
@@ -210,7 +262,7 @@ describe("shouldFinalizeAfterChoice", () => {
     }
   })
 
-  it("gagasan: exploration when stageData is empty/immature", () => {
+  it("gagasan: exploration when stageData immature and no decisionMode", () => {
     const result = shouldFinalizeAfterChoice({
       stage: "gagasan",
       stageData: { ideKasar: "some idea" },
@@ -219,7 +271,7 @@ describe("shouldFinalizeAfterChoice", () => {
     expect(result.reason).toBe("exploration_incomplete")
   })
 
-  it("gagasan: finalize when stageData has angle + analisis (mature)", () => {
+  it("gagasan: finalize when stageData mature and no decisionMode", () => {
     const result = shouldFinalizeAfterChoice({
       stage: "gagasan",
       stageData: { angle: "dampak negatif AI", analisis: "feasibility analysis" },
@@ -228,7 +280,7 @@ describe("shouldFinalizeAfterChoice", () => {
     expect(result.reason).toBe("stage_data_mature")
   })
 
-  it("gagasan: finalize when artifact already exists", () => {
+  it("gagasan: finalize when artifact exists and no decisionMode", () => {
     const result = shouldFinalizeAfterChoice({
       stage: "gagasan",
       stageData: {},
@@ -242,7 +294,9 @@ describe("shouldFinalizeAfterChoice", () => {
     const result = shouldFinalizeAfterChoice({
       stage: "daftar_pustaka",
       stageData: { entries: ["ref1"] },
+      decisionMode: "commit",
     })
+    // daftar_pustaka overrides even commit decisionMode
     expect(result.finalize).toBe(false)
     expect(result.reason).toBe("daftar_pustaka_compile_flow")
   })

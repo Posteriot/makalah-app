@@ -1240,14 +1240,18 @@ export function ChatWindow({
     const submissionKey = `${params.sourceMessageId}::${params.choicePartId}`
     setSubmittedChoiceKeys((prev) => new Set([...prev, submissionKey]))
 
-    // V3 YAML: payload is { spec } — extract label from spec elements, stage from session
-    const specAny = params.payload as unknown as { spec?: { elements?: Record<string, { props?: { label?: string; optionId?: string } }> } }
+    // V3 YAML: payload is { spec } — extract label + decisionMode from spec elements, stage from session
+    const specAny = params.payload as unknown as { spec?: { elements?: Record<string, { type?: string; props?: { label?: string; optionId?: string; decisionMode?: string } }> } }
     const elements = specAny?.spec?.elements ?? {}
     const matchedElement = Object.values(elements).find(
       (el) => el?.props?.optionId === params.selectedOptionId
     )
     const selectedLabel = matchedElement?.props?.label ?? params.selectedOptionId
-    console.log("[F1-F6-TEST] ChoiceSubmit", { submissionKey, selectedOptionId: params.selectedOptionId, selectedLabel })
+
+    // Extract decisionMode from ChoiceCardShell props
+    const cardShell = Object.values(elements).find(el => el?.type === "ChoiceCardShell")
+    const decisionMode = cardShell?.props?.decisionMode as "exploration" | "commit" | undefined
+    console.log("[F1-F6-TEST] ChoiceSubmit", { submissionKey, selectedOptionId: params.selectedOptionId, selectedLabel, decisionMode })
 
     // Use current paper stage from session (spec doesn't carry stage info)
     const currentStage = (paperSession?.currentStage ?? "gagasan") as PaperStageId
@@ -1260,6 +1264,7 @@ export function ChatWindow({
       kind: "single-select",
       selectedOptionId: params.selectedOptionId,
       customText: params.customText,
+      decisionMode: decisionMode === "exploration" || decisionMode === "commit" ? decisionMode : undefined,
     })
 
     const syntheticText = buildChoiceSyntheticText({
