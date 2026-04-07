@@ -89,6 +89,8 @@ type BetterAuthCookieValidation =
   | { status: "network_error" }
   | { status: "authenticated"; token: string };
 
+const CONVEX_TOKEN_TIMEOUT_MS = 5_000;
+
 async function validateBetterAuthCookies(
   betterAuthCookies: string | null
 ): Promise<BetterAuthCookieValidation> {
@@ -99,8 +101,12 @@ async function validateBetterAuthCookies(
       headers: {
         "Better-Auth-Cookie": betterAuthCookies,
       },
+      signal: AbortSignal.timeout(CONVEX_TOKEN_TIMEOUT_MS),
     });
 
+    // 5xx = server/infra issue (cold start, overload) — treat same as network error
+    // so transient Convex downtime doesn't invalidate the user's session.
+    if (response.status >= 500) return { status: "network_error" };
     if (!response.ok) return { status: "invalid" };
     const data = await response.json();
     if (typeof data?.token === "string" && data.token.length > 0) {

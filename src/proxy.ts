@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import {
-  decodeBetterAuthCookieValue,
-  isAuthenticatedFromBetterAuthCookies,
-} from "@/lib/auth-server"
 
 const PUBLIC_ROUTES = [
   "/",
@@ -40,17 +36,12 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Lightweight cookie check — real auth validation happens via Convex queries.
-  // With cross-domain auth, the real session lives in localStorage.
-  // SessionCookieSync encodes the session into a `ba_session` browser cookie.
-  const betterAuthCookies = decodeBetterAuthCookieValue(
-    request.cookies.get("ba_session")?.value
-  )
-  const isAuthenticated = await isAuthenticatedFromBetterAuthCookies(
-    betterAuthCookies
-  )
-
-  if (!isAuthenticated) {
+  // Cookie-presence check only — no external calls.
+  // Real auth validation happens client-side via useConvexAuth() and server-side
+  // via getToken(). Middleware only gates obviously-unauthenticated requests
+  // (no cookie at all) to avoid external service dependency per-request.
+  const sessionCookie = request.cookies.get("ba_session")?.value
+  if (!sessionCookie) {
     const signInUrl = new URL("/sign-in", request.url)
     const redirectPath = `${request.nextUrl.pathname}${request.nextUrl.search}`
     signInUrl.searchParams.set("redirect_url", redirectPath)

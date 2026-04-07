@@ -57,4 +57,28 @@ describe("auth-server session validation", () => {
       getTokenFromBetterAuthCookies("session=abc"),
     ).resolves.toBeNull()
   })
+
+  it("treats 5xx as network error (soft-pass), not invalid session", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response("Internal Server Error", { status: 500 }),
+    )
+
+    await expect(
+      isAuthenticatedFromBetterAuthCookies("session=abc"),
+    ).resolves.toBe(true)
+    await expect(
+      getTokenFromBetterAuthCookies("session=abc"),
+    ).resolves.toBeNull()
+  })
+
+  it("treats timeout (AbortError) as network error", async () => {
+    vi.spyOn(global, "fetch").mockRejectedValue(new DOMException("Signal timed out", "TimeoutError"))
+
+    await expect(
+      isAuthenticatedFromBetterAuthCookies("session=abc"),
+    ).resolves.toBe(true)
+    await expect(
+      getTokenFromBetterAuthCookies("session=abc"),
+    ).resolves.toBeNull()
+  })
 })
