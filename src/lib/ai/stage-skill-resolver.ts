@@ -14,9 +14,16 @@ const ARTIFACT_CREATION_FOOTER = `
 - After createArtifact OR updateArtifact succeeds → MUST call submitStageForValidation() in the SAME turn.
 
 ⚠️ REVISION FROM CHAT (applies when stageStatus is pending_validation):
-- If user requests changes, correction, edit, or regeneration via chat → call requestRevision(feedback) FIRST.
-- After requestRevision succeeds (status becomes "revision") → updateArtifact → submitStageForValidation.
-- Do NOT call updateStageData, createArtifact, or updateArtifact while status is still pending_validation.
+Two paths depending on whether revision needs new web search:
+
+PATH A — Revision from existing context (no new search needed):
+  → requestRevision(feedback) → updateArtifact → submitStageForValidation — all in the SAME turn.
+
+PATH B — Revision that requires new web search:
+  → Turn 1: Run web search ONLY. Present findings. Do NOT call any function tools.
+  → Turn 2: IMMEDIATELY call requestRevision(feedback) → updateArtifact → submitStageForValidation. Do NOT wait for user to remind you — continue autonomously.
+
+This does NOT violate "no web search + function tools in same turn" — search and tools happen in separate turns.
 - createArtifact is ONLY for first draft or exceptional fallback when artifact is missing/invalid.
 
 ⚠️ POST-TOOL RESPONSE DISCIPLINE:
