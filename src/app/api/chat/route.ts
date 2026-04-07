@@ -58,6 +58,7 @@ import {
     parseOptionalChoiceInteractionEvent,
     validateChoiceInteractionEvent,
     buildChoiceContextNote,
+    shouldFinalizeAfterChoice,
 } from "@/lib/chat/choice-request"
 import { resolveEffectiveFileIds } from "@/lib/chat/effective-file-ids"
 import {
@@ -398,10 +399,26 @@ export async function POST(req: Request) {
                 throw validationError; // re-throw non-stale errors
             }
             const choiceStageData = paperSession?.stageData as Record<string, Record<string, unknown> | undefined> | undefined
-            const hasExistingArtifact = !!choiceStageData?.[choiceInteractionEvent.stage]?.artifactId
-            choiceContextNote = buildChoiceContextNote(choiceInteractionEvent, { hasExistingArtifact })
-            if (isHasilPostChoice) {
-                console.info("[HASIL][post-choice] entering artifact-first follow-up turn")
+            const currentStageChoiceData = choiceStageData?.[choiceInteractionEvent.stage]
+            const hasExistingArtifact = !!currentStageChoiceData?.artifactId
+
+            // Compute finalize decision via reusable helper
+            const finalizeDecision = shouldFinalizeAfterChoice({
+                stage: choiceInteractionEvent.stage as PaperStageId,
+                stageData: currentStageChoiceData as Record<string, unknown> | undefined,
+                hasExistingArtifact,
+            })
+
+            choiceContextNote = buildChoiceContextNote(choiceInteractionEvent, {
+                hasExistingArtifact,
+                forceFinalize: finalizeDecision.finalize,
+            })
+
+            // Observability: log choice commit semantics
+            if (finalizeDecision.finalize) {
+                console.info(`[CHOICE][commit-point-finalize] stage=${choiceInteractionEvent.stage} reason=${finalizeDecision.reason} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
+            } else {
+                console.info(`[CHOICE][exploration-loop] stage=${choiceInteractionEvent.stage} reason=${finalizeDecision.reason} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
             }
         }
 

@@ -2,13 +2,9 @@ import { z } from "zod"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 
 const VALIDATE_OPTION_ID = "sudah-cukup-lanjut-validasi"
-// Stages where a user choice card selection is a commit point:
-// after user picks → model MUST finalize (updateStageData → artifact → submit).
-//
-// NOT included:
-// - gagasan: explicitly iterative brainstorming, choice cards are exploration, not commit
-// - daftar_pustaka: has its own compile flow (compileDaftarPustaka → artifact → submit)
-const POST_CHOICE_FINALIZE_STAGES = new Set<PaperStageId>([
+
+// Stages that ALWAYS finalize after choice (no maturity check needed)
+const ALWAYS_FINALIZE_STAGES = new Set<PaperStageId>([
   "topik",
   "outline",
   "abstrak",
@@ -22,6 +18,53 @@ const POST_CHOICE_FINALIZE_STAGES = new Set<PaperStageId>([
   "lampiran",
   "judul",
 ])
+
+// Per-stage maturity keys: if stageData has ALL of these, stage is mature enough to finalize.
+// Stages not in ALWAYS_FINALIZE_STAGES use this to determine commit vs exploration.
+const STAGE_MATURITY_KEYS: Partial<Record<PaperStageId, string[]>> = {
+  gagasan: ["angle", "analisis"],
+}
+
+/**
+ * Determine if a post-choice turn should finalize (artifact + submit) or stay exploratory.
+ * Reusable across all stages — checks both static stage membership and dynamic maturity.
+ */
+export function shouldFinalizeAfterChoice(params: {
+  stage: PaperStageId
+  stageData?: Record<string, unknown> | null
+  hasExistingArtifact?: boolean
+}): { finalize: boolean; reason: string } {
+  const { stage, stageData, hasExistingArtifact } = params
+
+  // daftar_pustaka has its own compile flow — handled separately in buildChoiceContextNote
+  if (stage === "daftar_pustaka") {
+    return { finalize: false, reason: "daftar_pustaka_compile_flow" }
+  }
+
+  // Always-finalize stages
+  if (ALWAYS_FINALIZE_STAGES.has(stage)) {
+    return { finalize: true, reason: "always_finalize_stage" }
+  }
+
+  // Maturity-based: check if stageData has required keys
+  const requiredKeys = STAGE_MATURITY_KEYS[stage]
+  if (requiredKeys && stageData) {
+    const hasAllKeys = requiredKeys.every(key => {
+      const val = stageData[key]
+      return val !== undefined && val !== null && val !== ""
+    })
+    if (hasAllKeys) {
+      return { finalize: true, reason: "stage_data_mature" }
+    }
+  }
+
+  // If artifact already exists, stage is past exploration
+  if (hasExistingArtifact) {
+    return { finalize: true, reason: "artifact_already_exists" }
+  }
+
+  return { finalize: false, reason: "exploration_incomplete" }
+}
 
 const choiceInteractionEventSchema = z.object({
   type: z.literal("paper.choice.submit"),
@@ -69,7 +112,7 @@ export function validateChoiceInteractionEvent(params: {
 
 export function buildChoiceContextNote(
   event: ParsedChoiceInteractionEvent,
-  options?: { hasExistingArtifact?: boolean }
+  options?: { hasExistingArtifact?: boolean; forceFinalize?: boolean }
 ): string {
   const selectedOptionIds = event.selectedOptionIds.map((id) => id.trim().toLowerCase())
   const requestedValidation =
@@ -179,7 +222,8 @@ export function buildChoiceContextNote(
     return baseLines.join("\n")
   }
 
-  if (POST_CHOICE_FINALIZE_STAGES.has(event.stage as PaperStageId)) {
+  // Check finalize: either static stage membership or forceFinalize from state-based helper
+  if (ALWAYS_FINALIZE_STAGES.has(event.stage as PaperStageId) || options?.forceFinalize) {
     baseLines.push(
       "- Mode: post-choice-finalize",
       "- The user has selected a concrete stage direction from the choice card. This is a commit point, not an exploration loop.",

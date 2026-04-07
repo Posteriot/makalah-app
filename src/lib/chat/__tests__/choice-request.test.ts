@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { parseOptionalChoiceInteractionEvent, buildChoiceContextNote, validateChoiceInteractionEvent } from "../choice-request"
+import { parseOptionalChoiceInteractionEvent, buildChoiceContextNote, validateChoiceInteractionEvent, shouldFinalizeAfterChoice } from "../choice-request"
 
 describe("parseOptionalChoiceInteractionEvent", () => {
   it("returns null when no interactionEvent", () => {
@@ -180,7 +180,7 @@ describe("buildChoiceContextNote", () => {
     expect(note).not.toContain("Mode: decision-to-draft")
   })
 
-  it("gagasan stays in decision-to-draft (exploration stage)", () => {
+  it("gagasan stays in decision-to-draft when stageData immature (no forceFinalize)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "gagasan",
@@ -188,6 +188,63 @@ describe("buildChoiceContextNote", () => {
     })
     expect(note).toContain("Mode: decision-to-draft")
     expect(note).not.toContain("Mode: post-choice-finalize")
+  })
+
+  it("gagasan finalize when forceFinalize is true (mature stageData)", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "gagasan",
+      selectedOptionIds: ["fokus-dampak-negatif"],
+    }, { forceFinalize: true })
+    expect(note).toContain("Mode: post-choice-finalize")
+    expect(note).not.toContain("Mode: decision-to-draft")
+  })
+})
+
+describe("shouldFinalizeAfterChoice", () => {
+  it("always finalizes for topik, outline, abstrak, etc.", () => {
+    for (const stage of ["topik", "outline", "abstrak", "pendahuluan", "hasil", "judul"] as const) {
+      const result = shouldFinalizeAfterChoice({ stage, stageData: {} })
+      expect(result.finalize).toBe(true)
+      expect(result.reason).toBe("always_finalize_stage")
+    }
+  })
+
+  it("gagasan: exploration when stageData is empty/immature", () => {
+    const result = shouldFinalizeAfterChoice({
+      stage: "gagasan",
+      stageData: { ideKasar: "some idea" },
+    })
+    expect(result.finalize).toBe(false)
+    expect(result.reason).toBe("exploration_incomplete")
+  })
+
+  it("gagasan: finalize when stageData has angle + analisis (mature)", () => {
+    const result = shouldFinalizeAfterChoice({
+      stage: "gagasan",
+      stageData: { angle: "dampak negatif AI", analisis: "feasibility analysis" },
+    })
+    expect(result.finalize).toBe(true)
+    expect(result.reason).toBe("stage_data_mature")
+  })
+
+  it("gagasan: finalize when artifact already exists", () => {
+    const result = shouldFinalizeAfterChoice({
+      stage: "gagasan",
+      stageData: {},
+      hasExistingArtifact: true,
+    })
+    expect(result.finalize).toBe(true)
+    expect(result.reason).toBe("artifact_already_exists")
+  })
+
+  it("daftar_pustaka: never finalize (has own compile flow)", () => {
+    const result = shouldFinalizeAfterChoice({
+      stage: "daftar_pustaka",
+      stageData: { entries: ["ref1"] },
+    })
+    expect(result.finalize).toBe(false)
+    expect(result.reason).toBe("daftar_pustaka_compile_flow")
   })
 })
 
