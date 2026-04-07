@@ -696,6 +696,199 @@ export const archiveVersion = mutation({
     },
 });
 
+export const deleteVersion = mutation({
+    args: {
+        requestorUserId: v.id("users"),
+        skillId: v.string(),
+        version: v.number(),
+        reason: v.string(),
+    },
+    handler: async ({ db }, args) => {
+        await requireRole(db, args.requestorUserId, "admin");
+
+        const skill = await getSkillBySkillId(db, args.skillId);
+        if (!skill) throw new Error("Skill tidak ditemukan.");
+
+        if (!args.reason.trim()) throw new Error("Alasan penghapusan wajib diisi.");
+
+        const target = await getVersionByNumber(db, skill._id, args.version);
+        if (!target) throw new Error(`Versi ${args.version} tidak ditemukan.`);
+
+        if (target.status === "active") {
+            throw new Error("Versi active tidak boleh dihapus.");
+        }
+
+        const deletedStatus = target.status;
+        await db.delete(target._id);
+
+        const remaining = await db
+            .query("stageSkillVersions")
+            .withIndex("by_skillRefId", (q) => q.eq("skillRefId", skill._id))
+            .collect();
+
+        const activeVersion = remaining.find((v) => v.status === "active")?.version ?? null;
+
+        const now = Date.now();
+        await db.patch(skill._id, { updatedAt: now });
+
+        await appendAuditLog(db, {
+            skillRefId: skill._id,
+            skillId: skill.skillId,
+            version: args.version,
+            action: "delete_version",
+            actorId: args.requestorUserId,
+            metadata: {
+                deletedVersion: args.version,
+                deletedStatus,
+                reason: args.reason.trim(),
+                remainingVersions: remaining.length,
+                activeVersion,
+            },
+        });
+
+        return {
+            skillId: skill.skillId,
+            deletedVersion: args.version,
+            deletedStatus,
+            remainingVersions: remaining.length,
+            activeVersion,
+            message: `Version v${args.version} berhasil dihapus.`,
+        };
+    },
+});
+
+export const deleteAllVersionHistory = mutation({
+    args: {
+        requestorUserId: v.id("users"),
+        skillId: v.string(),
+        reason: v.string(),
+    },
+    handler: async ({ db }, args) => {
+        await requireRole(db, args.requestorUserId, "admin");
+
+        const skill = await getSkillBySkillId(db, args.skillId);
+        if (!skill) throw new Error("Skill tidak ditemukan.");
+
+        if (!args.reason.trim()) throw new Error("Alasan penghapusan wajib diisi.");
+
+        const allVersions = await db
+            .query("stageSkillVersions")
+            .withIndex("by_skillRefId", (q) => q.eq("skillRefId", skill._id))
+            .collect();
+
+        const deletable = allVersions.filter((v) => v.status !== "active");
+        const activeVersion = allVersions.find((v) => v.status === "active");
+
+        for (const version of deletable) {
+            await db.delete(version._id);
+        }
+
+        const now = Date.now();
+        await db.patch(skill._id, { updatedAt: now });
+
+        await appendAuditLog(db, {
+            skillRefId: skill._id,
+            skillId: skill.skillId,
+            action: "delete_all_versions",
+            actorId: args.requestorUserId,
+            metadata: {
+                deletedVersions: deletable.map((v) => v.version),
+                deletedStatuses: deletable.map((v) => ({ version: v.version, status: v.status })),
+                deletedCount: deletable.length,
+                preservedActiveVersion: activeVersion?.version ?? null,
+                reason: args.reason.trim(),
+            },
+        });
+
+        return {
+            skillId: skill.skillId,
+            deletedVersions: deletable.map((v) => v.version),
+            deletedCount: deletable.length,
+            preservedActiveVersion: activeVersion?.version ?? null,
+            message: deletable.length > 0
+                ? `Berhasil menghapus ${deletable.length} version history.`
+                : "Tidak ada version history non-active yang bisa dihapus.",
+        };
+    },
+});
+
+export const deleteSkillEntirely = mutation({
+    args: {
+        requestorUserId: v.id("users"),
+        skillId: v.string(),
+        reason: v.string(),
+        confirmationText: v.string(),
+    },
+    handler: async ({ db }, args) => {
+        await requireRole(db, args.requestorUserId, "admin");
+
+        const skill = await getSkillBySkillId(db, args.skillId);
+        if (!skill) throw new Error("Skill tidak ditemukan.");
+
+        if (!args.reason.trim()) throw new Error("Alasan penghapusan wajib diisi.");
+
+        if (args.confirmationText !== `DELETE ${skill.skillId}`) {
+            throw new Error(`Ketik "DELETE ${skill.skillId}" untuk konfirmasi penghapusan skill.`);
+        }
+
+        if (skill.isEnabled) {
+            throw new Error("Skill harus dinonaktifkan sebelum dihapus.");
+        }
+
+        const allVersions = await db
+            .query("stageSkillVersions")
+            .withIndex("by_skillRefId", (q) => q.eq("skillRefId", skill._id))
+            .collect();
+
+        const hasActive = allVersions.some((v) => v.status === "active");
+        if (hasActive) {
+            throw new Error("Skill dengan active version tidak boleh dihapus.");
+        }
+
+        for (const version of allVersions) {
+            await db.delete(version._id);
+        }
+
+        const auditLogs = await db
+            .query("stageSkillAuditLogs")
+            .withIndex("by_skillId_createdAt", (q) => q.eq("skillId", skill.skillId))
+            .collect();
+
+        for (const log of auditLogs) {
+            if (log.skillRefId === skill._id) {
+                await db.patch(log._id, { skillRefId: undefined });
+            }
+        }
+
+        await db.insert("stageSkillAuditLogs", {
+            skillRefId: undefined,
+            skillId: skill.skillId,
+            action: "delete_skill",
+            actorId: args.requestorUserId,
+            metadata: {
+                deletedSkillId: skill.skillId,
+                stageScope: skill.stageScope,
+                deletedVersionNumbers: allVersions.map((v) => v.version),
+                deletedVersionStatuses: allVersions.map((v) => ({ version: v.version, status: v.status })),
+                deletedVersionCount: allVersions.length,
+                reason: args.reason.trim(),
+                deletedBy: args.requestorUserId,
+            },
+            createdAt: Date.now(),
+        });
+
+        await db.delete(skill._id);
+
+        return {
+            deletedSkillId: skill.skillId,
+            deletedStageScope: skill.stageScope,
+            deletedVersionNumbers: allVersions.map((v) => v.version),
+            deletedVersionCount: allVersions.length,
+            message: `Skill "${skill.skillId}" beserta ${allVersions.length} version berhasil dihapus.`,
+        };
+    },
+});
+
 export const setSkillEnabled = mutation({
     args: {
         requestorUserId: v.id("users"),
