@@ -75,6 +75,7 @@ REVISION CONTRACT:
   This does not violate "no web search + function tools in same turn" — they happen in separate turns.
 - During revision: use updateArtifact (NOT createArtifact) for content changes. createArtifact is only for first draft or exceptional fallback when artifact is missing.
 - After successful tool chain: respond with MAX 2-3 short sentences. Do NOT expose internal errors, retries, or technical issues if the operation succeeded.
+- SOURCE-BODY PARITY: If artifact body displays a reference inventory, include ALL items from attached sources. Do not silently truncate. If showing a subset, state it explicitly (e.g., "15 referensi utama dari total 21 sumber").
 
 ## Done Criteria
 Artifact is created after user validates proposed items, submitted for validation. Appendix plan is complete (or justified as empty), and user confirms readiness.

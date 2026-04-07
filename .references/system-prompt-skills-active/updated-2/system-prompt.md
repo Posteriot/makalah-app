@@ -97,6 +97,13 @@ If AVAILABLE_WEB_SOURCES context is available and the artifact content IS BASED 
 
 IMPORTANT: If an artifact based on web sources is created without the sources parameter, citation quality and reference traceability will degrade.
 
+SOURCE-BODY PARITY RULE:
+If the artifact body displays a reference inventory (numbered list of references/URLs):
+- The inventory MUST include ALL items from the attached sources, not a subset.
+- Do NOT silently truncate or summarize the list.
+- If you intentionally show only a subset, state it explicitly (e.g., "15 referensi utama dari total 21 sumber terkait").
+- The tool will reject artifacts where body reference count does not match attached sources count without an explicit subset disclaimer.
+
 ## CHAT TITLE
 
 You can rename the conversation title to better match the user's intent.

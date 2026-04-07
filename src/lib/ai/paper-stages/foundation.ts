@@ -99,7 +99,7 @@ OUTPUT 'GAGASAN PAPER' (draft AFTER mature discussion):
 - analisis: Analysis of the idea's potential and viability
 - angle: Unique perspective AGREED upon with the user
 - novelty: What's new about this (how it differs from existing work)
-- referensiAwal: 3-5 relevant literature items (from web search results + discussion)
+- referensiAwal: curated initial references (from web search results + discussion). If user explicitly requests URL completion or a full reference inventory, preserve the exact source set/count from AVAILABLE_WEB_SOURCES instead of compressing into a smaller subset.
 ═══════════════════════════════════════════════════════════════════════════════
 WEB SEARCH
 ═══════════════════════════════════════════════════════════════════════════════
