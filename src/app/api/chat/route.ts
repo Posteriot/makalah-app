@@ -2175,6 +2175,33 @@ Aturan:
             return createUIMessageStreamResponse({ stream })
         }
 
+        // Reactive revision chain enforcer — active during pending_validation only.
+        // Does NOT detect intent (no regex). Model decides freely at step 0.
+        // After model commits to revision (calls requestRevision), harness
+        // enforces the full chain: updateArtifact → submitStageForValidation.
+        const revisionChainEnforcer = paperSession?.stageStatus === "pending_validation"
+            ? ({ steps, stepNumber }: {
+                steps: Array<{ toolCalls?: Array<{ toolName: string }> }>;
+                stepNumber: number;
+              }) => {
+                if (stepNumber === 0) return undefined
+
+                const prevToolNames = steps[stepNumber - 1]?.toolCalls?.map(tc => tc.toolName) ?? []
+
+                if (prevToolNames.includes("requestRevision")) {
+                    return { toolChoice: "required" as const }
+                }
+                if (prevToolNames.includes("updateStageData")) {
+                    return { toolChoice: "required" as const }
+                }
+                if (prevToolNames.includes("updateArtifact") || prevToolNames.includes("createArtifact")) {
+                    return { toolChoice: { type: "tool", toolName: "submitStageForValidation" } as const }
+                }
+
+                return undefined
+              }
+            : undefined
+
         try {
             const model = await getGatewayModel()
 
@@ -2867,7 +2894,7 @@ Aturan:
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
                 toolChoice: forcedToolChoice,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                prepareStep: (primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
+                prepareStep: (revisionChainEnforcer ?? primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
                 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
                 onFinish: async ({ text, providerMetadata, usage }) => {
@@ -3564,7 +3591,7 @@ Aturan:
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
+                    prepareStep: (revisionChainEnforcer ?? fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
                     stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {
