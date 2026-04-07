@@ -87,12 +87,12 @@ describe("buildChoiceContextNote", () => {
     expect(note).not.toContain("Mode: decision-to-draft")
   })
 
-  it("builds post-choice-finalize note for topik stage", () => {
+  it("builds post-choice-finalize note for topik stage (forceFinalize from helper)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "topik",
       selectedOptionIds: ["topik-ai-personalisasi"],
-    })
+    }, { forceFinalize: true })
     expect(note).toContain("Mode: post-choice-finalize")
     expect(note).toContain("updateStageData")
     expect(note).toContain("createArtifact")
@@ -100,23 +100,23 @@ describe("buildChoiceContextNote", () => {
     expect(note).not.toContain("Mode: decision-to-draft")
   })
 
-  it("builds post-choice-finalize note for abstrak stage", () => {
+  it("builds post-choice-finalize note for abstrak stage (forceFinalize from helper)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "abstrak",
       selectedOptionIds: ["abstrak-problem-first"],
-    })
+    }, { forceFinalize: true })
     expect(note).toContain("Mode: post-choice-finalize")
     expect(note).toContain("submitStageForValidation")
     expect(note).not.toContain("Mode: decision-to-draft")
   })
 
-  it("builds post-choice-finalize note for outline stage with existing artifact", () => {
+  it("builds post-choice-finalize note for outline stage with existing artifact (forceFinalize from helper)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "outline",
       selectedOptionIds: ["outline-tambah-subbab"],
-    }, { hasExistingArtifact: true })
+    }, { hasExistingArtifact: true, forceFinalize: true })
     expect(note).toContain("Mode: post-choice-finalize")
     expect(note).toContain("updateArtifact")
     expect(note).toContain("submitStageForValidation")
@@ -135,48 +135,79 @@ describe("buildChoiceContextNote", () => {
     expect(note).not.toContain("Mode: decision-to-draft")
   })
 
-  it("falls through to decision-to-draft for lampiran with appendix", () => {
+  it("falls through to finalize for lampiran with appendix (forceFinalize from helper)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "lampiran",
       selectedOptionIds: ["option-tabel-data"],
-    })
+    }, { forceFinalize: true })
     expect(note).toContain("Mode: post-choice-finalize")
     expect(note).toContain("submitStageForValidation")
     expect(note).not.toContain("Mode: decision-to-draft")
   })
 
-  it("builds post-choice-finalize note for diskusi stage", () => {
+  it("builds post-choice-finalize note for diskusi stage (forceFinalize from helper)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "diskusi",
       selectedOptionIds: ["opsi-implikasi-teoritis"],
-    })
+    }, { forceFinalize: true })
     expect(note).toContain("Mode: post-choice-finalize")
     expect(note).toContain("updateStageData")
     expect(note).toContain("submitStageForValidation")
     expect(note).not.toContain("Mode: decision-to-draft")
   })
 
-  it("builds post-choice-finalize note for kesimpulan stage", () => {
+  it("builds post-choice-finalize note for kesimpulan stage (forceFinalize from helper)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "kesimpulan",
       selectedOptionIds: ["opsi-saran-praktis"],
-    })
+    }, { forceFinalize: true })
     expect(note).toContain("Mode: post-choice-finalize")
     expect(note).toContain("submitStageForValidation")
     expect(note).not.toContain("Mode: decision-to-draft")
   })
 
-  it("builds post-choice-finalize note for pembaruan_abstrak stage", () => {
+  it("builds post-choice-finalize note for pembaruan_abstrak stage (forceFinalize from helper)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "pembaruan_abstrak",
       selectedOptionIds: ["opsi-perbarui-semua"],
-    })
+    }, { forceFinalize: true })
     expect(note).toContain("Mode: post-choice-finalize")
     expect(note).toContain("submitStageForValidation")
+    expect(note).not.toContain("Mode: decision-to-draft")
+  })
+
+  it("topik with decisionMode exploration → decision-to-draft (NOT finalize)", () => {
+    // This proves decisionMode overrides ALWAYS_FINALIZE_STAGES end-to-end
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "topik",
+      selectedOptionIds: ["opsi-a"],
+    }, { forceFinalize: false })
+    expect(note).toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("Mode: post-choice-finalize")
+  })
+
+  it("outline with forceFinalize false → decision-to-draft", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "outline",
+      selectedOptionIds: ["opsi-struktur-a"],
+    }, { forceFinalize: false })
+    expect(note).toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("Mode: post-choice-finalize")
+  })
+
+  it("topik with forceFinalize true → finalize", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "topik",
+      selectedOptionIds: ["opsi-a"],
+    }, { forceFinalize: true })
+    expect(note).toContain("Mode: post-choice-finalize")
     expect(note).not.toContain("Mode: decision-to-draft")
   })
 

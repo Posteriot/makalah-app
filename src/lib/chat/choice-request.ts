@@ -236,8 +236,9 @@ export function buildChoiceContextNote(
     return baseLines.join("\n")
   }
 
-  // Check finalize: either static stage membership or forceFinalize from state-based helper
-  if (ALWAYS_FINALIZE_STAGES.has(event.stage as PaperStageId) || options?.forceFinalize) {
+  // Finalize decision comes solely from the resolved helper (forceFinalize).
+  // Do NOT check ALWAYS_FINALIZE_STAGES here — that would bypass decisionMode override.
+  if (options?.forceFinalize) {
     baseLines.push(
       "- Mode: post-choice-finalize",
       "- The user has selected a concrete stage direction from the choice card. This is a commit point, not an exploration loop.",
