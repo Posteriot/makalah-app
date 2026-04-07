@@ -453,6 +453,61 @@ The tool will:
             },
         }),
 
+        requestRevision: tool({
+            description: "Request revision for the current stage. Call this FIRST when user requests changes via chat while stage is pending_validation. This transitions the stage from pending_validation to revision, allowing subsequent updateArtifact and submitStageForValidation calls.",
+            inputSchema: z.object({
+                feedback: z.string().min(1).describe("Summary of the user's revision intent from their chat message"),
+            }),
+            execute: async ({ feedback }) => {
+                try {
+                    const session = await retryQuery(
+                        () => fetchQuery(api.paperSessions.getByConversation, {
+                            conversationId: context.conversationId
+                        }, convexOptions),
+                        "paperSessions.getByConversation"
+                    );
+                    if (!session) return { success: false, error: "Paper session not found." };
+
+                    if (session.stageStatus !== "pending_validation") {
+                        return {
+                            success: false,
+                            errorCode: "NOT_PENDING_VALIDATION",
+                            error: `Stage is "${session.stageStatus}", not "pending_validation". requestRevision only applies when stage is pending validation.`,
+                        };
+                    }
+
+                    const result = await fetchMutation(
+                        api.paperSessions.requestRevision,
+                        {
+                            sessionId: session._id,
+                            userId: context.userId,
+                            feedback,
+                            trigger: "model" as const,
+                        },
+                        convexOptions
+                    );
+
+                    if (context.toolTracker) (context.toolTracker as PaperToolTracker & { sawRequestRevision?: boolean }).sawRequestRevision = true;
+                    console.log(`[revision-triggered-by-model] stage=${result.stage} revisionCount=${result.revisionCount}`);
+
+                    return {
+                        success: true,
+                        stage: result.stage,
+                        revisionCount: result.revisionCount,
+                        previousStatus: "pending_validation",
+                        currentStatus: "revision",
+                        trigger: "model",
+                        nextAction: "Proceed: updateArtifact → submitStageForValidation (updateStageData only if structured data changed)",
+                    };
+                } catch (error) {
+                    return {
+                        success: false,
+                        error: `requestRevision failed: ${error instanceof Error ? error.message : String(error)}`,
+                    };
+                }
+            },
+        }),
+
         inspectSourceDocument: tool({
             description:
                 "Inspect an exact source document that was previously stored for this conversation. Use for title, author, publishedAt, siteName, or exact paragraph lookup. Do not use this tool for semantic search or relevance matching.",
