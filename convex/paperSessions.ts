@@ -1198,8 +1198,11 @@ export const requestRevision = mutation({
             updatedAt: now,
         });
 
-        const eventId = trigger === "panel" ? "revision-triggered-by-panel" : "revision-triggered-by-model";
-        console.log(`[${eventId}] stage=${currentStage} trigger=${trigger} revisionCount=${currentRevisionCount + 1} previousStatus=${previousStatus}`);
+        // Observability: only emit panel event here. Model event is emitted by tool wrapper
+        // (paper-tools.ts requestRevision tool) to avoid double-counting.
+        if (trigger === "panel") {
+            console.log(`[revision-triggered-by-panel] stage=${currentStage} trigger=${trigger} revisionCount=${currentRevisionCount + 1} previousStatus=${previousStatus}`);
+        }
 
         return {
             stage: currentStage,
