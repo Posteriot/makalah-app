@@ -2895,6 +2895,18 @@ Aturan:
                             }
                         }
 
+                        // Detect: model answered revision-like intent without calling any tools
+                        if (paperSession?.stageStatus === "pending_validation"
+                            && !paperToolTracker.sawRequestRevision
+                            && !paperToolTracker.sawUpdateStageData
+                            && !paperToolTracker.sawCreateArtifactSuccess
+                            && !paperToolTracker.sawUpdateArtifactSuccess) {
+                            const revisionSignals = /\b(revisi|edit|ubah|ganti|perbaiki|resend|generate ulang|tulis ulang|koreksi|buat ulang|ulangi|dari awal)\b/i;
+                            if (normalizedLastUserContent && revisionSignals.test(normalizedLastUserContent)) {
+                                console.warn(`[revision-intent-answered-without-tools] stage=${paperSession.currentStage} — model responded to apparent revision intent with prose only`);
+                            }
+                        }
+
                         // Outcome-gated persisted content: replace noisy model text with clean system message
                         // for review/finalization workflow stages where tools succeeded
                         if (paperStageScope && normalizedText.length > 0) {

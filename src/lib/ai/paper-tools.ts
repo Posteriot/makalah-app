@@ -39,6 +39,7 @@ export type PaperToolTracker = {
     sawCompileDaftarPustakaPersist: boolean
     sawSubmitValidationSuccess: boolean
     sawSubmitValidationArtifactMissing: boolean
+    sawRequestRevision: boolean
 }
 
 export const createPaperToolTracker = (): PaperToolTracker => ({
@@ -48,6 +49,7 @@ export const createPaperToolTracker = (): PaperToolTracker => ({
     sawCompileDaftarPustakaPersist: false,
     sawSubmitValidationSuccess: false,
     sawSubmitValidationArtifactMissing: false,
+    sawRequestRevision: false,
 })
 
 /**
@@ -487,7 +489,7 @@ The tool will:
                         convexOptions
                     );
 
-                    if (context.toolTracker) (context.toolTracker as PaperToolTracker & { sawRequestRevision?: boolean }).sawRequestRevision = true;
+                    if (context.toolTracker) context.toolTracker.sawRequestRevision = true;
                     console.log(`[revision-triggered-by-model] stage=${result.stage} revisionCount=${result.revisionCount}`);
 
                     return {
