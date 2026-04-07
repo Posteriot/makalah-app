@@ -9,7 +9,24 @@ const mockUseQuery = vi.fn()
 const mockUseMutation = vi.fn()
 const mockSetMessages = vi.fn()
 const mockUseMessages = vi.fn()
+const mockUseChat = vi.fn()
 const conversationId = "a".repeat(32)
+const mockPaperSessionState = {
+  session: {
+    _id: "paper-1",
+    currentStage: "topik",
+  },
+  isPaperMode: true,
+  currentStage: "topik",
+  stageStatus: "drafting",
+  stageLabel: "Topik",
+  stageData: {},
+  approveStage: vi.fn(),
+  requestRevision: vi.fn(),
+  markStageAsDirty: vi.fn(),
+  rewindToStage: vi.fn(async () => ({ success: true })),
+  getStageStartIndex: () => 0,
+}
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -19,15 +36,7 @@ vi.mock("next/navigation", () => ({
 }))
 
 vi.mock("@ai-sdk/react", () => ({
-  useChat: () => ({
-    messages: [],
-    sendMessage: vi.fn(),
-    status: "ready",
-    setMessages: mockSetMessages,
-    regenerate: vi.fn(),
-    stop: vi.fn(),
-    error: null,
-  }),
+  useChat: (...args: unknown[]) => mockUseChat(...args),
 }))
 
 vi.mock("ai", () => ({
@@ -81,22 +90,7 @@ vi.mock("@/lib/hooks/useCurrentUser", () => ({
 }))
 
 vi.mock("@/lib/hooks/usePaperSession", () => ({
-  usePaperSession: () => ({
-    session: {
-      _id: "paper-1",
-      currentStage: "topik",
-    },
-    isPaperMode: true,
-    currentStage: "topik",
-    stageStatus: "drafting",
-    stageLabel: "Topik",
-    stageData: {},
-    approveStage: vi.fn(),
-    requestRevision: vi.fn(),
-    markStageAsDirty: vi.fn(),
-    rewindToStage: vi.fn(async () => ({ success: true })),
-    getStageStartIndex: () => 0,
-  }),
+  usePaperSession: () => mockPaperSessionState,
 }))
 
 vi.mock("@/lib/auth-client", () => ({
@@ -179,7 +173,11 @@ vi.mock("@sentry/nextjs", () => ({
 }))
 
 vi.mock("react-virtuoso", () => ({
-  Virtuoso: () => null,
+  Virtuoso: ({ components }: { components?: { Footer?: () => JSX.Element } }) => (
+    <div data-testid="virtuoso-mock">
+      {components?.Footer ? <components.Footer /> : null}
+    </div>
+  ),
 }))
 
 vi.mock("@/components/ui/skeleton", () => ({
@@ -227,11 +225,30 @@ describe("ChatWindow mobile workspace alignment", () => {
     mockReplace.mockReset()
     mockSetTheme.mockReset()
     mockSetMessages.mockReset()
+    mockUseChat.mockReset()
+    mockUseChat.mockReturnValue({
+      messages: [],
+      sendMessage: vi.fn(),
+      status: "ready",
+      setMessages: mockSetMessages,
+      regenerate: vi.fn(),
+      stop: vi.fn(),
+      error: null,
+    })
     mockUseMessages.mockReset()
     mockUseMessages.mockReturnValue({
       messages: [],
       isLoading: false,
     })
+    mockPaperSessionState.session = {
+      _id: "paper-1",
+      currentStage: "topik",
+    }
+    mockPaperSessionState.isPaperMode = true
+    mockPaperSessionState.currentStage = "topik"
+    mockPaperSessionState.stageStatus = "drafting"
+    mockPaperSessionState.stageLabel = "Topik"
+    mockPaperSessionState.stageData = {}
     mockUseMutation.mockReset()
     mockUseMutation.mockReturnValue(vi.fn(async () => null))
     mockUseQuery.mockReset()
@@ -334,5 +351,48 @@ describe("ChatWindow mobile workspace alignment", () => {
     })
 
     expect(mappedMessages[1].reasoningTrace.traceMode).toBe("transparent")
+  })
+
+  it("merender validation panel saat stage backend sudah pending_validation", () => {
+    mockPaperSessionState.stageStatus = "pending_validation"
+    const hydratedMessages = [
+      {
+        id: "msg-assistant-validation",
+        role: "assistant",
+        content: "Artefak siap direview.",
+        parts: [{ type: "text", text: "Artefak siap direview." }],
+      },
+    ]
+    mockUseChat.mockReturnValue({
+      messages: hydratedMessages,
+      sendMessage: vi.fn(),
+      status: "ready",
+      setMessages: mockSetMessages,
+      regenerate: vi.fn(),
+      stop: vi.fn(),
+      error: null,
+    })
+    mockUseMessages.mockReturnValue({
+      messages: [
+        {
+          _id: "msg-assistant-validation",
+          _creationTime: 1710000010000,
+          role: "assistant",
+          content: "Artefak siap direview.",
+          fileIds: [],
+          attachmentMode: "none",
+        },
+      ],
+      isLoading: false,
+    })
+
+    render(
+      <ChatWindow
+        conversationId={conversationId}
+        onMobileMenuClick={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId("paper-validation-panel")).toBeInTheDocument()
   })
 })

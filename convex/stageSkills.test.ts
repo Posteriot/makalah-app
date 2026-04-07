@@ -156,6 +156,10 @@ Never fabricate references and never skip user confirmation before submit.
 
 ## Done Criteria
 Stage draft is agreed, artifact is created, and draft is ready for validation.
+
+## Visual Language
+Use the interactive choice card when showing options is clearer than prose.
+Never replace the PaperValidationPanel for approval or stage transitions.
 `;
 
 async function callMutation<TArgs, TResult>(

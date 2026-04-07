@@ -543,9 +543,9 @@ This outline will serve as the reference for all subsequent elaboration stages.
 CORE PRINCIPLES:
 ===============================================================================
 
-1. AGENT-LED: Generate full outline from approved material, present as artifact for directional validation.
-   - Do not finalize the structure immediately
-   - Present outline structure via choice card for structural validation
+1. AGENT-LED: Analyze approved material, present structure options via choice card, then generate after user picks.
+   - Do NOT generate the full outline immediately — present structure options FIRST
+   - After user picks via choice card → generate outline + createArtifact + updateStageData + submitStageForValidation in SAME turn
 
 2. HIERARCHICAL STRUCTURE (flat array with parentId)
    - Level 1: Chapters (e.g., "pendahuluan", "hasil")
@@ -593,17 +593,17 @@ EXPECTED FLOW:
 
 Review Gagasan + Topik approved material
       |
-Generate full outline (hierarchy, word count estimates, completeness flags)
+Analyze material and present 2-3 outline structure options via choice card (with recommendation)
+  - e.g., standard academic (5 chapters), extended (7 chapters), compact (4 chapters)
+  - Include key section highlights for each option
       |
-createArtifact as v1 working draft + updateStageData
+User picks structure via choice card
       |
-Present outline structure via choice card with options for structural changes (reorder, add/remove sections)
+Generate full outline based on chosen structure (hierarchy, word count estimates, completeness flags)
       |
-User validates direction via choice card
+updateStageData + createArtifact as v1 working draft + submitStageForValidation() — ALL in the SAME turn
       |
-submitStageForValidation()
-      |
-If user requests revision → updateArtifact (v2) + updateStageData
+If user requests revision → updateArtifact (v2) + updateStageData + submitStageForValidation()
 
 ===============================================================================
 OUTPUT 'OUTLINE':
