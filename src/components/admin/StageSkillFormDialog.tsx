@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useMutation } from "convex/react"
 import { toast } from "sonner"
+import { Trash } from "iconoir-react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import {
@@ -13,6 +14,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -151,6 +162,7 @@ export interface StageSkillRow {
   latestDraftContent?: string
   activeContent?: string
   latestPublishedContent?: string
+  latestDraftVersion?: number | null
 }
 
 interface StageSkillFormDialogProps {
@@ -167,6 +179,7 @@ export function StageSkillFormDialog({
   onClose,
 }: StageSkillFormDialogProps) {
   const createOrUpdateDraft = useMutation(api.stageSkills.createOrUpdateDraft)
+  const deleteVersionMutation = useMutation(api.stageSkills.deleteVersion)
 
   const [stageScope, setStageScope] = useState<StageScope>("gagasan")
   const [name, setName] = useState("")
@@ -176,6 +189,8 @@ export function StageSkillFormDialog({
   const [metadataSearchPolicy, setMetadataSearchPolicy] = useState<SearchPolicy>("active")
   const [changeNote, setChangeNote] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showDeleteDraft, setShowDeleteDraft] = useState(false)
+  const [deleteDraftReason, setDeleteDraftReason] = useState("")
 
   useEffect(() => {
     if (!open) return
@@ -211,6 +226,7 @@ export function StageSkillFormDialog({
   }, [initialSkill, open])
 
   const isEditing = !!initialSkill
+  const hasDeletableDraft = isEditing && !!initialSkill?.latestDraftVersion
   const canSubmit = useMemo(() => {
     return !!name.trim() && !!description.trim() && !!contentBody.trim() && !isSubmitting
   }, [name, description, contentBody, isSubmitting])
@@ -219,6 +235,27 @@ export function StageSkillFormDialog({
     if (isEditing) return
     setMetadataSearchPolicy(getDefaultSearchPolicy(stageScope))
   }, [isEditing, stageScope])
+
+  const handleDeleteDraft = async () => {
+    if (!initialSkill?.latestDraftVersion || !initialSkill.skillId) return
+    setIsSubmitting(true)
+    try {
+      const result = await deleteVersionMutation({
+        requestorUserId: userId,
+        skillId: initialSkill.skillId,
+        version: initialSkill.latestDraftVersion,
+        reason: deleteDraftReason.trim(),
+      })
+      toast.success(result.message)
+      setShowDeleteDraft(false)
+      setDeleteDraftReason("")
+      onClose()
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Hapus draft gagal")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -375,16 +412,73 @@ export function StageSkillFormDialog({
             />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-              Batal
-            </Button>
-            <Button type="submit" disabled={!canSubmit}>
-              {isSubmitting ? "Menyimpan..." : "Simpan Draft"}
-            </Button>
+          <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
+            {hasDeletableDraft ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                disabled={isSubmitting}
+                onClick={() => setShowDeleteDraft(true)}
+              >
+                <Trash className="mr-1 h-4 w-4" />
+                Hapus Draft Ini
+              </Button>
+            ) : (
+              <div />
+            )}
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={!canSubmit}>
+                {isSubmitting ? "Menyimpan..." : "Simpan Draft"}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* AlertDialog: delete current draft */}
+      <AlertDialog
+        open={showDeleteDraft}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setShowDeleteDraft(false)
+            setDeleteDraftReason("")
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus draft ini?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Draft v{initialSkill?.latestDraftVersion} dari &quot;{initialSkill?.skillId}&quot; akan dihapus permanen. Aksi ini tidak bisa dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="delete-draft-reason">Alasan penghapusan</Label>
+            <Input
+              id="delete-draft-reason"
+              value={deleteDraftReason}
+              onChange={(e) => setDeleteDraftReason(e.target.value)}
+              placeholder="Contoh: draft duplikat, versi obsolete"
+              disabled={isSubmitting}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteDraft}
+              disabled={isSubmitting || !deleteDraftReason.trim()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isSubmitting ? "Menghapus..." : `Hapus v${initialSkill?.latestDraftVersion}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }

@@ -263,6 +263,14 @@ export function StageSkillVersionHistoryDialog({
               Belum ada versi untuk skill ini.
             </p>
           )}
+
+          {history && history.versions.length > 0 && nonActiveVersions.length === 0 && (
+            <div className="rounded-action border border-border bg-muted/50 p-3">
+              <p className="text-narrative text-sm text-muted-foreground">
+                Tidak ada version non-active yang bisa dihapus. Version active tidak dapat dihapus karena sedang digunakan di paper sessions.
+              </p>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
