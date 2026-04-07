@@ -5,13 +5,24 @@ import { validateStageSkillContent } from "./stage-skill-validator";
 
 const ARTIFACT_CREATION_FOOTER = `
 
-═══ MANDATORY ARTIFACT RULE ═══
+═══ MANDATORY ARTIFACT & REVISION RULES ═══
 ⚠️ You MUST produce an artifact for this stage's output:
 - FIRST DRAFT: call createArtifact() in the SAME TURN as updateStageData, BEFORE submitStageForValidation.
 - REVISION: call updateArtifact() (NOT createArtifact) in the SAME TURN, THEN call submitStageForValidation().
 - Include the 'sources' parameter from AVAILABLE_WEB_SOURCES if available.
 - The artifact is the FINAL OUTPUT that will be reviewed and approved by the user.
 - After createArtifact OR updateArtifact succeeds → MUST call submitStageForValidation() in the SAME turn.
+
+⚠️ REVISION FROM CHAT (applies when stageStatus is pending_validation):
+- If user requests changes, correction, edit, or regeneration via chat → call requestRevision(feedback) FIRST.
+- After requestRevision succeeds (status becomes "revision") → updateArtifact → submitStageForValidation.
+- Do NOT call updateStageData, createArtifact, or updateArtifact while status is still pending_validation.
+- createArtifact is ONLY for first draft or exceptional fallback when artifact is missing/invalid.
+
+⚠️ POST-TOOL RESPONSE DISCIPLINE:
+- If tool chain succeeds (artifact created/updated + submitted) → respond with 1-2 short sentences confirming success.
+- Do NOT mention internal errors, retries, or technical issues if the final result succeeded.
+- Do NOT repeat artifact content in chat — user reviews it in the artifact panel.
 ═══════════════════════════════`;
 
 type ResolveResult = {
