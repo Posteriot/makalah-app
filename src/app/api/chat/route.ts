@@ -2691,7 +2691,29 @@ Aturan:
             // step 0: force getCurrentPaperState, step 1: force plain answer (no tools)
             const maxToolSteps = shouldForceGetCurrentPaperState
                     ? 2
+                    : shouldForceRequestRevision
+                    ? 5 // requestRevision → updateArtifact → submitStageForValidation + margin
                     : 5
+            // Revision chain: force tool calling for the full chain.
+            // Step 0: requestRevision (forced by toolChoice above)
+            // Steps 1-2: "required" — model MUST call a tool (updateArtifact, submitStageForValidation)
+            // Step 3+: auto — model can finish with text
+            const revisionChainPrepareStep = shouldForceRequestRevision
+                ? ({ stepNumber }: { stepNumber: number }) => {
+                    if (stepNumber === 0) {
+                        return {
+                            toolChoice: { type: "tool", toolName: "requestRevision" } as const,
+                        }
+                    }
+                    if (stepNumber <= 3) {
+                        // Force model to call tools, not write text
+                        return {
+                            toolChoice: "required" as const,
+                        }
+                    }
+                    return undefined
+                }
+                : undefined
             const deterministicSyncPrepareStep = shouldForceGetCurrentPaperState
                 ? ({ stepNumber }: { stepNumber: number }) => {
                     if (stepNumber === 0) {
@@ -2887,7 +2909,7 @@ Aturan:
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
                 toolChoice: forcedToolChoice,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                prepareStep: (primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
+                prepareStep: (revisionChainPrepareStep ?? primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
                 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
                 onFinish: async ({ text, providerMetadata, usage }) => {
@@ -3585,7 +3607,7 @@ Aturan:
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
+                    prepareStep: (revisionChainPrepareStep ?? fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
                     stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {
