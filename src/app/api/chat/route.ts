@@ -2057,7 +2057,6 @@ Aturan:
         // Hoist for catch block accessibility (fallback provider needs these)
         let shouldForceGetCurrentPaperState = false
         let shouldForceSubmitValidation = false
-        let shouldForceRequestRevision = false
         let missingArtifactNote = ""
 
         const createSearchUnavailableResponse = async (input: {
@@ -3511,8 +3510,6 @@ Aturan:
                 const fallbackModel = await getOpenRouterModel({ enableWebSearch: false })
                 const fallbackForcedToolChoice = shouldForceSubmitValidation
                     ? ({ type: "tool", toolName: "submitStageForValidation" } as const)
-                    : shouldForceRequestRevision
-                    ? ({ type: "tool", toolName: "requestRevision" } as const)
                     : undefined
                 const fallbackMaxToolSteps = shouldForceGetCurrentPaperState ? 2 : 5
                 const fallbackDeterministicSyncPrepareStep = shouldForceGetCurrentPaperState
