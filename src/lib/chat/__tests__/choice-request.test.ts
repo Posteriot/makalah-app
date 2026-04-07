@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { parseOptionalChoiceInteractionEvent, buildChoiceContextNote } from "../choice-request"
+import { parseOptionalChoiceInteractionEvent, buildChoiceContextNote, validateChoiceInteractionEvent } from "../choice-request"
 
 describe("parseOptionalChoiceInteractionEvent", () => {
   it("returns null when no interactionEvent", () => {
@@ -87,6 +87,42 @@ describe("buildChoiceContextNote", () => {
     expect(note).not.toContain("Mode: decision-to-draft")
   })
 
+  it("builds post-choice-finalize note for topik stage", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "topik",
+      selectedOptionIds: ["topik-ai-personalisasi"],
+    })
+    expect(note).toContain("Mode: post-choice-finalize")
+    expect(note).toContain("updateStageData")
+    expect(note).toContain("createArtifact")
+    expect(note).toContain("submitStageForValidation")
+    expect(note).not.toContain("Mode: decision-to-draft")
+  })
+
+  it("builds post-choice-finalize note for abstrak stage", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "abstrak",
+      selectedOptionIds: ["abstrak-problem-first"],
+    })
+    expect(note).toContain("Mode: post-choice-finalize")
+    expect(note).toContain("submitStageForValidation")
+    expect(note).not.toContain("Mode: decision-to-draft")
+  })
+
+  it("builds post-choice-finalize note for outline stage with existing artifact", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "outline",
+      selectedOptionIds: ["outline-tambah-subbab"],
+    }, { hasExistingArtifact: true })
+    expect(note).toContain("Mode: post-choice-finalize")
+    expect(note).toContain("updateArtifact")
+    expect(note).toContain("submitStageForValidation")
+    expect(note).not.toContain("Mode: decision-to-draft")
+  })
+
   it("builds no-appendix-placeholder note for lampiran tidak-ada", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
@@ -105,6 +141,114 @@ describe("buildChoiceContextNote", () => {
       stage: "lampiran",
       selectedOptionIds: ["option-tabel-data"],
     })
+    expect(note).toContain("Mode: post-choice-finalize")
+    expect(note).toContain("submitStageForValidation")
+    expect(note).not.toContain("Mode: decision-to-draft")
+  })
+
+  it("builds post-choice-finalize note for diskusi stage", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "diskusi",
+      selectedOptionIds: ["opsi-implikasi-teoritis"],
+    })
+    expect(note).toContain("Mode: post-choice-finalize")
+    expect(note).toContain("updateStageData")
+    expect(note).toContain("submitStageForValidation")
+    expect(note).not.toContain("Mode: decision-to-draft")
+  })
+
+  it("builds post-choice-finalize note for kesimpulan stage", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "kesimpulan",
+      selectedOptionIds: ["opsi-saran-praktis"],
+    })
+    expect(note).toContain("Mode: post-choice-finalize")
+    expect(note).toContain("submitStageForValidation")
+    expect(note).not.toContain("Mode: decision-to-draft")
+  })
+
+  it("builds post-choice-finalize note for pembaruan_abstrak stage", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "pembaruan_abstrak",
+      selectedOptionIds: ["opsi-perbarui-semua"],
+    })
+    expect(note).toContain("Mode: post-choice-finalize")
+    expect(note).toContain("submitStageForValidation")
+    expect(note).not.toContain("Mode: decision-to-draft")
+  })
+
+  it("gagasan stays in decision-to-draft (exploration stage)", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "gagasan",
+      selectedOptionIds: ["fokus-berpikir-kritis"],
+    })
     expect(note).toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("Mode: post-choice-finalize")
+  })
+})
+
+describe("validateChoiceInteractionEvent — stale choice guard", () => {
+  const validEvent = {
+    type: "paper.choice.submit" as const,
+    version: 1 as const,
+    conversationId: "conv-123",
+    stage: "outline",
+    sourceMessageId: "msg-789",
+    choicePartId: "msg-789-json-renderer-choice",
+    kind: "single-select" as const,
+    selectedOptionIds: ["option-1"],
+    submittedAt: Date.now(),
+  }
+
+  it("accepts choice when stageStatus is drafting", () => {
+    expect(() =>
+      validateChoiceInteractionEvent({
+        event: validEvent,
+        conversationId: "conv-123",
+        currentStage: "outline",
+        isPaperMode: true,
+        stageStatus: "drafting",
+      })
+    ).not.toThrow()
+  })
+
+  it("rejects choice when stageStatus is pending_validation", () => {
+    expect(() =>
+      validateChoiceInteractionEvent({
+        event: validEvent,
+        conversationId: "conv-123",
+        currentStage: "outline",
+        isPaperMode: true,
+        stageStatus: "pending_validation",
+      })
+    ).toThrow(/CHOICE_REJECTED_STALE_STATE/)
+  })
+
+  it("rejects choice when stageStatus is revision", () => {
+    expect(() =>
+      validateChoiceInteractionEvent({
+        event: validEvent,
+        conversationId: "conv-123",
+        currentStage: "outline",
+        isPaperMode: true,
+        stageStatus: "revision",
+      })
+    ).toThrow(/CHOICE_REJECTED_STALE_STATE/)
+  })
+
+  it("rejects choice when stageStatus is approved", () => {
+    expect(() =>
+      validateChoiceInteractionEvent({
+        event: validEvent,
+        conversationId: "conv-123",
+        currentStage: "outline",
+        isPaperMode: true,
+        stageStatus: "approved",
+      })
+    ).toThrow(/CHOICE_REJECTED_STALE_STATE/)
   })
 })

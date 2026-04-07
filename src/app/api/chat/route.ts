@@ -377,6 +377,7 @@ export async function POST(req: Request) {
                 conversationId: currentConversationId,
                 currentStage: paperStageScope ?? null,
                 isPaperMode: !!paperModePrompt,
+                stageStatus: paperSession?.stageStatus as string | undefined,
             })
             const choiceStageData = paperSession?.stageData as Record<string, Record<string, unknown> | undefined> | undefined
             const hasExistingArtifact = !!choiceStageData?.[choiceInteractionEvent.stage]?.artifactId

@@ -2,6 +2,26 @@ import { z } from "zod"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 
 const VALIDATE_OPTION_ID = "sudah-cukup-lanjut-validasi"
+// Stages where a user choice card selection is a commit point:
+// after user picks → model MUST finalize (updateStageData → artifact → submit).
+//
+// NOT included:
+// - gagasan: explicitly iterative brainstorming, choice cards are exploration, not commit
+// - daftar_pustaka: has its own compile flow (compileDaftarPustaka → artifact → submit)
+const POST_CHOICE_FINALIZE_STAGES = new Set<PaperStageId>([
+  "topik",
+  "outline",
+  "abstrak",
+  "pendahuluan",
+  "tinjauan_literatur",
+  "metodologi",
+  "hasil",
+  "diskusi",
+  "kesimpulan",
+  "pembaruan_abstrak",
+  "lampiran",
+  "judul",
+])
 
 const choiceInteractionEventSchema = z.object({
   type: z.literal("paper.choice.submit"),
@@ -32,12 +52,19 @@ export function validateChoiceInteractionEvent(params: {
   conversationId: string
   currentStage?: PaperStageId | "completed" | null
   isPaperMode: boolean
+  stageStatus?: string
 }): void {
-  const { event, conversationId, currentStage, isPaperMode } = params
+  const { event, conversationId, currentStage, isPaperMode, stageStatus } = params
   if (!isPaperMode) throw new Error("Choice submit is only valid in paper mode.")
   if (event.conversationId !== conversationId) throw new Error("interactionEvent.conversationId does not match active conversation.")
   if (!currentStage || currentStage === "completed") throw new Error("Choice submit requires an active paper stage.")
   if (event.stage !== currentStage) throw new Error("interactionEvent.stage does not match active paper stage.")
+  if (stageStatus && stageStatus !== "drafting") {
+    throw new Error(
+      `CHOICE_REJECTED_STALE_STATE: Choice rejected — stageStatus is "${stageStatus}", expected "drafting". ` +
+      `Pilihan ini sudah tidak berlaku karena state draft sudah berubah. Silakan gunakan chat atau panel validasi yang aktif.`
+    )
+  }
 }
 
 export function buildChoiceContextNote(
@@ -146,6 +173,25 @@ export function buildChoiceContextNote(
       "- Do NOT write prose previewing the draft in chat (e.g. 'aku akan menyusun draf', 'draf ini akan', 'berikut adalah draf'). ALL draft content goes into the artifact tool call (createArtifact or updateArtifact as instructed above), not chat.",
       "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
       "- If submitStageForValidation fails with ARTIFACT_MISSING, retry it after createArtifact succeeds.",
+      "- Mention the validation panel ONLY if submitStageForValidation succeeds.",
+      "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
+    )
+    return baseLines.join("\n")
+  }
+
+  if (POST_CHOICE_FINALIZE_STAGES.has(event.stage as PaperStageId)) {
+    baseLines.push(
+      "- Mode: post-choice-finalize",
+      "- The user has selected a concrete stage direction from the choice card. This is a commit point, not an exploration loop.",
+      "- You MUST translate the selected option into the current stage draft immediately.",
+      "- You MUST call tools in this EXACT order:",
+      "  1. updateStageData (persist the stage decision and the resulting draft fields)",
+      options?.hasExistingArtifact
+        ? "  2. updateArtifact (artifact already exists for this stage — update it, do NOT create a duplicate)"
+        : "  2. createArtifact (create the stage artifact from the finalized draft content)",
+      "  3. submitStageForValidation",
+      "- Do NOT output another choice card in this response.",
+      "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
       "- Mention the validation panel ONLY if submitStageForValidation succeeds.",
       "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
     )
