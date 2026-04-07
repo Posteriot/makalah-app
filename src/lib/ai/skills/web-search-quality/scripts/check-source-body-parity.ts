@@ -18,9 +18,11 @@ export interface SourceBodyParityResult {
     }
 }
 
-const REFERENCE_HEADING_PATTERN = /^#{1,3}\s*(referensi|rujukan|daftar\s+referensi|daftar\s+pustaka|sumber|references|bibliography|sources)\s*$/im
+const REFERENCE_HEADING_PATTERN = /^#{1,3}\s*(referensi|rujukan|daftar\s+referensi|daftar\s+pustaka|sumber\s+(?:terkait|referensi|pustaka)|references|bibliography|sources)\s*$/im
 
-const NUMERIC_CLAIM_PATTERN = /\b(\d+)\s*(rujukan|referensi|sumber|pustaka|references|sources|citations)\b/gi
+// "sumber" alone is too broad (matches "sumber masalah", "sumber data", "sumber bias").
+// Only match "sumber" in reference-context compounds: sumber terkait, sumber referensi, sumber pustaka.
+const NUMERIC_CLAIM_PATTERN = /\b(\d+)\s*(rujukan|referensi|sumber\s+(?:terkait|referensi|pustaka)|pustaka|references|sources|citations)\b/gi
 
 const SUBSET_DISCLAIMER_PATTERN = /\b(utama\s+dari\s+total|subset|referensi\s+utama|rujukan\s+terpilih|contoh\s+rujukan|sebagian\s+dari|selected\s+references|key\s+references\s+from)\b/i
 

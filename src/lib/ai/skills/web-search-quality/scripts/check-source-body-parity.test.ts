@@ -55,14 +55,28 @@ describe("checkSourceBodyParity", () => {
         expect(result.valid).toBe(true)
     })
 
-    it("detects Indonesian numeric patterns: rujukan, referensi, sumber", () => {
-        for (const word of ["rujukan", "referensi", "sumber"]) {
+    it("detects Indonesian numeric patterns: rujukan, referensi, sumber terkait", () => {
+        for (const word of ["rujukan", "referensi", "sumber terkait"]) {
             const result = checkSourceBodyParity({
                 content: `Terdapat 10 ${word} dalam penelitian ini.`,
                 sources: makeSources(7),
             })
             expect(result.valid).toBe(false)
             expect(result.level).toBe("numeric-claim")
+        }
+    })
+
+    it("allows 'sumber' in non-reference context (sumber masalah, sumber data, sumber bias)", () => {
+        for (const phrase of [
+            "Ada 3 sumber masalah utama dalam penelitian ini.",
+            "Penelitian ini menggunakan 2 sumber data primer.",
+            "Terdapat 4 sumber bias yang perlu diperhatikan.",
+        ]) {
+            const result = checkSourceBodyParity({
+                content: phrase,
+                sources: makeSources(10),
+            })
+            expect(result.valid).toBe(true)
         }
     })
 
@@ -128,7 +142,7 @@ Berikut subset referensi utama:
 2. https://example.com/ref-2
 3. https://example.com/ref-3`
 
-        for (const heading of ["# Referensi", "## Rujukan", "### Daftar Pustaka", "## Sumber", "## Daftar Referensi"]) {
+        for (const heading of ["# Referensi", "## Rujukan", "### Daftar Pustaka", "## Sumber Terkait", "## Daftar Referensi"]) {
             const result = checkSourceBodyParity({
                 content: bodyWithAllUrls(heading),
                 sources,
