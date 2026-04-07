@@ -3,11 +3,23 @@
 import { useState } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { toast } from "sonner"
-import { Plus, EditPencil, ClockRotateRight, SwitchOn, SwitchOff } from "iconoir-react"
+import { Plus, EditPencil, ClockRotateRight, SwitchOn, SwitchOff, Trash } from "iconoir-react"
 import { api } from "@convex/_generated/api"
 import { STAGE_ORDER } from "@convex/paperSessions/constants"
 import type { Id } from "@convex/_generated/dataModel"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { StageSkillFormDialog, type StageSkillRow } from "./StageSkillFormDialog"
 import { StageSkillVersionHistoryDialog } from "./StageSkillVersionHistoryDialog"
 
@@ -34,12 +46,18 @@ export function StageSkillsManager({ userId }: StageSkillsManagerProps) {
   const publishVersion = useMutation(api.stageSkills.publishVersion)
   const activateVersion = useMutation(api.stageSkills.activateVersion)
   const setSkillEnabled = useMutation(api.stageSkills.setSkillEnabled)
+  const deleteSkillEntirelyMutation = useMutation(api.stageSkills.deleteSkillEntirely)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingSkill, setEditingSkill] = useState<StageSkillRow | null>(null)
   const [historySkillId, setHistorySkillId] = useState<string | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+
+  // Delete skill entirely state
+  const [deleteSkillTarget, setDeleteSkillTarget] = useState<StageSkillListItem | null>(null)
+  const [deleteSkillReason, setDeleteSkillReason] = useState("")
+  const [deleteSkillConfirmation, setDeleteSkillConfirmation] = useState("")
 
   const openCreateDialog = () => {
     setEditingSkill(null)
@@ -109,6 +127,30 @@ export function StageSkillsManager({ userId }: StageSkillsManagerProps) {
       setIsSubmitting(false)
     }
   }
+
+  const handleDeleteSkillEntirely = async () => {
+    if (!deleteSkillTarget) return
+    setIsSubmitting(true)
+    try {
+      const result = await deleteSkillEntirelyMutation({
+        requestorUserId: userId,
+        skillId: deleteSkillTarget.skillId,
+        reason: deleteSkillReason.trim(),
+        confirmationText: deleteSkillConfirmation,
+      })
+      toast.success(result.message)
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Hapus skill gagal.")
+    } finally {
+      setIsSubmitting(false)
+      setDeleteSkillTarget(null)
+      setDeleteSkillReason("")
+      setDeleteSkillConfirmation("")
+    }
+  }
+
+  const canDeleteSkill = (skill: StageSkillListItem) =>
+    !skill.isEnabled && skill.activeVersion === null
 
   return (
     <div className="space-y-6">
@@ -223,8 +265,27 @@ export function StageSkillsManager({ userId }: StageSkillsManagerProps) {
                     </>
                   )}
                 </Button>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setDeleteSkillTarget(skill)}
+                  disabled={isSubmitting || !canDeleteSkill(skill)}
+                >
+                  <Trash className="mr-1 h-4 w-4" />
+                  Delete
+                </Button>
               </div>
             </div>
+            {!canDeleteSkill(skill) && (
+              <p className="mt-2 text-narrative text-xs text-muted-foreground">
+                {skill.isEnabled
+                  ? "Nonaktifkan skill terlebih dahulu sebelum menghapus."
+                  : "Skill dengan active version tidak bisa dihapus."}
+              </p>
+            )}
           </div>
         ))}
 
@@ -250,6 +311,71 @@ export function StageSkillsManager({ userId }: StageSkillsManagerProps) {
         skillId={historySkillId}
         onClose={() => setIsHistoryOpen(false)}
       />
+
+      {/* AlertDialog: delete skill entirely */}
+      <AlertDialog
+        open={!!deleteSkillTarget}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setDeleteSkillTarget(null)
+            setDeleteSkillReason("")
+            setDeleteSkillConfirmation("")
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus skill sepenuhnya?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Skill &quot;{deleteSkillTarget?.skillId}&quot; beserta seluruh version-nya akan dihapus permanen dari katalog admin. Audit log tetap dipertahankan. Aksi ini tidak bisa dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-action border border-border bg-muted/50 p-3 text-sm space-y-1">
+              <p>Skill harus dalam kondisi <strong>disabled</strong>.</p>
+              <p>Skill tidak boleh memiliki <strong>active version</strong>.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="delete-skill-reason">Alasan penghapusan skill</Label>
+              <Input
+                id="delete-skill-reason"
+                value={deleteSkillReason}
+                onChange={(e) => setDeleteSkillReason(e.target.value)}
+                placeholder="Contoh: skill deprecated dan tidak lagi dipakai"
+                disabled={isSubmitting}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="delete-skill-confirmation">Ketik untuk konfirmasi</Label>
+              <Input
+                id="delete-skill-confirmation"
+                value={deleteSkillConfirmation}
+                onChange={(e) => setDeleteSkillConfirmation(e.target.value)}
+                placeholder={`DELETE ${deleteSkillTarget?.skillId ?? ""}`}
+                disabled={isSubmitting}
+                className="font-mono"
+              />
+              <p className="text-narrative text-xs text-muted-foreground">
+                Ketik &quot;DELETE {deleteSkillTarget?.skillId}&quot; untuk mengaktifkan tombol hapus.
+              </p>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSkillEntirely}
+              disabled={
+                isSubmitting
+                || !deleteSkillReason.trim()
+                || deleteSkillConfirmation !== `DELETE ${deleteSkillTarget?.skillId}`
+              }
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isSubmitting ? "Menghapus..." : "Delete Skill Entirely"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
