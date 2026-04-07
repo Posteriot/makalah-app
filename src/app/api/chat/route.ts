@@ -372,13 +372,30 @@ export async function POST(req: Request) {
 
         let choiceContextNote: string | undefined
         if (choiceInteractionEvent) {
-            validateChoiceInteractionEvent({
-                event: choiceInteractionEvent,
-                conversationId: currentConversationId,
-                currentStage: paperStageScope ?? null,
-                isPaperMode: !!paperModePrompt,
-                stageStatus: paperSession?.stageStatus as string | undefined,
-            })
+            try {
+                validateChoiceInteractionEvent({
+                    event: choiceInteractionEvent,
+                    conversationId: currentConversationId,
+                    currentStage: paperStageScope ?? null,
+                    isPaperMode: !!paperModePrompt,
+                    stageStatus: paperSession?.stageStatus as string | undefined,
+                })
+            } catch (validationError) {
+                const errorMsg = validationError instanceof Error ? validationError.message : String(validationError);
+                if (errorMsg.includes("CHOICE_REJECTED_STALE_STATE")) {
+                    console.warn(`[stale-choice-rejected] stage=${choiceInteractionEvent.stage} stageStatus=${paperSession?.stageStatus} sourceMessageId=${choiceInteractionEvent.sourceMessageId} submittedAt=${choiceInteractionEvent.submittedAt}`);
+                    return new Response(
+                        JSON.stringify({
+                            error: "CHOICE_REJECTED_STALE_STATE",
+                            message: "Pilihan ini sudah tidak berlaku karena state draft sudah berubah. Silakan gunakan chat atau panel validasi yang aktif.",
+                            stage: choiceInteractionEvent.stage,
+                            stageStatus: paperSession?.stageStatus,
+                        }),
+                        { status: 409, headers: { "Content-Type": "application/json" } }
+                    );
+                }
+                throw validationError; // re-throw non-stale errors
+            }
             const choiceStageData = paperSession?.stageData as Record<string, Record<string, unknown> | undefined> | undefined
             const hasExistingArtifact = !!choiceStageData?.[choiceInteractionEvent.stage]?.artifactId
             choiceContextNote = buildChoiceContextNote(choiceInteractionEvent, { hasExistingArtifact })
