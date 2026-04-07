@@ -2189,12 +2189,15 @@ Aturan:
                 const prevToolNames = steps[stepNumber - 1]?.toolCalls?.map(tc => tc.toolName) ?? []
 
                 if (prevToolNames.includes("requestRevision")) {
+                    console.info(`[REVISION][chain-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} → required`)
                     return { toolChoice: "required" as const }
                 }
                 if (prevToolNames.includes("updateStageData")) {
+                    console.info(`[REVISION][chain-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} → required`)
                     return { toolChoice: "required" as const }
                 }
                 if (prevToolNames.includes("updateArtifact") || prevToolNames.includes("createArtifact")) {
+                    console.info(`[REVISION][chain-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} → submitStageForValidation`)
                     return { toolChoice: { type: "tool", toolName: "submitStageForValidation" } as const }
                 }
 
