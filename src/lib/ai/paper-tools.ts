@@ -180,15 +180,8 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                     );
                     if (!session) return { success: false, error: "Paper session not found." };
 
-                    if (session.stageStatus === "pending_validation") {
-                        return {
-                            success: false,
-                            errorCode: "STAGE_PENDING_VALIDATION",
-                            retryable: false,
-                            error: "Stage is pending validation. Request revision first if you want to modify the draft.",
-                            nextAction: "Do not call updateStageData now. Direct the user to the validation panel to approve, or ask them to request a revision first.",
-                        };
-                    }
+                    // pending_validation: backend auto-rescue handles state transition.
+                    // No hard-block here — let the Convex mutation auto-transition to revision.
 
                     // Option B Fix: Auto-fetch stage from session.currentStage
                     // This eliminates the possibility of AI specifying wrong stage
@@ -251,15 +244,6 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                     const errorMessage = error instanceof Error
                         ? error.message
                         : "Failed to save stage data progress.";
-                    if (errorMessage.includes("Stage is pending validation")) {
-                        return {
-                            success: false,
-                            errorCode: "STAGE_PENDING_VALIDATION",
-                            retryable: false,
-                            error: errorMessage,
-                            nextAction: "Do not modify the draft. Direct the user to approve in the validation panel or request a revision first.",
-                        };
-                    }
                     return { success: false, error: errorMessage };
                 }
             },
