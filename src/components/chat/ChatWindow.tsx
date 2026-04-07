@@ -2169,7 +2169,7 @@ export function ChatWindow({
   const handleRevise = async (feedback: string) => {
     if (!userId) return
     try {
-      await requestRevision(userId, feedback)
+      await requestRevision(userId, feedback, "panel")
       // Bug fix 6.6.1: Send feedback as user message so AI can see it
       sendMessageWithPendingIndicator(`[Revisi untuk ${stageLabel}]\n\n${feedback}`)
       toast.info("Feedback revisi telah dikirim ke agen.")
