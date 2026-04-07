@@ -15,6 +15,7 @@ import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 // isBlockedSourceDomain removed — blocklist enforcement via SKILL.md natural language
 // formatParagraphEndCitations now handled by orchestrator
 import { createPaperTools, createPaperToolTracker } from "@/lib/ai/paper-tools"
+import { checkSourceBodyParity } from "@/lib/ai/skills/web-search-quality/scripts/check-source-body-parity"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
@@ -1615,6 +1616,21 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                             }
                         }
 
+                        // Source-body parity check: content reference inventory must match attached sources
+                        if (sources && sources.length > 0) {
+                            const parityCheck = checkSourceBodyParity({ content, sources })
+                            if (!parityCheck.valid) {
+                                console.warn(`[source-body-parity-rejected] tool=createArtifact level=${parityCheck.level} sources=${sources.length}`)
+                                return {
+                                    success: false,
+                                    errorCode: "SOURCE_BODY_PARITY_MISMATCH",
+                                    retryable: true,
+                                    error: parityCheck.error,
+                                    nextAction: "Fix the artifact content to match attached sources count, or add an explicit subset disclaimer.",
+                                }
+                            }
+                        }
+
                         const result = await retryMutation(
                             () => fetchMutationWithToken(api.artifacts.create, {
                                 conversationId: currentConversationId as Id<"conversations">,
@@ -1765,6 +1781,21 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                             return {
                                 success: false,
                                 error: refValidation.error,
+                            }
+                        }
+
+                        // Source-body parity check: content reference inventory must match attached sources
+                        if (sources && sources.length > 0) {
+                            const parityCheck = checkSourceBodyParity({ content, sources })
+                            if (!parityCheck.valid) {
+                                console.warn(`[source-body-parity-rejected] tool=updateArtifact level=${parityCheck.level} sources=${sources.length}`)
+                                return {
+                                    success: false,
+                                    errorCode: "SOURCE_BODY_PARITY_MISMATCH",
+                                    retryable: true,
+                                    error: parityCheck.error,
+                                    nextAction: "Fix the artifact content to match attached sources count, or add an explicit subset disclaimer.",
+                                }
                             }
                         }
 
