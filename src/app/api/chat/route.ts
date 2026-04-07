@@ -2627,8 +2627,10 @@ Aturan:
             // tool calling API, not write it as text. Without this, some models (e.g., Gemini Flash)
             // simulate tool calls as text output, which never executes.
             const revisionIntentPattern = /\b(revisi|edit|ubah|ganti|perbaiki|resend|generate ulang|tulis ulang|koreksi|buat ulang|ulangi|dari awal|tambah(kan)?|hapus|perbaiki|perbarui)\b/i
-            shouldForceRequestRevision = !enableWebSearch
-                && !!paperModePrompt
+            // Note: unlike shouldForceSubmitValidation, this does NOT require !enableWebSearch.
+            // Search router already decides NO-SEARCH for revision intent, and toolChoice
+            // forcing must work even when search pipeline is enabled (e.g., gagasan = active policy).
+            shouldForceRequestRevision = !!paperModePrompt
                 && !shouldForceGetCurrentPaperState
                 && !shouldForceSubmitValidation
                 && paperSession?.stageStatus === "pending_validation"
