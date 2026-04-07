@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { submitForValidation } from "./paperSessions";
+import { submitForValidation, requestRevision } from "./paperSessions";
 
 vi.mock("./authHelpers", () => ({
   requireAuthUser: vi.fn(),
   requirePaperSessionOwner: vi.fn(),
+  requireAuthUserId: vi.fn(),
 }));
 
 import { requirePaperSessionOwner } from "./authHelpers";
@@ -69,5 +70,68 @@ describe("submitForValidation — artifact guard", () => {
     expect(patches[0].patch).toMatchObject({
       stageStatus: "pending_validation",
     });
+  });
+});
+
+describe("requestRevision — trigger parameter", () => {
+  function makeMockCtxWithGet(session: ReturnType<typeof makeSession>) {
+    const patches: Array<{ id: string; patch: Record<string, unknown> }> = [];
+    return {
+      ctx: {
+        db: {
+          get: vi.fn(async () => session),
+          patch: vi.fn(async (id: string, patch: Record<string, unknown>) => {
+            patches.push({ id, patch });
+          }),
+        },
+        auth: { getUserIdentity: vi.fn(async () => ({ subject: "users_1" })) },
+      },
+      patches,
+    };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function callRevisionHandler(ctx: any, args: {
+    sessionId: string; userId: string; feedback: string; trigger?: string;
+  }) {
+    const fn = requestRevision as unknown as {
+      _handler: (ctx: unknown, args: typeof args) => Promise<unknown>;
+    };
+    return fn._handler(ctx, args);
+  }
+
+  it("accepts trigger 'panel' and returns it in result", async () => {
+    const session = makeSession({
+      stageStatus: "pending_validation",
+      stageData: { gagasan: { revisionCount: 0 } },
+    });
+    const { ctx, patches } = makeMockCtxWithGet(session);
+
+    const result = await callRevisionHandler(ctx, {
+      sessionId: "paperSessions_1",
+      userId: "users_1",
+      feedback: "Fix paragraph 2",
+      trigger: "panel",
+    });
+
+    expect(patches[0].patch).toMatchObject({ stageStatus: "revision" });
+    expect(result).toMatchObject({ trigger: "panel" });
+  });
+
+  it("accepts trigger 'model' and returns it in result", async () => {
+    const session = makeSession({
+      stageStatus: "pending_validation",
+      stageData: { gagasan: { revisionCount: 0 } },
+    });
+    const { ctx } = makeMockCtxWithGet(session);
+
+    const result = await callRevisionHandler(ctx, {
+      sessionId: "paperSessions_1",
+      userId: "users_1",
+      feedback: "Revise intro",
+      trigger: "model",
+    });
+
+    expect(result).toMatchObject({ trigger: "model" });
   });
 });

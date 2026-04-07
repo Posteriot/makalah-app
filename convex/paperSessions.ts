@@ -1143,8 +1143,10 @@ export const requestRevision = mutation({
         sessionId: v.id("paperSessions"),
         userId: v.id("users"),
         feedback: v.string(),
+        trigger: v.optional(v.union(v.literal("panel"), v.literal("model"))),
     },
     handler: async (ctx, args) => {
+        const trigger = args.trigger ?? "panel";
         await requireAuthUserId(ctx, args.userId);
         const session = await ctx.db.get(args.sessionId);
         if (!session) throw new Error("Session not found");
@@ -1152,6 +1154,7 @@ export const requestRevision = mutation({
 
         const now = Date.now();
         const currentStage = session.currentStage;
+        const previousStatus = session.stageStatus;
         if (!STAGE_ORDER.includes(currentStage as PaperStageId)) {
             throw new Error(`Unknown current stage: ${currentStage}`);
         }
@@ -1171,9 +1174,14 @@ export const requestRevision = mutation({
             updatedAt: now,
         });
 
+        console.log(`[Revision] stage=${currentStage} trigger=${trigger} revisionCount=${currentRevisionCount + 1} previousStatus=${previousStatus}`);
+
         return {
             stage: currentStage,
             revisionCount: updatedStageData[currentStage].revisionCount,
+            previousStatus,
+            currentStatus: "revision" as const,
+            trigger,
         };
     },
 });

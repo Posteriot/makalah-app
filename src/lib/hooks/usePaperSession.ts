@@ -118,12 +118,13 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
         });
     };
 
-    const requestRevision = async (userId: Id<"users">, feedback: string) => {
+    const requestRevision = async (userId: Id<"users">, feedback: string, trigger?: "panel" | "model") => {
         if (!session) return;
         return await requestRevisionMutation({
             sessionId: session._id,
             userId,
             feedback,
+            trigger: trigger ?? "panel",
         });
     };
 
