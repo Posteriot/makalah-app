@@ -2615,7 +2615,9 @@ Aturan:
                 !enableWebSearch &&
                 !isSyncRequest &&
                 !isSaveSubmitIntent &&
-                !isCompileBibliographyIntent
+                !isCompileBibliographyIntent &&
+                paperSession?.stageStatus !== "pending_validation" &&
+                paperSession?.stageStatus !== "revision"
 
             if (shouldServeStoredReferenceInventory) {
                 const inventoryItems = buildStoredReferenceInventoryItems({
