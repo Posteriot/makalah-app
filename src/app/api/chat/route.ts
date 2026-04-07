@@ -2057,6 +2057,7 @@ Aturan:
         // Hoist for catch block accessibility (fallback provider needs these)
         let shouldForceGetCurrentPaperState = false
         let shouldForceSubmitValidation = false
+        let shouldForceRequestRevision = false
         let missingArtifactNote = ""
 
         const createSearchUnavailableResponse = async (input: {
@@ -2621,6 +2622,22 @@ Aturan:
                 && paperSession?.stageStatus === "drafting"
                 && hasStageArtifact(paperSession)
 
+            // Force requestRevision when user sends revision intent during pending_validation.
+            // This is a deterministic architectural guard — model MUST call requestRevision via
+            // tool calling API, not write it as text. Without this, some models (e.g., Gemini Flash)
+            // simulate tool calls as text output, which never executes.
+            const revisionIntentPattern = /\b(revisi|edit|ubah|ganti|perbaiki|resend|generate ulang|tulis ulang|koreksi|buat ulang|ulangi|dari awal|tambah(kan)?|hapus|perbaiki|perbarui)\b/i
+            shouldForceRequestRevision = !enableWebSearch
+                && !!paperModePrompt
+                && !shouldForceGetCurrentPaperState
+                && !shouldForceSubmitValidation
+                && paperSession?.stageStatus === "pending_validation"
+                && !!normalizedLastUserContent
+                && revisionIntentPattern.test(normalizedLastUserContent)
+            if (shouldForceRequestRevision) {
+                console.info(`[REVISION][force-tool-choice] stage=${paperSession?.currentStage} — forcing requestRevision via toolChoice`)
+            }
+
             missingArtifactNote = !shouldForceSubmitValidation
                 && !!paperModePrompt
                 && !hasStageArtifact(paperSession)
@@ -2665,6 +2682,8 @@ Aturan:
 
             const forcedToolChoice = shouldForceSubmitValidation
                     ? ({ type: "tool", toolName: "submitStageForValidation" } as const)
+                    : shouldForceRequestRevision
+                    ? ({ type: "tool", toolName: "requestRevision" } as const)
                     : undefined
             // Explicit sync mode: force 2-step flow
             // step 0: force getCurrentPaperState, step 1: force plain answer (no tools)
@@ -3510,6 +3529,8 @@ Aturan:
                 const fallbackModel = await getOpenRouterModel({ enableWebSearch: false })
                 const fallbackForcedToolChoice = shouldForceSubmitValidation
                     ? ({ type: "tool", toolName: "submitStageForValidation" } as const)
+                    : shouldForceRequestRevision
+                    ? ({ type: "tool", toolName: "requestRevision" } as const)
                     : undefined
                 const fallbackMaxToolSteps = shouldForceGetCurrentPaperState ? 2 : 5
                 const fallbackDeterministicSyncPrepareStep = shouldForceGetCurrentPaperState
