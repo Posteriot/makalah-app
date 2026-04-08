@@ -766,14 +766,10 @@ ${sourcesJson}`
         } catch (exactSourcesError) {
             console.error("[route] Failed to fetch exact source summaries:", exactSourcesError)
         }
-        // model is not yet available at this point in the route — created later at line ~2259.
-        // Classifier requires model, so we get one early for this call.
-        const classifierModel = await (await import("@/lib/ai/streaming")).getGatewayModel()
-        const exactSourceResolution = await resolveExactSourceFollowup({
+        const exactSourceResolution = resolveExactSourceFollowup({
             lastUserMessage: normalizedLastUserContent,
             recentMessages: recentConversationMessagesForExactSource,
             availableExactSources,
-            model: classifierModel,
         })
         const shouldIncludeRawSourcesContext =
             shouldIncludeRawSourcesContextForExactFollowup(exactSourceResolution)
