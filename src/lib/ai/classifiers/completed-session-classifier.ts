@@ -112,6 +112,9 @@ export async function classifyCompletedSessionIntent(options: {
 
   // Post-validation: enforce runtime guards that must not depend on model compliance
 
+  // Guard 0: clamp confidence to 0..1 (schema no longer constrains this to avoid provider rejection)
+  result.output.confidence = Math.max(0, Math.min(1, result.output.confidence))
+
   // Guard 1: invalid targetStage → force clarify
   if (
     result.output.targetStage !== null &&

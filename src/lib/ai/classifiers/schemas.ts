@@ -45,7 +45,7 @@ export const CompletedSessionClassifierSchema = z.object({
     "True if intent is ambiguous and system should ask for clarification instead of acting."
   ),
 
-  confidence: z.number().min(0).max(1).describe(
+  confidence: z.number().describe(
     "Classifier confidence between 0 and 1. Below 0.6 should trigger clarify behavior."
   ),
 
@@ -94,7 +94,7 @@ export const ExactSourceClassifierSchema = z.object({
     "True if multiple sources could match or intent is ambiguous."
   ),
 
-  confidence: z.number().min(0).max(1).describe(
+  confidence: z.number().describe(
     "Classifier confidence between 0 and 1."
   ),
 
@@ -119,7 +119,7 @@ export const SearchResponseModeSchema = z.object({
     "'reference_inventory' = present sources as a structured list."
   ),
 
-  confidence: z.number().min(0).max(1).describe(
+  confidence: z.number().describe(
     "Classifier confidence between 0 and 1."
   ),
 
@@ -139,7 +139,7 @@ export const RevisionIntentSchema = z.object({
     "True if user message expresses intent to modify, revise, or redo existing content."
   ),
 
-  confidence: z.number().min(0).max(1).describe(
+  confidence: z.number().describe(
     "Classifier confidence between 0 and 1."
   ),
 
