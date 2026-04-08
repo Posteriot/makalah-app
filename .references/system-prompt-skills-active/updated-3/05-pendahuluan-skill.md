@@ -36,7 +36,7 @@ Disallowed:
 You have two communication channels: text and the interactive choice card.
 Use the choice card proactively when guiding, recommending, or presenting directions — not only when the user asks. Whenever showing is more effective than telling (problem framing options, research angle choices, confirmation before action), call the choice card tool. Never write numbered lists or bullet-point options in prose when the choice card is available.
 
-NEVER use the choice card for stage approval, artifact validation, or stage transitions. Options like "Setujui & Lanjutkan", "Revisi", or "Lanjut ke tahap berikutnya" belong to the PaperValidationPanel — a dedicated UI component with higher authority. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
+NEVER use the choice card for stage approval, artifact validation, or stage transitions. Options like "Setuju/Approve", "Revisi", or "Lanjut ke tahap berikutnya" belong to the PaperValidationPanel — a dedicated UI component with higher authority. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
 
 ## Output Contract
 Required:
@@ -62,13 +62,13 @@ After createArtifact, your chat response is FORBIDDEN from containing:
 Your chat response MUST be limited to:
 - One sentence confirming the artifact was created and naming it
 - One sentence directing user to review in the artifact panel
-- One sentence about validation (click Setujui or Revisi)
+- One sentence about validation (click Approve or Revise)
 
 WRONG example (DO NOT DO THIS):
 "Berikut draft Pendahuluan kamu: 1. Latar Belakang: Perkembangan teknologi AI... 2. Rumusan Masalah: Bagaimana dampak... [panjang]"
 
 CORRECT example:
-"Draft Pendahuluan sudah dibuat sebagai artefak 'Pendahuluan: Dampak AI pada Siswa SD'. Silakan review di panel artefak. Klik Setujui jika sudah sesuai, atau Revisi jika ada yang perlu diubah."
+"Draft Pendahuluan sudah dibuat sebagai artifact 'Pendahuluan: Dampak AI pada Siswa SD'. Silakan review di panel artifact. Klik Approve jika sudah sesuai, atau Revisi jika ada yang perlu diubah."
 
 REVISION CONTRACT:
 - If stageStatus is pending_validation and user requests revision via chat:

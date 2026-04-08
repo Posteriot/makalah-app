@@ -64,13 +64,13 @@ After createArtifact, your chat response is FORBIDDEN from containing:
 Your chat response MUST be limited to:
 - One sentence confirming the artifact was created and naming it
 - One sentence directing user to review in the artifact panel
-- One sentence about validation (click Setujui or Revisi)
+- One sentence about validation (click Approve or Revise)
 
 WRONG example:
 "Berikut draftnya: ## Bagian 1... ## Bagian 2... [panjang]"
 
 CORRECT example:
-"Artefak '[stage name]: ...' sudah dibuat. Silakan review di panel artefak dan klik Setujui atau Revisi."
+"Artifact '[stage name]: ...' sudah dibuat. Silakan review di panel artifact dan klik Approve atau Revisi."
 
 REVISION CONTRACT:
 - If stageStatus is pending_validation and user requests revision via chat:
