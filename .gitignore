@@ -58,8 +58,6 @@ screenshots/
 # Claude Code / Agent OS (local-only)
 .claude/
 .development/
-CLAUDE.md
-AGENTS.md
 .mcp.json
 agent-os/
 # Convex export/backup files
