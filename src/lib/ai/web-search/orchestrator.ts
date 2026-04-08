@@ -335,9 +335,13 @@ export async function executeWebSearch(
           console.log(`[⏱ RETRIEVER][${reqId}] text_ready name=${retriever.name} t=${Date.now() - retrieverStart}ms chars=${text.length}`)
           return text
         }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Retriever "${retriever.name}" timed out after ${RETRIEVER_TIMEOUT_MS}ms`)), RETRIEVER_TIMEOUT_MS)
-        ),
+        new Promise<never>((_, reject) => {
+          const signal = AbortSignal.timeout(RETRIEVER_TIMEOUT_MS)
+          signal.addEventListener("abort", () =>
+            reject(new Error(`Retriever "${retriever.name}" timed out after ${RETRIEVER_TIMEOUT_MS}ms`)),
+            { once: true }
+          )
+        }),
       ])
       const textDone = Date.now()
       const usage = await searchResult.usage
