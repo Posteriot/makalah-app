@@ -15,7 +15,7 @@ vi.mock("ai", () => ({
 const mockModel = { modelId: "test-model" } as Parameters<typeof classifyIntent>[0]["model"]
 
 describe("classifyIntent", () => {
-  it("returns parsed output on successful classification", async () => {
+  it("returns output with classifierVersion metadata on success", async () => {
     const { generateText } = await import("ai")
     const mockedGenerateText = vi.mocked(generateText)
 
@@ -39,8 +39,9 @@ describe("classifyIntent", () => {
       model: mockModel,
     })
 
-    expect(result).toEqual(mockOutput)
-    expect(mockedGenerateText).toHaveBeenCalledOnce()
+    expect(result).not.toBeNull()
+    expect(result!.output).toEqual(mockOutput)
+    expect(result!.metadata.classifierVersion).toBe("1.0.0")
   })
 
   it("returns null when generateText throws an error", async () => {
@@ -77,9 +78,10 @@ describe("classifyIntent", () => {
     expect(result).toBeNull()
   })
 
-  it("passes system prompt and user message to generateText", async () => {
-    const { generateText } = await import("ai")
+  it("passes system prompt, user message, Output.object, and temperature: 0 to generateText", async () => {
+    const { generateText, Output } = await import("ai")
     const mockedGenerateText = vi.mocked(generateText)
+    const mockedOutputObject = vi.mocked(Output.object)
 
     mockedGenerateText.mockResolvedValueOnce({
       output: {
@@ -99,11 +101,18 @@ describe("classifyIntent", () => {
       model: mockModel,
     })
 
+    // Verify Output.object was called with the schema
+    expect(mockedOutputObject).toHaveBeenCalledWith({
+      schema: CompletedSessionClassifierSchema,
+    })
+
+    // Verify generateText received all required parameters
     expect(mockedGenerateText).toHaveBeenCalledWith(
       expect.objectContaining({
         model: mockModel,
         system: "You are a classifier.",
         prompt: "hmm yang tadi",
+        temperature: 0,
       })
     )
   })
