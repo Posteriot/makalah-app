@@ -562,6 +562,7 @@ The tool will:
                     .describe("Include exact metadata fields in the response."),
             }),
             execute: async ({ sourceId, paragraphIndex, includeParagraphs, includeMetadata }) => {
+                console.log(`[EXACT-SOURCE] inspectSourceDocument START conversationId=${context.conversationId} sourceId=${sourceId} paragraphIndex=${paragraphIndex ?? "none"}`)
                 try {
                     const document = await retryQuery(
                         () => fetchQuery(api.sourceDocuments.getBySource, {
@@ -572,6 +573,7 @@ The tool will:
                     ) as ExactSourceDocument | null
 
                     if (!document) {
+                        console.log(`[EXACT-SOURCE] inspectSourceDocument END tool=inspectSourceDocument conversationId=${context.conversationId} sourceId=${sourceId} success=false reason=not_found`)
                         return { success: false, error: "Source document not found for this conversation." }
                     }
 
@@ -604,6 +606,7 @@ The tool will:
                     if (typeof paragraphIndex === "number") {
                         const requestedParagraph = document.paragraphs?.find((paragraph) => paragraph.index === paragraphIndex) ?? null
                         if (!requestedParagraph) {
+                            console.log(`[EXACT-SOURCE] inspectSourceDocument END conversationId=${context.conversationId} sourceId=${sourceId} success=false reason=paragraph_not_found paragraphIndex=${paragraphIndex}`)
                             return {
                                 success: false,
                                 sourceId,
@@ -613,6 +616,7 @@ The tool will:
                         }
 
                         response.requestedParagraph = requestedParagraph
+                        console.log(`[EXACT-SOURCE] inspectSourceDocument END conversationId=${context.conversationId} sourceId=${sourceId} success=true mode=paragraph paragraphIndex=${paragraphIndex}`)
                         return response
                     }
 
@@ -620,8 +624,11 @@ The tool will:
                         response.paragraphs = document.paragraphs ?? []
                     }
 
+                    const paragraphCount = includeParagraphs ? (document.paragraphs?.length ?? 0) : 0
+                    console.log(`[EXACT-SOURCE] inspectSourceDocument END conversationId=${context.conversationId} sourceId=${sourceId} success=true mode=${includeParagraphs ? "full" : "metadata"} paragraphCount=${paragraphCount}`)
                     return response
                 } catch (_error) {
+                    console.log(`[EXACT-SOURCE] inspectSourceDocument END conversationId=${context.conversationId} sourceId=${sourceId} success=false reason=exception`)
                     return { success: false, error: "Failed to inspect source document." }
                 }
             },
@@ -637,6 +644,7 @@ The tool will:
                 query: z.string().describe("What to search for within this source"),
             }),
             execute: async ({ sourceId, query }) => {
+                console.log(`[EXACT-SOURCE] quoteFromSource START conversationId=${context.conversationId} sourceId=${sourceId} query="${query.slice(0, 80)}"`)
                 try {
                     const { embedQuery } = await import("@/lib/ai/embedding")
                     const embedding = await embedQuery(query)
@@ -653,9 +661,11 @@ The tool will:
                     )
 
                     if (!results || results.length === 0) {
+                        console.log(`[EXACT-SOURCE] quoteFromSource END conversationId=${context.conversationId} sourceId=${sourceId} success=false reason=no_matches`)
                         return { success: false, error: "No matching content found for this source." }
                     }
 
+                    console.log(`[EXACT-SOURCE] quoteFromSource END conversationId=${context.conversationId} sourceId=${sourceId} success=true chunks=${results.length}`)
                     return {
                         success: true,
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -666,6 +676,7 @@ The tool will:
                         })),
                     }
                 } catch (_error) {
+                    console.log(`[EXACT-SOURCE] quoteFromSource END conversationId=${context.conversationId} sourceId=${sourceId} success=false reason=exception`)
                     return { success: false, error: "Failed to retrieve source content." }
                 }
             },
@@ -682,6 +693,7 @@ The tool will:
                     .describe("Filter by source type. Omit to search all."),
             }),
             execute: async ({ query, sourceType }) => {
+                console.log(`[EXACT-SOURCE] searchAcrossSources START conversationId=${context.conversationId} query="${query.slice(0, 80)}" sourceType=${sourceType ?? "all"}`)
                 try {
                     const { embedQuery } = await import("@/lib/ai/embedding")
                     const embedding = await embedQuery(query)
@@ -698,9 +710,12 @@ The tool will:
                     )
 
                     if (!results || results.length === 0) {
+                        console.log(`[EXACT-SOURCE] searchAcrossSources END conversationId=${context.conversationId} success=false reason=no_matches`)
                         return { success: false, error: "No matching content found across sources." }
                     }
 
+                    const uniqueSources = new Set(results.map((r: { sourceId?: string }) => r.sourceId)).size
+                    console.log(`[EXACT-SOURCE] searchAcrossSources END conversationId=${context.conversationId} success=true chunks=${results.length} uniqueSources=${uniqueSources}`)
                     return {
                         success: true,
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -712,6 +727,7 @@ The tool will:
                         })),
                     }
                 } catch (_error) {
+                    console.log(`[EXACT-SOURCE] searchAcrossSources END conversationId=${context.conversationId} success=false reason=exception`)
                     return { success: false, error: "Failed to search across sources." }
                 }
             },

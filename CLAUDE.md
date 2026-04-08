@@ -63,14 +63,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Pro-deterministic parser for technical formats.** Use deterministic parsers (JSON.parse, structured schemas, AST parsers) for well-defined technical formats.
 - **State workflow must be driven by semantic JSON + runtime guards, not keywords.** Workflow state transitions must be determined by structured data and explicit runtime validation, never by keyword matching or regex pattern detection.
 
-### ACTIVE BRANCH SCOPE
-- **Branch:** `regex-revision-system`
-- **Scope document:** `SCOPE.md` (root) — read this first for full task breakdown, priority map, and implementation phases.
-- **Spec documents:** `docs/regex-revision-system/` — README, FILE-INVENTORY, REGEX-CLEANUP-PRIORITIES.
-- **Objective:** Replace regex-based natural language heuristics in chat + paper session runtime with structured semantic classifiers. Preserve all deterministic parser/sanitizer regex.
-- **Key files in scope:** `completed-session.ts`, `route.ts` (P1), `exact-source-followup.ts`, `reference-presentation.ts`, `internal-thought-separator.ts` (P2), `paper-intent-detector.ts`, `curated-trace.ts` (P3).
-- **Files explicitly out of scope:** `MarkdownRenderer.tsx`, `ChatWindow.tsx`, `ChatContainer.tsx`, `daftarPustakaCompiler.ts`, `stageDataWhitelist.ts` — these contain deterministic parsers that must be preserved.
-
 ### AGENT ROLE ASSIGNMENT
 - **Claude Code (this agent):** Brainstormer, planner, task creator, and executor for all implementation work on this branch.
 - **Codex (OpenAI):** Audit and code review. Claude Code must not self-review — all review and audit tasks are delegated to Codex.
+
+### ACTIVE BRANCH SCOPE
+- **Branch:** `tools-features-ui-ai-awarness`
+- **Scope document:** `SCOPE.md` (root) — read this first for full awareness mapping, gap analysis, and implementation targets.
+- **Reference files:** `.references/system-prompt-skills-active/updated-4/` — system prompt and 14 stage skill files (the editable working copies).
+- **Documentation directory:** `docs/tools-features-ui-ai-awarness/` — all context, design, plan, implementation, verification, and handoff documents go here.
+- **Objective:** Detect, analyze, verify, audit, and fix the MOKA model's awareness of all tools, features, UI components, and functions available in its runtime environment. Close blind spots where the model does not know about capabilities it has or UI elements the user can see.
+
+### IMPLEMENTATOR/PLANNER/EXECUTOR MANDATE FOR THIS WORKTREE
+
+You are the brainstormer, planner, and executor for this branch. Your work spans two layers:
+
+**Instruction layer (system prompt + skill files):**
+- Edit files in `.references/system-prompt-skills-active/updated-4/` — these are the working copies of `system-prompt.md` and `01-gagasan-skill.md` through `14-judul-skill.md`.
+- After edits, await user command to deploy to dev DB (wary-ferret-59), then prod DB (basic-oriole-337).
+
+**Code layer (tool descriptions + injected context):**
+- `src/lib/ai/paper-tools.ts` — tool descriptions in Zod `.describe()` strings and `tool({ description })` blocks.
+- `src/lib/ai/paper-mode-prompt.ts` — dynamically injected context sections (revision notes, artifact context, stage instructions).
+- `src/app/api/chat/route.ts` — system message composition, tool provisioning, context injection order.
+- `src/lib/json-render/choice-yaml-prompt.ts` — CHOICE_YAML_SYSTEM_PROMPT for choice card rendering.
+- Any other file where model-facing instructions or context are composed.
+
+**Audit targets — the model must be aware of:**
+1. **Tools per stage** — all available tools and when/how to use them, including exact source tools (inspectSourceDocument, quoteFromSource, searchAcrossSources) and readArtifact.
+2. **Artifact system** — ArtifactViewer, ArtifactPanel, ArtifactEditor (inline editing by user), ArtifactToolbar (copy/export), ArtifactTabs (multi-tab view).
+3. **PaperValidationPanel** — approve/revise buttons, revision feedback textarea, dirty state warning, authority boundary over stage lifecycle.
+4. **Choice card (json-renderer YAML)** — ChoiceCardShell, ChoiceOptionButton, ChoiceTextarea, ChoiceSubmitButton, decisionMode (exploration/commit), recommended badge.
+5. **Process/status UI** — UnifiedProcessCard (task progress), ChatProcessStatusBar (real-time status), ToolStateIndicator (tool execution state), ReasoningTracePanel (reasoning visualization), thinking loader above chat input.
+6. **Source system** — SourcesPanel (source metadata + verification status), InlineCitationChip (clickable inline citations).
+
+**Awareness means:** The model knows what the user can see and interact with, so it can complement the UI (not duplicate or contradict it). For each feature: does the model know it exists? Does the model know what the user sees? Does the model adjust its output accordingly?
+
+**Deliverables:**
+- Awareness mapping document (what's aware, what's not, what's partial)
+- Patches to system prompt and skill files to close gaps
+- Code-level patches to tool descriptions and injected context where needed
+- Verification checklist and report
+- Handoff document for deploy

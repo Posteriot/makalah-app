@@ -1,171 +1,191 @@
-# Regex Revision System — Branch Scope
+# Tools, Features & UI — AI Awareness Audit
 
-Branch: `regex-revision-system`
-Spec: `docs/regex-revision-system/`
+Branch: `tools-features-ui-ai-awarness`
+Reference files: `.references/system-prompt-skills-active/updated-4/`
+Documentation: `docs/tools-features-ui-ai-awarness/`
 
 ## Objective
 
-Replace regex-based natural language heuristics in the chat + paper session runtime with structured semantic classifiers, while preserving all deterministic parser/sanitizer regex.
+Detect, analyze, verify, audit, and fix the MOKA model's awareness of all tools, features, UI components, and functions available in its runtime environment.
 
-Guiding principle: **anti-regex for language understanding, pro-deterministic parser for technical formats.**
+The model only knows what its instructions tell it. If a tool exists but the system prompt and skill files never mention it, the model behaves as if the tool does not exist. If a UI component shows information to the user but the model does not know, the model may produce output that duplicates or contradicts what the user already sees.
 
-## Priority Map
+This branch closes those blind spots across two layers:
+- **Instruction layer:** system prompt (`system-prompt.md`) + 14 stage skill files
+- **Code layer:** tool descriptions (`paper-tools.ts`), injected context (`paper-mode-prompt.ts`), system message composition (`route.ts`), choice card prompt (`choice-yaml-prompt.ts`)
 
-### P0: Freeze New Regex Heuristics
+## Awareness Categories
 
-- Status: **DONE** (policy enforced in CLAUDE.md `REGEX & PATTERN MATCHING POLICY`)
-- No new regex for reading user intent or model prose intent in runtime user-facing code
+### 1. Tools Per Stage
 
-### P1: Replace Decision-Layer Regex That Alter Workflow or Persisted Content — **DONE**
+**What exists in code:**
+| Tool | Defined in | Purpose |
+|------|-----------|---------|
+| startPaperSession | paper-tools.ts | Initialize paper writing session |
+| getCurrentPaperState | paper-tools.ts | View current session status |
+| updateStageData | paper-tools.ts | Save stage progress |
+| submitStageForValidation | paper-tools.ts | Submit draft for user approval |
+| requestRevision | paper-tools.ts | Transition to revision mode |
+| createArtifact | route.ts | Create stage output artifact |
+| updateArtifact | route.ts | Update existing artifact |
+| readArtifact | route.ts | Read artifact content by ID |
+| renameConversationTitle | route.ts | Rename conversation title |
+| compileDaftarPustaka | paper-tools.ts | Cross-stage bibliography audit/finalize |
+| inspectSourceDocument | paper-tools.ts | Inspect exact source document metadata + paragraphs |
+| quoteFromSource | paper-tools.ts | Semantic chunk search within a source |
+| searchAcrossSources | paper-tools.ts | Full-text search across all conversation sources |
 
-Status: **COMPLETED.** All language-understanding regex deleted, classifiers promoted to primary.
+**Current awareness status:**
+- startPaperSession through compileDaftarPustaka: **AWARE** — mentioned in system prompt + skills
+- readArtifact: **PARTIAL** — exists in route.ts, mentioned in completed session context only, no general instruction
+- inspectSourceDocument: **NOT AWARE** — zero mention in system prompt or any skill file
+- quoteFromSource: **NOT AWARE** — zero mention in system prompt or any skill file
+- searchAcrossSources: **NOT AWARE** — zero mention in system prompt or any skill file
 
-#### P1A: `src/lib/ai/completed-session.ts` — **DONE**
+### 2. Artifact System
 
-All target regex replaced with `classifyCompletedSessionIntent()` semantic classifier:
-- `REVISION_VERB_PATTERN` — **DELETED**, replaced by classifier intent: "revision"
-- `INFORMATIONAL_PATTERN` — **DELETED**, replaced by classifier intent: "informational"
-- `CONTINUE_LIKE_PATTERN` — **DELETED**, replaced by classifier intent: "continuation"
-- `RECALL_DISPLAY_VERB` + `RECALL_ARTIFACT_TARGET` — **DELETED**, replaced by classifier intent: "artifact_recall" + targetStage
-- `RECALL_QUESTION_EXCLUSION` — **DELETED**, classifier understands questions vs commands
-- `REASON_ARTIFACT_PATTERN` + `REASON_RETRIEVAL_PATTERN` — router reason hint
-- `resolveRecallTargetStage()` — stage resolution from keyword matching
+**What exists in code:**
+| Component | File | What user sees |
+|-----------|------|---------------|
+| ArtifactViewer | ArtifactViewer.tsx | Renders artifact content with inline citations |
+| ArtifactPanel | ArtifactPanel.tsx | Side panel showing active artifact |
+| ArtifactEditor | ArtifactEditor.tsx | Inline editing — user can edit artifact directly |
+| ArtifactToolbar | ArtifactToolbar.tsx | Copy, export, and other artifact actions |
+| ArtifactTabs | ArtifactTabs.tsx | Tabbed interface for multiple artifacts |
 
-What to preserve:
-- Type system (`CompletedSessionHandling`, `CompletedSessionDecision`) — already well-structured
-- Router intent primary path (line 112-160) — already structured, keep as-is
-- `getCompletedSessionClosingMessage()` — static string, no regex
+**Current awareness status:**
+- ArtifactViewer/Panel: **PARTIAL** — model knows "artifact is in the side panel" but not specifics
+- ArtifactEditor: **NOT AWARE** — model does not know user can edit artifacts directly
+- ArtifactToolbar: **NOT AWARE** — model does not know user can copy/export from toolbar
+- ArtifactTabs: **NOT AWARE** — model does not know multi-tab interface exists
 
-Critical fix: default fallback must become `clarify` or `allow_normal_ai`, not `short_circuit_closing`.
+### 3. PaperValidationPanel
 
-#### P1B: `src/app/api/chat/route.ts` — **PARTIAL**
+**What exists in code:**
+| Feature | File | What user sees |
+|---------|------|---------------|
+| Approve button | PaperValidationPanel.tsx | "Setujui & Lanjutkan" button |
+| Revise button | PaperValidationPanel.tsx | "Revisi" button |
+| Revision textarea | PaperValidationPanel.tsx | Text area for revision feedback |
+| Dirty state warning | PaperValidationPanel.tsx | Warning when conversation changed since save |
+| Mobile responsive | PaperValidationPanel.tsx | Adapted layout for mobile |
 
-Completed:
-- Revision intent detection — **REPLACED** with `classifyRevisionIntent()` (observability-only)
+**Current awareness status:**
+- Authority boundary: **AWARE** — system prompt and skills clearly state PaperValidationPanel handles stage lifecycle
+- Approve/Revise flow: **AWARE** — mentioned in system prompt and skills
+- Revision textarea: **PARTIAL** — model knows revision happens but may not know user types feedback in a dedicated textarea
+- Dirty state warning: **NOT AWARE** — model does not know UI shows dirty state indicator
 
-Preserved as-is (per design carve-out):
-- Leakage detection (observability-only, logs warnings) — kept, defer to future structured tool outcome verification
-- Corruption guard (`tool_code|sekarang kita masuk ke tahap|yaml-spec`) — model output sanitizer, preserved
-- Prose-leakage observability guards — kept, observability-only
-- Validation claim detection — kept, observability-only
-- Fallback title extraction — parser, not language understanding, preserved
-- Fence stripping — technical format cleanup, preserved
-- Whitespace collapse — normalization, preserved
-- Tool name sanitization — format validation, preserved
-- FORBIDDEN_REASONING_PATTERNS (12 security patterns) — security guard, preserved
-- sanitizeReasoningText() — security, preserved
+### 4. Choice Card (JSON-Renderer YAML)
 
-### P2: Replace Heuristic Follow-Up and Mode Detection — **DONE**
+**What exists in code:**
+| Component | File | What user sees |
+|-----------|------|---------------|
+| ChoiceCardShell | ChoiceCardShell.tsx | Container card with title and decision mode |
+| ChoiceOptionButton | ChoiceOptionButton.tsx | Clickable option buttons with recommended badge |
+| ChoiceTextarea | ChoiceTextarea.tsx | Text input for custom responses |
+| ChoiceSubmitButton | ChoiceSubmitButton.tsx | Submit button for selection |
+| decisionMode | choice-yaml-prompt.ts | exploration (keep exploring) vs commit (finalize after selection) |
+| recommended badge | ChoiceOptionButton.tsx | Visual "Rekomendasi" label on best option |
 
-Status: **COMPLETED.** All language-understanding regex replaced.
+**Current awareness status:**
+- YAML spec syntax: **AWARE** — CHOICE_YAML_SYSTEM_PROMPT is detailed and injected during drafting stages
+- decisionMode: **AWARE** — exploration vs commit documented in prompt
+- Recommended badge: **AWARE** — mandatory recommendation rule documented
+- Authority boundary: **AWARE** — "NEVER use choice card for stage approval" is explicit
+- ChoiceTextarea: **PARTIAL** — exists in spec but not prominently documented as user interaction path
 
-#### P2A: `src/lib/ai/exact-source-followup.ts` — **DONE**
+### 5. Process/Status UI
 
-Replaced with `classifyExactSourceIntent()`:
-- `EXACT_SOURCE_PATTERNS` (12 patterns) — **DELETED**
-- `NON_EXACT_SUMMARY_PATTERNS` (6 patterns) — **DELETED**
-- `CONTINUATION_PATTERNS` + `CONTINUATION_CUES` — **DELETED**
-- `isExactIntent()`, `isNonExactSummaryRequest()`, `isContinuationPrompt()` — **DELETED**
+**What exists in code:**
+| Component | File | What user sees |
+|-----------|------|---------------|
+| UnifiedProcessCard | UnifiedProcessCard.tsx | Task summary, search status, tool state — real-time |
+| ChatProcessStatusBar | ChatProcessStatusBar.tsx | Status bar showing current operation |
+| ToolStateIndicator | ToolStateIndicator.tsx | Individual tool execution states (pending/running/result/error) |
+| ReasoningTracePanel | ReasoningTracePanel.tsx | Timeline of reasoning steps with status indicators |
+| Thinking loader | (above chat input) | Loading/thinking indicator visible during model processing |
 
-Preserved:
-- `normalizeText()`, `escapeRegExp()`, `extractDomainLabel()` — technical
-- Source matching logic (buildSourceCandidates, hasTitleMatch, matchesSourceReference, findExplicitMatches, resolveFromRecentContext) — structural, not language understanding
-- Dynamic boundary regex for source candidate matching — structural
+**Current awareness status:**
+- UnifiedProcessCard: **NOT AWARE** — model does not know user sees real-time task progress
+- ChatProcessStatusBar: **NOT AWARE** — model does not know user sees processing status
+- ToolStateIndicator: **NOT AWARE** — model does not know user sees tool execution states
+- ReasoningTracePanel: **NOT AWARE** — model does not know user sees reasoning visualization
+- Thinking loader: **NOT AWARE** — model does not know user sees thinking indicator
 
-#### P2B: `src/lib/ai/web-search/reference-presentation.ts` — **DONE**
+**Impact of unawareness:** Model may produce redundant status updates in chat text ("sedang memproses...", "saya akan membuat artifact...") when the user already sees this in the UI.
 
-Replaced with `classifySearchResponseMode()`:
-- `inferSearchResponseMode()` 14 regex patterns — **DELETED**
+### 6. Source System
 
-Preserved:
-- URL normalization, canonical key generation, dedup, document kind detection, weak title checks — all deterministic parsers
+**What exists in code:**
+| Component | File | What user sees |
+|-----------|------|---------------|
+| SourcesPanel | SourcesPanel.tsx | Sheet panel with source metadata, favicon, verification status |
+| SourcesIndicator | SourcesIndicator.tsx | Badge showing number of available sources |
+| InlineCitationChip | InlineCitationChip.tsx | Clickable [1], [2] citations in artifact |
+| Verification status | SourcesPanel.tsx | verified_content / unverified_link / unavailable per source |
 
-#### P2C: `src/lib/ai/internal-thought-separator.ts` — **INSTRUCTION-BASED FIX**
+**Current awareness status:**
+- Sources in artifacts: **AWARE** — source-body parity rule documented
+- Inline citations format: **AWARE** — APA format rules documented
+- SourcesPanel: **PARTIAL** — model knows sources exist but not that user sees verification status
+- InlineCitationChip clickability: **NOT AWARE** — model does not know citations are interactive
+- Verification status: **NOT AWARE** — model does not know user sees verified/unverified/unavailable
 
-- Added instruction to `COMPOSE_PHASE_DIRECTIVE` in orchestrator.ts preventing model from emitting internal thought preambles (probabilistic)
-- `INTERNAL_THOUGHT_PATTERNS` (6 patterns) — **PRESERVED as non-destructive fallback** with deprecation comment + observability logging
-- `stripEmptyReferenceLines()`, `findLeadingSentenceBoundary()`, `buildUserFacingSearchPayload()` — preserved
+## Files In Scope
 
-### P3: Review Non-Critical Heuristics — **EVALUATED**
+### Instruction layer (editable working copies)
+- `.references/system-prompt-skills-active/updated-4/system-prompt.md`
+- `.references/system-prompt-skills-active/updated-4/01-gagasan-skill.md` through `14-judul-skill.md`
 
-#### P3A: `src/lib/ai/paper-intent-detector.ts` — **DEFERRED**
+### Code layer
+- `src/lib/ai/paper-tools.ts` — tool descriptions
+- `src/lib/ai/paper-mode-prompt.ts` — injected context composition
+- `src/app/api/chat/route.ts` — system message composition, tool provisioning
+- `src/lib/json-render/choice-yaml-prompt.ts` — choice card system prompt
 
-- Decision: **DEFER** — keyword `.includes()` heuristic, not regex
-- Low blast radius (UI hint + system prompt injection only)
-- LLM call cost unjustified for non-critical UI hint
-- No regex to clean up (only `\s+` whitespace collapse — deterministic preserve)
-- Revisit if paper intent becomes a routing decision
+### Files explicitly out of scope (UI components — read-only for audit reference)
+- `src/components/chat/ArtifactViewer.tsx` — read for audit, do not modify
+- `src/components/chat/ArtifactPanel.tsx` — read for audit, do not modify
+- `src/components/chat/UnifiedProcessCard.tsx` — read for audit, do not modify
+- `src/components/paper/PaperValidationPanel.tsx` — read for audit, do not modify
+- All other UI components — read for audit, do not modify
 
-#### P3B: `src/lib/ai/curated-trace.ts` — **KEEP AS-IS**
+## Implementation Strategy
 
-- Decision: **KEEP AS-IS** — keyword bucket scoring for UI trace classification
-- Very low blast radius (UI reasoning display, no workflow impact)
-- LLM call per reasoning segment too expensive for informational UI
-- Current approach is zero-cost, instant, and reliable enough
-- Revisit if trace classification becomes input for a feedback loop
+### Phase 1: Awareness Mapping (this document)
+Document what the model knows vs does not know. **DONE.**
 
-#### P3C: `src/lib/ai/stage-skill-validator.ts`
+### Phase 2: Design Patches
+For each gap, design the minimal instruction addition that:
+- Tells the model what exists and what the user sees
+- Guides the model to complement (not duplicate) the UI
+- Does not bloat the system prompt beyond effective use
 
-- Valid as technical document validator
-- Regex here checks section headings, output keys, forbidden phrases — all format validation
-- Target: preserve, optimize only if false reject rate is high
+### Phase 3: Apply Patches
+- System prompt patches for cross-cutting awareness (UI components, general tools)
+- Skill file patches for stage-specific tool instructions (exact source tools in relevant stages)
+- Code-level patches for tool descriptions and injected context
 
-### P4: Preserve Deterministic Parsers (No Action)
+### Phase 4: Verify
+- Cross-reference every instruction against actual code behavior
+- Verify no contradictions between system prompt, skills, and code-level descriptions
+- Verify language policy compliance (all instructions in English)
 
-These files use regex correctly for technical parsing:
-- `convex/paperSessions.ts` — URL dedup, title normalization, citation parsing, year extraction
-- `convex/paperSessions/daftarPustakaCompiler.ts` — DOI normalization, key normalization, weak citation detection
-- `convex/paperSessions/stageDataWhitelist.ts` — numeric range coercion
-- `src/components/chat/MarkdownRenderer.tsx` — markdown rendering, citation markers, table separators
-- `src/components/chat/ChatWindow.tsx` — Convex ID validation
-- `src/components/chat/ChatContainer.tsx` — Convex ID validation
-
-## Implementation Strategy — COMPLETED
-
-### Phase 1: Build Semantic Classifiers — **DONE**
-
-Built per-domain classifiers (not unified mega-classifier) using `generateObject()` + Zod schemas:
-- `CompletedSessionClassifierSchema` — 5 intents × 4 handling outcomes
-- `ExactSourceClassifierSchema` — 4 source intents × 3 modes
-- `SearchResponseModeSchema` — synthesis vs reference_inventory
-- `RevisionIntentSchema` — boolean revision detection
-
-Infrastructure: `classifyIntent<T>()` generic utility with `ClassifierResult<T>` return type (output + metadata with classifierVersion).
-
-### Phase 2: Rewire Runtime Call Paths — **DONE**
-
-- `completed-session.ts` → classifier primary (all regex deleted)
-- `route.ts` → revision intent classifier (observability-only, regex replaced)
-- `exact-source-followup.ts` → classifier primary (all intent regex deleted, source matching preserved)
-- `reference-presentation.ts` → classifier primary (14 mode patterns deleted)
-- `internal-thought-separator.ts` → instruction-based fix + regex fallback preserved
-
-### Phase 3: Remove Old Regex Heuristics — **DONE**
-
-- All replaced regex patterns deleted after parity verification
-- Parity evidence: 100% on exact-source (10/10), search-mode (8/8), completed-session AGREE cases (20/21)
-- Observability guards in route.ts kept (log-only, no content alteration)
-
-### Phase 4: Audit Semi-Structured Parsers — **NOT IN SCOPE**
-
-- Citation parsing in `paperSessions.ts` — deterministic parser, preserved as-is (P4)
-- No action taken, no action needed
+### Phase 5: Deploy
+- Deploy to dev DB (wary-ferret-59) for testing
+- After validation, deploy to prod DB (basic-oriole-337)
 
 ## Agent Role Assignment
 
 - **Claude Code:** Brainstormer, planner, task creator, and executor for all implementation work on this branch.
-- **Codex (OpenAI):** Audit and code review. All review/audit tasks are delegated to Codex, not performed by Claude Code.
+- **Codex (OpenAI) / Review Agent:** Audit and code review. All review/audit tasks are delegated to Codex, not performed by Claude Code.
 
 ## Guardrails
 
-1. Never replace regex heuristic with free-form prompt without schema — use JSON/enum output
-2. Use `clarify` as official outcome for ambiguous inputs
-3. Never derive lifecycle state from model prose when tool result or Convex state is available
-4. Never send technical parsing/rendering to model intelligence
-5. Instruction-based fixes are probabilistic — always state this upfront, never imply certainty
-
-## Reference Documents
-
-- `docs/regex-revision-system/README.md` — system map and regex categories
-- `docs/regex-revision-system/FILE-INVENTORY.md` — per-file regex inventory with risk levels
-- `docs/regex-revision-system/REGEX-CLEANUP-PRIORITIES.md` — priority rankings and implementation strategy
+1. Never add awareness instructions that contradict actual code behavior — verify first.
+2. Awareness of UI components means "model knows what user sees" — not "model tries to control UI rendering."
+3. Keep instruction additions minimal. Bloated prompts degrade model performance.
+4. All model-facing instructions in English. Indonesian only for user-facing UI strings.
+5. Exact source tools (inspect/quote/search) are the highest-priority gap — these are fully functional tools with zero instructions.
+6. Process/status UI awareness should reduce redundant chat output, not add new output.

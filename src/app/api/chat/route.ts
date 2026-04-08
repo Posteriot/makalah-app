@@ -1889,23 +1889,23 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                 },
             }),
             readArtifact: tool({
-                description: `Baca isi lengkap sebuah artifact berdasarkan ID-nya. Gunakan tool ini jika perlu merujuk konten artifact secara utuh (bukan hanya summary singkat di system prompt).
+                description: `Read the full content of an artifact by its ID. Use this tool when you need to reference complete artifact content rather than the truncated summaries in the system prompt.
 
 USE THIS TOOL WHEN:
-✓ Perlu membaca ulang artifact dari stage sebelumnya sebagai rujukan
-✓ User bertanya tentang isi spesifik sebuah artifact
-✓ Perlu mengecek konten lengkap sebelum menulis revisi atau stage berikutnya
-✓ Perlu memverifikasi detail yang mungkin ter-truncate di summary
+✓ You need to re-read a previous stage's artifact as reference material
+✓ The user asks about specific content within an artifact
+✓ You need to check full content before writing a revision or the next stage
+✓ You need to verify details that may be truncated in the artifact summary
 
-Tool ini mengembalikan: title, type, version, content lengkap, dan sources (jika ada).
-Artifact ID bisa didapat dari ARTIFACT SUMMARY di system prompt atau dari getCurrentPaperState().`,
+Returns: title, type, version, full content, and sources (if any).
+Artifact IDs are available from ARTIFACT SUMMARY in the system prompt or from getCurrentPaperState().`,
                 inputSchema: z.object({
                     artifactId: z.string()
-                        .describe("ID artifact yang ingin dibaca."),
+                        .describe("The artifact ID to read."),
                 }),
                 execute: async ({ artifactId }) => {
                     if (!artifactId?.trim()) {
-                        return { success: false, error: "artifactId tidak boleh kosong." }
+                        return { success: false, error: "artifactId must not be empty." }
                     }
                     try {
                         const artifact = await fetchQueryWithToken(api.artifacts.get, {
