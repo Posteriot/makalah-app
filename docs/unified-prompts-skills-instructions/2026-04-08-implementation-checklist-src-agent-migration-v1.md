@@ -4,17 +4,27 @@
 
 Dokumen ini mengubah proposal migrasi bertahap menjadi checklist implementasi file-per-file yang bisa langsung dipakai saat refactor.
 
+Decision anchor untuk checklist ini ada di `docs/unified-prompts-skills-instructions/2026-04-08-decision-record-final-migration-boundaries-v1.md`. Jika ada item checklist yang bertentangan dengan decision record, ikuti decision record.
+
+Checklist ini sudah dikoreksi agar:
+
+- tidak menyederhanakan surface hybrid menjadi relokasi file biasa,
+- memisahkan `extract contract first` dari `move asset now`,
+- mewajibkan verification parity pada area yang memang rawan regression.
+
 ## Cara Pakai
 
 - Centang item saat implementasi selesai.
 - Jangan kerjakan item `keep local` dan `keep in DB` sebagai relokasi ke `src/agent/`.
 - Untuk item `wrap with adapter`, fokusnya adalah membuat layer akses di `src/agent/adapters/`, bukan memindahkan source of truth.
+- Untuk item `extract contract first`, jangan pindah seluruh modul sebelum text contract dan runtime logic dipisah.
 
 ## Definisi Status
 
-- `move now`: relokasi asset instruksi ke `src/agent/`
+- `move asset now`: relokasi asset instruksi yang cukup bersih ke `src/agent/`
+- `extract contract first`: pecah text contract dari runtime logic sebelum relokasi
 - `wrap with adapter`: buat adapter `src/agent/` untuk surface DB-managed
-- `keep local`: tetap di feature/domain sekarang
+- `keep local`: tetap di feature atau domain sekarang
 - `keep in DB`: tetap di Convex DB dan migrations
 
 ## Phase 0: Fondasi Namespace
@@ -28,27 +38,30 @@ Dokumen ini mengubah proposal migrasi bertahap menjadi checklist implementasi fi
 - [ ] Buat folder `src/agent/registry/`
 - [ ] Tambahkan `src/agent/contracts/prompt-kinds.ts`
 - [ ] Tambahkan `src/agent/contracts/ownership.ts`
+- [ ] Tambahkan `src/agent/contracts/prompt-surface-status.ts`
 - [ ] Tambahkan `src/agent/registry/prompt-registry.ts`
 
-## Phase 1: Relokasi Asset `move now` yang Aman
+## Phase 1: Relokasi Asset `move asset now`
 
 ### Global
 
-- [ ] Pindahkan fallback prompt dari `src/lib/ai/chat-config.ts` ke `src/agent/prompts/global/fallback-system-prompt.ts`
+- [ ] Pisahkan text fallback prompt dari side effect logging di `src/lib/ai/chat-config.ts`
+- [ ] Pindahkan text fallback prompt ke `src/agent/prompts/global/fallback-system-prompt.ts`
 - [ ] Pindahkan reminder dari `src/lib/ai/paper-workflow-reminder.ts` ke `src/agent/prompts/global/paper-workflow-reminder.ts`
 
 ### Paper Stage Fallbacks
 
 - [ ] Audit semua submodule di `src/lib/ai/paper-stages/`
 - [ ] Pindahkan fallback stage instructions ke `src/agent/prompts/paper-stage-fallbacks/`
-- [ ] Sisakan resolver/domain logic di modul lama bila masih dibutuhkan
+- [ ] Sisakan resolver atau domain logic di modul lama bila masih dibutuhkan
 
 ### Search Prompt Assets
 
 - [ ] Pindahkan retriever prompt dari `src/lib/ai/search-system-prompt.ts` ke `src/agent/prompts/search/retriever-system-prompt.ts`
 - [ ] Pindahkan augmentation hints dari `src/lib/ai/search-system-prompt.ts` ke `src/agent/prompts/search/retriever-user-augmentation.ts`
 - [ ] Pindahkan compose directive dari `src/lib/ai/web-search/orchestrator.ts` ke `src/agent/prompts/search/compose-phase-directive.ts`
-- [ ] Pindahkan instruction-bearing context dari `src/lib/ai/search-results-context.ts` ke `src/agent/prompts/search/search-results-context-prompt.ts`
+- [ ] Pisahkan text guidance di `src/lib/ai/search-results-context.ts` dari branching logic-nya
+- [ ] Pindahkan text guidance hasil pemisahan ke `src/agent/prompts/search/search-results-context-prompt.ts`
 
 ### Guardrails dan Runtime Prompt Assets
 
@@ -61,7 +74,7 @@ Dokumen ini mengubah proposal migrasi bertahap menjadi checklist implementasi fi
 
 - [ ] Pindahkan `src/lib/ai/skills/web-search-quality/SKILL.md` ke `src/agent/skills/search/web-search-quality/SKILL.md`
 - [ ] Pindahkan `src/lib/ai/skills/web-search-quality/index.ts` ke `src/agent/skills/search/web-search-quality/index.ts`
-- [ ] Perbarui semua import/runtime loader yang menunjuk ke lokasi skill lama
+- [ ] Perbarui semua import dan runtime loader yang menunjuk ke lokasi skill lama
 
 ### Registry
 
@@ -70,7 +83,7 @@ Dokumen ini mengubah proposal migrasi bertahap menjadi checklist implementasi fi
 - [ ] Daftarkan guardrails dan compaction prompts di `src/agent/registry/prompt-registry.ts`
 - [ ] Daftarkan web search quality skill di registry skill yang relevan
 
-## Phase 2: `wrap with adapter` dan Ekstraksi Inline Route Prompts
+## Phase 2: `wrap with adapter` dan Ekstraksi Inline Prompt
 
 ### DB Adapters
 
@@ -83,14 +96,19 @@ Dokumen ini mengubah proposal migrasi bertahap menjadi checklist implementasi fi
 
 - [ ] Ekstrak search router prompt dari `src/app/api/chat/route.ts` ke `src/agent/prompts/router/search-mode-router-prompt.ts`
 - [ ] Ekstrak attachment first-response instruction dari `src/app/api/chat/route.ts` ke `src/agent/prompts/runtime-notes/attachment-notes.ts`
-- [ ] Ekstrak choice context note builder dari `src/lib/chat/choice-request.ts` ke `src/agent/prompts/runtime-notes/choice-context-notes.ts`
-- [ ] Ganti caller di `src/app/api/chat/route.ts` agar import dari namespace `src/agent/`
+- [ ] Ganti caller di `src/app/api/chat/route.ts` agar mengimpor prompt-prompt ini dari namespace `src/agent/`
+
+### Choice Context Contract Extraction
+
+- [ ] Pisahkan text contract `buildChoiceContextNote()` dari validation dan finalize heuristics di `src/lib/chat/choice-request.ts`
+- [ ] Pindahkan text contract hasil pemisahan ke `src/agent/prompts/runtime-notes/choice-context-notes.ts`
+- [ ] Pertahankan validation, parsing event, dan heuristics finalize di modul domain yang tepat
 
 ### Registry dan Contracts
 
 - [ ] Daftarkan router prompt di registry
 - [ ] Daftarkan attachment notes di registry
-- [ ] Daftarkan choice context notes di registry
+- [ ] Daftarkan choice context note contract di registry
 - [ ] Tambahkan metadata ownership `admin-managed` untuk adapter-backed surfaces
 
 ## Phase 3: Centralize Composition
@@ -99,31 +117,37 @@ Dokumen ini mengubah proposal migrasi bertahap menjadi checklist implementasi fi
 
 - [ ] Tambahkan `src/agent/compose/build-chat-system-messages.ts`
 - [ ] Tambahkan `src/agent/compose/build-paper-mode-message-stack.ts`
-- [ ] Tambahkan `src/agent/compose/build-search-compose-messages.ts` bila search compose masih tersebar
+- [ ] Tambahkan `src/agent/compose/build-search-compose-messages.ts`
+- [ ] Tambahkan `src/agent/compose/build-search-results-context.ts` bila builder context dipisah
 
 ### Migration ke Compose Layer
 
-- [ ] Pindahkan logic dari `src/lib/ai/paper-mode-prompt.ts` ke `src/agent/compose/build-paper-mode-message-stack.ts`
+- [ ] Pecah `src/lib/ai/paper-mode-prompt.ts` menjadi resolver data dan compose layer
+- [ ] Pindahkan logic composition yang relevan ke `src/agent/compose/build-paper-mode-message-stack.ts`
 - [ ] Ubah `src/app/api/chat/route.ts` agar memakai builder composition, bukan menyusun prompt panjang inline
 - [ ] Ubah search orchestrator agar memakai builder composition untuk compose phase
 
-### Verification
+### Precedence dan Ownership
 
-- [ ] Verifikasi urutan message stack sebelum dan sesudah refactor tetap sama
-- [ ] Verifikasi fallback prompt masih dipakai saat DB prompt tidak tersedia
-- [ ] Verifikasi stage skill aktif masih resolve dari DB
+- [ ] Definisikan urutan system messages yang eksplisit untuk chat flow
+- [ ] Definisikan urutan system messages yang eksplisit untuk search compose flow
+- [ ] Pastikan adapter-backed content, fallback text, dan runtime notes tidak saling membuat source of truth bayangan
 
 ## Phase 4: Tool Contracts dan Feature Prompt Subdomains
 
 ### Tool Description Contracts
 
-- [ ] Ekstrak instruction-heavy descriptions dari `src/lib/ai/paper-tools.ts` ke `src/agent/prompts/tools/paper-tool-descriptions.ts`
-- [ ] Ekstrak tool descriptions inline dari `src/app/api/chat/route.ts` ke `src/agent/prompts/tools/chat-tool-descriptions.ts`
-- [ ] Ganti factory/tool registration agar mengimpor description dari prompt namespace baru
+- [ ] Pisahkan text contract instruction-heavy dari `src/lib/ai/paper-tools.ts`
+- [ ] Pindahkan text contract hasil pemisahan ke `src/agent/prompts/tools/paper-tool-descriptions.ts`
+- [ ] Pisahkan tool descriptions inline dari `src/app/api/chat/route.ts`
+- [ ] Pindahkan hasil pemisahan ke `src/agent/prompts/tools/chat-tool-descriptions.ts`
+- [ ] Ganti factory atau tool registration agar mengimpor descriptions dari prompt namespace baru
 
 ### Refrasa
 
-- [ ] Pisahkan prompt assets dari `src/lib/refrasa/prompt-builder.ts` ke `src/agent/prompts/features/refrasa-system-prompt.ts`
+- [ ] Pisahkan prompt assets dari `src/lib/refrasa/prompt-builder.ts`
+- [ ] Pindahkan prompt assets hasil pemisahan ke `src/agent/prompts/features/refrasa-system-prompt.ts`
+- [ ] Tambahkan `src/agent/compose/build-refrasa-prompts.ts` bila builder baru dibutuhkan
 - [ ] Sisakan builder domain Refrasa di modul feature bila masih dibutuhkan
 - [ ] Tambahkan `src/agent/adapters/style-constitutions.ts`
 - [ ] Bungkus akses ke active style constitution lewat adapter
@@ -165,8 +189,34 @@ Dokumen ini mengubah proposal migrasi bertahap menjadi checklist implementasi fi
 
 ## Checklist Verifikasi
 
+### Static Verification
+
 - [ ] Jalankan typecheck setelah setiap phase besar
 - [ ] Jalankan lint setelah setiap phase besar
+
+### Parity Tests Wajib
+
+- [ ] Jalankan test terkait `src/lib/ai/stage-skill-resolver.test.ts`
+- [ ] Jalankan test terkait `src/lib/ai/stage-skill-validator.test.ts`
+- [ ] Jalankan test terkait `src/lib/ai/web-search/orchestrator.exact-persist.test.ts`
+- [ ] Jalankan test terkait `src/lib/chat/__tests__/choice-request.test.ts`
+- [ ] Jalankan test terkait `src/lib/ai/paper-tools.inspect-source.test.ts`
+- [ ] Jalankan test terkait `src/lib/ai/paper-tools.compileDaftarPustaka.test.ts`
+- [ ] Jalankan test terkait `src/lib/ai/chat-exact-source-guardrails.test.ts`
+
+### Runtime Behavior Verification
+
+- [ ] Verifikasi urutan message stack sebelum dan sesudah refactor tetap sama untuk chat normal
+- [ ] Verifikasi urutan message stack sebelum dan sesudah refactor tetap sama untuk search compose
+- [ ] Verifikasi fallback prompt masih dipakai saat DB prompt tidak tersedia
+- [ ] Verifikasi stage skill aktif masih resolve dari DB
+- [ ] Verifikasi footer tambahan pada active stage skill tetap muncul bila memang masih diwajibkan
+- [ ] Verifikasi exact-source flow tetap memakai rules dan router note yang sama
+- [ ] Verifikasi choice context masih menghasilkan next-action instruction yang sama
+- [ ] Verifikasi tool descriptions tetap memberi sequencing yang sama ke model
+
+### End-to-End Flow Checks
+
 - [ ] Uji chat normal flow
 - [ ] Uji paper mode flow
 - [ ] Uji search routing flow
@@ -178,13 +228,23 @@ Dokumen ini mengubah proposal migrasi bertahap menjadi checklist implementasi fi
 
 ## Definition of Done
 
-- [ ] `src/agent/` menjadi pusat prompt assets agentic, skills file-based, adapters, registry, dan compose builders
+- [ ] `src/agent/` menjadi pusat prompt assets agentic, skills file-based, adapters, contracts, registry, dan compose builders
 - [ ] Surface `keep in DB` tidak dipindah ke file static
 - [ ] Surface `keep local` tidak ikut mencemari namespace `src/agent/`
+- [ ] Surface hybrid tidak dipindah mentah-mentah; ia dipecah dulu menjadi text contract dan runtime logic
 - [ ] Route dan orchestrator tidak lagi menjadi prompt warehouse
-- [ ] Ownership per surface tetap jelas: `repo-managed`, `admin-managed`, atau `runtime-generated`
+- [ ] Ownership per surface tetap jelas: `repo-managed`, `admin-managed`, `runtime-generated`, atau `ops-managed`
 - [ ] Tidak ada dual source of truth baru
+- [ ] Verification mencakup parity behavior, bukan cuma lolos lint dan typecheck
 
 ## Kesimpulan
 
-Checklist ini sengaja disusun supaya implementasi bisa dimulai dari relokasi yang aman, lalu lanjut ke adapter, lalu ke composition, lalu ke tool contracts dan feature subdomains. Urutan ini yang paling rendah risikonya dan paling cepat menghasilkan `src/agent/` yang benar-benar berguna.
+Checklist ini sengaja disusun supaya implementasi berjalan dari yang paling aman ke yang paling sensitif:
+
+1. asset yang pure dulu,
+2. adapter DB-managed,
+3. pemecahan hybrid surfaces,
+4. centralize composition,
+5. tool contracts dan feature subdomains.
+
+Urutan ini paling masuk akal kalau targetnya bukan sekadar memindahkan file, tapi benar-benar memperbaiki arsitektur prompt.

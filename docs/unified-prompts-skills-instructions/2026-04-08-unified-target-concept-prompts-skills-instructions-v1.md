@@ -4,24 +4,32 @@
 
 Dokumen ini menyusun konsep target untuk menyatukan organisasi prompt, skill, dan hardcoded instructions di Makalah App tanpa merusak model operasional yang sudah benar, terutama source of truth di database untuk system prompt dan stage skills yang memang admin-managed.
 
+Decision anchor untuk konsep target ini ada di `docs/unified-prompts-skills-instructions/2026-04-08-decision-record-final-migration-boundaries-v1.md`. Dokumen konsep ini harus ditafsirkan sesuai boundary final di decision record.
+
+Versi ini menegaskan satu hal penting:
+
+**yang disatukan bukan sekadar lokasi file, tetapi ownership, contract text, composition boundary, dan precedence runtime.**
+
 ## Rekomendasi Terbaik
 
 Rekomendasi terbaik adalah:
 
-**membangun unified prompt architecture di `src/agent/` sebagai layer organisasi dan composition, tanpa memindahkan source of truth database-managed content ke filesystem.**
+**membangun unified prompt architecture di `src/agent/` sebagai layer organisasi, contracts, adapters, dan composition, tanpa memindahkan source of truth database-managed content ke filesystem dan tanpa memindahkan mentah-mentah modul hybrid yang masih bercampur dengan runtime logic.**
 
 Artinya:
 
-- yang disatukan adalah struktur, taxonomy, dan composition flow,
-- bukan semua persistence dipaksa menjadi file di `src/`.
+- yang disatukan adalah struktur, taxonomy, contracts, dan composition flow,
+- bukan semua persistence dipaksa menjadi file di `src/`,
+- bukan semua file yang mengandung string instruksi langsung dipindah ke `src/agent/`.
 
 Ini pilihan terbaik karena:
 
 1. menghormati arsitektur admin-managed yang sudah ada,
 2. mengurangi prompt scattering di runtime,
 3. membuat ownership jelas,
-4. tetap memungkinkan audit dan testing yang lebih rapi,
-5. menghindari duplikasi source of truth.
+4. membuat verification lebih rapi,
+5. menghindari duplikasi source of truth,
+6. mencegah `src/agent/` menjadi dump folder baru untuk modul campuran.
 
 ## Prinsip Desain
 
@@ -34,49 +42,69 @@ Harus dibedakan antara:
 
 Storage bisa tetap hybrid:
 
-- DB untuk admin-managed prompt/skill,
-- file untuk code-owned prompt assets.
+- DB untuk admin-managed prompt atau skill,
+- file untuk code-owned prompt assets dan skills.
 
-Tapi composition harus terpusat secara arsitektural.
+Tetapi composition harus dipusatkan secara arsitektural.
 
-### 2. Bedakan jenis instruksi secara eksplisit
+### 2. Pisahkan text contract dari runtime logic
+
+Ini prinsip yang belum eksplisit di versi awal.
+
+Harus dibedakan antara:
+
+- string atau text instruction,
+- builder yang menambahkan context dinamis,
+- resolver yang fetch data,
+- orchestrator yang menentukan urutan dan precedence.
+
+Surface seperti ini wajib dipecah dulu sebelum dianggap "berhasil dimigrasi":
+
+- `src/lib/ai/paper-mode-prompt.ts`
+- `src/lib/ai/search-results-context.ts`
+- `src/lib/chat/choice-request.ts`
+- `src/lib/ai/paper-tools.ts`
+- `src/lib/refrasa/prompt-builder.ts`
+
+### 3. Bedakan jenis instruksi secara eksplisit
 
 Struktur target harus membedakan:
 
 - base prompt,
 - fallback prompt,
 - runtime contextual prompt,
-- router/classifier prompt,
+- router atau classifier prompt,
 - retriever prompt,
 - compose skill,
 - tool description contract,
-- feature-specific prompt builder,
-- local note yang hanya valid pada flow tertentu.
+- feature-specific prompt contract,
+- local runtime note yang valid hanya pada flow tertentu.
 
-### 3. Jangan jadikan route sebagai prompt warehouse
+### 4. Jangan jadikan route sebagai prompt warehouse
 
-Route boleh memutuskan kapan instruksi dipakai, tetapi tidak boleh menjadi tempat utama menyimpan teks instruksi panjang.
+Route boleh memutuskan kapan instruksi dipakai, tetapi tidak boleh menjadi tempat utama menyimpan teks instruksi panjang atau precedence rules implisit.
 
-### 4. Pertahankan DB untuk domain yang memang operasional
+### 5. Pertahankan DB untuk domain yang memang operasional
 
 Tetap pertahankan:
 
 - `systemPrompts` sebagai source of truth prompt global aktif,
-- `stageSkills` dan `stageSkillVersions` sebagai source of truth skill per stage.
+- `stageSkills` dan `stageSkillVersions` sebagai source of truth skill per stage,
+- `styleConstitutions` sebagai source of truth constitution Refrasa.
 
 Kalau ini dipindahkan ke file, lo bakal kehilangan:
 
 - lifecycle admin,
-- activate/deactivate,
-- publish/rollback,
+- activate atau deactivate,
+- publish atau rollback,
 - audit log,
 - runtime validation berbasis DB.
 
-### 5. File-based prompts harus hidup di namespace yang sama
+### 6. File-based prompts harus hidup di namespace yang sama
 
-Prompt code-owned yang sekarang tersebar di `src/lib/ai` dan `src/lib/json-render` harus dikonsolidasikan secara namespace, walau implementasi logiknya masih bisa tetap di modul masing-masing.
+Prompt code-owned yang tersebar di `src/lib/ai`, `src/lib/json-render`, dan subdomain lain harus dikonsolidasikan secara namespace, walau caller atau domain logic-nya belum tentu ikut pindah.
 
-### 6. Bedakan prompt agentic vs prompt utilitarian
+### 7. Bedakan prompt agentic vs prompt utilitarian
 
 Tidak semua prompt yang ada di repo harus masuk `src/agent/`.
 
@@ -89,10 +117,8 @@ Yang cocok masuk `src/agent/`:
 Yang tidak perlu dipaksa masuk `src/agent/`:
 
 - prompt utilitarian feature-local,
-- prompt test/verification,
-- prompt satu-fungsi yang hanya dipakai untuk helper teknis seperti OCR atau title generation.
-
-Kalau semua prompt utilitarian ikut dipindah, `src/agent/` justru akan menjadi folder campur-aduk baru.
+- prompt test atau verification,
+- prompt satu-fungsi yang hanya dipakai helper teknis seperti OCR atau title generation.
 
 ## Struktur Ideal yang Diusulkan
 
@@ -109,19 +135,21 @@ src/
         search-mode-router-prompt.ts
       search/
         retriever-system-prompt.ts
+        retriever-user-augmentation.ts
         compose-phase-directive.ts
         search-results-context-prompt.ts
       tools/
         paper-tool-descriptions.ts
+        chat-tool-descriptions.ts
       ui/
         choice-card-system-prompt.ts
       compaction/
         compaction-prompts.ts
       runtime-notes/
-        artifact-notes.ts
-        search-mode-notes.ts
-        completed-session-notes.ts
         attachment-notes.ts
+        choice-context-notes.ts
+        exact-source-inspection-rules.ts
+        source-provenance-rules.ts
     skills/
       search/
         web-search-quality/
@@ -132,14 +160,21 @@ src/
       prompt-registry.ts
       skill-registry.ts
       tool-instruction-registry.ts
+    adapters/
+      system-prompts.ts
+      stage-skills.ts
+      style-constitutions.ts
     compose/
       build-chat-system-messages.ts
       build-paper-mode-message-stack.ts
       build-search-compose-messages.ts
-      build-router-messages.ts
+      build-search-results-context.ts
+      build-choice-context-note.ts
+      build-refrasa-prompts.ts
     contracts/
       prompt-kinds.ts
       ownership.ts
+      prompt-surface-status.ts
       message-stack.ts
       tool-instruction-kinds.ts
 ```
@@ -148,32 +183,32 @@ src/
 
 ### `src/agent/prompts/`
 
-Tempat semua prompt asset yang code-owned.
+Tempat semua prompt asset yang code-owned atau hasil ekstraksi contract text.
 
 Isi:
 
 - string prompt reusable,
 - note reusable,
 - directive phase-specific,
-- prompt router,
-- feature-specific prompt assets yang memang code-owned.
+- router prompt,
+- feature-specific prompt contracts yang memang code-owned.
 
 Bukan tempat:
 
 - business logic berat,
 - DB fetch logic,
 - tool execution,
+- heuristics non-prompt,
+- classifier runtime,
 - prompt utilitarian yang hanya hidup untuk helper teknis lokal.
 
 ### `src/agent/skills/`
 
 Tempat skill file-based yang memang natural-language driven.
 
-Untuk fase awal, cukup pindahkan atau re-home:
+Fase awal paling realistis:
 
-- `src/lib/ai/skills/web-search-quality/*`
-
-ke namespace baru yang lebih jelas.
+- re-home `src/lib/ai/skills/web-search-quality/*`.
 
 ### `src/agent/registry/`
 
@@ -183,28 +218,40 @@ Layer registry untuk menjawab:
 - skill mana tersedia,
 - tool instruction mana tersedia,
 - ownership-nya apa,
-- source-nya DB atau file,
+- source-nya apa,
+- status migrasinya apa,
 - dipakai di mode apa.
 
-Contoh tanggung jawab:
+### `src/agent/adapters/`
 
-- mendaftarkan `fallback-system-prompt`,
-- mendaftarkan `search-retriever-system-prompt`,
-- mendaftarkan `web-search-quality-skill`,
-- mendaftarkan `paper-tool-descriptions`.
+Layer adapter untuk surface yang source of truth-nya tetap di DB.
+
+Prinsip adapter:
+
+- tipis,
+- eksplisit,
+- tidak membuat source of truth baru,
+- tidak menyimpan shadow state.
 
 ### `src/agent/compose/`
 
-Ini layer paling penting. Semua perakitan runtime messages harus masuk sini.
+Ini layer paling penting.
+
+Semua perakitan runtime messages harus bergerak ke sini secara bertahap.
 
 Target fungsi:
 
 - `buildChatSystemMessages()`
 - `buildPaperModeMessageStack()`
 - `buildSearchComposeMessages()`
-- `buildRouterMessages()`
+- `buildSearchResultsContext()`
+- `buildChoiceContextNote()`
+- `buildRefrasaPrompts()`
 
-Route memanggil builder ini, bukan menyusun string panjang sendiri.
+Catatan:
+
+- composer boleh menerima hasil query atau adapter,
+- composer tidak harus menjadi tempat query data mentah.
 
 ### `src/agent/contracts/`
 
@@ -215,9 +262,11 @@ Contoh definisi yang perlu eksplisit:
 - `PromptKind`
 - `PromptSource`
 - `PromptOwnership`
+- `PromptSurfaceStatus`
 - `MessageStackLayer`
+- `ToolInstructionKind`
 
-Ini penting supaya unified architecture bukan cuma soal folder, tapi juga soal bahasa konseptual yang sama di seluruh codebase.
+Ini penting supaya unified architecture bukan cuma soal folder, tapi juga bahasa konseptual yang sama di seluruh codebase.
 
 ## Ownership Model yang Diusulkan
 
@@ -226,342 +275,176 @@ Ini penting supaya unified architecture bukan cuma soal folder, tapi juga soal b
 Tetap di DB:
 
 - global system prompt aktif,
-- stage skills per stage.
+- stage skills per stage,
+- style constitutions untuk Refrasa.
 
 Masuk registry sebagai:
 
 - `source: "convex-db"`
 - `ownership: "admin-managed"`
 
-### B. Code-managed reusable prompts
+### B. Code-managed prompt assets
 
 Pindah atau direlokasi ke `src/agent/prompts/`:
 
-- fallback global prompt,
-- search retriever prompt,
-- compose phase directive,
-- search results context guidance,
 - paper workflow reminder,
+- search retriever prompt,
+- search compose directive,
 - choice card prompt,
 - compaction prompts,
-- feature prompt builders seperti Refrasa,
-- reusable runtime notes.
+- exact-source rules strings,
+- runtime notes inline yang cukup bersih.
 
 Masuk registry sebagai:
 
 - `source: "code"`
 - `ownership: "repo-managed"`
 
-### C. File-based skills
+### C. Hybrid prompt surfaces
 
-Tetap file-based, tapi berada di namespace `src/agent/skills/`.
+Masuk jalur `extract contract first`:
 
-Masuk registry sebagai:
-
-- `source: "file"`
-- `ownership: "repo-managed"`
-
-### D. Tool description instructions
-
-Tetap berasal dari definisi tool, tetapi diinventaris dan diorganisasikan sebagai instruction contract.
+- paper mode builder,
+- search results context builder,
+- choice context note builder,
+- tool descriptions,
+- Refrasa prompt builder.
 
 Masuk registry sebagai:
 
 - `source: "code"`
 - `ownership: "repo-managed"`
-- `kind: "tool-description"`
+- `status: "extract-contract-first"`
 
-### E. Utility and verification prompts
+### D. File-based skills
 
-Tetap boleh tinggal dekat feature masing-masing.
+Tetap file-based, tetapi berada di namespace `src/agent/skills/`.
 
-Contoh yang saat ini lebih tepat tetap local:
+Masuk registry sebagai:
 
-- title generation prompt di `src/lib/ai/title-generator.ts`,
-- OCR extraction instruction di `src/lib/file-extraction/image-ocr.ts`,
-- admin provider validation prompt di `src/app/api/admin/validate-provider/route.ts`,
-- admin model compatibility verification prompts di `src/app/api/admin/verify-model-compatibility/route.ts`.
+- `source: "filesystem"`
+- `ownership: "repo-managed"`
 
-Mereka bisa didaftarkan dalam inventaris dokumentasi, tetapi tidak harus menjadi bagian dari runtime prompt registry agent utama.
+### E. Local utilities dan ops artifacts
 
-## Mapping dari Struktur Lama ke Struktur Target
+Tetap di domain lokal atau migrations:
 
-### Prompt/fallback/helper
+- title generation,
+- OCR extraction,
+- admin verification prompts,
+- migration prompt assets,
+- stage skill migration templates.
 
-- `src/lib/ai/chat-config.ts`
-  - `getMinimalFallbackPrompt()` pindah ke `src/agent/prompts/global/fallback-system-prompt.ts`
-  - DB fetch logic tetap bisa stay di `chat-config.ts` atau dipindah ke adapter tipis
+## Alur Runtime Target
 
-- `src/lib/ai/search-system-prompt.ts`
-  - pindah ke `src/agent/prompts/search/retriever-system-prompt.ts`
+### Chat flow target
 
-- `src/lib/ai/paper-workflow-reminder.ts`
-  - pindah ke `src/agent/prompts/global/paper-workflow-reminder.ts`
+1. Route mengambil data dan state yang diperlukan.
+2. Route memanggil adapter untuk surface DB-managed.
+3. Route memanggil compose layer untuk menyusun system messages.
+4. Route mengeksekusi model dengan message stack yang sudah dirakit composer.
 
-- `src/lib/json-render/choice-yaml-prompt.ts`
-  - pindah ke `src/agent/prompts/ui/choice-card-system-prompt.ts`
+### Paper mode target
 
-- `src/lib/ai/compaction-prompts.ts`
-  - pindah ke `src/agent/prompts/compaction/compaction-prompts.ts`
+1. Resolver atau adapter menyediakan active stage skill atau fallback.
+2. Composer paper mode merakit memory digest, artifact summaries, invalidated artifacts, status note, dan stage instruction.
+3. Route tidak lagi memegang prompt string panjang atau precedence implicit.
 
-- `src/lib/ai/search-results-context.ts`
-  - logic instruction-bearing string dipindah ke `src/agent/prompts/search/search-results-context-prompt.ts`
-  - builder tipis bisa tetap tinggal dekat search stack bila perlu
+### Web search target
 
-- `src/lib/refrasa/prompt-builder.ts`
-  - asset prompt-nya dipisahkan ke `src/agent/prompts/features/refrasa-system-prompt.ts`
-  - builder domain Refrasa tetap bisa tinggal di modul feature
+1. Router prompt jadi asset terpisah.
+2. Retriever prompt dan augmentation jadi asset terpisah.
+3. Search results context builder memegang branching mode secara eksplisit.
+4. Search compose messages disusun di compose layer dengan precedence yang terdokumentasi.
 
-### Search skill
+### Refrasa target
 
-- `src/lib/ai/skills/web-search-quality/`
-  - pindah ke `src/agent/skills/search/web-search-quality/`
+1. Constitution tetap diambil dari DB lewat adapter.
+2. Prompt contracts Refrasa hidup di namespace `src/agent/prompts/features/`.
+3. Builder domain Refrasa tetap boleh lokal bila memang lebih sehat.
 
-### Tool descriptions
+## Risiko Arsitektural yang Harus Diantisipasi
 
-- instruction-rich descriptions dari `src/lib/ai/paper-tools.ts`
-  - tidak harus dipindah seluruh logic tool-nya,
-  - tetapi template deskripsinya idealnya diekstrak ke `src/agent/prompts/tools/` atau registry sejenis
-  - factory tools tinggal mengimpor string atau formatter description dari sana
+### 1. Relokasi palsu
 
-### Inline prompts di route
+Risiko:
 
-Harus diekstrak bertahap:
+- file dipindah ke `src/agent/`,
+- tetapi tanggung jawab asli tidak berubah,
+- hasilnya cuma import path baru.
 
-- router prompt dari [src/app/api/chat/route.ts](/C:/Users/eriks/Desktop/makalahapp/src/app/api/chat/route.ts#L1145) ke `src/agent/prompts/router/search-mode-router-prompt.ts`
-- completed-session override ke `src/agent/prompts/runtime-notes/completed-session-notes.ts`
-- workflow response discipline note ke `src/agent/prompts/runtime-notes/artifact-notes.ts`
-- search/tool mode notes ke `src/agent/prompts/runtime-notes/search-mode-notes.ts`
-- attachment note ke `src/agent/prompts/runtime-notes/attachment-notes.ts`
+Mitigasi:
 
-### Message composition
+- pakai status `extract contract first`,
+- jangan pindah modul hybrid mentah-mentah.
 
-- logic assembly dari `chat/route.ts` dipindah ke `src/agent/compose/build-chat-system-messages.ts`
-- logic assembly websearch compose dari orchestrator dipindah ke `src/agent/compose/build-search-compose-messages.ts`
+### 2. Dual source of truth terselubung
 
-## Yang Sengaja Tidak Dipindahkan
+Risiko:
 
-### 1. `systemPrompts` dan `stageSkills` di Convex
+- adapter diam-diam menyimpan fallback baru,
+- text contract hasil ekstraksi menyimpang dari DB-managed content,
+- prompt final tidak jelas authority-nya.
 
-Ini harus tetap ada. Alasan:
+Mitigasi:
 
-- mereka domain object operasional,
-- ada lifecycle admin,
-- ada schema, validation, dan audit,
-- sudah dipakai UI operasional.
+- adapter harus tipis,
+- registry wajib mencatat ownership dan source,
+- composer hanya menyusun, bukan menyimpan source baru.
 
-### 2. Business logic resolver
+### 3. Drift precedence
 
-Contoh:
+Risiko:
 
-- `resolveStageInstructions()`
-- validation flow
-- publish/activate/rollback
-- execute function tool
-- feature route logic seperti Refrasa
+- search directive, runtime notes, dan tool instructions berubah urutan,
+- output model bergeser walau text prompt sama.
 
-Logic seperti ini tidak perlu pindah ke `src/agent/prompts/`. Yang berubah adalah lokasi asset instruksinya, bukan semua service logic.
+Mitigasi:
 
-### 3. Flow-specific logic yang memang procedural
+- precedence system messages harus didefinisikan eksplisit,
+- parity verification wajib mengecek urutan stack, bukan cuma keberadaan file baru.
 
-Prompt builder bisa dipusatkan, tapi flow control tetap boleh tinggal di route/orchestrator kalau memang di situlah dependency runtime tersedia.
+### 4. Verification yang dangkal
 
-### 4. Utility prompts yang feature-local
+Risiko:
 
-Prompt helper seperti title generation, OCR, atau admin verification test boleh tetap tinggal di feature masing-masing selama:
+- migrasi dinyatakan selesai karena lint dan typecheck lolos,
+- padahal behavior tool calling dan search compose berubah.
 
-- tidak ikut membentuk message stack chat utama,
-- tidak reusable lintas mode agent,
-- tidak menjadi source of truth perilaku agent.
+Mitigasi:
 
-## Bentuk Runtime Setelah Unified
+- wajib jalankan parity tests dan flow checks untuk area kritikal.
 
-### Chat route
+## Aturan Adopsi
 
-Chat route idealnya hanya melakukan:
+### Boleh dilakukan segera
 
-1. fetch context runtime,
-2. panggil prompt/message builders,
-3. panggil model,
-4. handle tool flow dan persistence.
+- relokasi asset yang pure,
+- relokasi skill file-based,
+- ekstraksi string inline yang jelas.
 
-Bukan:
+### Harus menunggu pemisahan kontrak
 
-- menyimpan banyak string prompt panjang,
-- menyusun banyak note inline secara manual.
+- paper mode builder,
+- search results context builder,
+- choice context builder,
+- tool descriptions,
+- Refrasa prompt builder.
 
-### Search orchestrator
+### Tidak perlu dipaksakan masuk
 
-Orchestrator idealnya:
-
-1. menjalankan retriever phase,
-2. meminta `buildSearchComposeMessages()` untuk compose phase,
-3. menjalankan compose model.
-
-Ia tetap punya flow control, tapi bukan prompt warehouse.
-
-## Kontrak Taxonomy yang Disarankan
-
-Contoh taxonomy yang perlu dipakai secara konsisten:
-
-### Prompt kind
-
-- `global-base`
-- `global-fallback`
-- `paper-context`
-- `search-retriever`
-- `search-compose-directive`
-- `router`
-- `ui-visual-language`
-- `runtime-note`
-- `compaction`
-- `tool-description`
-- `feature-system-prompt`
-
-### Ownership
-
-- `admin-managed`
-- `repo-managed`
-- `runtime-generated`
-
-### Source
-
-- `convex-db`
-- `code-module`
-- `file-skill`
-- `computed`
-- `feature-local`
-
-### Assembly layer
-
-- `base`
-- `context`
-- `guardrail`
-- `phase-override`
-- `ui-contract`
-
-Dengan ini, setiap prompt baru punya tempat konseptual yang jelas.
-
-## Tahapan Implementasi yang Paling Aman
-
-### Tahap 1. Buat namespace baru tanpa ubah perilaku
-
-- buat `src/agent/`
-- pindahkan prompt code-owned yang tidak menyentuh DB
-- buat registry sederhana
-- inventaris tool descriptions yang mengandung instruction contract
-- tandai prompt utilitarian yang sengaja tetap tinggal di feature-local modules
-
-Tujuan:
-
-- dapat folder unified dulu,
-- tanpa risiko mengubah behavior model.
-
-### Tahap 2. Extract inline prompt strings
-
-- pindahkan router prompt,
-- pindahkan runtime notes yang reusable,
-- ganti route agar import dari registry/prompt modules
-
-Tujuan:
-
-- kurangi coupling di route,
-- behavior tetap sama.
-
-### Tahap 3. Centralize message composition
-
-- buat builders di `src/agent/compose/`
-- route/orchestrator cukup panggil builder
-
-Tujuan:
-
-- audit jadi mudah,
-- testing assembly lebih mudah.
-
-### Tahap 4. Rapikan search skill namespace
-
-- re-home `web-search-quality`
-- satukan prompt search, search results context, dan skill search dalam satu subtree agent
-
-Tujuan:
-
-- search stack jadi coherent.
-
-### Tahap 5. Rapikan prompt builder feature dan tool descriptions
-
-- ekstrak asset prompt Refrasa dan feature lain yang sejenis
-- ekstrak string tool descriptions yang panjang ke registry/template layer
-
-Tujuan:
-
-- semua instruction-bearing assets punya taxonomy yang sama
-
-### Tahap 6. Tambahkan dokumentasi ownership
-
-- definisikan prompt mana admin-managed,
-- prompt mana repo-managed,
-- prompt mana runtime-generated,
-- tool description mana yang dianggap contract AI.
-
-Tujuan:
-
-- menghindari drift organisasi di masa depan.
-
-## Risiko Jika Unified Dilakukan dengan Cara yang Salah
-
-### Risiko 1. Merusak admin operations
-
-Kalau global prompt dan stage skill dipindah jadi file static, admin panel kehilangan fungsi operasionalnya.
-
-### Risiko 2. Muncul dual source of truth baru
-
-Kalau file di `src/agent/` dan DB sama-sama dianggap master, hasilnya lebih buruk daripada sekarang.
-
-### Risiko 3. Refactor folder tanpa refactor composition
-
-Kalau cuma memindahkan file ke folder baru, tapi route tetap menyimpan prompt inline, masalah inti tidak selesai.
-
-### Risiko 4. Over-centralization
-
-Kalau title generation, OCR, provider validation, dan verification prompts ikut dipaksa masuk `src/agent/`, hasilnya:
-
-- namespace agent jadi bising,
-- boundary agentic vs utilitarian kabur,
-- biaya refactor lebih besar daripada manfaatnya.
-
-## Keputusan Konseptual Final
-
-### Yang harus jadi pusat
-
-`src/agent/` harus menjadi pusat untuk:
-
-- taxonomy,
-- registry,
-- prompt assets yang code-owned,
-- skill assets yang file-owned,
-- builder/composer untuk runtime messages.
-
-### Yang tidak boleh dipusatkan secara paksa
-
-`src/agent/` tidak boleh dijadikan satu-satunya tempat persistence untuk:
-
-- system prompt aktif yang dikelola admin,
-- stage skills aktif yang dikelola admin.
+- utility prompts satu-fungsi,
+- verification prompts,
+- migration assets,
+- non-prompt heuristics.
 
 ## Kesimpulan
 
-Unified architecture yang ideal untuk repo ini adalah model berikut:
+Unified prompt architecture yang benar untuk repo ini adalah:
 
-- **DB tetap jadi source of truth untuk content yang operasional dan editable**
-- **`src/agent/` jadi source of organization dan composition**
-- **route/orchestrator berhenti menyimpan prompt panjang secara inline**
-- **semua prompt/skill baru wajib masuk taxonomy dan registry yang sama**
-- **prompt utilitarian non-agentic boleh tetap feature-local dengan taxonomy yang jelas**
+- **DB tetap memegang content operasional yang memang admin-managed,**
+- **`src/agent/` memegang prompt assets, skills, adapters, contracts, dan composition,**
+- **surface hybrid dipecah dulu menjadi text contract dan runtime logic,**
+- **composer memegang precedence runtime secara eksplisit.**
 
-Kalau target ini diikuti, hasil akhirnya bukan sekadar "lebih rapi foldernya", tetapi:
-
-- lebih mudah diaudit,
-- lebih mudah dites,
-- lebih mudah dipelihara,
-- lebih sulit drift,
-- dan tetap kompatibel dengan admin workflow yang sudah ada.
+Itu versi yang paling realistis, paling aman, dan paling sesuai dengan bentuk codebase saat ini.
