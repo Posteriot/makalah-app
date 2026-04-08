@@ -147,11 +147,12 @@ Each schema must match the design document exactly. All fields must have `.descr
 
 **Exact behavior target**: Export a generic function:
 ```
-classifyIntent<T>(options: { schema, systemPrompt, userMessage, context?, model? }): Promise<T | null>
+classifyIntent<T>(options: { schema, systemPrompt, userMessage, context?, model }): Promise<ClassifierResult<T> | null>
 ```
-- On success: returns parsed, type-safe classifier output
+Where `ClassifierResult<T>` is `{ output: T, metadata: { classifierVersion: string } }`.
+- On success: returns `{ output, metadata }` — caller accesses `result.output` for classification, `result.metadata.classifierVersion` for audit tracking
 - On error/timeout: returns `null` (caller uses safe default)
-- Includes `classifierVersion` metadata attachment
+- Metadata attachment is via the wrapper return object, not by modifying the schema payload — schema stays clean for model output
 
 **Regex/patterns expected to be replaced**: None
 
