@@ -29,6 +29,7 @@ Based on the intent, choose the appropriate handling:
 Rules:
 - If the user starts with a question word (apa, apakah, bagaimana, di mana, kenapa, mengapa), treat it as informational, NOT artifact recall — even if they mention a stage name.
 - If the user mentions a display verb (lihat, tampilkan, buka, show, etc.) AND a stage name, that is artifact recall.
+- If the user sends ONLY a bare stage name (e.g., just "judul", "abstrak", "outline") WITHOUT a display verb or other context, classify as "other" with handling "clarify" — the intent is ambiguous (could be recall, revision, question, or reference). Do NOT assume artifact recall for bare stage names alone.
 - If you classify as artifact_recall, you MUST provide the targetStage from the valid stage list. If you cannot determine the stage, set targetStage to null and needsClarification to true.
 - If confidence is below 0.6, set handling to "clarify" and needsClarification to true.
 - Empty or whitespace-only messages should be classified as continuation with short_circuit_closing.`
@@ -61,6 +62,12 @@ export async function classifyCompletedSessionIntent(options: {
     validStageIds = STAGE_ORDER,
     model,
   } = options
+
+  // Deterministic pre-check: empty/whitespace input should not be sent to model.
+  // Caller handles empty input via deterministic short_circuit_closing.
+  if (!lastUserContent.trim()) {
+    return null
+  }
 
   const systemPrompt = buildSystemPrompt(validStageIds)
 
@@ -96,6 +103,20 @@ export async function classifyCompletedSessionIntent(options: {
   if (result.output.confidence < 0.6) {
     result.output.handling = "clarify"
     result.output.needsClarification = true
+  }
+
+  // Guard 3: bare stage name without display verb → force clarify
+  // Prevents classifier from assuming artifact recall on ambiguous single-word inputs
+  const trimmedInput = options.lastUserContent.trim().toLowerCase()
+  const isBareInput = !trimmedInput.includes(" ")
+  if (
+    isBareInput &&
+    result.output.handling === "server_owned_artifact_recall" &&
+    validStageIds.includes(trimmedInput)
+  ) {
+    result.output.handling = "clarify"
+    result.output.needsClarification = true
+    result.output.targetStage = null
   }
 
   return result

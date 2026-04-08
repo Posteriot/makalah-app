@@ -303,4 +303,85 @@ describe("classifyCompletedSessionIntent", () => {
     // intent stays as classified — only handling is overridden
     expect(result!.output.intent).toBe("revision")
   })
+
+  // ── Empty input pre-check ──
+
+  it("returns null for empty input without calling classifier", async () => {
+    const { classifyIntent } = await import("./classify")
+    const mockedClassify = vi.mocked(classifyIntent)
+    mockedClassify.mockClear()
+
+    const result = await classifyCompletedSessionIntent({
+      lastUserContent: "",
+      model: mockModel,
+    })
+
+    expect(result).toBeNull()
+    expect(mockedClassify).not.toHaveBeenCalled()
+  })
+
+  it("returns null for whitespace-only input without calling classifier", async () => {
+    const { classifyIntent } = await import("./classify")
+    const mockedClassify = vi.mocked(classifyIntent)
+    mockedClassify.mockClear()
+
+    const result = await classifyCompletedSessionIntent({
+      lastUserContent: "   ",
+      model: mockModel,
+    })
+
+    expect(result).toBeNull()
+    expect(mockedClassify).not.toHaveBeenCalled()
+  })
+
+  // ── Bare stage name runtime guard ──
+
+  it("forces clarify for bare stage name input even if classifier says recall", async () => {
+    const { classifyIntent } = await import("./classify")
+    vi.mocked(classifyIntent).mockResolvedValueOnce({
+      output: {
+        intent: "artifact_recall",
+        handling: "server_owned_artifact_recall",
+        targetStage: "judul",
+        needsClarification: false,
+        confidence: 0.85,
+        reason: "Stage name detected",
+      },
+      metadata: { classifierVersion: "1.0.0" },
+    })
+
+    const result = await classifyCompletedSessionIntent({
+      lastUserContent: "judul",
+      model: mockModel,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.output.handling).toBe("clarify")
+    expect(result!.output.needsClarification).toBe(true)
+    expect(result!.output.targetStage).toBeNull()
+  })
+
+  it("does NOT force clarify for stage name with display verb", async () => {
+    const { classifyIntent } = await import("./classify")
+    vi.mocked(classifyIntent).mockResolvedValueOnce({
+      output: {
+        intent: "artifact_recall",
+        handling: "server_owned_artifact_recall",
+        targetStage: "judul",
+        needsClarification: false,
+        confidence: 0.95,
+        reason: "Display verb + stage name",
+      },
+      metadata: { classifierVersion: "1.0.0" },
+    })
+
+    const result = await classifyCompletedSessionIntent({
+      lastUserContent: "lihat judul",
+      model: mockModel,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.output.handling).toBe("server_owned_artifact_recall")
+    expect(result!.output.targetStage).toBe("judul")
+  })
 })
