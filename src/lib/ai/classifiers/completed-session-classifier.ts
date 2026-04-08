@@ -80,12 +80,21 @@ export async function classifyCompletedSessionIntent(options: {
     return null
   }
 
-  // Post-validation: ensure targetStage is a valid stage ID
+  // Post-validation: enforce runtime guards that must not depend on model compliance
+
+  // Guard 1: invalid targetStage → force clarify
   if (
     result.output.targetStage !== null &&
     !validStageIds.includes(result.output.targetStage)
   ) {
     result.output.targetStage = null
+    result.output.handling = "clarify"
+    result.output.needsClarification = true
+  }
+
+  // Guard 2: low confidence → force clarify
+  if (result.output.confidence < 0.6) {
+    result.output.handling = "clarify"
     result.output.needsClarification = true
   }
 

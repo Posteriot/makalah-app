@@ -250,7 +250,7 @@ describe("classifyCompletedSessionIntent", () => {
 
   // ── Invalid targetStage post-validation ──
 
-  it("nullifies invalid targetStage that model hallucinated", async () => {
+  it("forces clarify when model hallucinates invalid targetStage", async () => {
     const { classifyIntent } = await import("./classify")
     vi.mocked(classifyIntent).mockResolvedValueOnce({
       output: {
@@ -272,6 +272,35 @@ describe("classifyCompletedSessionIntent", () => {
 
     expect(result).not.toBeNull()
     expect(result!.output.targetStage).toBeNull()
+    expect(result!.output.handling).toBe("clarify")
     expect(result!.output.needsClarification).toBe(true)
+  })
+
+  // ── Low confidence runtime guard ──
+
+  it("forces clarify when confidence is below 0.6 regardless of model handling", async () => {
+    const { classifyIntent } = await import("./classify")
+    vi.mocked(classifyIntent).mockResolvedValueOnce({
+      output: {
+        intent: "revision",
+        handling: "allow_normal_ai",
+        targetStage: null,
+        needsClarification: false,
+        confidence: 0.45,
+        reason: "Weak revision signal",
+      },
+      metadata: { classifierVersion: "1.0.0" },
+    })
+
+    const result = await classifyCompletedSessionIntent({
+      lastUserContent: "hmm mungkin ubah",
+      model: mockModel,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.output.handling).toBe("clarify")
+    expect(result!.output.needsClarification).toBe(true)
+    // intent stays as classified — only handling is overridden
+    expect(result!.output.intent).toBe("revision")
   })
 })
