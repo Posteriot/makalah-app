@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import {
     resolveCompletedSessionHandling,
@@ -221,6 +221,62 @@ describe("resolveCompletedSessionHandling", () => {
         })
         expect(result.handling).toBe("short_circuit_closing")
         expect(result.source).toBe("fallback_heuristic")
+    })
+
+    // ── Dual-write: classifier shadow mode ──
+
+    it("still returns regex result when dualWriteModel is provided", async () => {
+        // Mock the classifier module
+        const classifierModule = await import("../classifiers/completed-session-classifier")
+        vi.spyOn(classifierModule, "classifyCompletedSessionIntent").mockResolvedValueOnce({
+            output: {
+                intent: "artifact_recall",
+                handling: "server_owned_artifact_recall",
+                targetStage: "abstrak",
+                needsClarification: false,
+                confidence: 0.9,
+                reason: "classifier says recall",
+            },
+            metadata: { classifierVersion: "1.0.0" },
+        })
+
+        // Regex would say: short_circuit_closing (unrecognized default)
+        // Classifier would say: server_owned_artifact_recall
+        // Dual-write: regex wins
+        const result = resolveCompletedSessionHandling({
+            lastUserContent: "buka abstrak dong",
+            dualWriteModel: { modelId: "test" } as import("ai").LanguageModel,
+        })
+
+        // Regex result is returned (not classifier)
+        // "buka" IS in RECALL_DISPLAY_VERB, "abstrak" IS in RECALL_ARTIFACT_TARGET
+        // So regex actually returns artifact_recall here too
+        expect(result.handling).toBe("server_owned_artifact_recall")
+        expect(result.source).toBe("fallback_heuristic")
+    })
+
+    it("returns regex result even when classifier fails", async () => {
+        const classifierModule = await import("../classifiers/completed-session-classifier")
+        vi.spyOn(classifierModule, "classifyCompletedSessionIntent").mockResolvedValueOnce(null)
+
+        const result = resolveCompletedSessionHandling({
+            lastUserContent: "lanjut",
+            dualWriteModel: { modelId: "test" } as import("ai").LanguageModel,
+        })
+
+        // Regex still returns its result regardless of classifier failure
+        expect(result.handling).toBe("short_circuit_closing")
+        expect(result.source).toBe("fallback_heuristic")
+    })
+
+    it("works exactly the same without dualWriteModel (backward compatible)", () => {
+        const result = resolveCompletedSessionHandling({
+            lastUserContent: "revisi abstrak",
+        })
+
+        expect(result.handling).toBe("allow_normal_ai")
+        expect(result.source).toBe("fallback_heuristic")
+        expect(result.reason).toBe("revision_verb")
     })
 })
 

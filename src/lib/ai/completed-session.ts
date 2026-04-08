@@ -1,3 +1,5 @@
+import type { LanguageModel } from "ai"
+
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 
 export type CompletedSessionHandling = "short_circuit_closing" | "allow_normal_ai" | "server_owned_artifact_recall"
@@ -98,15 +100,46 @@ export function resolveRecallTargetStage(input: string): PaperStageId | null {
  * Priority:
  * 1. Router intent (if available) — primary signal
  * 2. Fallback heuristic (regex) — last resort when router wasn't called or failed
+ *
+ * Dual-write mode: when `dualWriteModel` is provided, fires the semantic classifier
+ * in the background and logs discrepancies. Regex result is ALWAYS returned —
+ * classifier is shadow-only. This enables parity comparison without behavior change.
  */
 export function resolveCompletedSessionHandling(args: {
     routerIntent?: string
     routerReason?: string
     lastUserContent: string
     hasChoiceInteractionEvent?: boolean
+    dualWriteModel?: LanguageModel
 }): CompletedSessionDecision {
-    const { routerIntent, routerReason, lastUserContent, hasChoiceInteractionEvent } = args
+    const { routerIntent, routerReason, lastUserContent, hasChoiceInteractionEvent, dualWriteModel } = args
     const normalized = typeof lastUserContent === "string" ? lastUserContent.trim() : ""
+
+    // ── Regex decision (always runs, always returned) ──
+    const regexDecision = resolveViaRegex({ routerIntent, routerReason, normalized, hasChoiceInteractionEvent })
+
+    // ── Dual-write: fire classifier in background for parity comparison ──
+    if (dualWriteModel) {
+        fireDualWriteComparison({
+            regexDecision,
+            lastUserContent: normalized,
+            routerReason,
+            model: dualWriteModel,
+        })
+    }
+
+    return regexDecision
+}
+
+// ── Internal: existing regex logic (unchanged behavior) ──
+
+function resolveViaRegex(args: {
+    routerIntent?: string
+    routerReason?: string
+    normalized: string
+    hasChoiceInteractionEvent?: boolean
+}): CompletedSessionDecision {
+    const { routerIntent, routerReason, normalized, hasChoiceInteractionEvent } = args
 
     // ── Router intent path (primary) ──
     if (routerIntent) {
@@ -212,6 +245,48 @@ export function resolveCompletedSessionHandling(args: {
         source: "fallback_heuristic",
         reason: "unrecognized_default",
     }
+}
+
+// ── Dual-write: fire-and-forget classifier comparison ──
+
+function fireDualWriteComparison(args: {
+    regexDecision: CompletedSessionDecision
+    lastUserContent: string
+    routerReason?: string
+    model: LanguageModel
+}): void {
+    const { regexDecision, lastUserContent, routerReason, model } = args
+
+    // Dynamic import to avoid loading classifier module when not in dual-write mode
+    import("./classifiers/completed-session-classifier")
+        .then(({ classifyCompletedSessionIntent }) =>
+            classifyCompletedSessionIntent({ lastUserContent, routerReason, model })
+        )
+        .then((classifierResult) => {
+            if (!classifierResult) {
+                console.info("[completed-session][dual-write] classifier returned null (error/timeout)")
+                return
+            }
+
+            const c = classifierResult.output
+            const r = regexDecision
+
+            // Compare handling decisions
+            if (c.handling !== r.handling) {
+                console.info(
+                    `[completed-session][dual-write] DISCREPANCY handling: regex=${r.handling} classifier=${c.handling} ` +
+                    `intent=${c.intent} confidence=${c.confidence} input="${lastUserContent.slice(0, 80)}"`
+                )
+            } else {
+                console.info(
+                    `[completed-session][dual-write] MATCH handling=${r.handling} ` +
+                    `intent=${c.intent} confidence=${c.confidence} input="${lastUserContent.slice(0, 80)}"`
+                )
+            }
+        })
+        .catch((err) => {
+            console.error("[completed-session][dual-write] classifier comparison failed:", err)
+        })
 }
 
 export function getCompletedSessionClosingMessage(): string {
