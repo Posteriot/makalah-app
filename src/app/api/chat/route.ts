@@ -1831,6 +1831,7 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                             referencesMatched: refValidation.valid ? (sources?.length ?? 0) : 0,
                         })
                         if (!refValidation.valid) {
+                            console.warn(`[updateArtifact][ref-validation-rejected] stage=${paperSession?.currentStage} error=${refValidation.error}`)
                             return {
                                 success: false,
                                 error: refValidation.error,
@@ -1841,7 +1842,7 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                         if (sources && sources.length > 0) {
                             const parityCheck = checkSourceBodyParity({ content, sources })
                             if (!parityCheck.valid) {
-                                console.warn(`[source-body-parity-rejected] tool=updateArtifact level=${parityCheck.level} sources=${sources.length}`)
+                                console.warn(`[source-body-parity-rejected] tool=updateArtifact stage=${paperSession?.currentStage} level=${parityCheck.level} sources=${sources.length}`)
                                 return {
                                     success: false,
                                     errorCode: "SOURCE_BODY_PARITY_MISMATCH",
@@ -2240,8 +2241,14 @@ Aturan:
                     return { toolChoice: "required" as const }
                 }
                 if (prevToolNames.includes("updateArtifact") || prevToolNames.includes("createArtifact")) {
-                    console.info(`[REVISION][chain-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} → submitStageForValidation`)
-                    return { toolChoice: { type: "tool", toolName: "submitStageForValidation" } as const }
+                    // Only force submit if artifact tool actually succeeded
+                    if (paperToolTracker?.sawUpdateArtifactSuccess || paperToolTracker?.sawCreateArtifactSuccess) {
+                        console.info(`[REVISION][chain-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} → submitStageForValidation`)
+                        return { toolChoice: { type: "tool", toolName: "submitStageForValidation" } as const }
+                    }
+                    // Artifact tool was called but failed — let model retry freely
+                    console.info(`[REVISION][chain-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} → artifact failed, allowing retry`)
+                    return { toolChoice: "required" as const }
                 }
 
                 return undefined
