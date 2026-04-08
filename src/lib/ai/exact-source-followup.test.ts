@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
   resolveExactSourceFollowup,
   type ExactSourceSummary,
@@ -150,5 +150,45 @@ describe("resolveExactSourceFollowup", () => {
       mode: "none",
       reason: "not-an-exact-source-request",
     })
+  })
+
+  // ── Dual-write: classifier shadow mode ──
+
+  it("still returns regex result when dualWriteModel is provided", async () => {
+    const classifierModule = await import("./classifiers/exact-source-classifier")
+    vi.spyOn(classifierModule, "classifyExactSourceIntent").mockResolvedValueOnce({
+      output: {
+        mode: "force_inspect",
+        sourceIntent: "exact_detail",
+        mentionedSourceHint: "Ketergantungan Pelajar",
+        needsClarification: false,
+        confidence: 0.9,
+        reason: "classifier result",
+      },
+      metadata: { classifierVersion: "1.0.0" },
+    } as Awaited<ReturnType<typeof classifierModule.classifyExactSourceIntent>>)
+
+    const result = resolveExactSourceFollowup({
+      lastUserMessage: "Siapa penulis artikel Ketergantungan Pelajar dan Mahasiswa terhadap ChatGPT?",
+      recentMessages: [],
+      availableExactSources,
+      dualWriteModel: { modelId: "test" } as import("ai").LanguageModel,
+    })
+
+    // Regex result returned, not classifier
+    expect(result.mode).toBe("force-inspect")
+    if (result.mode === "force-inspect") {
+      expect(result.matchedSource.sourceId).toBe("source-berita-magelang")
+    }
+  })
+
+  it("works exactly the same without dualWriteModel (backward compatible)", () => {
+    const result = resolveExactSourceFollowup({
+      lastUserMessage: "Coba ringkas isi sumber tadi.",
+      recentMessages: [],
+      availableExactSources,
+    })
+
+    expect(result.mode).toBe("none")
   })
 })

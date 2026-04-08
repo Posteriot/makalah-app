@@ -22,6 +22,7 @@ type ResolveExactSourceFollowupParams = {
   lastUserMessage: string
   recentMessages: ExactSourceConversationMessage[]
   availableExactSources: ExactSourceSummary[]
+  dualWriteModel?: import("ai").LanguageModel
 }
 
 const EXACT_SOURCE_PATTERNS = [
@@ -175,10 +176,18 @@ function resolveFromRecentContext(
   return []
 }
 
+/**
+ * Resolve exact source follow-up.
+ *
+ * Regex is primary. When `dualWriteModel` is provided, fires the semantic
+ * classifier in the background for parity comparison. Regex result is ALWAYS
+ * returned. Classifier shadow data is logged for parity evaluation (ST-5.5).
+ */
 export function resolveExactSourceFollowup({
   lastUserMessage,
   recentMessages,
   availableExactSources,
+  dualWriteModel,
 }: ResolveExactSourceFollowupParams): ExactSourceFollowupResolution {
   const normalizedLastUserMessage = normalizeText(lastUserMessage)
 
@@ -186,17 +195,21 @@ export function resolveExactSourceFollowup({
     return { mode: "none", reason: "empty-user-message" }
   }
 
+  // ── Regex intent detection (primary, unchanged) ──
   const explicitExactIntent = isExactIntent(normalizedLastUserMessage)
   const continuationPrompt = isContinuationPrompt(normalizedLastUserMessage)
 
   if (!explicitExactIntent && !continuationPrompt) {
+    fireDualWrite(dualWriteModel, normalizedLastUserMessage, availableExactSources, "none")
     return { mode: "none", reason: "not-an-exact-source-request" }
   }
 
   if (isNonExactSummaryRequest(normalizedLastUserMessage) && !explicitExactIntent) {
+    fireDualWrite(dualWriteModel, normalizedLastUserMessage, availableExactSources, "none")
     return { mode: "none", reason: "not-an-exact-source-request" }
   }
 
+  // ── Source matching (preserved, unchanged) ──
   const directMatches = findExplicitMatches(normalizedLastUserMessage, availableExactSources)
   const contextMatches =
     directMatches.length === 0 && continuationPrompt
@@ -205,6 +218,7 @@ export function resolveExactSourceFollowup({
   const matches = directMatches.length > 0 ? directMatches : contextMatches
 
   if (matches.length === 1) {
+    fireDualWrite(dualWriteModel, normalizedLastUserMessage, availableExactSources, "force-inspect")
     return {
       mode: "force-inspect",
       reason: directMatches.length > 0 ? "unique-source-match" : "resolved-from-recent-context",
@@ -213,6 +227,7 @@ export function resolveExactSourceFollowup({
   }
 
   if (matches.length > 1) {
+    fireDualWrite(dualWriteModel, normalizedLastUserMessage, availableExactSources, "clarify")
     return {
       mode: "clarify",
       reason: "ambiguous-source-match",
@@ -220,11 +235,56 @@ export function resolveExactSourceFollowup({
   }
 
   if (explicitExactIntent) {
+    fireDualWrite(dualWriteModel, normalizedLastUserMessage, availableExactSources, "clarify")
     return {
       mode: "clarify",
       reason: "exact-intent-without-unique-source",
     }
   }
 
+  fireDualWrite(dualWriteModel, normalizedLastUserMessage, availableExactSources, "none")
   return { mode: "none", reason: "not-an-exact-source-request" }
+}
+
+// ── Dual-write: fire-and-forget classifier comparison ──
+
+function fireDualWrite(
+  model: import("ai").LanguageModel | undefined,
+  lastUserMessage: string,
+  availableExactSources: ExactSourceSummary[],
+  regexMode: "none" | "force-inspect" | "clarify",
+): void {
+  if (!model) return
+
+  const availableSourceTitles = availableExactSources
+    .map((s) => s.title)
+    .filter((t): t is string => !!t)
+
+  import("./classifiers/exact-source-classifier")
+    .then(({ classifyExactSourceIntent }) =>
+      classifyExactSourceIntent({ lastUserMessage, availableSourceTitles, model })
+    )
+    .then((classifierResult) => {
+      if (!classifierResult) {
+        console.info("[exact-source][dual-write] classifier returned null")
+        return
+      }
+      const c = classifierResult.output
+      const classifierMode = c.mode === "force_inspect" ? "force-inspect" : c.mode
+      if (classifierMode !== regexMode) {
+        console.info(
+          `[exact-source][dual-write] DISCREPANCY mode: regex=${regexMode} classifier=${classifierMode} ` +
+          `sourceIntent=${c.sourceIntent} hint=${c.mentionedSourceHint} confidence=${c.confidence} ` +
+          `input="${lastUserMessage.slice(0, 80)}"`
+        )
+      } else {
+        console.info(
+          `[exact-source][dual-write] MATCH mode=${regexMode} sourceIntent=${c.sourceIntent} ` +
+          `confidence=${c.confidence} input="${lastUserMessage.slice(0, 80)}"`
+        )
+      }
+    })
+    .catch((err) => {
+      console.error("[exact-source][dual-write] classifier comparison failed:", err)
+    })
 }
