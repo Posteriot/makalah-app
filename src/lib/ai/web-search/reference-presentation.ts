@@ -205,32 +205,35 @@ function createBaseSource(params: {
   }
 }
 
-export function inferSearchResponseMode(params: {
+/**
+ * Determine how search results should be presented.
+ *
+ * When model is provided: uses semantic classifier (replaces 14 regex patterns).
+ * When model is not provided: falls back to "synthesis" default.
+ * Default on classifier failure: "synthesis" (safe — narrative answer is always acceptable).
+ */
+export async function inferSearchResponseMode(params: {
   lastUserMessage: string
-}): SearchResponseMode {
-  const message = params.lastUserMessage.trim().toLowerCase()
+  model?: import("ai").LanguageModel
+}): Promise<SearchResponseMode> {
+  const message = params.lastUserMessage.trim()
 
-  const referenceInventoryPatterns = [
-    /\blink\b/,
-    /\bpdf\b/,
-    /\bsumbernya\b/,
-    /\bseluruh\s+sumber\b/,
-    /\bsemua\s+sumber\b/,
-    /\bdaftar\s+sumber\b/,
-    /\btampilkan(?:\s+lagi)?(?:\s+\w+){0,4}\s+sumber\b/,
-    /\btunjukkan(?:\s+lagi)?(?:\s+\w+){0,4}\s+sumber\b/,
-    /\bkasih(?:kan)?(?:\s+lagi)?(?:\s+\w+){0,4}\s+sumber\b/,
-    /\brujukan\b/,
-    /\bdaftar pustaka\b/,
-    /\breferensi\b/,
-    /\bcitation\b/,
-    /\bcitations\b/,
-  ]
+  if (!message) return "synthesis"
 
-  if (referenceInventoryPatterns.some((pattern) => pattern.test(message))) {
-    return "reference_inventory"
+  if (params.model) {
+    const { classifySearchResponseMode } = await import("../classifiers/search-response-mode-classifier")
+    const result = await classifySearchResponseMode({
+      lastUserMessage: message,
+      model: params.model,
+    })
+    if (result && result.output.confidence >= 0.6) {
+      return result.output.responseMode
+    }
+    // Low confidence or failure → safe default
+    return "synthesis"
   }
 
+  // No model provided — safe default
   return "synthesis"
 }
 

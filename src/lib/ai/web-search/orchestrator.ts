@@ -256,7 +256,7 @@ export async function executeWebSearch(
   const phase1Start = Date.now()
   const rawMessages = config.messages ?? []
   const lastUserMessage = extractLastUserMessageText(rawMessages)
-  const responseMode = inferSearchResponseMode({ lastUserMessage })
+  const responseMode = await inferSearchResponseMode({ lastUserMessage })
   const sanitizedMessages = sanitizeMessagesForSearch(rawMessages)
   const searchMessages = augmentUserMessageForSearch([
     { role: "system" as const, content: getSearchSystemPrompt() },

@@ -2693,8 +2693,9 @@ Aturan:
                 activeStageSearchNote = getPaperToolsOnlyNote(currentStage as string)
             }
 
-            const requestedResponseMode = inferSearchResponseMode({
+            const requestedResponseMode = await inferSearchResponseMode({
                 lastUserMessage: normalizedLastUserContent,
+                model,
             })
             const shouldServeStoredReferenceInventory =
                 requestedResponseMode === "reference_inventory" &&
