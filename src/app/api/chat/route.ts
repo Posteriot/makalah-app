@@ -2984,6 +2984,9 @@ Aturan:
 
             const primaryMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
             let capturedChoiceSpec: Spec | null = null
+            // Shared: set by onFinish when outcome-gated guard replaces persisted content.
+            // Writer loop checks this before writing finish event to emit data-cited-text override.
+            let streamContentOverride: string | null = null
 
             const result = streamText({
                 model,
@@ -3134,10 +3137,12 @@ Aturan:
                             if (hasArtifactSuccess && hasLeakage) {
                                 if (paperToolTracker.sawSubmitValidationSuccess) {
                                     persistedContent = "Artefak sudah diperbarui. Silakan review di panel validasi."
-                                    console.info(`[PAPER][outcome-gated] stage=${paperStageScope} replaced noisy persisted text with clean success_with_validation message`)
+                                    streamContentOverride = persistedContent
+                                    console.info(`[PAPER][outcome-gated] stage=${paperStageScope} replaced noisy persisted+stream text with clean success_with_validation message`)
                                 } else {
                                     persistedContent = "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
-                                    console.info(`[PAPER][outcome-gated] stage=${paperStageScope} replaced noisy persisted text with clean success_without_validation message`)
+                                    streamContentOverride = persistedContent
+                                    console.info(`[PAPER][outcome-gated] stage=${paperStageScope} replaced noisy persisted+stream text with clean success_without_validation message`)
                                 }
                             }
                         }
@@ -3544,6 +3549,19 @@ Aturan:
                                     console.info(`[F1-F6-TEST] ChoiceCardSpec { elements: "${elementTypes}", hasSubmitButton: ${hasSubmitBtn} }`)
                                 }
 
+                                // Outcome-gated stream override: if onFinish detected recovery leakage
+                                // and replaced persistedContent, also override the streamed text so
+                                // the UI shows clean content instead of leaked recovery prose.
+                                if (streamContentOverride) {
+                                    const overrideId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-override`
+                                    writer.write({
+                                        type: "data-cited-text",
+                                        id: overrideId,
+                                        data: { text: streamContentOverride },
+                                    } as Parameters<typeof writer.write>[0])
+                                    console.info("[PAPER][outcome-gated] emitted data-cited-text stream override")
+                                }
+
                                 if (reasoningAccumulator.hasReasoning()) {
                                     emitTrace(reasoningTrace.populateFromReasoning(
                                         reasoningAccumulator.getFullReasoning()
@@ -3637,6 +3655,7 @@ Aturan:
                 let fallbackReasoningTraceSnapshot: PersistedCuratedTraceSnapshot | undefined
                 let fallbackReasoningSourceCount = 0
                 let fallbackCapturedChoiceSpec: Spec | null = null
+                let fallbackStreamContentOverride: string | null = null
                 const captureFallbackReasoningSnapshot = () => {
                     if (!fallbackReasoningTraceController?.enabled) return
                     fallbackReasoningTraceSnapshot = fallbackReasoningTraceController.getPersistedSnapshot()
@@ -3964,10 +3983,12 @@ Aturan:
                             if (hasArtifactSuccess && hasLeakage) {
                                 if (paperToolTracker.sawSubmitValidationSuccess) {
                                     persistedContent = "Artefak sudah diperbarui. Silakan review di panel validasi."
-                                    console.info(`[PAPER][outcome-gated][fallback] stage=${paperStageScope} replaced noisy persisted text with clean success_with_validation message`)
+                                    fallbackStreamContentOverride = persistedContent
+                                    console.info(`[PAPER][outcome-gated][fallback] stage=${paperStageScope} replaced noisy persisted+stream text with clean success_with_validation message`)
                                 } else {
                                     persistedContent = "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
-                                    console.info(`[PAPER][outcome-gated][fallback] stage=${paperStageScope} replaced noisy persisted text with clean success_without_validation message`)
+                                    fallbackStreamContentOverride = persistedContent
+                                    console.info(`[PAPER][outcome-gated][fallback] stage=${paperStageScope} replaced noisy persisted+stream text with clean success_without_validation message`)
                                 }
                             }
                         }
@@ -4170,6 +4191,17 @@ Aturan:
                                 // Log captured YAML spec for persistence
                                 if (fallbackCapturedChoiceSpec && fallbackCapturedChoiceSpec.root) {
                                     console.info(`[CHOICE-CARD][yaml-capture] fallback stage=${paperStageScope} specKeys=${Object.keys(fallbackCapturedChoiceSpec).join(",")}`)
+                                }
+
+                                // Outcome-gated stream override (fallback path)
+                                if (fallbackStreamContentOverride) {
+                                    const overrideId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-override`
+                                    writer.write({
+                                        type: "data-cited-text",
+                                        id: overrideId,
+                                        data: { text: fallbackStreamContentOverride },
+                                    } as Parameters<typeof writer.write>[0])
+                                    console.info("[PAPER][outcome-gated][fallback] emitted data-cited-text stream override")
                                 }
 
                                 if (reasoningAccumulator.hasReasoning()) {
