@@ -70,3 +70,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Objective:** Replace regex-based natural language heuristics in chat + paper session runtime with structured semantic classifiers. Preserve all deterministic parser/sanitizer regex.
 - **Key files in scope:** `completed-session.ts`, `route.ts` (P1), `exact-source-followup.ts`, `reference-presentation.ts`, `internal-thought-separator.ts` (P2), `paper-intent-detector.ts`, `curated-trace.ts` (P3).
 - **Files explicitly out of scope:** `MarkdownRenderer.tsx`, `ChatWindow.tsx`, `ChatContainer.tsx`, `daftarPustakaCompiler.ts`, `stageDataWhitelist.ts` — these contain deterministic parsers that must be preserved.
+
+### AUDITOR & REVIEWER MANDATE FOR THIS WORKTREE
+- You are acting as the auditor and reviewer for work performed by Claude Code in this branch.
+- Before accepting any implementation, verify that it matches `SCOPE.md` and the documents under `docs/regex-revision-system/`.
+- Your primary review target is whether Claude removes regex-based natural language heuristics from runtime decision paths without damaging deterministic parsers that are explicitly meant to stay.
+- Treat `completed-session.ts` and `route.ts` as the highest-risk audit targets because they can change workflow behavior or persisted content.
+- Reject any change that merely renames or relocates keyword heuristics without replacing them with structured semantic classification or state-based runtime guards.
+- Reject any change that pushes technical parsing, sanitization, validation, or rendering logic into model-driven reasoning when deterministic parsing is sufficient.
+- Require evidence for claims of completion: inspect the changed code, verify the decision path, and run the relevant tests or validation commands when available.
+- When you report findings, prioritize bugs, workflow regressions, persisted-content corruption risks, state-model inconsistencies, and scope violations over style commentary.
+- If Claude's implementation conflicts with the documented scope, call out the conflict explicitly and recommend the single best corrective action.
