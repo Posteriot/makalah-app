@@ -119,10 +119,10 @@ export function resolveCompletedSessionHandling(args: {
     const regexResult = resolveViaRegex({ routerIntent, routerReason, normalized, hasChoiceInteractionEvent })
 
     // ── Dual-write: fire classifier only for paths being migrated ──
-    // Only for: fallback path + discussion refinement path
+    // Only for: fallback heuristic path (excluding choiceInteractionEvent) + discussion refinement
     // NOT for: save_submit, sync_request, search, compile_daftar_pustaka, choiceInteractionEvent
     const isDualWriteRelevant = dualWriteModel && (
-        regexResult.source === "fallback_heuristic" ||
+        (regexResult.source === "fallback_heuristic" && regexResult.reason !== "choice_interaction_event") ||
         (regexResult.source === "router_intent" && routerIntent === "discussion")
     )
 

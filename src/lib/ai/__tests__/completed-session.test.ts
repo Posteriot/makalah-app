@@ -289,8 +289,27 @@ describe("resolveCompletedSessionHandling", () => {
 
         expect(result.handling).toBe("short_circuit_closing")
         expect(result.source).toBe("router_intent")
-        // No way to directly assert classifier wasn't called from sync context,
-        // but the gate logic ensures it: source === "router_intent" && intent !== "discussion"
+    })
+
+    it("does NOT fire dual-write for choiceInteractionEvent", async () => {
+        const classifierModule = await import("../classifiers/completed-session-classifier")
+        // Clear any calls from previous tests, then spy fresh
+        vi.restoreAllMocks()
+        const spy = vi.spyOn(classifierModule, "classifyCompletedSessionIntent")
+
+        const result = resolveCompletedSessionHandling({
+            lastUserContent: "some choice text",
+            hasChoiceInteractionEvent: true,
+            dualWriteModel: { modelId: "test" } as import("ai").LanguageModel,
+        })
+
+        expect(result.handling).toBe("short_circuit_closing")
+        expect(result.source).toBe("fallback_heuristic")
+        expect(result.reason).toBe("choice_interaction_event")
+
+        // Give fire-and-forget time — classifier should NOT have been called
+        await new Promise((r) => setTimeout(r, 50))
+        expect(spy).not.toHaveBeenCalled()
     })
 
     it("returns regex result even when classifier fails in dual-write", async () => {
