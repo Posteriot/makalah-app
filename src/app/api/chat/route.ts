@@ -19,7 +19,7 @@ import { checkSourceBodyParity } from "@/lib/ai/skills/web-search-quality/script
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
-import { resolveCompletedSessionHandling, getCompletedSessionClosingMessage, resolveRecallTargetStage } from "@/lib/ai/completed-session"
+import { resolveCompletedSessionHandling, getCompletedSessionClosingMessage } from "@/lib/ai/completed-session"
 import { ACTIVE_SEARCH_STAGES, PASSIVE_SEARCH_STAGES } from "@/lib/ai/stage-skill-contracts"
 import { getStageLabel, type PaperStageId } from "../../../../convex/paperSessions/constants"
 import {
@@ -2411,11 +2411,12 @@ Aturan:
             // Moved here from early pre-stream to leverage router intentType.
             // ════════════════════════════════════════════════════════════════
             if (paperSession?.currentStage === "completed") {
-                const completedDecision = resolveCompletedSessionHandling({
+                const completedDecision = await resolveCompletedSessionHandling({
                     routerIntent: routerIntentType,
                     routerReason: activeStageSearchReason || undefined,
                     lastUserContent: normalizedLastUserContent,
                     hasChoiceInteractionEvent: !!choiceInteractionEvent,
+                    model,
                 })
 
                 console.info(
@@ -2460,8 +2461,8 @@ Aturan:
                 }
 
                 if (completedDecision.handling === "server_owned_artifact_recall") {
-                    // Resolve target stage from user text
-                    const targetStage = resolveRecallTargetStage(normalizedLastUserContent)
+                    // Target stage from classifier output (replaces regex resolveRecallTargetStage)
+                    const targetStage = completedDecision.targetStage ?? null
                     const stageData = paperSession.stageData as Record<string, Record<string, unknown> | undefined> | undefined
                     const targetArtifactId = targetStage
                         ? (stageData?.[targetStage]?.artifactId as string | undefined)
@@ -2604,6 +2605,41 @@ Aturan:
                             writer.write({ type: "start", messageId })
                             writer.write({ type: "text-start", id: textId })
                             writer.write({ type: "text-delta", id: textId, delta: clarificationText })
+                            writer.write({ type: "text-end", id: textId })
+                            writer.write({ type: "finish", finishReason: "stop" })
+                        },
+                    })
+
+                    return createUIMessageStreamResponse({ stream })
+                }
+
+                if (completedDecision.handling === "clarify") {
+                    // Classifier couldn't determine intent — ask user to clarify
+                    console.info(`[PAPER][completed-prestream] clarify: reason=${completedDecision.reason}`)
+
+                    const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                    const clarifyText = "Saya belum yakin maksud permintaanmu. Bisa jelaskan lebih spesifik? Misalnya, apakah kamu ingin melihat artifact tertentu, merevisi bagian tertentu, atau bertanya sesuatu tentang makalah?"
+                    const textId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-text`
+
+                    await retryMutation(
+                        () => fetchMutationWithToken(api.messages.createMessage, {
+                            conversationId: currentConversationId as Id<"conversations">,
+                            role: "assistant",
+                            content: clarifyText,
+                            metadata: {
+                                model: "system-completed-clarify",
+                                uiMessageId: messageId,
+                            },
+                            uiMessageId: messageId,
+                        }),
+                        "messages.createMessage(assistant-completed-clarify)"
+                    )
+
+                    const stream = createUIMessageStream({
+                        execute: async ({ writer }) => {
+                            writer.write({ type: "start", messageId })
+                            writer.write({ type: "text-start", id: textId })
+                            writer.write({ type: "text-delta", id: textId, delta: clarifyText })
                             writer.write({ type: "text-end", id: textId })
                             writer.write({ type: "finish", finishReason: "stop" })
                         },

@@ -5,334 +5,283 @@ import {
     getCompletedSessionClosingMessage,
 } from "../completed-session"
 
-describe("resolveCompletedSessionHandling", () => {
-    // ── Router intent cases (primary path) ──
+// Mock the classifier
+vi.mock("../classifiers/completed-session-classifier", () => ({
+    classifyCompletedSessionIntent: vi.fn(),
+}))
 
-    it("short-circuits when router intent is save_submit", () => {
-        const result = resolveCompletedSessionHandling({
+const mockModel = { modelId: "test-model" } as import("ai").LanguageModel
+
+function mockClassifier(output: Record<string, unknown>) {
+    return import("../classifiers/completed-session-classifier").then((mod) => {
+        vi.mocked(mod.classifyCompletedSessionIntent).mockResolvedValueOnce({
+            output: output as ReturnType<typeof mod.classifyCompletedSessionIntent> extends Promise<infer R> ? R extends { output: infer O } ? O : never : never,
+            metadata: { classifierVersion: "1.0.0" },
+        } as Awaited<ReturnType<typeof mod.classifyCompletedSessionIntent>>)
+    })
+}
+
+function mockClassifierNull() {
+    return import("../classifiers/completed-session-classifier").then((mod) => {
+        vi.mocked(mod.classifyCompletedSessionIntent).mockResolvedValueOnce(null)
+    })
+}
+
+describe("resolveCompletedSessionHandling", () => {
+    // ── Deterministic cases (no classifier called) ──
+
+    it("short-circuits on empty input", async () => {
+        const result = await resolveCompletedSessionHandling({
+            lastUserContent: "",
+            model: mockModel,
+        })
+        expect(result.handling).toBe("short_circuit_closing")
+        expect(result.source).toBe("deterministic")
+        expect(result.reason).toBe("empty_input")
+    })
+
+    it("short-circuits on choice interaction event", async () => {
+        const result = await resolveCompletedSessionHandling({
+            lastUserContent: "some text",
+            hasChoiceInteractionEvent: true,
+            model: mockModel,
+        })
+        expect(result.handling).toBe("short_circuit_closing")
+        expect(result.source).toBe("deterministic")
+        expect(result.reason).toBe("choice_interaction_event")
+    })
+
+    // ── Router intent deterministic paths ──
+
+    it("short-circuits when router intent is save_submit", async () => {
+        const result = await resolveCompletedSessionHandling({
             routerIntent: "save_submit",
             lastUserContent: "lanjut",
+            model: mockModel,
         })
         expect(result.handling).toBe("short_circuit_closing")
         expect(result.source).toBe("router_intent")
         expect(result.reason).toBe("save_submit")
     })
 
-    it("short-circuits when router intent is sync_request", () => {
-        const result = resolveCompletedSessionHandling({
+    it("short-circuits when router intent is sync_request", async () => {
+        const result = await resolveCompletedSessionHandling({
             routerIntent: "sync_request",
             lastUserContent: "cek status",
+            model: mockModel,
         })
         expect(result.handling).toBe("short_circuit_closing")
         expect(result.source).toBe("router_intent")
-        expect(result.reason).toBe("sync_request")
     })
 
-    it("allows normal AI when router intent is discussion (informational)", () => {
-        const result = resolveCompletedSessionHandling({
-            routerIntent: "discussion",
-            lastUserContent: "di mana lihat semua artifact?",
-        })
-        expect(result.handling).toBe("allow_normal_ai")
-        expect(result.source).toBe("router_intent")
-        expect(result.reason).toBe("discussion")
-    })
-
-    it("detects artifact recall when router intent is discussion", () => {
-        const result = resolveCompletedSessionHandling({
-            routerIntent: "discussion",
-            lastUserContent: "lihat artifact judul",
-        })
-        expect(result.handling).toBe("server_owned_artifact_recall")
-        expect(result.source).toBe("router_intent")
-        expect(result.reason).toBe("artifact_recall")
-    })
-
-    it("does not treat informational questions as recall", () => {
-        const result = resolveCompletedSessionHandling({
-            routerIntent: "discussion",
-            lastUserContent: "apa isi artifact judul?",
-        })
-        expect(result.handling).toBe("allow_normal_ai")
-        expect(result.source).toBe("router_intent")
-        expect(result.reason).toBe("discussion")
-    })
-
-    it("does not treat revision as recall", () => {
-        const result = resolveCompletedSessionHandling({
-            routerIntent: "discussion",
-            lastUserContent: "tolong revisi judul",
-        })
-        expect(result.handling).toBe("allow_normal_ai")
-        expect(result.source).toBe("router_intent")
-        expect(result.reason).toBe("discussion")
-    })
-
-    it("allows normal AI when router intent is search", () => {
-        const result = resolveCompletedSessionHandling({
+    it("allows normal AI when router intent is search", async () => {
+        const result = await resolveCompletedSessionHandling({
             routerIntent: "search",
             lastUserContent: "cari referensi baru",
+            model: mockModel,
         })
         expect(result.handling).toBe("allow_normal_ai")
         expect(result.source).toBe("router_intent")
         expect(result.reason).toBe("search")
     })
 
-    it("allows normal AI when router intent is compile_daftar_pustaka", () => {
-        const result = resolveCompletedSessionHandling({
+    it("allows normal AI when router intent is compile_daftar_pustaka", async () => {
+        const result = await resolveCompletedSessionHandling({
             routerIntent: "compile_daftar_pustaka",
             lastUserContent: "compile daftar pustaka",
+            model: mockModel,
         })
         expect(result.handling).toBe("allow_normal_ai")
         expect(result.source).toBe("router_intent")
     })
 
-    it("allows normal AI for discussion even with revision-like content", () => {
-        const result = resolveCompletedSessionHandling({
-            routerIntent: "discussion",
-            lastUserContent: "tolong revisi judul",
-        })
-        expect(result.handling).toBe("allow_normal_ai")
-        expect(result.source).toBe("router_intent")
-    })
-
-    // ── Router reason as secondary recall hint ──
-
-    it("detects recall via router reason when regex misses verb but target present", () => {
-        // "keluarkan" is not in RECALL_DISPLAY_VERB, but router reason recognizes intent
-        const result = resolveCompletedSessionHandling({
-            routerIntent: "discussion",
-            routerReason: "User is asking to retrieve a previously generated artifact (title artifact)",
-            lastUserContent: "keluarkan lagi artifak judul",
-        })
-        expect(result.handling).toBe("server_owned_artifact_recall")
-        expect(result.reason).toBe("artifact_recall_from_reason")
-    })
-
-    it("does not promote to recall from reason when input is question form", () => {
-        const result = resolveCompletedSessionHandling({
-            routerIntent: "discussion",
-            routerReason: "User is asking to re-display an existing artifact",
-            lastUserContent: "apa isi artifact judul?",
-        })
-        expect(result.handling).toBe("allow_normal_ai")
-    })
-
-    it("does not promote to recall from reason when input has no artifact target", () => {
-        const result = resolveCompletedSessionHandling({
-            routerIntent: "discussion",
-            routerReason: "User is asking to retrieve a previously generated artifact",
-            lastUserContent: "kasih lihat yang tadi",
-        })
-        expect(result.handling).toBe("allow_normal_ai")
-    })
-
-    it("does not use router reason for non-discussion intents", () => {
-        const result = resolveCompletedSessionHandling({
-            routerIntent: "search",
-            routerReason: "User is asking to re-display an existing artifact",
-            lastUserContent: "lihat artifact judul",
-        })
-        expect(result.handling).toBe("allow_normal_ai")
-        expect(result.reason).toBe("search")
-    })
-
-    it("handles unknown router intent safely", () => {
-        const result = resolveCompletedSessionHandling({
+    it("handles unknown router intent safely", async () => {
+        const result = await resolveCompletedSessionHandling({
             routerIntent: "some_future_intent",
             lastUserContent: "something",
+            model: mockModel,
         })
         expect(result.handling).toBe("allow_normal_ai")
         expect(result.source).toBe("router_intent")
         expect(result.reason).toContain("unknown_router_intent")
     })
 
-    // ── Fallback heuristic cases (no router intent) ──
+    // ── Classifier path: discussion refinement ──
 
-    it("falls back to short-circuit for continue-like prompts without router", () => {
-        const result = resolveCompletedSessionHandling({
+    it("uses classifier for discussion intent artifact recall", async () => {
+        await mockClassifier({
+            intent: "artifact_recall",
+            handling: "server_owned_artifact_recall",
+            targetStage: "judul",
+            needsClarification: false,
+            confidence: 0.95,
+            reason: "display verb + stage name",
+        })
+
+        const result = await resolveCompletedSessionHandling({
+            routerIntent: "discussion",
+            lastUserContent: "lihat artifact judul",
+            model: mockModel,
+        })
+        expect(result.handling).toBe("server_owned_artifact_recall")
+        expect(result.source).toBe("classifier")
+        expect(result.targetStage).toBe("judul")
+    })
+
+    it("uses classifier for discussion informational (not recall)", async () => {
+        await mockClassifier({
+            intent: "informational",
+            handling: "allow_normal_ai",
+            targetStage: null,
+            needsClarification: false,
+            confidence: 0.9,
+            reason: "question about artifact",
+        })
+
+        const result = await resolveCompletedSessionHandling({
+            routerIntent: "discussion",
+            lastUserContent: "apa isi artifact judul?",
+            model: mockModel,
+        })
+        expect(result.handling).toBe("allow_normal_ai")
+        expect(result.source).toBe("classifier")
+    })
+
+    // ── Classifier path: fallback (no router intent) ──
+
+    it("classifies continuation prompt via classifier", async () => {
+        await mockClassifier({
+            intent: "continuation",
+            handling: "short_circuit_closing",
+            targetStage: null,
+            needsClarification: false,
+            confidence: 0.95,
+            reason: "short continuation",
+        })
+
+        const result = await resolveCompletedSessionHandling({
             lastUserContent: "lanjut",
+            model: mockModel,
         })
         expect(result.handling).toBe("short_circuit_closing")
-        expect(result.source).toBe("fallback_heuristic")
-        expect(result.reason).toBe("continue_like_prompt")
+        expect(result.source).toBe("classifier")
     })
 
-    it("falls back to short-circuit for empty content without router", () => {
-        const result = resolveCompletedSessionHandling({
-            lastUserContent: "",
+    it("classifies revision intent via classifier", async () => {
+        await mockClassifier({
+            intent: "revision",
+            handling: "allow_normal_ai",
+            targetStage: null,
+            needsClarification: false,
+            confidence: 0.95,
+            reason: "explicit revision",
         })
-        expect(result.handling).toBe("short_circuit_closing")
-        expect(result.source).toBe("fallback_heuristic")
-        expect(result.reason).toBe("continue_like_prompt")
-    })
 
-    it("falls back to allow for informational questions without router", () => {
-        const result = resolveCompletedSessionHandling({
-            lastUserContent: "bagaimana export final?",
+        const result = await resolveCompletedSessionHandling({
+            lastUserContent: "revisi abstrak",
+            model: mockModel,
         })
         expect(result.handling).toBe("allow_normal_ai")
-        expect(result.source).toBe("fallback_heuristic")
-        expect(result.reason).toBe("informational_pattern")
+        expect(result.source).toBe("classifier")
     })
 
-    it("falls back to artifact recall without router", () => {
-        const result = resolveCompletedSessionHandling({
-            lastUserContent: "tampilkan artifact lampiran",
+    it("classifies informational question via classifier", async () => {
+        await mockClassifier({
+            intent: "informational",
+            handling: "allow_normal_ai",
+            targetStage: null,
+            needsClarification: false,
+            confidence: 0.9,
+            reason: "asking about export",
         })
-        expect(result.handling).toBe("server_owned_artifact_recall")
-        expect(result.source).toBe("fallback_heuristic")
-        expect(result.reason).toBe("artifact_recall")
-    })
 
-    it("falls back to allow for revision verbs without router", () => {
-        const result = resolveCompletedSessionHandling({
-            lastUserContent: "tolong ubah abstrak",
+        const result = await resolveCompletedSessionHandling({
+            lastUserContent: "bagaimana cara export?",
+            model: mockModel,
         })
         expect(result.handling).toBe("allow_normal_ai")
-        expect(result.source).toBe("fallback_heuristic")
-        expect(result.reason).toBe("revision_verb")
+        expect(result.source).toBe("classifier")
     })
 
-    it("falls back to short-circuit for choice interaction events", () => {
-        const result = resolveCompletedSessionHandling({
-            lastUserContent: "some choice text",
-            hasChoiceInteractionEvent: true,
-        })
-        expect(result.handling).toBe("short_circuit_closing")
-        expect(result.source).toBe("fallback_heuristic")
-        expect(result.reason).toBe("choice_interaction_event")
-    })
-
-    it("falls back to short-circuit for unrecognized content without router", () => {
-        const result = resolveCompletedSessionHandling({
-            lastUserContent: "blah blah random text",
-        })
-        expect(result.handling).toBe("short_circuit_closing")
-        expect(result.source).toBe("fallback_heuristic")
-        expect(result.reason).toBe("unrecognized_default")
-    })
-
-    // ── Edge: stage names are NOT revision signals ──
-
-    it("does not treat bare stage names as revision verbs", () => {
-        const result = resolveCompletedSessionHandling({
-            lastUserContent: "judul",
-        })
-        expect(result.handling).toBe("short_circuit_closing")
-        expect(result.source).toBe("fallback_heuristic")
-    })
-
-    // ── Dual-write: classifier shadow mode ──
-
-    it("fires dual-write for fallback path and returns regex result", async () => {
-        const classifierModule = await import("../classifiers/completed-session-classifier")
-        vi.spyOn(classifierModule, "classifyCompletedSessionIntent").mockResolvedValueOnce({
-            output: {
-                intent: "artifact_recall",
-                handling: "server_owned_artifact_recall",
-                targetStage: "abstrak",
-                needsClarification: false,
-                confidence: 0.9,
-                reason: "classifier says recall",
-            },
-            metadata: { classifierVersion: "1.0.0" },
+    it("classifies artifact recall via classifier", async () => {
+        await mockClassifier({
+            intent: "artifact_recall",
+            handling: "server_owned_artifact_recall",
+            targetStage: "abstrak",
+            needsClarification: false,
+            confidence: 0.95,
+            reason: "display verb + stage",
         })
 
-        // Fallback path (no routerIntent) — dual-write should fire
-        const result = resolveCompletedSessionHandling({
-            lastUserContent: "buka abstrak dong",
-            dualWriteModel: { modelId: "test" } as import("ai").LanguageModel,
+        const result = await resolveCompletedSessionHandling({
+            lastUserContent: "lihat abstrak",
+            model: mockModel,
         })
-
-        // Regex result returned, not classifier
         expect(result.handling).toBe("server_owned_artifact_recall")
-        expect(result.source).toBe("fallback_heuristic")
+        expect(result.source).toBe("classifier")
+        expect(result.targetStage).toBe("abstrak")
     })
 
-    it("fires dual-write for discussion router refinement path", async () => {
+    it("classifies ambiguous input as clarify", async () => {
+        await mockClassifier({
+            intent: "other",
+            handling: "clarify",
+            targetStage: null,
+            needsClarification: true,
+            confidence: 0.3,
+            reason: "ambiguous",
+        })
+
+        const result = await resolveCompletedSessionHandling({
+            lastUserContent: "yang tadi",
+            model: mockModel,
+        })
+        expect(result.handling).toBe("clarify")
+        expect(result.source).toBe("classifier")
+    })
+
+    // ── Classifier error fallback ──
+
+    it("falls back to allow_normal_ai when classifier fails", async () => {
+        await mockClassifierNull()
+
+        const result = await resolveCompletedSessionHandling({
+            lastUserContent: "something random",
+            model: mockModel,
+        })
+        expect(result.handling).toBe("allow_normal_ai")
+        expect(result.source).toBe("classifier")
+        expect(result.reason).toBe("classifier_error_fallback")
+    })
+
+    // ── Router reason passthrough ──
+
+    it("passes routerReason to classifier for discussion refinement", async () => {
         const classifierModule = await import("../classifiers/completed-session-classifier")
-        const spy = vi.spyOn(classifierModule, "classifyCompletedSessionIntent").mockResolvedValueOnce({
+        vi.mocked(classifierModule.classifyCompletedSessionIntent).mockResolvedValueOnce({
             output: {
                 intent: "artifact_recall",
                 handling: "server_owned_artifact_recall",
                 targetStage: "judul",
                 needsClarification: false,
-                confidence: 0.88,
-                reason: "classifier sees recall",
+                confidence: 0.9,
+                reason: "router reason hint",
             },
             metadata: { classifierVersion: "1.0.0" },
-        })
+        } as Awaited<ReturnType<typeof classifierModule.classifyCompletedSessionIntent>>)
 
-        // Discussion path — dual-write should fire
-        const result = resolveCompletedSessionHandling({
+        await resolveCompletedSessionHandling({
             routerIntent: "discussion",
-            lastUserContent: "lihat artifact judul",
-            dualWriteModel: { modelId: "test" } as import("ai").LanguageModel,
+            routerReason: "User is asking to retrieve a previously generated artifact",
+            lastUserContent: "keluarkan lagi artifak judul",
+            model: mockModel,
         })
 
-        expect(result.handling).toBe("server_owned_artifact_recall")
-        expect(result.source).toBe("router_intent")
-
-        // Give fire-and-forget promise time to resolve
-        await new Promise((r) => setTimeout(r, 50))
-        expect(spy).toHaveBeenCalled()
-    })
-
-    it("does NOT fire dual-write for deterministic router paths", () => {
-        // save_submit — deterministic, classifier should NOT be called
-        const result = resolveCompletedSessionHandling({
-            routerIntent: "save_submit",
-            lastUserContent: "simpan",
-            dualWriteModel: { modelId: "test" } as import("ai").LanguageModel,
-        })
-
-        expect(result.handling).toBe("short_circuit_closing")
-        expect(result.source).toBe("router_intent")
-    })
-
-    it("does NOT fire dual-write for choiceInteractionEvent", async () => {
-        const classifierModule = await import("../classifiers/completed-session-classifier")
-        // Clear any calls from previous tests, then spy fresh
-        vi.restoreAllMocks()
-        const spy = vi.spyOn(classifierModule, "classifyCompletedSessionIntent")
-
-        const result = resolveCompletedSessionHandling({
-            lastUserContent: "some choice text",
-            hasChoiceInteractionEvent: true,
-            dualWriteModel: { modelId: "test" } as import("ai").LanguageModel,
-        })
-
-        expect(result.handling).toBe("short_circuit_closing")
-        expect(result.source).toBe("fallback_heuristic")
-        expect(result.reason).toBe("choice_interaction_event")
-
-        // Give fire-and-forget time — classifier should NOT have been called
-        await new Promise((r) => setTimeout(r, 50))
-        expect(spy).not.toHaveBeenCalled()
-    })
-
-    it("returns regex result even when classifier fails in dual-write", async () => {
-        const classifierModule = await import("../classifiers/completed-session-classifier")
-        vi.spyOn(classifierModule, "classifyCompletedSessionIntent").mockResolvedValueOnce(null)
-
-        const result = resolveCompletedSessionHandling({
-            lastUserContent: "lanjut",
-            dualWriteModel: { modelId: "test" } as import("ai").LanguageModel,
-        })
-
-        expect(result.handling).toBe("short_circuit_closing")
-        expect(result.source).toBe("fallback_heuristic")
-    })
-
-    it("works exactly the same without dualWriteModel (backward compatible)", () => {
-        const result = resolveCompletedSessionHandling({
-            lastUserContent: "revisi abstrak",
-        })
-
-        expect(result.handling).toBe("allow_normal_ai")
-        expect(result.source).toBe("fallback_heuristic")
-        expect(result.reason).toBe("revision_verb")
+        expect(classifierModule.classifyCompletedSessionIntent).toHaveBeenCalledWith(
+            expect.objectContaining({
+                routerReason: "User is asking to retrieve a previously generated artifact",
+            })
+        )
     })
 })
 
