@@ -1,0 +1,169 @@
+import { z } from "zod"
+
+import type { CompletedSessionHandling } from "../completed-session"
+import type { SearchResponseMode } from "../web-search/reference-presentation"
+
+// ============================================================================
+// Domain 1: Completed Session Classifier
+// ============================================================================
+
+export const CompletedSessionClassifierSchema = z.object({
+  intent: z.enum([
+    "revision",
+    "informational",
+    "continuation",
+    "artifact_recall",
+    "other",
+  ]).describe(
+    "Primary intent of user message in a completed paper session. " +
+    "'revision' = user wants to modify existing content. " +
+    "'informational' = user is asking a question about the paper or process. " +
+    "'continuation' = short confirmation or continue signal (ok, lanjut, gas). " +
+    "'artifact_recall' = user wants to see a previously generated artifact. " +
+    "'other' = none of the above."
+  ),
+
+  handling: z.enum([
+    "short_circuit_closing",
+    "allow_normal_ai",
+    "server_owned_artifact_recall",
+    "clarify",
+  ]).describe(
+    "Recommended handling action. " +
+    "'short_circuit_closing' = end session with closing message. " +
+    "'allow_normal_ai' = let AI process the message normally. " +
+    "'server_owned_artifact_recall' = fetch and display a specific stage artifact. " +
+    "'clarify' = ask user to clarify ambiguous request."
+  ),
+
+  targetStage: z.string().nullable().describe(
+    "Paper stage ID for artifact recall (e.g. 'abstrak', 'tinjauan_literatur', 'daftar_pustaka'). " +
+    "Must be a valid PaperStageId or null. Null when intent is not artifact_recall."
+  ),
+
+  needsClarification: z.boolean().describe(
+    "True if intent is ambiguous and system should ask for clarification instead of acting."
+  ),
+
+  confidence: z.number().min(0).max(1).describe(
+    "Classifier confidence between 0 and 1. Below 0.6 should trigger clarify behavior."
+  ),
+
+  reason: z.string().describe(
+    "Brief explanation of why this classification was chosen."
+  ),
+})
+
+export type CompletedSessionClassifierOutput = z.infer<typeof CompletedSessionClassifierSchema>
+
+// ============================================================================
+// Domain 4: Exact Source Follow-Up Classifier
+// ============================================================================
+
+export const ExactSourceClassifierSchema = z.object({
+  mode: z.enum([
+    "force_inspect",
+    "clarify",
+    "none",
+  ]).describe(
+    "Follow-up mode for source inspection. " +
+    "'force_inspect' = user wants exact details from a specific source. " +
+    "'clarify' = ambiguous, ask which source. " +
+    "'none' = not an exact-source request."
+  ),
+
+  sourceIntent: z.enum([
+    "exact_detail",
+    "summary",
+    "continuation",
+    "none",
+  ]).describe(
+    "Type of source-related intent. " +
+    "'exact_detail' = title, author, date, verbatim quote. " +
+    "'summary' = summarize, condense, conclude. " +
+    "'continuation' = follow-up on previously discussed source. " +
+    "'none' = no source-related intent detected."
+  ),
+
+  mentionedSourceHint: z.string().nullable().describe(
+    "Source identifier mentioned by user (title fragment, domain name, author name). " +
+    "Used as a hint for source matching logic. Null if no source mentioned."
+  ),
+
+  needsClarification: z.boolean().describe(
+    "True if multiple sources could match or intent is ambiguous."
+  ),
+
+  confidence: z.number().min(0).max(1).describe(
+    "Classifier confidence between 0 and 1."
+  ),
+
+  reason: z.string().describe(
+    "Brief explanation of classification."
+  ),
+})
+
+export type ExactSourceClassifierOutput = z.infer<typeof ExactSourceClassifierSchema>
+
+// ============================================================================
+// Domain 5: Search Response Mode Classifier
+// ============================================================================
+
+export const SearchResponseModeClassifierSchema = z.object({
+  responseMode: z.enum([
+    "synthesis",
+    "reference_inventory",
+  ]).describe(
+    "How search results should be presented. " +
+    "'synthesis' = integrate sources into a narrative answer. " +
+    "'reference_inventory' = present sources as a structured list."
+  ),
+
+  confidence: z.number().min(0).max(1).describe(
+    "Classifier confidence between 0 and 1."
+  ),
+
+  reason: z.string().describe(
+    "Brief explanation of mode selection."
+  ),
+})
+
+export type SearchResponseModeClassifierOutput = z.infer<typeof SearchResponseModeClassifierSchema>
+
+// ============================================================================
+// Domain 3: Route-Level Revision Intent Classifier
+// ============================================================================
+
+export const RevisionIntentClassifierSchema = z.object({
+  hasRevisionIntent: z.boolean().describe(
+    "True if user message expresses intent to modify, revise, or redo existing content."
+  ),
+
+  confidence: z.number().min(0).max(1).describe(
+    "Classifier confidence between 0 and 1."
+  ),
+
+  reason: z.string().describe(
+    "Brief explanation of classification."
+  ),
+})
+
+export type RevisionIntentClassifierOutput = z.infer<typeof RevisionIntentClassifierSchema>
+
+// ============================================================================
+// Type Compatibility Assertions
+// ============================================================================
+// These compile-time checks verify that classifier output types are compatible
+// with existing runtime types. If any assertion fails, TypeScript will error.
+
+// CompletedSessionClassifierOutput.handling must be assignable to CompletedSessionHandling | "clarify"
+type _AssertHandlingCompat = CompletedSessionClassifierOutput["handling"] extends
+  (CompletedSessionHandling | "clarify") ? true : never
+const _handleCheck: _AssertHandlingCompat = true as const
+void _handleCheck
+
+// SearchResponseModeClassifierOutput.responseMode must be assignable to SearchResponseMode
+type _AssertSearchModeCompat = SearchResponseModeClassifierOutput["responseMode"] extends
+  SearchResponseMode ? true : never
+const _searchCheck: _AssertSearchModeCompat = true as const
+void _searchCheck
