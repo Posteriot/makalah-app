@@ -19,7 +19,8 @@ import { checkSourceBodyParity } from "@/lib/ai/skills/web-search-quality/script
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
-import { resolveCompletedSessionHandling, getCompletedSessionClosingMessage, resolveRecallTargetStage } from "@/lib/ai/completed-session"
+import { resolveCompletedSessionHandling, getCompletedSessionClosingMessage } from "@/lib/ai/completed-session"
+import { classifyRevisionIntent } from "@/lib/ai/classifiers/revision-intent-classifier"
 import { ACTIVE_SEARCH_STAGES, PASSIVE_SEARCH_STAGES } from "@/lib/ai/stage-skill-contracts"
 import { getStageLabel, type PaperStageId } from "../../../../convex/paperSessions/constants"
 import {
@@ -765,10 +766,12 @@ ${sourcesJson}`
         } catch (exactSourcesError) {
             console.error("[route] Failed to fetch exact source summaries:", exactSourcesError)
         }
-        const exactSourceResolution = resolveExactSourceFollowup({
+        const classifierModel = await (await import("@/lib/ai/streaming")).getGatewayModel()
+        const exactSourceResolution = await resolveExactSourceFollowup({
             lastUserMessage: normalizedLastUserContent,
             recentMessages: recentConversationMessagesForExactSource,
             availableExactSources,
+            model: classifierModel,
         })
         const shouldIncludeRawSourcesContext =
             shouldIncludeRawSourcesContextForExactFollowup(exactSourceResolution)
@@ -2411,11 +2414,12 @@ Aturan:
             // Moved here from early pre-stream to leverage router intentType.
             // ════════════════════════════════════════════════════════════════
             if (paperSession?.currentStage === "completed") {
-                const completedDecision = resolveCompletedSessionHandling({
+                const completedDecision = await resolveCompletedSessionHandling({
                     routerIntent: routerIntentType,
                     routerReason: activeStageSearchReason || undefined,
                     lastUserContent: normalizedLastUserContent,
                     hasChoiceInteractionEvent: !!choiceInteractionEvent,
+                    model,
                 })
 
                 console.info(
@@ -2460,8 +2464,8 @@ Aturan:
                 }
 
                 if (completedDecision.handling === "server_owned_artifact_recall") {
-                    // Resolve target stage from user text
-                    const targetStage = resolveRecallTargetStage(normalizedLastUserContent)
+                    // Target stage from classifier output (replaces regex resolveRecallTargetStage)
+                    const targetStage = completedDecision.targetStage ?? null
                     const stageData = paperSession.stageData as Record<string, Record<string, unknown> | undefined> | undefined
                     const targetArtifactId = targetStage
                         ? (stageData?.[targetStage]?.artifactId as string | undefined)
@@ -2611,6 +2615,41 @@ Aturan:
 
                     return createUIMessageStreamResponse({ stream })
                 }
+
+                if (completedDecision.handling === "clarify") {
+                    // Classifier couldn't determine intent — ask user to clarify
+                    console.info(`[PAPER][completed-prestream] clarify: reason=${completedDecision.reason}`)
+
+                    const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                    const clarifyText = "Saya belum yakin maksud permintaanmu. Bisa jelaskan lebih spesifik? Misalnya, apakah kamu ingin melihat artifact tertentu, merevisi bagian tertentu, atau bertanya sesuatu tentang makalah?"
+                    const textId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-text`
+
+                    await retryMutation(
+                        () => fetchMutationWithToken(api.messages.createMessage, {
+                            conversationId: currentConversationId as Id<"conversations">,
+                            role: "assistant",
+                            content: clarifyText,
+                            metadata: {
+                                model: "system-completed-clarify",
+                                uiMessageId: messageId,
+                            },
+                            uiMessageId: messageId,
+                        }),
+                        "messages.createMessage(assistant-completed-clarify)"
+                    )
+
+                    const stream = createUIMessageStream({
+                        execute: async ({ writer }) => {
+                            writer.write({ type: "start", messageId })
+                            writer.write({ type: "text-start", id: textId })
+                            writer.write({ type: "text-delta", id: textId, delta: clarifyText })
+                            writer.write({ type: "text-end", id: textId })
+                            writer.write({ type: "finish", finishReason: "stop" })
+                        },
+                    })
+
+                    return createUIMessageStreamResponse({ stream })
+                }
             }
 
             // Build retriever chain once — reused for both mode resolution and execution
@@ -2656,8 +2695,9 @@ Aturan:
                 activeStageSearchNote = getPaperToolsOnlyNote(currentStage as string)
             }
 
-            const requestedResponseMode = inferSearchResponseMode({
+            const requestedResponseMode = await inferSearchResponseMode({
                 lastUserMessage: normalizedLastUserContent,
+                model,
             })
             const shouldServeStoredReferenceInventory =
                 requestedResponseMode === "reference_inventory" &&
@@ -2944,6 +2984,9 @@ Aturan:
 
             const primaryMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
             let capturedChoiceSpec: Spec | null = null
+            // Shared: set by onFinish when outcome-gated guard replaces persisted content.
+            // Writer loop checks this before writing finish event to emit data-cited-text override.
+            let streamContentOverride: string | null = null
 
             const result = streamText({
                 model,
@@ -3051,14 +3094,22 @@ Aturan:
                         }
 
                         // Detect: model answered revision-like intent without calling any tools
+                        // Uses semantic classifier instead of regex (replaces REVISION_VERB_PATTERN)
                         if (paperSession?.stageStatus === "pending_validation"
                             && !paperToolTracker.sawRequestRevision
                             && !paperToolTracker.sawUpdateStageData
                             && !paperToolTracker.sawCreateArtifactSuccess
-                            && !paperToolTracker.sawUpdateArtifactSuccess) {
-                            const revisionSignals = /\b(revisi|edit|ubah|ganti|perbaiki|resend|generate ulang|tulis ulang|koreksi|buat ulang|ulangi|dari awal)\b/i;
-                            if (normalizedLastUserContent && revisionSignals.test(normalizedLastUserContent)) {
-                                console.warn(`[revision-intent-answered-without-tools] stage=${paperSession.currentStage} — model responded to apparent revision intent with prose only`);
+                            && !paperToolTracker.sawUpdateArtifactSuccess
+                            && normalizedLastUserContent) {
+                            const revisionResult = await classifyRevisionIntent({
+                                lastUserContent: normalizedLastUserContent,
+                                model,
+                            })
+                            if (revisionResult?.output.hasRevisionIntent && revisionResult.output.confidence >= 0.6) {
+                                console.warn(
+                                    `[revision-intent-answered-without-tools] stage=${paperSession.currentStage} ` +
+                                    `confidence=${revisionResult.output.confidence} — model responded to apparent revision intent with prose only`
+                                )
                             }
                         }
 
@@ -3076,19 +3127,22 @@ Aturan:
                         }
 
                         // Outcome-gated persisted content: replace noisy model text with clean system message
-                        // for review/finalization workflow stages where tools succeeded
+                        // when artifact lifecycle succeeded but model prose leaked recovery/error narration.
+                        // Applies to ALL stages — not just review stages — because recovery leakage
+                        // can happen at any stage where tool retry/fallback occurs.
                         if (paperStageScope && normalizedText.length > 0) {
-                            const isReviewStage = ["hasil", "diskusi", "kesimpulan", "pembaruan_abstrak", "daftar_pustaka", "lampiran", "judul"].includes(paperStageScope)
                             const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
-                            const hasLeakage = /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki|mohon tunggu|coba lagi|ada kendala/i.test(normalizedText)
+                            const hasLeakage = /kesalahan teknis|kendala teknis|masalah teknis|maafkan aku|saya akan coba|memperbaiki|perbaiki|mohon tunggu|coba lagi|ada kendala|akan mencoba/i.test(normalizedText)
 
-                            if (isReviewStage && hasArtifactSuccess && hasLeakage) {
+                            if (hasArtifactSuccess && hasLeakage) {
                                 if (paperToolTracker.sawSubmitValidationSuccess) {
                                     persistedContent = "Artefak sudah diperbarui. Silakan review di panel validasi."
-                                    console.info("[PAPER][outcome-gated] replaced noisy persisted text with clean success_with_validation message")
+                                    streamContentOverride = persistedContent
+                                    console.info(`[PAPER][outcome-gated] stage=${paperStageScope} replaced noisy persisted+stream text with clean success_with_validation message`)
                                 } else {
                                     persistedContent = "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
-                                    console.info("[PAPER][outcome-gated] replaced noisy persisted text with clean success_without_validation message")
+                                    streamContentOverride = persistedContent
+                                    console.info(`[PAPER][outcome-gated] stage=${paperStageScope} replaced noisy persisted+stream text with clean success_without_validation message`)
                                 }
                             }
                         }
@@ -3380,6 +3434,9 @@ Aturan:
                     execute: async ({ writer }) => {
                         let started = false
                         let sourceCount = 0
+                        // Accumulate ALL streamed text deltas for outcome-gated guard.
+                        // onFinish text only has final step — this captures full stream.
+                        let accumulatedStreamText = ""
 
                         const ensureStart = () => {
                             if (started) return
@@ -3495,6 +3552,35 @@ Aturan:
                                     console.info(`[F1-F6-TEST] ChoiceCardSpec { elements: "${elementTypes}", hasSubmitButton: ${hasSubmitBtn} }`)
                                 }
 
+                                // Outcome-gated stream override: check FULL accumulated stream text
+                                // (not just onFinish text which only has final step) for recovery
+                                // leakage. If artifact succeeded and leakage found, override stream.
+                                if (!streamContentOverride && accumulatedStreamText.length > 0) {
+                                    const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
+                                    const fullStreamLeakage = /kesalahan teknis|kendala teknis|masalah teknis|maafkan aku|saya akan coba|memperbaiki|perbaiki|mohon tunggu|coba lagi|ada kendala|akan mencoba/i.test(accumulatedStreamText)
+                                    if (hasArtifactSuccess && fullStreamLeakage) {
+                                        const cleanMsg = paperToolTracker.sawSubmitValidationSuccess
+                                            ? "Artefak sudah diperbarui. Silakan review di panel validasi."
+                                            : "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
+                                        streamContentOverride = cleanMsg
+                                        console.info(
+                                            `[PAPER][outcome-gated-stream] stage=${paperStageScope} ` +
+                                            `full-stream leakage detected (onFinish missed it). ` +
+                                            `accumulatedLen=${accumulatedStreamText.length}`
+                                        )
+                                    }
+                                }
+
+                                if (streamContentOverride) {
+                                    const overrideId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-override`
+                                    writer.write({
+                                        type: "data-cited-text",
+                                        id: overrideId,
+                                        data: { text: streamContentOverride },
+                                    } as Parameters<typeof writer.write>[0])
+                                    console.info("[PAPER][outcome-gated] emitted data-cited-text stream override")
+                                }
+
                                 if (reasoningAccumulator.hasReasoning()) {
                                     emitTrace(reasoningTrace.populateFromReasoning(
                                         reasoningAccumulator.getFullReasoning()
@@ -3531,6 +3617,11 @@ Aturan:
                                 emitDurationPart()
                                 writer.write(chunk)
                                 break
+                            }
+
+                            // Accumulate text deltas for outcome-gated full-stream guard
+                            if (chunk.type === "text-delta" && typeof (chunk as { delta?: unknown }).delta === "string") {
+                                accumulatedStreamText += (chunk as { delta: string }).delta
                             }
 
                             ensureStart()
@@ -3588,6 +3679,7 @@ Aturan:
                 let fallbackReasoningTraceSnapshot: PersistedCuratedTraceSnapshot | undefined
                 let fallbackReasoningSourceCount = 0
                 let fallbackCapturedChoiceSpec: Spec | null = null
+                let fallbackStreamContentOverride: string | null = null
                 const captureFallbackReasoningSnapshot = () => {
                     if (!fallbackReasoningTraceController?.enabled) return
                     fallbackReasoningTraceSnapshot = fallbackReasoningTraceController.getPersistedSnapshot()
@@ -3907,18 +3999,20 @@ Aturan:
                         }
 
                         // Outcome-gated persisted content (fallback path)
+                        // Same all-stage guard as primary path
                         if (paperStageScope && normalizedText.length > 0) {
-                            const isReviewStage = ["hasil", "diskusi", "kesimpulan", "pembaruan_abstrak", "daftar_pustaka", "lampiran", "judul"].includes(paperStageScope)
                             const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
                             const hasLeakage = /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki|mohon tunggu|coba lagi|ada kendala/i.test(normalizedText)
 
-                            if (isReviewStage && hasArtifactSuccess && hasLeakage) {
+                            if (hasArtifactSuccess && hasLeakage) {
                                 if (paperToolTracker.sawSubmitValidationSuccess) {
                                     persistedContent = "Artefak sudah diperbarui. Silakan review di panel validasi."
-                                    console.info("[PAPER][outcome-gated][fallback] replaced noisy persisted text with clean success_with_validation message")
+                                    fallbackStreamContentOverride = persistedContent
+                                    console.info(`[PAPER][outcome-gated][fallback] stage=${paperStageScope} replaced noisy persisted+stream text with clean success_with_validation message`)
                                 } else {
                                     persistedContent = "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
-                                    console.info("[PAPER][outcome-gated][fallback] replaced noisy persisted text with clean success_without_validation message")
+                                    fallbackStreamContentOverride = persistedContent
+                                    console.info(`[PAPER][outcome-gated][fallback] stage=${paperStageScope} replaced noisy persisted+stream text with clean success_without_validation message`)
                                 }
                             }
                         }
@@ -4013,6 +4107,7 @@ Aturan:
                     execute: async ({ writer }) => {
                         let started = false
                         let sourceCount = 0
+                        let accumulatedStreamText = ""
 
                         const ensureStart = () => {
                             if (started) return
@@ -4123,6 +4218,29 @@ Aturan:
                                     console.info(`[CHOICE-CARD][yaml-capture] fallback stage=${paperStageScope} specKeys=${Object.keys(fallbackCapturedChoiceSpec).join(",")}`)
                                 }
 
+                                // Full-stream leakage guard (fallback path)
+                                if (!fallbackStreamContentOverride && accumulatedStreamText.length > 0) {
+                                    const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
+                                    const fullStreamLeakage = /kesalahan teknis|kendala teknis|masalah teknis|maafkan aku|saya akan coba|memperbaiki|perbaiki|mohon tunggu|coba lagi|ada kendala|akan mencoba/i.test(accumulatedStreamText)
+                                    if (hasArtifactSuccess && fullStreamLeakage) {
+                                        fallbackStreamContentOverride = paperToolTracker.sawSubmitValidationSuccess
+                                            ? "Artefak sudah diperbarui. Silakan review di panel validasi."
+                                            : "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
+                                        console.info(`[PAPER][outcome-gated-stream][fallback] stage=${paperStageScope} full-stream leakage detected`)
+                                    }
+                                }
+
+                                // Outcome-gated stream override (fallback path)
+                                if (fallbackStreamContentOverride) {
+                                    const overrideId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-override`
+                                    writer.write({
+                                        type: "data-cited-text",
+                                        id: overrideId,
+                                        data: { text: fallbackStreamContentOverride },
+                                    } as Parameters<typeof writer.write>[0])
+                                    console.info("[PAPER][outcome-gated][fallback] emitted data-cited-text stream override")
+                                }
+
                                 if (reasoningAccumulator.hasReasoning()) {
                                     emitTrace(reasoningTrace.populateFromReasoning(
                                         reasoningAccumulator.getFullReasoning()
@@ -4159,6 +4277,10 @@ Aturan:
                                 emitDurationPart()
                                 writer.write(chunk)
                                 break
+                            }
+
+                            if (chunk.type === "text-delta" && typeof (chunk as { delta?: unknown }).delta === "string") {
+                                accumulatedStreamText += (chunk as { delta: string }).delta
                             }
 
                             ensureStart()

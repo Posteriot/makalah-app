@@ -78,14 +78,14 @@ STRICT CONTENT RULE — ZERO TOLERANCE FOR FABRICATION:
 - NEVER add details from your training knowledge to fill gaps. State what the sources say and stop.
 
 DO NOT:
-- Promise to search ("beri aku waktu", "saya akan mencari", "izinkan saya mencari")
-- Announce that you will perform a search
+- Promise to search or announce that you will perform a search (e.g., "give me a moment", "I will search for that", "allow me to look for it") in any language
 - Ask for permission to search
 - Reference or attempt to use tools (no tools are available in this phase)
 - Add facts, claims, titles, names, or biographical details not found in verified page content
+- Include internal processing thoughts, search acknowledgments, or status messages in your response. Start directly with the substantive answer. Do not write phrases equivalent to "let me search", "I will look for", "please wait", or "I am searching" in any language — those are internal actions, not part of the user-facing response.
 
 OVERRIDE — the following instructions from other system messages DO NOT APPLY here:
-- Any "dialog first" / "tanya dulu sebelum generate" instructions — present results NOW
+- Any "dialog first" / "ask before generating" instructions — present results NOW
 - Any "web search mandatory" instructions — search is ALREADY DONE
 - Any tool usage instructions (startPaperSession, updateStageData, createArtifact, google_search) — NO tools available
 - Any "call startPaperSession IMMEDIATELY" instructions — not applicable
@@ -256,7 +256,7 @@ export async function executeWebSearch(
   const phase1Start = Date.now()
   const rawMessages = config.messages ?? []
   const lastUserMessage = extractLastUserMessageText(rawMessages)
-  const responseMode = inferSearchResponseMode({ lastUserMessage })
+  const responseMode = await inferSearchResponseMode({ lastUserMessage })
   const sanitizedMessages = sanitizeMessagesForSearch(rawMessages)
   const searchMessages = augmentUserMessageForSearch([
     { role: "system" as const, content: getSearchSystemPrompt() },
@@ -334,9 +334,13 @@ export async function executeWebSearch(
           console.log(`[⏱ RETRIEVER][${reqId}] text_ready name=${retriever.name} t=${Date.now() - retrieverStart}ms chars=${text.length}`)
           return text
         }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Retriever "${retriever.name}" timed out after ${RETRIEVER_TIMEOUT_MS}ms`)), RETRIEVER_TIMEOUT_MS)
-        ),
+        new Promise<never>((_, reject) => {
+          const signal = AbortSignal.timeout(RETRIEVER_TIMEOUT_MS)
+          signal.addEventListener("abort", () =>
+            reject(new Error(`Retriever "${retriever.name}" timed out after ${RETRIEVER_TIMEOUT_MS}ms`)),
+            { once: true }
+          )
+        }),
       ])
       const textDone = Date.now()
       const usage = await searchResult.usage

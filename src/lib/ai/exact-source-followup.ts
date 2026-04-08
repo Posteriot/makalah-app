@@ -1,3 +1,7 @@
+import type { LanguageModel } from "ai"
+
+import { classifyExactSourceIntent } from "./classifiers/exact-source-classifier"
+
 export type ExactSourceSummary = {
   sourceId: string
   originalUrl: string
@@ -22,52 +26,10 @@ type ResolveExactSourceFollowupParams = {
   lastUserMessage: string
   recentMessages: ExactSourceConversationMessage[]
   availableExactSources: ExactSourceSummary[]
+  model?: LanguageModel
 }
 
-const EXACT_SOURCE_PATTERNS = [
-  /\bjudul\b/,
-  /\bjudul lengkap(?:nya)?\b/,
-  /\bpenulis\b/,
-  /\bauthor\b/,
-  /\btanggal\b/,
-  /\bterbit\b/,
-  /\bpublished\b/,
-  /\bparagraf\b/,
-  /\bverbatim\b/,
-  /\bkutip(?:an)?\b/,
-  /\bsecara persis\b/,
-  /\bkata demi kata\b/,
-]
-
-const NON_EXACT_SUMMARY_PATTERNS = [
-  /\bringkas\b/,
-  /\brangkum\b/,
-  /\bsimpulkan\b/,
-  /\binti\b/,
-  /\bgambaran\b/,
-  /\bdampak\b/,
-]
-
-const CONTINUATION_PATTERNS = [
-  /^lengkapnya\??$/,
-  /^judul lengkapnya\??$/,
-  /^yang itu\??$/,
-  /^yang itu tadi\??$/,
-  /^yang tadi\??$/,
-  /^yang mana\??$/,
-  /^itu tadi\??$/,
-]
-
-const CONTINUATION_CUES = [
-  "lengkapnya",
-  "judul lengkapnya",
-  "yang itu",
-  "yang itu tadi",
-  "yang tadi",
-  "itu tadi",
-  "tidak lengkap",
-  "belum lengkap",
-]
+// ── Preserve: text normalization utilities (deterministic) ──
 
 function normalizeText(value: string | undefined): string {
   if (!value) return ""
@@ -96,23 +58,7 @@ function extractDomainLabel(url: string | undefined): string {
   }
 }
 
-function isExactIntent(text: string): boolean {
-  if (!text) return false
-  return EXACT_SOURCE_PATTERNS.some((pattern) => pattern.test(text))
-}
-
-function isNonExactSummaryRequest(text: string): boolean {
-  if (!text) return false
-  return NON_EXACT_SUMMARY_PATTERNS.some((pattern) => pattern.test(text))
-}
-
-function isContinuationPrompt(text: string): boolean {
-  if (!text) return false
-  if (CONTINUATION_PATTERNS.some((pattern) => pattern.test(text))) return true
-  if (text.length > 80) return false
-
-  return CONTINUATION_CUES.some((cue) => text.includes(cue))
-}
+// ── Preserve: source matching logic (structural, not language understanding) ──
 
 function buildSourceCandidates(source: ExactSourceSummary): string[] {
   return [
@@ -175,56 +121,100 @@ function resolveFromRecentContext(
   return []
 }
 
-export function resolveExactSourceFollowup({
+/**
+ * Resolve exact source follow-up using semantic classifier.
+ *
+ * Classifier determines intent (exact_detail, summary, continuation, none).
+ * Source matching logic finds which source the user refers to (preserved unchanged).
+ *
+ * Replaces: EXACT_SOURCE_PATTERNS (12), NON_EXACT_SUMMARY_PATTERNS (6),
+ * CONTINUATION_PATTERNS (7), CONTINUATION_CUES (8), isExactIntent(),
+ * isNonExactSummaryRequest(), isContinuationPrompt()
+ *
+ * When model not provided or classifier fails: returns "none" (safe default).
+ */
+export async function resolveExactSourceFollowup({
   lastUserMessage,
   recentMessages,
   availableExactSources,
-}: ResolveExactSourceFollowupParams): ExactSourceFollowupResolution {
+  model,
+}: ResolveExactSourceFollowupParams): Promise<ExactSourceFollowupResolution> {
   const normalizedLastUserMessage = normalizeText(lastUserMessage)
 
   if (!normalizedLastUserMessage) {
     return { mode: "none", reason: "empty-user-message" }
   }
 
-  const explicitExactIntent = isExactIntent(normalizedLastUserMessage)
-  const continuationPrompt = isContinuationPrompt(normalizedLastUserMessage)
+  if (!model) {
+    return { mode: "none", reason: "no-model-available" }
+  }
 
-  if (!explicitExactIntent && !continuationPrompt) {
+  // ── Classifier determines intent ──
+  const availableSourceTitles = availableExactSources
+    .map((s) => s.title)
+    .filter((t): t is string => !!t)
+
+  const classifierResult = await classifyExactSourceIntent({
+    lastUserMessage: normalizedLastUserMessage,
+    availableSourceTitles,
+    model,
+  })
+
+  if (!classifierResult) {
+    return { mode: "none", reason: "classifier-error" }
+  }
+
+  const { sourceIntent, mentionedSourceHint, mode: classifierMode } = classifierResult.output
+
+  if (sourceIntent === "none" || classifierMode === "none") {
     return { mode: "none", reason: "not-an-exact-source-request" }
   }
 
-  if (isNonExactSummaryRequest(normalizedLastUserMessage) && !explicitExactIntent) {
-    return { mode: "none", reason: "not-an-exact-source-request" }
+  if (sourceIntent === "summary") {
+    return { mode: "none", reason: "summary-request-not-exact" }
   }
 
+  // ── Source matching (preserved logic) ──
   const directMatches = findExplicitMatches(normalizedLastUserMessage, availableExactSources)
+
+  let hintMatches: ExactSourceSummary[] = []
+  if (directMatches.length === 0 && mentionedSourceHint) {
+    const normalizedHint = normalizeText(mentionedSourceHint)
+    if (normalizedHint) {
+      hintMatches = findExplicitMatches(normalizedHint, availableExactSources)
+    }
+  }
+
   const contextMatches =
-    directMatches.length === 0 && continuationPrompt
+    directMatches.length === 0 && hintMatches.length === 0 && sourceIntent === "continuation"
       ? resolveFromRecentContext(recentMessages, availableExactSources)
       : []
-  const matches = directMatches.length > 0 ? directMatches : contextMatches
+
+  const matches = directMatches.length > 0
+    ? directMatches
+    : hintMatches.length > 0
+      ? hintMatches
+      : contextMatches
 
   if (matches.length === 1) {
     return {
       mode: "force-inspect",
-      reason: directMatches.length > 0 ? "unique-source-match" : "resolved-from-recent-context",
+      reason: directMatches.length > 0
+        ? "unique-source-match"
+        : hintMatches.length > 0
+          ? "hint-source-match"
+          : "resolved-from-recent-context",
       matchedSource: matches[0],
     }
   }
 
   if (matches.length > 1) {
-    return {
-      mode: "clarify",
-      reason: "ambiguous-source-match",
-    }
+    return { mode: "clarify", reason: "ambiguous-source-match" }
   }
 
-  if (explicitExactIntent) {
-    return {
-      mode: "clarify",
-      reason: "exact-intent-without-unique-source",
-    }
+  if (sourceIntent === "exact_detail") {
+    return { mode: "clarify", reason: "exact-intent-without-unique-source" }
   }
 
-  return { mode: "none", reason: "not-an-exact-source-request" }
+  return { mode: "none", reason: "no-source-matched" }
 }

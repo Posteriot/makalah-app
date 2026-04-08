@@ -29,6 +29,22 @@
   - `["""]([^"""]{20,})["""]`
 - sanitasi tool name:
   - `[^a-zA-Z0-9:_-]`
+- reasoning trace security sanitization (PRESERVE — security guard, bukan language heuristic):
+  - `system\s+prompt`
+  - `developer\s+prompt`
+  - `chain[-\s]?of[-\s]?thought`
+  - `\bcot\b`
+  - `api[\s_-]?key`
+  - `bearer\s+[a-z0-9._-]+`
+  - `\btoken\b`
+  - `\bsecret\b`
+  - `\bpassword\b`
+  - `\bcredential\b`
+  - `internal\s+policy`
+  - `tool\s+schema`
+- reasoning text cleanup (PRESERVE — bagian dari sanitizeReasoningText):
+  - `` ```[\s\S]*?``` `` (fence stripping reasoning)
+  - `` `([^`]+)` `` (inline code stripping reasoning)
 
 ### Fungsi
 
@@ -37,6 +53,7 @@
 - mengganti persisted content yang dianggap noisy
 - mengambil judul terpilih dari prose fallback jika model gagal tool call
 - menjaga completed session tidak menyimpan output off-context
+- sanitasi reasoning trace: mendeteksi dan mengganti konten yang memuat istilah sensitif (system prompt, API key, bearer token, secret, credential, tool schema) agar tidak bocor ke user-facing output
 
 ### Dampak bisnis
 
@@ -54,6 +71,7 @@
 - ini regex paling sensitif di seluruh area chat + paper
 - sebagian masih observability-only, tetapi beberapa sudah punya efek langsung ke persisted content
 - sangat rawan saat pola bahasa berubah
+- reasoning trace security sanitizers (`FORBIDDEN_REASONING_PATTERNS`) harus dipertahankan — ini bukan language heuristic melainkan security guard yang mencegah leakage istilah sensitif ke user
 
 ## 2. `src/lib/ai/completed-session.ts`
 
@@ -169,6 +187,8 @@
   - `\b(aku|saya|gue)\s+sudah\s+melakukan\s+pencarian\b`
   - `\bizinkan\s+(aku|saya)\s+(untuk\s+)?(mencari|search)\b`
   - `\blet\s+me\s+(search|check)\b`
+- line split:
+  - `\r?\n`
 - strip empty reference lines:
   - `^\s*(link|url):\s*$`
 - sentence boundary helper:
@@ -518,6 +538,8 @@
 
 ### Regex yang dipakai
 
+- section name normalization:
+  - `\s+` (whitespace to underscore for key matching)
 - escape regex helper:
   - `[.*+?^${}()|[\]\\]`
 - mandatory section heading:
@@ -538,7 +560,7 @@
   - `bypass stage lock`
   - `override tool routing`
   - `ignore tool routing`
-  - `call ... in the same turn`
+  - `call\s+(web\s+search|function\s+tools)\s+and\s+(updateStageData|web\s+search)\s+in\s+the\s+same\s+turn`
   - `submit without user confirmation`
 - visual language contract:
   - `interactive choice card`
@@ -599,20 +621,27 @@
 - `src/components/chat/ChatContainer.tsx`
 - regex normalization di `src/lib/ai/paper-intent-detector.ts`
 
-## Kesimpulan Praktis
+## Final Status (Post-Implementation)
 
-### Aman dipertahankan sebagai regex
+### Replaced with semantic classifiers
 
-- parser/sanitizer URL, DOI, whitespace, range number
-- markdown rendering helpers
-- format validator seperti Convex ID
+- `completed-session.ts` — ALL language heuristic regex → `classifyCompletedSessionIntent()` ✅
+- `exact-source-followup.ts` — ALL intent regex → `classifyExactSourceIntent()` ✅
+- `reference-presentation.ts` — `inferSearchResponseMode()` 14 patterns → `classifySearchResponseMode()` ✅
+- `route.ts` — revision intent regex → `classifyRevisionIntent()` (observability-only) ✅
+- `internal-thought-separator.ts` — instruction-based fix + regex kept as fallback ⚠️
 
-### Perlu hati-hati karena rawan heuristic drift
+### Preserved as-is (deterministic / low-risk)
 
-- completed-session handling
-- revision/validation/leakage guard di route
-- exact-source follow-up
-- mode detection berbasis natural language
+- `route.ts` — security sanitizers, corruption guard, fallback title extraction, observability guards, fence stripping, whitespace collapse, tool name sanitization
+- `paperSessions.ts` — URL dedup, citation parsing, year extraction
+- `daftarPustakaCompiler.ts` — DOI normalization, key normalization, weak citation detection
+- `stageDataWhitelist.ts` — numeric range coercion
+- `MarkdownRenderer.tsx` — markdown rendering, citation markers
+- `ChatWindow.tsx`, `ChatContainer.tsx` — Convex ID validation
+- `stage-skill-validator.ts` — technical document validator
+- `paper-intent-detector.ts` — keyword `.includes()` (deferred)
+- `curated-trace.ts` — keyword bucket scoring (keep as-is)
 
 ### Prinsip refactor bila dibutuhkan
 
