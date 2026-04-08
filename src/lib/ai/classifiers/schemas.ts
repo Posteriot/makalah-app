@@ -109,7 +109,7 @@ export type ExactSourceClassifierOutput = z.infer<typeof ExactSourceClassifierSc
 // Domain 5: Search Response Mode Classifier
 // ============================================================================
 
-export const SearchResponseModeClassifierSchema = z.object({
+export const SearchResponseModeSchema = z.object({
   responseMode: z.enum([
     "synthesis",
     "reference_inventory",
@@ -128,13 +128,13 @@ export const SearchResponseModeClassifierSchema = z.object({
   ),
 })
 
-export type SearchResponseModeClassifierOutput = z.infer<typeof SearchResponseModeClassifierSchema>
+export type SearchResponseModeOutput = z.infer<typeof SearchResponseModeSchema>
 
 // ============================================================================
 // Domain 3: Route-Level Revision Intent Classifier
 // ============================================================================
 
-export const RevisionIntentClassifierSchema = z.object({
+export const RevisionIntentSchema = z.object({
   hasRevisionIntent: z.boolean().describe(
     "True if user message expresses intent to modify, revise, or redo existing content."
   ),
@@ -148,7 +148,7 @@ export const RevisionIntentClassifierSchema = z.object({
   ),
 })
 
-export type RevisionIntentClassifierOutput = z.infer<typeof RevisionIntentClassifierSchema>
+export type RevisionIntentOutput = z.infer<typeof RevisionIntentSchema>
 
 // ============================================================================
 // Type Compatibility Assertions
@@ -162,8 +162,8 @@ type _AssertHandlingCompat = CompletedSessionClassifierOutput["handling"] extend
 const _handleCheck: _AssertHandlingCompat = true as const
 void _handleCheck
 
-// SearchResponseModeClassifierOutput.responseMode must be assignable to SearchResponseMode
-type _AssertSearchModeCompat = SearchResponseModeClassifierOutput["responseMode"] extends
+// SearchResponseModeOutput.responseMode must be assignable to SearchResponseMode
+type _AssertSearchModeCompat = SearchResponseModeOutput["responseMode"] extends
   SearchResponseMode ? true : never
 const _searchCheck: _AssertSearchModeCompat = true as const
 void _searchCheck
