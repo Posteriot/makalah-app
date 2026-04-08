@@ -143,6 +143,13 @@ Prinsip:
 - state workflow harus diputuskan dari structured state + tool result
 - model prose jangan diperlakukan sebagai sumber kebenaran utama untuk lifecycle
 
+Carve-out — reasoning trace security sanitizers (PRESERVE):
+
+- `FORBIDDEN_REASONING_PATTERNS` (12 pattern: `system prompt`, `developer prompt`, `chain-of-thought`, `cot`, `api key`, `bearer ...`, `token`, `secret`, `password`, `credential`, `internal policy`, `tool schema`)
+- Fungsi: mendeteksi dan mengganti konten sensitif di reasoning trace sebelum ditampilkan ke user
+- Ini bukan language heuristic melainkan security guard — harus dipertahankan saat cleanup P1B
+- Termasuk juga: `sanitizeReasoningText()`, fence stripping reasoning, inline code stripping reasoning — semua preserve
+
 ## Prioritas 2: Ganti Regex Heuristic Follow-Up dan Mode Detection
 
 File:

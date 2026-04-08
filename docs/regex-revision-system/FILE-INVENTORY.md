@@ -29,6 +29,22 @@
   - `["""]([^"""]{20,})["""]`
 - sanitasi tool name:
   - `[^a-zA-Z0-9:_-]`
+- reasoning trace security sanitization (PRESERVE — security guard, bukan language heuristic):
+  - `system\s+prompt`
+  - `developer\s+prompt`
+  - `chain[-\s]?of[-\s]?thought`
+  - `\bcot\b`
+  - `api[\s_-]?key`
+  - `bearer\s+[a-z0-9._-]+`
+  - `\btoken\b`
+  - `\bsecret\b`
+  - `\bpassword\b`
+  - `\bcredential\b`
+  - `internal\s+policy`
+  - `tool\s+schema`
+- reasoning text cleanup (PRESERVE — bagian dari sanitizeReasoningText):
+  - `` ```[\s\S]*?``` `` (fence stripping reasoning)
+  - `` `([^`]+)` `` (inline code stripping reasoning)
 
 ### Fungsi
 
@@ -37,6 +53,7 @@
 - mengganti persisted content yang dianggap noisy
 - mengambil judul terpilih dari prose fallback jika model gagal tool call
 - menjaga completed session tidak menyimpan output off-context
+- sanitasi reasoning trace: mendeteksi dan mengganti konten yang memuat istilah sensitif (system prompt, API key, bearer token, secret, credential, tool schema) agar tidak bocor ke user-facing output
 
 ### Dampak bisnis
 
@@ -54,6 +71,7 @@
 - ini regex paling sensitif di seluruh area chat + paper
 - sebagian masih observability-only, tetapi beberapa sudah punya efek langsung ke persisted content
 - sangat rawan saat pola bahasa berubah
+- reasoning trace security sanitizers (`FORBIDDEN_REASONING_PATTERNS`) harus dipertahankan — ini bukan language heuristic melainkan security guard yang mencegah leakage istilah sensitif ke user
 
 ## 2. `src/lib/ai/completed-session.ts`
 
@@ -169,6 +187,8 @@
   - `\b(aku|saya|gue)\s+sudah\s+melakukan\s+pencarian\b`
   - `\bizinkan\s+(aku|saya)\s+(untuk\s+)?(mencari|search)\b`
   - `\blet\s+me\s+(search|check)\b`
+- line split:
+  - `\r?\n`
 - strip empty reference lines:
   - `^\s*(link|url):\s*$`
 - sentence boundary helper:
@@ -518,6 +538,8 @@
 
 ### Regex yang dipakai
 
+- section name normalization:
+  - `\s+` (whitespace to underscore for key matching)
 - escape regex helper:
   - `[.*+?^${}()|[\]\\]`
 - mandatory section heading:
@@ -538,7 +560,7 @@
   - `bypass stage lock`
   - `override tool routing`
   - `ignore tool routing`
-  - `call ... in the same turn`
+  - `call\s+(web\s+search|function\s+tools)\s+and\s+(updateStageData|web\s+search)\s+in\s+the\s+same\s+turn`
   - `submit without user confirmation`
 - visual language contract:
   - `interactive choice card`
