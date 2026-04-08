@@ -4,6 +4,7 @@ import type { BaseComponentProps } from "@json-render/react"
 
 interface ChoiceCardShellProps {
   title: string
+  decisionMode?: "exploration" | "commit"
 }
 
 export function ChoiceCardShell({

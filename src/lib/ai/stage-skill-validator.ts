@@ -119,6 +119,20 @@ function hasDangerousOverridePhrase(content: string): boolean {
     return matched.length > 0;
 }
 
+function hasVisualLanguageContract(content: string): boolean {
+    return /interactive choice card/i.test(content) && /PaperValidationPanel/i.test(content);
+}
+
+function hasChoiceCardContradiction(content: string): boolean {
+    const contradictoryPatterns = [
+        /\bno choice card decision point needed\b/i,
+        /\bdo not use choice cards for content decisions\b/i,
+        /\bdisallowed:\s*[\s\S]*emitChoiceCard\b/i,
+    ];
+
+    return contradictoryPatterns.some((pattern) => pattern.test(content));
+}
+
 export function validateStageSkillContent(input: StageSkillValidationInput): StageSkillValidationResult {
     const issues: ValidationIssue[] = [];
     const content = input.content.trim();
@@ -195,6 +209,20 @@ export function validateStageSkillContent(input: StageSkillValidationInput): Sta
         });
     }
 
+    if (!hasVisualLanguageContract(content)) {
+        issues.push({
+            code: "missing_visual_language_contract",
+            message: `Stage "${input.stageScope}" wajib mendeklarasikan kontrak visual language (interactive choice card + PaperValidationPanel boundary).`,
+        });
+    }
+
+    if (hasChoiceCardContradiction(content)) {
+        issues.push({
+            code: "choice_card_contract_violation",
+            message: `Stage "${input.stageScope}" mengandung instruksi yang menonaktifkan atau menabrak kontrak choice card.`,
+        });
+    }
+
     if (input.stageScope === "outline") {
         const outlineGuard = /checkedAt/i.test(content) && /checkedBy/i.test(content) && /editHistory/i.test(content);
         if (!outlineGuard) {
@@ -228,14 +256,27 @@ export function validateStageSkillContent(input: StageSkillValidationInput): Sta
         }
     }
 
-    // Validate that Function Tools mentions createArtifact
-    // Required for all stages — artifact is the mandatory output reviewed by user
+    // Validate that Function Tools mentions required artifact lifecycle tools
     const functionToolsSection = getSection(content, "Function Tools");
-    if (functionToolsSection && !/createArtifact/i.test(functionToolsSection)) {
-        issues.push({
-            code: "missing_create_artifact_in_function_tools",
-            message: `Function Tools wajib menyebut createArtifact untuk stage "${input.stageScope}". Artifact adalah hasil akhir yang di-review user.`,
-        });
+    if (functionToolsSection) {
+        if (!/createArtifact/i.test(functionToolsSection)) {
+            issues.push({
+                code: "missing_create_artifact_in_function_tools",
+                message: `Function Tools wajib menyebut createArtifact untuk stage "${input.stageScope}". Artifact adalah hasil akhir yang di-review user.`,
+            });
+        }
+        if (!/requestRevision/i.test(functionToolsSection)) {
+            issues.push({
+                code: "missing_request_revision_in_function_tools",
+                message: `Function Tools wajib menyebut requestRevision untuk stage "${input.stageScope}". Required for chat-triggered revision during pending_validation.`,
+            });
+        }
+        if (!/updateArtifact/i.test(functionToolsSection)) {
+            issues.push({
+                code: "missing_update_artifact_in_function_tools",
+                message: `Function Tools wajib menyebut updateArtifact untuk stage "${input.stageScope}". Required for revision path (v2/v3 instead of new artifact).`,
+            });
+        }
     }
 
     return {

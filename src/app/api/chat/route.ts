@@ -15,6 +15,7 @@ import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 // isBlockedSourceDomain removed — blocklist enforcement via SKILL.md natural language
 // formatParagraphEndCitations now handled by orchestrator
 import { createPaperTools, createPaperToolTracker } from "@/lib/ai/paper-tools"
+import { checkSourceBodyParity } from "@/lib/ai/skills/web-search-quality/scripts/check-source-body-parity"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
@@ -57,6 +58,7 @@ import {
     parseOptionalChoiceInteractionEvent,
     validateChoiceInteractionEvent,
     buildChoiceContextNote,
+    shouldFinalizeAfterChoice,
 } from "@/lib/chat/choice-request"
 import { resolveEffectiveFileIds } from "@/lib/chat/effective-file-ids"
 import {
@@ -371,18 +373,54 @@ export async function POST(req: Request) {
         const paperToolTracker = createPaperToolTracker()
 
         let choiceContextNote: string | undefined
+        let choiceFinalizeDecision: { finalize: boolean; reason: string } | undefined
         if (choiceInteractionEvent) {
-            validateChoiceInteractionEvent({
-                event: choiceInteractionEvent,
-                conversationId: currentConversationId,
-                currentStage: paperStageScope ?? null,
-                isPaperMode: !!paperModePrompt,
-            })
+            try {
+                validateChoiceInteractionEvent({
+                    event: choiceInteractionEvent,
+                    conversationId: currentConversationId,
+                    currentStage: paperStageScope ?? null,
+                    isPaperMode: !!paperModePrompt,
+                    stageStatus: paperSession?.stageStatus as string | undefined,
+                })
+            } catch (validationError) {
+                const errorMsg = validationError instanceof Error ? validationError.message : String(validationError);
+                if (errorMsg.includes("CHOICE_REJECTED_STALE_STATE")) {
+                    console.warn(`[stale-choice-rejected] stage=${choiceInteractionEvent.stage} stageStatus=${paperSession?.stageStatus} sourceMessageId=${choiceInteractionEvent.sourceMessageId} submittedAt=${choiceInteractionEvent.submittedAt}`);
+                    return new Response(
+                        JSON.stringify({
+                            error: "CHOICE_REJECTED_STALE_STATE",
+                            message: "Pilihan ini sudah tidak berlaku karena state draft sudah berubah. Silakan gunakan chat atau panel validasi yang aktif.",
+                            stage: choiceInteractionEvent.stage,
+                            stageStatus: paperSession?.stageStatus,
+                        }),
+                        { status: 409, headers: { "Content-Type": "application/json" } }
+                    );
+                }
+                throw validationError; // re-throw non-stale errors
+            }
             const choiceStageData = paperSession?.stageData as Record<string, Record<string, unknown> | undefined> | undefined
-            const hasExistingArtifact = !!choiceStageData?.[choiceInteractionEvent.stage]?.artifactId
-            choiceContextNote = buildChoiceContextNote(choiceInteractionEvent, { hasExistingArtifact })
-            if (isHasilPostChoice) {
-                console.info("[HASIL][post-choice] entering artifact-first follow-up turn")
+            const currentStageChoiceData = choiceStageData?.[choiceInteractionEvent.stage]
+            const hasExistingArtifact = !!currentStageChoiceData?.artifactId
+
+            // Compute finalize decision via reusable helper — decisionMode from card metadata is primary signal
+            choiceFinalizeDecision = shouldFinalizeAfterChoice({
+                stage: choiceInteractionEvent.stage as PaperStageId,
+                stageData: currentStageChoiceData as Record<string, unknown> | undefined,
+                hasExistingArtifact,
+                decisionMode: choiceInteractionEvent.decisionMode,
+            })
+
+            choiceContextNote = buildChoiceContextNote(choiceInteractionEvent, {
+                hasExistingArtifact,
+                forceFinalize: choiceFinalizeDecision.finalize,
+            })
+
+            // Observability: log choice commit semantics
+            if (choiceFinalizeDecision.finalize) {
+                console.info(`[CHOICE][commit-point-finalize] stage=${choiceInteractionEvent.stage} reason=${choiceFinalizeDecision.reason} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
+            } else {
+                console.info(`[CHOICE][exploration-loop] stage=${choiceInteractionEvent.stage} reason=${choiceFinalizeDecision.reason} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
             }
         }
 
@@ -1507,13 +1545,76 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                 }),
                 execute: async ({ type, title, content, format, description, sources }) => {
                     try {
-                        if (paperSession?.stageStatus === "pending_validation") {
+                        // Guard: block duplicate createArtifact in the same turn.
+                        // Model sometimes retries after wrong tool ordering triggers auto-rescue.
+                        if (paperToolTracker?.sawCreateArtifactSuccess) {
+                            console.log(`[create-artifact-blocked-duplicate] stage=${paperSession?.currentStage} — artifact already created this turn`);
                             return {
                                 success: false,
-                                errorCode: "STAGE_PENDING_VALIDATION",
+                                errorCode: "CREATE_BLOCKED_DUPLICATE_TURN",
                                 retryable: false,
-                                error: "Stage is pending validation. Request revision first if you want to replace the artifact.",
-                                nextAction: "Do not create a new artifact now. Direct the user to the validation panel to approve or request revision first.",
+                                error: "An artifact was already created in this turn. Use updateArtifact to make changes to the existing artifact.",
+                                nextAction: "Call updateArtifact if content needs changes, or submitStageForValidation if not yet submitted.",
+                            }
+                        }
+
+                        // Guard: block createArtifact when a valid artifact already exists (pending_validation OR revision).
+                        // During revision, model should use updateArtifact to create v2/v3 — not createArtifact.
+                        // createArtifact is only allowed as exceptional fallback when artifact is missing/invalidated.
+                        if (paperSession?.stageStatus === "pending_validation" || paperSession?.stageStatus === "revision") {
+                            const currentStageData = (paperSession.stageData as Record<string, Record<string, unknown>>)?.[paperSession.currentStage];
+                            const existingArtifactId = currentStageData?.artifactId as string | undefined;
+
+                            let artifactIsValid = false;
+                            if (existingArtifactId) {
+                                try {
+                                    const existingArtifact = await fetchQueryWithToken(api.artifacts.get, {
+                                        artifactId: existingArtifactId as Id<"artifacts">,
+                                        userId: userId as Id<"users">,
+                                    });
+                                    artifactIsValid = !!existingArtifact && !existingArtifact.invalidatedAt;
+                                } catch {
+                                    artifactIsValid = false;
+                                }
+                            }
+
+                            if (artifactIsValid) {
+                                console.log(`[create-artifact-blocked-valid-exists] stage=${paperSession.currentStage} stageStatus=${paperSession.stageStatus} artifactId=${existingArtifactId}`);
+                                return {
+                                    success: false,
+                                    errorCode: "CREATE_BLOCKED_VALID_EXISTS",
+                                    retryable: false,
+                                    error: "A valid artifact already exists for this stage. Use updateArtifact to create a new version instead of createArtifact.",
+                                    nextAction: "Call updateArtifact with the revised content. Do NOT use createArtifact when a valid artifact exists.",
+                                }
+                            }
+
+                            // Artifact missing/invalidated/inaccessible — allow createArtifact as exceptional fallback.
+                            // Auto-rescue only for pending_validation (revision is already correct state).
+                            if (paperSession.stageStatus === "pending_validation") {
+                                try {
+                                    const rescueResult = await fetchMutationWithToken(api.paperSessions.autoRescueRevision, {
+                                        sessionId: paperSession._id,
+                                        userId: userId as Id<"users">,
+                                        source: "createArtifact",
+                                    });
+                                    if (rescueResult.rescued) {
+                                        console.log(`[create-artifact-fallback-no-valid] stage=${paperSession.currentStage} — auto-rescued, proceeding with createArtifact`);
+                                        const refreshed = await fetchQueryWithToken(api.paperSessions.getByConversation, {
+                                            conversationId: currentConversationId
+                                        });
+                                        if (refreshed) Object.assign(paperSession, refreshed);
+                                    }
+                                } catch (autoRescueError) {
+                                    console.error("[createArtifact] Auto-rescue failed:", autoRescueError);
+                                    return {
+                                        success: false,
+                                        errorCode: "AUTO_RESCUE_FAILED",
+                                        retryable: true,
+                                        error: "Failed to auto-transition stage to revision. Try calling requestRevision explicitly first.",
+                                        nextAction: "Call requestRevision(feedback) first, then retry createArtifact.",
+                                    };
+                                }
                             }
                         }
 
@@ -1547,6 +1648,21 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                             }
                         }
 
+                        // Source-body parity check: content reference inventory must match attached sources
+                        if (sources && sources.length > 0) {
+                            const parityCheck = checkSourceBodyParity({ content, sources })
+                            if (!parityCheck.valid) {
+                                console.warn(`[source-body-parity-rejected] tool=createArtifact level=${parityCheck.level} sources=${sources.length}`)
+                                return {
+                                    success: false,
+                                    errorCode: "SOURCE_BODY_PARITY_MISMATCH",
+                                    retryable: true,
+                                    error: parityCheck.error,
+                                    nextAction: "Fix the artifact content to match attached sources count, or add an explicit subset disclaimer.",
+                                }
+                            }
+                        }
+
                         const result = await retryMutation(
                             () => fetchMutationWithToken(api.artifacts.create, {
                                 conversationId: currentConversationId as Id<"conversations">,
@@ -1577,12 +1693,33 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
 
                         console.log("[F1-F6-TEST] createArtifact", { stage: paperSession?.currentStage, artifactId: result.artifactId, title })
                         if (paperToolTracker) paperToolTracker.sawCreateArtifactSuccess = true
+
+                        // Auto-submit: if model called submitStageForValidation before artifact existed
+                        // (wrong tool order), retry submit now that artifact is created.
+                        let autoSubmitted = false
+                        if (paperToolTracker?.sawSubmitValidationArtifactMissing && !paperToolTracker?.sawSubmitValidationSuccess) {
+                            try {
+                                await fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                                    sessionId: paperSession!._id,
+                                })
+                                autoSubmitted = true
+                                paperToolTracker.sawSubmitValidationSuccess = true
+                                console.log("[createArtifact][auto-submit] submitStageForValidation retried after artifact creation — success")
+                            } catch (autoSubmitError) {
+                                console.warn("[createArtifact][auto-submit] submitStageForValidation retry failed:", autoSubmitError)
+                            }
+                        }
+
                         return {
                             success: true,
                             artifactId: result.artifactId,
                             title,
-                            message: `Artifact "${title}" berhasil dibuat. User dapat melihatnya di panel artifact.`,
-                            nextAction: "⚠️ MANDATORY: Artifact is created successfully. Do NOT restate the draft content in chat. Do NOT output markdown headings, fenced code blocks, or paragraphs from the artifact. Do NOT mention technical issues, errors, partial saves, or source/title problems — the operation SUCCEEDED. Respond with MAX 2-3 sentences ONLY: (1) confirm artifact was created, (2) direct user to review in artifact panel, (3) call submitStageForValidation() NOW.",
+                            message: autoSubmitted
+                                ? `Artifact "${title}" berhasil dibuat dan sudah disubmit untuk validasi.`
+                                : `Artifact "${title}" berhasil dibuat. User dapat melihatnya di panel artifact.`,
+                            nextAction: autoSubmitted
+                                ? "Artifact created and submitted for validation. Do NOT call submitStageForValidation again. Do NOT mention technical issues. Respond with MAX 2-3 sentences confirming the artifact is ready for review."
+                                : "⚠️ MANDATORY: Artifact is created successfully. Do NOT restate the draft content in chat. Do NOT output markdown headings, fenced code blocks, or paragraphs from the artifact. Do NOT mention technical issues, errors, partial saves, or source/title problems — the operation SUCCEEDED. Respond with MAX 2-3 sentences ONLY: (1) confirm artifact was created, (2) direct user to review in artifact panel, (3) call submitStageForValidation() NOW.",
                         }
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : String(error)
@@ -1629,13 +1766,33 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                 }),
                 execute: async ({ artifactId: modelArtifactId, content, title, sources }) => {
                     try {
+                        // Route-level auto-rescue for updateArtifact path.
+                        // convex/artifacts.ts:update does NOT go through paperSessions.updateStageData,
+                        // so the backend auto-rescue in updateStageData does not cover this path.
+                        // Uses autoRescueRevision (NOT requestRevision) to preserve trigger provenance.
                         if (paperSession?.stageStatus === "pending_validation") {
-                            return {
-                                success: false,
-                                errorCode: "STAGE_PENDING_VALIDATION",
-                                retryable: false,
-                                error: "Stage is pending validation. Request revision first if you want to update the artifact.",
-                                nextAction: "Do not update the artifact now. Direct the user to the validation panel to approve or request revision first.",
+                            try {
+                                const rescueResult = await fetchMutationWithToken(api.paperSessions.autoRescueRevision, {
+                                    sessionId: paperSession._id,
+                                    userId: userId as Id<"users">,
+                                    source: "updateArtifact",
+                                });
+                                if (rescueResult.rescued) {
+                                    // Refresh paperSession reference so downstream code sees updated stageStatus
+                                    const refreshed = await fetchQueryWithToken(api.paperSessions.getByConversation, {
+                                        conversationId: currentConversationId
+                                    });
+                                    if (refreshed) Object.assign(paperSession, refreshed);
+                                }
+                            } catch (autoRescueError) {
+                                console.error("[updateArtifact] Auto-rescue failed:", autoRescueError);
+                                return {
+                                    success: false,
+                                    errorCode: "AUTO_RESCUE_FAILED",
+                                    retryable: true,
+                                    error: "Failed to auto-transition stage to revision. Try calling requestRevision explicitly first.",
+                                    nextAction: "Call requestRevision(feedback) first, then retry updateArtifact.",
+                                };
                             }
                         }
 
@@ -1674,9 +1831,25 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                             referencesMatched: refValidation.valid ? (sources?.length ?? 0) : 0,
                         })
                         if (!refValidation.valid) {
+                            console.warn(`[updateArtifact][ref-validation-rejected] stage=${paperSession?.currentStage} error=${refValidation.error}`)
                             return {
                                 success: false,
                                 error: refValidation.error,
+                            }
+                        }
+
+                        // Source-body parity check: content reference inventory must match attached sources
+                        if (sources && sources.length > 0) {
+                            const parityCheck = checkSourceBodyParity({ content, sources })
+                            if (!parityCheck.valid) {
+                                console.warn(`[source-body-parity-rejected] tool=updateArtifact stage=${paperSession?.currentStage} level=${parityCheck.level} sources=${sources.length}`)
+                                return {
+                                    success: false,
+                                    errorCode: "SOURCE_BODY_PARITY_MISMATCH",
+                                    retryable: true,
+                                    error: parityCheck.error,
+                                    nextAction: "Fix the artifact content to match attached sources count, or add an explicit subset disclaimer.",
+                                }
                             }
                         }
 
@@ -2036,6 +2209,51 @@ Aturan:
 
             return createUIMessageStreamResponse({ stream })
         }
+
+        // Reactive revision chain enforcer — active during pending_validation only.
+        // Does NOT detect intent (no regex). Model decides freely at step 0.
+        // After model commits to revision (calls requestRevision), harness
+        // enforces the full chain: updateArtifact → submitStageForValidation.
+        const isRevisionActive = paperSession?.stageStatus === "pending_validation" || paperSession?.stageStatus === "revision"
+        const revisionChainEnforcer = isRevisionActive
+            ? ({ steps, stepNumber }: {
+                steps: Array<{ toolCalls?: Array<{ toolName: string }> }>;
+                stepNumber: number;
+              }) => {
+                // During revision status: force tool call at step 0 (model must act, not discuss)
+                // During pending_validation: step 0 free (model decides whether to revise or discuss)
+                if (stepNumber === 0) {
+                    if (paperSession?.stageStatus === "revision") {
+                        console.info(`[REVISION][chain-enforcer] step=0 status=revision → required`)
+                        return { toolChoice: "required" as const }
+                    }
+                    return undefined
+                }
+
+                const prevToolNames = steps[stepNumber - 1]?.toolCalls?.map(tc => tc.toolName) ?? []
+
+                if (prevToolNames.includes("requestRevision")) {
+                    console.info(`[REVISION][chain-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} → required`)
+                    return { toolChoice: "required" as const }
+                }
+                if (prevToolNames.includes("updateStageData")) {
+                    console.info(`[REVISION][chain-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} → required`)
+                    return { toolChoice: "required" as const }
+                }
+                if (prevToolNames.includes("updateArtifact") || prevToolNames.includes("createArtifact")) {
+                    // Only force submit if artifact tool actually succeeded
+                    if (paperToolTracker?.sawUpdateArtifactSuccess || paperToolTracker?.sawCreateArtifactSuccess) {
+                        console.info(`[REVISION][chain-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} → submitStageForValidation`)
+                        return { toolChoice: { type: "tool", toolName: "submitStageForValidation" } as const }
+                    }
+                    // Artifact tool was called but failed — let model retry freely
+                    console.info(`[REVISION][chain-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} → artifact failed, allowing retry`)
+                    return { toolChoice: "required" as const }
+                }
+
+                return undefined
+              }
+            : undefined
 
         try {
             const model = await getGatewayModel()
@@ -2447,7 +2665,9 @@ Aturan:
                 !enableWebSearch &&
                 !isSyncRequest &&
                 !isSaveSubmitIntent &&
-                !isCompileBibliographyIntent
+                !isCompileBibliographyIntent &&
+                paperSession?.stageStatus !== "pending_validation" &&
+                paperSession?.stageStatus !== "revision"
 
             if (shouldServeStoredReferenceInventory) {
                 const inventoryItems = buildStoredReferenceInventoryItems({
@@ -2474,6 +2694,8 @@ Aturan:
             shouldForceGetCurrentPaperState = !enableWebSearch
                 && !!paperModePrompt
                 && isSyncRequest
+                && paperSession?.stageStatus !== "pending_validation"
+                && paperSession?.stageStatus !== "revision"
 
             // Force submit validation when user explicitly requests save/submit
             shouldForceSubmitValidation = !enableWebSearch
@@ -2556,6 +2778,8 @@ Aturan:
                 !enableWebSearch &&
                 !shouldForceGetCurrentPaperState &&
                 !shouldForceSubmitValidation &&
+                paperSession?.stageStatus !== "pending_validation" &&
+                paperSession?.stageStatus !== "revision" &&
                 availableExactSources.length > 0
             const primaryExactSourceRoutePlan = shouldApplyDeterministicExactSourceRouting
                 ? buildDeterministicExactSourcePrepareStep({
@@ -2728,7 +2952,7 @@ Aturan:
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
                 toolChoice: forcedToolChoice,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                prepareStep: (primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
+                prepareStep: (revisionChainEnforcer ?? primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
                 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
                 onFinish: async ({ text, providerMetadata, usage }) => {
@@ -2823,6 +3047,31 @@ Aturan:
                                 !paperToolTracker.sawSubmitValidationSuccess
                             ) {
                                 console.warn("[DAFTAR_PUSTAKA][artifact-without-submit] artifact created/updated but submitStageForValidation was not called.")
+                            }
+                        }
+
+                        // Detect: model answered revision-like intent without calling any tools
+                        if (paperSession?.stageStatus === "pending_validation"
+                            && !paperToolTracker.sawRequestRevision
+                            && !paperToolTracker.sawUpdateStageData
+                            && !paperToolTracker.sawCreateArtifactSuccess
+                            && !paperToolTracker.sawUpdateArtifactSuccess) {
+                            const revisionSignals = /\b(revisi|edit|ubah|ganti|perbaiki|resend|generate ulang|tulis ulang|koreksi|buat ulang|ulangi|dari awal)\b/i;
+                            if (normalizedLastUserContent && revisionSignals.test(normalizedLastUserContent)) {
+                                console.warn(`[revision-intent-answered-without-tools] stage=${paperSession.currentStage} — model responded to apparent revision intent with prose only`);
+                            }
+                        }
+
+                        // Generic cross-stage partial-save-stall detection (post-choice commit point)
+                        if (choiceInteractionEvent && paperStageScope) {
+                            const wasCommitPoint = choiceInteractionEvent.decisionMode === "commit"
+                                || (choiceFinalizeDecision?.finalize === true)
+                            if (wasCommitPoint
+                                && paperToolTracker.sawUpdateStageData
+                                && !paperToolTracker.sawCreateArtifactSuccess
+                                && !paperToolTracker.sawUpdateArtifactSuccess
+                                && !paperToolTracker.sawSubmitValidationSuccess) {
+                                console.warn(`[CHOICE][partial-save-stall] stage=${paperStageScope} — commit-point choice resulted in updateStageData only, no artifact or submit`)
                             }
                         }
 
@@ -3372,6 +3621,8 @@ Aturan:
                     !enableWebSearch &&
                     !shouldForceGetCurrentPaperState &&
                     !shouldForceSubmitValidation &&
+                    paperSession?.stageStatus !== "pending_validation" &&
+                    paperSession?.stageStatus !== "revision" &&
                     availableExactSources.length > 0
                 const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
                 const fallbackBaseMessages = missingArtifactNote
@@ -3399,7 +3650,7 @@ Aturan:
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    prepareStep: (fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
+                    prepareStep: (revisionChainEnforcer ?? fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
                     stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {

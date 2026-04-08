@@ -3,6 +3,82 @@ import type { PaperStageId } from "../../../convex/paperSessions/constants"
 
 const VALIDATE_OPTION_ID = "sudah-cukup-lanjut-validasi"
 
+// Stages that ALWAYS finalize after choice (no maturity check needed)
+const ALWAYS_FINALIZE_STAGES = new Set<PaperStageId>([
+  "topik",
+  "outline",
+  "abstrak",
+  "pendahuluan",
+  "tinjauan_literatur",
+  "metodologi",
+  "hasil",
+  "diskusi",
+  "kesimpulan",
+  "pembaruan_abstrak",
+  "lampiran",
+  "judul",
+])
+
+// Per-stage maturity keys: if stageData has ALL of these, stage is mature enough to finalize.
+// Stages not in ALWAYS_FINALIZE_STAGES use this to determine commit vs exploration.
+const STAGE_MATURITY_KEYS: Partial<Record<PaperStageId, string[]>> = {
+  gagasan: ["angle", "analisis"],
+}
+
+/**
+ * Determine if a post-choice turn should finalize (artifact + submit) or stay exploratory.
+ *
+ * Priority order:
+ * 1. decisionMode from choice card metadata (primary — model declares intent)
+ * 2. Stage maturity heuristics (fallback — state-based)
+ * 3. Static stage membership (fallback — legacy compatibility)
+ */
+export function shouldFinalizeAfterChoice(params: {
+  stage: PaperStageId
+  stageData?: Record<string, unknown> | null
+  hasExistingArtifact?: boolean
+  decisionMode?: "exploration" | "commit"
+}): { finalize: boolean; reason: string } {
+  const { stage, stageData, hasExistingArtifact, decisionMode } = params
+
+  // daftar_pustaka has its own compile flow — handled separately in buildChoiceContextNote
+  if (stage === "daftar_pustaka") {
+    return { finalize: false, reason: "daftar_pustaka_compile_flow" }
+  }
+
+  // Priority 1: decisionMode from choice card metadata
+  if (decisionMode === "commit") {
+    return { finalize: true, reason: "decision_mode_commit" }
+  }
+  if (decisionMode === "exploration") {
+    return { finalize: false, reason: "decision_mode_exploration" }
+  }
+
+  // Priority 2: Stage maturity heuristics (for stages without decisionMode metadata)
+  const requiredKeys = STAGE_MATURITY_KEYS[stage]
+  if (requiredKeys && stageData) {
+    const hasAllKeys = requiredKeys.every(key => {
+      const val = stageData[key]
+      return val !== undefined && val !== null && val !== ""
+    })
+    if (hasAllKeys) {
+      return { finalize: true, reason: "stage_data_mature" }
+    }
+  }
+
+  // Priority 3: Static stage membership (legacy fallback)
+  if (ALWAYS_FINALIZE_STAGES.has(stage)) {
+    return { finalize: true, reason: "always_finalize_stage" }
+  }
+
+  // Supplementary: artifact exists suggests past exploration
+  if (hasExistingArtifact) {
+    return { finalize: true, reason: "artifact_already_exists" }
+  }
+
+  return { finalize: false, reason: "exploration_incomplete" }
+}
+
 const choiceInteractionEventSchema = z.object({
   type: z.literal("paper.choice.submit"),
   version: z.literal(1),
@@ -13,6 +89,7 @@ const choiceInteractionEventSchema = z.object({
   kind: z.literal("single-select"),
   selectedOptionIds: z.array(z.string().min(1)).min(1),
   customText: z.string().optional(),
+  decisionMode: z.enum(["exploration", "commit"]).optional(),
   submittedAt: z.number(),
 })
 
@@ -32,17 +109,24 @@ export function validateChoiceInteractionEvent(params: {
   conversationId: string
   currentStage?: PaperStageId | "completed" | null
   isPaperMode: boolean
+  stageStatus?: string
 }): void {
-  const { event, conversationId, currentStage, isPaperMode } = params
+  const { event, conversationId, currentStage, isPaperMode, stageStatus } = params
   if (!isPaperMode) throw new Error("Choice submit is only valid in paper mode.")
   if (event.conversationId !== conversationId) throw new Error("interactionEvent.conversationId does not match active conversation.")
   if (!currentStage || currentStage === "completed") throw new Error("Choice submit requires an active paper stage.")
   if (event.stage !== currentStage) throw new Error("interactionEvent.stage does not match active paper stage.")
+  if (stageStatus && stageStatus !== "drafting") {
+    throw new Error(
+      `CHOICE_REJECTED_STALE_STATE: Choice rejected — stageStatus is "${stageStatus}", expected "drafting". ` +
+      `Pilihan ini sudah tidak berlaku karena state draft sudah berubah. Silakan gunakan chat atau panel validasi yang aktif.`
+    )
+  }
 }
 
 export function buildChoiceContextNote(
   event: ParsedChoiceInteractionEvent,
-  options?: { hasExistingArtifact?: boolean }
+  options?: { hasExistingArtifact?: boolean; forceFinalize?: boolean }
 ): string {
   const selectedOptionIds = event.selectedOptionIds.map((id) => id.trim().toLowerCase())
   const requestedValidation =
@@ -146,6 +230,27 @@ export function buildChoiceContextNote(
       "- Do NOT write prose previewing the draft in chat (e.g. 'aku akan menyusun draf', 'draf ini akan', 'berikut adalah draf'). ALL draft content goes into the artifact tool call (createArtifact or updateArtifact as instructed above), not chat.",
       "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
       "- If submitStageForValidation fails with ARTIFACT_MISSING, retry it after createArtifact succeeds.",
+      "- Mention the validation panel ONLY if submitStageForValidation succeeds.",
+      "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
+    )
+    return baseLines.join("\n")
+  }
+
+  // Finalize decision comes solely from the resolved helper (forceFinalize).
+  // Do NOT check ALWAYS_FINALIZE_STAGES here — that would bypass decisionMode override.
+  if (options?.forceFinalize) {
+    baseLines.push(
+      "- Mode: post-choice-finalize",
+      "- The user has selected a concrete stage direction from the choice card. This is a commit point, not an exploration loop.",
+      "- You MUST translate the selected option into the current stage draft immediately.",
+      "- You MUST call tools in this EXACT order:",
+      "  1. updateStageData (persist the stage decision and the resulting draft fields)",
+      options?.hasExistingArtifact
+        ? "  2. updateArtifact (artifact already exists for this stage — update it, do NOT create a duplicate)"
+        : "  2. createArtifact (create the stage artifact from the finalized draft content)",
+      "  3. submitStageForValidation",
+      "- Do NOT output another choice card in this response.",
+      "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
       "- Mention the validation panel ONLY if submitStageForValidation succeeds.",
       "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
     )

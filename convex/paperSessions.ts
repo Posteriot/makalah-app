@@ -636,12 +636,28 @@ export const updateStageData = mutation({
             throw new Error(`Cannot update ${args.stage} while in ${session.currentStage}`);
         }
 
-        // Guard: Block update if stage is pending validation
+        // Auto-revision safety net: if pending_validation, auto-transition to revision
+        // Uses inline logic (same DB transaction) rather than calling autoRescueRevision mutation,
+        // because we need to re-read session in the same handler context.
         if (session.stageStatus === "pending_validation") {
-            throw new Error(
-                "updateStageData failed: Stage is pending validation. " +
-                "Request revision first if you want to modify the draft."
-            );
+            const stageDataForRevision = { ...session.stageData } as Record<string, Record<string, unknown>>;
+            const currentStageRevisionData = stageDataForRevision[session.currentStage] || { revisionCount: 0 };
+            const prevCount = typeof currentStageRevisionData.revisionCount === 'number' ? currentStageRevisionData.revisionCount : 0;
+            stageDataForRevision[session.currentStage] = {
+                ...currentStageRevisionData,
+                revisionCount: prevCount + 1,
+            };
+            await ctx.db.patch(args.sessionId, {
+                stageStatus: "revision",
+                stageData: stageDataForRevision,
+                updatedAt: Date.now(),
+            });
+            console.log(`[revision-auto-rescued-by-backend] stage=${session.currentStage} trigger=auto-rescue revisionCount=${prevCount + 1} previousStatus=pending_validation source=updateStageData`);
+            // Re-read session after patch so rest of mutation sees updated state
+            const updatedSession = await ctx.db.get(args.sessionId);
+            if (!updatedSession) throw new Error("Session not found after auto-rescue patch");
+            // Replace session reference for the rest of the handler
+            Object.assign(session, updatedSession);
         }
 
         // Guard: Strip unknown keys (soft-reject) + log for observability
@@ -1143,15 +1159,26 @@ export const requestRevision = mutation({
         sessionId: v.id("paperSessions"),
         userId: v.id("users"),
         feedback: v.string(),
+        trigger: v.optional(v.union(v.literal("panel"), v.literal("model"))),
     },
     handler: async (ctx, args) => {
+        const trigger = args.trigger ?? "panel";
         await requireAuthUserId(ctx, args.userId);
         const session = await ctx.db.get(args.sessionId);
         if (!session) throw new Error("Session not found");
         if (session.userId !== args.userId) throw new Error("Unauthorized");
 
+        // Backend contract: requestRevision only valid when pending_validation
+        if (session.stageStatus !== "pending_validation") {
+            throw new Error(
+                `NOT_PENDING_VALIDATION: requestRevision rejected — stageStatus is "${session.stageStatus}", expected "pending_validation". ` +
+                `Revision can only be requested when stage is awaiting validation.`
+            );
+        }
+
         const now = Date.now();
         const currentStage = session.currentStage;
+        const previousStatus = session.stageStatus;
         if (!STAGE_ORDER.includes(currentStage as PaperStageId)) {
             throw new Error(`Unknown current stage: ${currentStage}`);
         }
@@ -1171,9 +1198,76 @@ export const requestRevision = mutation({
             updatedAt: now,
         });
 
+        // Observability: only emit panel event here. Model event is emitted by tool wrapper
+        // (paper-tools.ts requestRevision tool) to avoid double-counting.
+        if (trigger === "panel") {
+            console.log(`[revision-triggered-by-panel] stage=${currentStage} trigger=${trigger} revisionCount=${currentRevisionCount + 1} previousStatus=${previousStatus}`);
+        }
+
         return {
             stage: currentStage,
             revisionCount: updatedStageData[currentStage].revisionCount,
+            previousStatus,
+            currentStatus: "revision" as const,
+            trigger,
+        };
+    },
+});
+
+/**
+ * Auto-rescue: transition from pending_validation to revision.
+ * Used by route-level artifact tools (updateArtifact, createArtifact).
+ * Trigger is ALWAYS "auto-rescue" — never caller-provided.
+ * SYNC: revision logic also in requestRevision and updateStageData inline auto-rescue.
+ */
+export const autoRescueRevision = mutation({
+    args: {
+        sessionId: v.id("paperSessions"),
+        userId: v.id("users"),
+        source: v.string(), // e.g. "updateStageData", "updateArtifact", "createArtifact"
+    },
+    handler: async (ctx, args) => {
+        await requireAuthUserId(ctx, args.userId);
+        const session = await ctx.db.get(args.sessionId);
+        if (!session) throw new Error("Session not found");
+        if (session.userId !== args.userId) throw new Error("Unauthorized");
+
+        if (session.stageStatus !== "pending_validation") {
+            // Already not pending — no rescue needed
+            return {
+                stage: session.currentStage,
+                rescued: false,
+                currentStatus: session.stageStatus,
+            };
+        }
+
+        const now = Date.now();
+        const currentStage = session.currentStage;
+
+        const updatedStageData = { ...session.stageData } as Record<string, Record<string, unknown>>;
+        const stageData = updatedStageData[currentStage] || { revisionCount: 0 };
+        const prevCount = typeof stageData.revisionCount === 'number' ? stageData.revisionCount : 0;
+        updatedStageData[currentStage] = {
+            ...stageData,
+            revisionCount: prevCount + 1,
+        };
+
+        await ctx.db.patch(args.sessionId, {
+            stageStatus: "revision",
+            stageData: updatedStageData,
+            updatedAt: now,
+        });
+
+        console.log(`[revision-auto-rescued-by-backend] stage=${currentStage} trigger=auto-rescue revisionCount=${prevCount + 1} previousStatus=pending_validation source=${args.source}`);
+
+        return {
+            stage: currentStage,
+            rescued: true,
+            revisionCount: prevCount + 1,
+            previousStatus: "pending_validation",
+            currentStatus: "revision",
+            trigger: "auto-rescue",
+            source: args.source,
         };
     },
 });

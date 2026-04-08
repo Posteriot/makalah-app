@@ -21,7 +21,9 @@ Do not fabricate references — if evidence is needed, request a search.
 ## Function Tools
 Allowed:
 - updateStageData — save stage progress
-- createArtifact — create stage output artifact
+- createArtifact — create stage output artifact (first draft)
+- updateArtifact — create new version of existing artifact (revision)
+- requestRevision — transition from pending_validation to revision when user requests changes via chat
 - submitStageForValidation — submit for user approval (only after explicit user confirmation)
 - compileDaftarPustaka (mode: preview) — cross-stage bibliography audit without persistence
 Disallowed:
@@ -43,6 +45,10 @@ Never fabricate references and never skip user confirmation before submit.
 
 ## Done Criteria
 Stage draft is agreed, artifact is created, and draft is ready for validation.
+
+## Visual Language
+Use the interactive choice card when showing options is clearer than prose.
+Never replace the PaperValidationPanel for approval or stage transitions.
 `
 
 describe("validateStageSkillContent", () => {
@@ -90,7 +96,7 @@ describe("validateStageSkillContent", () => {
 
   it("rejects content missing createArtifact in Function Tools", () => {
     const noCreateArtifact = VALID_GAGASAN_CONTENT.replace(
-      "- createArtifact — create stage output artifact\n",
+      /- createArtifact —[^\n]*\n/,
       ""
     )
     const result = validateStageSkillContent({
@@ -103,6 +109,70 @@ describe("validateStageSkillContent", () => {
 
     expect(result.ok).toBe(false)
     expect(result.issues.some((issue) => issue.code === "missing_create_artifact_in_function_tools")).toBe(true)
+  })
+
+  it("rejects content that disables choice cards for direct-generate stages", () => {
+    const result = validateStageSkillContent({
+      stageScope: "diskusi",
+      skillId: "diskusi-skill",
+      name: "diskusi-skill",
+      description: "Stage instruction for diskusi in Makalah AI paper workflow.",
+      content: `
+## Objective
+Interpret findings with literature.
+
+## Input Context
+Read approved hasil and tinjauan literatur.
+
+## Web Search
+Policy: passive.
+Only search on explicit request.
+
+## Function Tools
+Allowed:
+- updateStageData — save stage progress
+- createArtifact — create stage output artifact (first draft)
+- updateArtifact — create new version (revision)
+- requestRevision — transition to revision on chat request
+- submitStageForValidation — submit for user approval
+- compileDaftarPustaka (mode: preview) — bibliography audit
+Disallowed:
+- emitChoiceCard — this is a direct-generate stage; no choice card decision point needed
+
+## Output Contract
+Required:
+- interpretasiTemuan
+
+## Guardrails
+Do NOT use choice cards for content decisions.
+
+## Done Criteria
+Artifact is ready for validation.
+
+## Visual Language
+Use the interactive choice card when showing options is clearer than prose.
+Never replace the PaperValidationPanel for approval or stage transitions.
+`,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.issues.some((issue) => issue.code === "choice_card_contract_violation")).toBe(true)
+  })
+
+  it("rejects content missing the visual language contract", () => {
+    const result = validateStageSkillContent({
+      stageScope: "topik",
+      skillId: "topik-skill",
+      name: "topik-skill",
+      description: "Stage instruction for topik in Makalah AI paper workflow.",
+      content: VALID_GAGASAN_CONTENT.replace(
+        /\n## Visual Language[\s\S]*$/m,
+        ""
+      ),
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.issues.some((issue) => issue.code === "missing_visual_language_contract")).toBe(true)
   })
 
   it("rejects persist compile instruction on non-daftar_pustaka stage", () => {
@@ -129,6 +199,40 @@ describe("validateStageSkillContent", () => {
 
     expect(result.ok).toBe(false)
     expect(result.issues.some((issue) => issue.code === "output_keys_not_whitelisted")).toBe(true)
+  })
+
+  it("rejects content missing requestRevision in Function Tools", () => {
+    const contentWithoutRequestRevision = VALID_GAGASAN_CONTENT.replace(
+      /- requestRevision —[^\n]*\n/,
+      ""
+    )
+    const result = validateStageSkillContent({
+      stageScope: "gagasan",
+      skillId: "gagasan-skill",
+      name: "gagasan-skill",
+      description: "Stage instruction for gagasan in Makalah AI paper workflow.",
+      content: contentWithoutRequestRevision,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.issues.some((issue) => issue.code === "missing_request_revision_in_function_tools")).toBe(true)
+  })
+
+  it("rejects content missing updateArtifact in Function Tools", () => {
+    const contentWithoutUpdateArtifact = VALID_GAGASAN_CONTENT.replace(
+      /- updateArtifact —[^\n]*\n/,
+      ""
+    )
+    const result = validateStageSkillContent({
+      stageScope: "gagasan",
+      skillId: "gagasan-skill",
+      name: "gagasan-skill",
+      description: "Stage instruction for gagasan in Makalah AI paper workflow.",
+      content: contentWithoutUpdateArtifact,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.issues.some((issue) => issue.code === "missing_update_artifact_in_function_tools")).toBe(true)
   })
 
   it("rejects low-confidence non-English content", () => {

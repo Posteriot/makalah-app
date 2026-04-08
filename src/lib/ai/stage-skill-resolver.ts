@@ -5,11 +5,31 @@ import { validateStageSkillContent } from "./stage-skill-validator";
 
 const ARTIFACT_CREATION_FOOTER = `
 
-═══ MANDATORY ARTIFACT RULE ═══
-⚠️ You MUST call createArtifact() to produce the artifact for this stage's output.
-- Call in the SAME TURN as updateStageData, BEFORE submitStageForValidation.
+═══ MANDATORY ARTIFACT & REVISION RULES ═══
+⚠️ You MUST produce an artifact for this stage's output:
+- FIRST DRAFT: call createArtifact() in the SAME TURN as updateStageData, BEFORE submitStageForValidation.
+- REVISION: call updateArtifact() (NOT createArtifact) in the SAME TURN, THEN call submitStageForValidation().
 - Include the 'sources' parameter from AVAILABLE_WEB_SOURCES if available.
 - The artifact is the FINAL OUTPUT that will be reviewed and approved by the user.
+- After createArtifact OR updateArtifact succeeds → MUST call submitStageForValidation() in the SAME turn.
+
+⚠️ REVISION FROM CHAT (applies when stageStatus is pending_validation):
+Two paths depending on whether revision needs new web search:
+
+PATH A — Revision from existing context (no new search needed):
+  → requestRevision(feedback) → updateArtifact → submitStageForValidation — all in the SAME turn.
+
+PATH B — Revision that requires new web search:
+  → Turn 1: Run web search ONLY. Present findings. Do NOT call any function tools.
+  → Turn 2: IMMEDIATELY call requestRevision(feedback) → updateArtifact → submitStageForValidation. Do NOT wait for user to remind you — continue autonomously.
+
+This does NOT violate "no web search + function tools in same turn" — search and tools happen in separate turns.
+- createArtifact is ONLY for first draft or exceptional fallback when artifact is missing/invalid.
+
+⚠️ POST-TOOL RESPONSE DISCIPLINE:
+- If tool chain succeeds (artifact created/updated + submitted) → respond with 1-2 short sentences confirming success.
+- Do NOT mention internal errors, retries, or technical issues if the final result succeeded.
+- Do NOT repeat artifact content in chat — user reviews it in the artifact panel.
 ═══════════════════════════════`;
 
 type ResolveResult = {

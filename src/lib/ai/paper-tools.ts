@@ -39,6 +39,7 @@ export type PaperToolTracker = {
     sawCompileDaftarPustakaPersist: boolean
     sawSubmitValidationSuccess: boolean
     sawSubmitValidationArtifactMissing: boolean
+    sawRequestRevision: boolean
 }
 
 export const createPaperToolTracker = (): PaperToolTracker => ({
@@ -48,6 +49,7 @@ export const createPaperToolTracker = (): PaperToolTracker => ({
     sawCompileDaftarPustakaPersist: false,
     sawSubmitValidationSuccess: false,
     sawSubmitValidationArtifactMissing: false,
+    sawRequestRevision: false,
 })
 
 /**
@@ -172,6 +174,25 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
             }),
             execute: async ({ data }) => {
                 try {
+                    // Block updateStageData after submit succeeded in this turn.
+                    // Model sometimes retries failed saves after submit, triggering
+                    // auto-rescue in Convex mutation → revision → duplicate artifact cascade.
+                    if (context.toolTracker?.sawSubmitValidationSuccess) {
+                        console.log("[updateStageData] Skipped: submitStageForValidation already succeeded this turn")
+                        return {
+                            success: true,
+                            stage: "skipped",
+                            message: "Stage data not saved — validation already submitted. Data changes should go through revision flow.",
+                            nextAction: "Do not call more drafting tools. The stage is already submitted for validation.",
+                        }
+                    }
+
+                    // Normalize keywords: model sometimes sends comma-separated string
+                    // instead of array, causing Convex schema validation error.
+                    if (data && typeof data.keywords === "string") {
+                        data.keywords = data.keywords.split(/,\s*/).map((k: string) => k.trim()).filter(Boolean)
+                    }
+
                     const session = await retryQuery(
                         () => fetchQuery(api.paperSessions.getByConversation, {
                             conversationId: context.conversationId
@@ -180,15 +201,8 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                     );
                     if (!session) return { success: false, error: "Paper session not found." };
 
-                    if (session.stageStatus === "pending_validation") {
-                        return {
-                            success: false,
-                            errorCode: "STAGE_PENDING_VALIDATION",
-                            retryable: false,
-                            error: "Stage is pending validation. Request revision first if you want to modify the draft.",
-                            nextAction: "Do not call updateStageData now. Direct the user to the validation panel to approve, or ask them to request a revision first.",
-                        };
-                    }
+                    // pending_validation: backend auto-rescue handles state transition.
+                    // No hard-block here — let the Convex mutation auto-transition to revision.
 
                     // Option B Fix: Auto-fetch stage from session.currentStage
                     // This eliminates the possibility of AI specifying wrong stage
@@ -251,15 +265,6 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                     const errorMessage = error instanceof Error
                         ? error.message
                         : "Failed to save stage data progress.";
-                    if (errorMessage.includes("Stage is pending validation")) {
-                        return {
-                            success: false,
-                            errorCode: "STAGE_PENDING_VALIDATION",
-                            retryable: false,
-                            error: errorMessage,
-                            nextAction: "Do not modify the draft. Direct the user to approve in the validation panel or request a revision first.",
-                        };
-                    }
                     return { success: false, error: errorMessage };
                 }
             },
@@ -465,6 +470,71 @@ The tool will:
                         ? error.message
                         : "Failed to submit validation signal.";
                     return { success: false, error: errorMessage };
+                }
+            },
+        }),
+
+        requestRevision: tool({
+            description: "Request revision for the current stage. Call this FIRST when user requests changes via chat while stage is pending_validation. This transitions the stage from pending_validation to revision, allowing subsequent updateArtifact and submitStageForValidation calls.",
+            inputSchema: z.object({
+                feedback: z.string().min(1).describe("Summary of the user's revision intent from their chat message"),
+            }),
+            execute: async ({ feedback }) => {
+                try {
+                    const session = await retryQuery(
+                        () => fetchQuery(api.paperSessions.getByConversation, {
+                            conversationId: context.conversationId
+                        }, convexOptions),
+                        "paperSessions.getByConversation"
+                    );
+                    if (!session) return { success: false, error: "Paper session not found." };
+
+                    if (session.stageStatus === "revision") {
+                        // Already in revision — no-op success so model proceeds to updateArtifact
+                        if (context.toolTracker) context.toolTracker.sawRequestRevision = true
+                        return {
+                            success: true,
+                            alreadyInRevision: true,
+                            message: "Already in revision mode. Proceed directly to updateArtifact with the revised content.",
+                            nextAction: "Call updateArtifact now with the revised content based on user feedback. Then call submitStageForValidation.",
+                        };
+                    }
+                    if (session.stageStatus !== "pending_validation") {
+                        return {
+                            success: false,
+                            errorCode: "NOT_PENDING_VALIDATION",
+                            error: `Stage is "${session.stageStatus}", not "pending_validation". requestRevision only applies when stage is pending validation.`,
+                        };
+                    }
+
+                    const result = await fetchMutation(
+                        api.paperSessions.requestRevision,
+                        {
+                            sessionId: session._id,
+                            userId: context.userId,
+                            feedback,
+                            trigger: "model" as const,
+                        },
+                        convexOptions
+                    );
+
+                    if (context.toolTracker) context.toolTracker.sawRequestRevision = true;
+                    console.log(`[revision-triggered-by-model] stage=${result.stage} revisionCount=${result.revisionCount}`);
+
+                    return {
+                        success: true,
+                        stage: result.stage,
+                        revisionCount: result.revisionCount,
+                        previousStatus: "pending_validation",
+                        currentStatus: "revision",
+                        trigger: "model",
+                        nextAction: "Proceed: updateArtifact → submitStageForValidation (updateStageData only if structured data changed)",
+                    };
+                } catch (error) {
+                    return {
+                        success: false,
+                        error: `requestRevision failed: ${error instanceof Error ? error.message : String(error)}`,
+                    };
                 }
             },
         }),

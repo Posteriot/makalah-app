@@ -48,7 +48,9 @@ Do not fabricate references — if evidence is needed, request a search.
 ## Function Tools
 Allowed:
 - updateStageData — save stage progress
-- createArtifact — create stage output artifact
+- createArtifact — create stage output artifact (first draft)
+- updateArtifact — create new version of existing artifact (revision)
+- requestRevision — transition from pending_validation to revision on chat request
 - submitStageForValidation — submit for user approval (only after explicit user confirmation)
 - compileDaftarPustaka (mode: preview) — cross-stage bibliography audit without persistence
 Disallowed:
@@ -67,6 +69,9 @@ Recommended:
 Never fabricate references.
 ## Done Criteria
 Ready for validation after user confirmation.
+## Visual Language
+Use the interactive choice card when showing options is clearer than prose.
+Never replace the PaperValidationPanel for approval or stage transitions.
 `,
     })
 

@@ -207,6 +207,7 @@ export const getPaperModeSystemPrompt = async (
 
         // Artifact summaries: non-critical — empty string on failure
         let artifactSummariesSection = "";
+        let currentArtifactContext = "";
         if (artifactsResult.status === "fulfilled") {
             try {
                 const allArtifacts = artifactsResult.value;
@@ -237,6 +238,24 @@ export const getPaperModeSystemPrompt = async (
                     }
                 }
                 artifactSummariesSection = formatArtifactSummaries(completedArtifacts);
+
+                // Current artifact context: inject full content during revision/pending_validation.
+                // The artifact summaries loop above skips the current stage (line 224) and requires
+                // validatedAt (line 226), so the artifact being revised is never visible to the model.
+                // This section bypasses both filters to give the model the content it needs to revise.
+                if (status === "revision" || status === "pending_validation") {
+                    const currentStageArtifactId = stageData[stage]?.artifactId;
+                    if (currentStageArtifactId) {
+                        const currentArtifact = artifactMap.get(currentStageArtifactId);
+                        if (currentArtifact) {
+                            currentArtifactContext = `\n📄 CURRENT ARTIFACT — this is the artifact you must revise (artifactId: ${currentStageArtifactId}, version: ${currentArtifact.version}, title: "${currentArtifact.title}"):
+---
+${currentArtifact.content}
+---
+Use updateArtifact with the FULL revised content based on user feedback. Do NOT regenerate from scratch unless explicitly asked.\n`;
+                        }
+                    }
+                }
             } catch (err) {
                 console.error("Error building artifact summaries:", err);
             }
@@ -256,14 +275,41 @@ export const getPaperModeSystemPrompt = async (
             console.error("Error fetching invalidated artifacts:", (invalidatedResult as PromiseRejectedResult).reason);
         }
 
-        // Inline revision context (simple, not over-prescriptive)
+        // Inline revision context
         const revisionNote = status === "revision"
-            ? "\n⚠️ REVISION MODE: User requested changes. Pay attention to their feedback in the latest message. If an artifact already exists for this stage, prefer updateArtifact over createArtifact. After revising, call submitStageForValidation again in the same turn.\n"
+            ? `\n⚠️ REVISION MODE: User requested changes. Pay attention to their feedback in the latest message.
+
+Tool sequence:
+  1. updateStageData — only if structured stage data changed.
+  2. updateArtifact — use this for ALL revisions including full content replacement. Do NOT use createArtifact unless artifact is missing/inaccessible in DB.
+  3. submitStageForValidation — SAME TURN as updateArtifact. Do not stop early.
+
+${stage === "daftar_pustaka" ? "For daftar_pustaka: call compileDaftarPustaka(mode: 'persist') before step 1.\n" : ""}`
             : "";
 
-        // Inline pending validation note
+        // Inline pending validation note with revision intent detection
         const pendingNote = status === "pending_validation"
-            ? "\n⏳ AWAITING VALIDATION: Draft has been submitted. Wait for user to approve/revise before proceeding. Do NOT call updateStageData, createArtifact, updateArtifact, or submitStageForValidation again unless the user explicitly requests revision and the stage is reopened.\n"
+            ? `\n⏳ AWAITING VALIDATION: Draft for ${getStageLabel(stage as PaperStageId)} has been submitted.
+
+IF user asks a question or wants discussion:
+  → Answer normally. Do NOT call any stage tools.
+
+IF user requests revision, correction, edit, regeneration, or sends instructions that clearly mean "change the artifact":
+  → Call requestRevision(feedback: "<user's revision intent>") FIRST.
+  → After status transitions to "revision", proceed:
+    1. updateStageData (only if structured data changed)
+    2. updateArtifact (with revised content — full replacement if needed)
+    3. submitStageForValidation
+  → Complete steps 2-3 in the SAME TURN. Do not stop after updateArtifact.
+
+Do NOT call updateStageData, createArtifact, or updateArtifact while status is still pending_validation. Call requestRevision first.
+
+REVISION INTENT DETECTION:
+Priority: semantic intent — "user wants to change the artifact content".
+Strong signal examples (not exhaustive): "revisi", "edit", "ubah", "ganti", "perbaiki", "resend", "generate ulang", "tulis ulang", "koreksi", "buat ulang", "ulangi", "dari awal", or specific corrections like "paragraf kedua harus...", "tambahkan...", "hapus bagian...".
+These keywords are examples only. The primary criterion is whether the user's semantic intent is to change the artifact content.
+NOT revision intent: questions about content, discussion, status inquiry.
+When uncertain: ask ONLY if the difference between "discuss" vs "revise" is truly material and ambiguous. If user gives concrete change instructions, treat as revision intent without asking. Bias toward action.\n`
             : "";
         // Check if previous turn saved data but skipped artifact creation
         const currentStageData = (session.stageData as Record<string, Record<string, unknown> | undefined>)?.[stage as string];
@@ -283,7 +329,7 @@ export const getPaperModeSystemPrompt = async (
             ? "\n⚠️ SYNC CONTRACT: Stage data is not yet synced. If user asks to sync or continue from state, you MUST explain that the update cannot be finalized until the user requests a revision first.\n"
             : "";
 
-        console.log("[F1-F6-TEST] PaperPrompt", { stage, status, stageInstructionSource, activeSkillId: activeSkillId ?? "fallback", hasArtifactSummaries: !!artifactSummariesSection })
+        console.log("[F1-F6-TEST] PaperPrompt", { stage, status, stageInstructionSource, activeSkillId: activeSkillId ?? "fallback", hasArtifactSummaries: !!artifactSummariesSection, hasCurrentArtifact: !!currentArtifactContext })
         logPaperPromptLatency("paperPrompt.total", paperPromptStart, {
             hasPrompt: true,
             stage,
@@ -293,7 +339,7 @@ export const getPaperModeSystemPrompt = async (
 ---
 [PAPER WRITING MODE]
 Tahap: ${stageLabel} (${stage}) | Status: ${status}
-${revisionNote}${pendingNote}${artifactMissingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}
+${revisionNote}${pendingNote}${currentArtifactContext}${artifactMissingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}
 GENERAL RULES:
 - STAGE MODES:
   - gagasan = discussion hub + proactive dual search (academic + non-academic)
