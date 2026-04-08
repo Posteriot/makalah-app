@@ -1,3 +1,4 @@
+import React from "react"
 import { render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ChatWindow } from "./ChatWindow"
@@ -173,7 +174,7 @@ vi.mock("@sentry/nextjs", () => ({
 }))
 
 vi.mock("react-virtuoso", () => ({
-  Virtuoso: ({ components }: { components?: { Footer?: () => JSX.Element } }) => (
+  Virtuoso: ({ components }: { components?: { Footer?: () => React.ReactNode } }) => (
     <div data-testid="virtuoso-mock">
       {components?.Footer ? <components.Footer /> : null}
     </div>
