@@ -361,6 +361,80 @@ describe("classifyCompletedSessionIntent", () => {
     expect(result!.output.targetStage).toBeNull()
   })
 
+  it("forces clarify for bare compound stage name 'daftar pustaka'", async () => {
+    const { classifyIntent } = await import("./classify")
+    vi.mocked(classifyIntent).mockResolvedValueOnce({
+      output: {
+        intent: "artifact_recall",
+        handling: "server_owned_artifact_recall",
+        targetStage: "daftar_pustaka",
+        needsClarification: false,
+        confidence: 0.85,
+        reason: "Stage name detected",
+      },
+      metadata: { classifierVersion: "1.0.0" },
+    })
+
+    const result = await classifyCompletedSessionIntent({
+      lastUserContent: "daftar pustaka",
+      model: mockModel,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.output.handling).toBe("clarify")
+    expect(result!.output.needsClarification).toBe(true)
+    expect(result!.output.targetStage).toBeNull()
+  })
+
+  it("forces clarify for bare compound stage name 'tinjauan literatur'", async () => {
+    const { classifyIntent } = await import("./classify")
+    vi.mocked(classifyIntent).mockResolvedValueOnce({
+      output: {
+        intent: "artifact_recall",
+        handling: "server_owned_artifact_recall",
+        targetStage: "tinjauan_literatur",
+        needsClarification: false,
+        confidence: 0.85,
+        reason: "Stage name detected",
+      },
+      metadata: { classifierVersion: "1.0.0" },
+    })
+
+    const result = await classifyCompletedSessionIntent({
+      lastUserContent: "tinjauan literatur",
+      model: mockModel,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.output.handling).toBe("clarify")
+    expect(result!.output.needsClarification).toBe(true)
+    expect(result!.output.targetStage).toBeNull()
+  })
+
+  it("does NOT force clarify for compound stage name with display verb", async () => {
+    const { classifyIntent } = await import("./classify")
+    vi.mocked(classifyIntent).mockResolvedValueOnce({
+      output: {
+        intent: "artifact_recall",
+        handling: "server_owned_artifact_recall",
+        targetStage: "daftar_pustaka",
+        needsClarification: false,
+        confidence: 0.95,
+        reason: "Display verb + compound stage",
+      },
+      metadata: { classifierVersion: "1.0.0" },
+    })
+
+    const result = await classifyCompletedSessionIntent({
+      lastUserContent: "lihat daftar pustaka",
+      model: mockModel,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.output.handling).toBe("server_owned_artifact_recall")
+    expect(result!.output.targetStage).toBe("daftar_pustaka")
+  })
+
   it("does NOT force clarify for stage name with display verb", async () => {
     const { classifyIntent } = await import("./classify")
     vi.mocked(classifyIntent).mockResolvedValueOnce({

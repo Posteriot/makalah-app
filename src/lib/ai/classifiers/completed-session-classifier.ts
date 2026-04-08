@@ -41,6 +41,29 @@ Valid paper stage IDs (use exactly these values for targetStage):
 ${validStageIds.map((id) => `- "${id}"`).join("\n")}`
 }
 
+// Natural-language forms of compound stage names → stage ID mapping
+const COMPOUND_STAGE_LABELS: Array<[string, string]> = [
+  ["tinjauan literatur", "tinjauan_literatur"],
+  ["pembaruan abstrak", "pembaruan_abstrak"],
+  ["daftar pustaka", "daftar_pustaka"],
+]
+
+/**
+ * Check if input is ONLY a bare stage label (single-word or compound)
+ * without any display verb or other context.
+ */
+function matchesBareStageLabel(input: string, validStageIds: readonly string[]): boolean {
+  // Single-word: exact match against stage IDs
+  if (validStageIds.includes(input)) return true
+
+  // Compound: check natural-language forms
+  for (const [label] of COMPOUND_STAGE_LABELS) {
+    if (input === label) return true
+  }
+
+  return false
+}
+
 /**
  * Classify user intent in a completed paper session using semantic classification.
  *
@@ -105,18 +128,17 @@ export async function classifyCompletedSessionIntent(options: {
     result.output.needsClarification = true
   }
 
-  // Guard 3: bare stage name without display verb → force clarify
-  // Prevents classifier from assuming artifact recall on ambiguous single-word inputs
-  const trimmedInput = options.lastUserContent.trim().toLowerCase()
-  const isBareInput = !trimmedInput.includes(" ")
-  if (
-    isBareInput &&
-    result.output.handling === "server_owned_artifact_recall" &&
-    validStageIds.includes(trimmedInput)
-  ) {
-    result.output.handling = "clarify"
-    result.output.needsClarification = true
-    result.output.targetStage = null
+  // Guard 3: bare stage label without display verb → force clarify
+  // Covers both single-word ("judul") and compound natural-language ("daftar pustaka") stage labels.
+  // Maps natural-language forms to stage IDs, then checks if the ENTIRE input is just a stage label.
+  if (result.output.handling === "server_owned_artifact_recall") {
+    const trimmedInput = options.lastUserContent.trim().toLowerCase()
+    const isBareStageLabel = matchesBareStageLabel(trimmedInput, validStageIds)
+    if (isBareStageLabel) {
+      result.output.handling = "clarify"
+      result.output.needsClarification = true
+      result.output.targetStage = null
+    }
   }
 
   return result
