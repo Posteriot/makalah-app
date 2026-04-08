@@ -766,10 +766,12 @@ ${sourcesJson}`
         } catch (exactSourcesError) {
             console.error("[route] Failed to fetch exact source summaries:", exactSourcesError)
         }
-        const exactSourceResolution = resolveExactSourceFollowup({
+        const classifierModel = await (await import("@/lib/ai/streaming")).getGatewayModel()
+        const exactSourceResolution = await resolveExactSourceFollowup({
             lastUserMessage: normalizedLastUserContent,
             recentMessages: recentConversationMessagesForExactSource,
             availableExactSources,
+            model: classifierModel,
         })
         const shouldIncludeRawSourcesContext =
             shouldIncludeRawSourcesContextForExactFollowup(exactSourceResolution)
