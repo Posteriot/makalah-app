@@ -54,7 +54,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### AI TOOLS & SKILLS ARCHITECTURE PRINCIPLE
 - **Tools must be simple executors.** Do not add filtering, scoring, or quality judgment to tool pipelines. Tools retrieve data — that's it.
-- **Skills (SKILL.md) provide intelligence.** Quality judgment, blocklists, evaluation criteria, and response composition rules belong in natural language skill instructions, not in code. Ref: `.worktrees/search-tool-skills-v2/.references/skills/resources.anthropic.com.md`
+- **Skills (SKILL.md) provide intelligence.** Quality judgment, blocklists, evaluation criteria, and response composition rules belong in natural language skill instructions, not in code. Ref: `references/skills/resources.anthropic.com.md`
 - **Minimize code between tool output and LLM input.** Every intermediate processing step (scoring, enrichment, dedup, filtering) is a potential data loss point. Normalize formats only — pass everything else to the LLM.
-- **LLMs reason better than hardcoded pipelines.** Anthropic's Programmatic Tool Calling research (BrowseComp, DeepSearchQA benchmarks) proves: "adding programmatic tool calling on top of basic search tools was the key factor that fully unlocked agent performance." Let LLMs reason over raw data with skill guidance, not through rigid step-by-step pipelines. Ref: `.worktrees/search-tool-skills-v2/.references/programatic-tools-calling/programmatic-tool-calling.md`
-- **Evidence from this project:** A 6-step pipeline (normalize → score → enrich → filter → dedup → compose) lost 50% of sources. Simplifying to 2-step (normalize → compose with SKILL.md) preserved 100% and produced better output.
+- **LLMs reason better than hardcoded pipelines.** Anthropic's Programmatic Tool Calling research (BrowseComp, DeepSearchQA benchmarks) proves: "adding programmatic tool calling on top of basic search tools was the key factor that fully unlocked agent performance." Let LLMs reason over raw data with skill guidance, not through rigid step-by-step pipelines. Ref: `.references/programatic-tools-calling/programmatic-tool-calling.md`
+
+### REGEX & PATTERN MATCHING POLICY
+- **Anti-regex for language understanding.** Do not use regex to parse, classify, or interpret natural language input. LLMs handle language — regex does not.
+- **Pro-deterministic parser for technical formats.** Use deterministic parsers (JSON.parse, structured schemas, AST parsers) for well-defined technical formats.
+- **State workflow must be driven by semantic JSON + runtime guards, not keywords.** Workflow state transitions must be determined by structured data and explicit runtime validation, never by keyword matching or regex pattern detection.

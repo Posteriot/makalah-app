@@ -17,7 +17,7 @@ Artinya:
 
 Tujuan cleanup ini bukan menghapus semua regex, tetapi:
 
-1. menghapus regex heuristic yang membuat chat terlihat sempit, kaku, dan kurang cerdas
+1. menghapus regex heuristic yang membuat chat terlihat sempit, kaku, dan tidak cerdas
 2. menjaga parser teknis yang stabil tetap deterministik
 3. mencegah model dipaksa mengikuti shortcut berbasis kata kunci saat sebenarnya model mampu memahami intent secara semantik
 4. memisahkan dengan jelas decision layer vs parser layer

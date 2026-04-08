@@ -2,7 +2,7 @@
 
 ## Tujuan
 
-Dokumen ini merangkum seluruh penggunaan regex yang relevan untuk area chat + paper session di worktree `validation-panel-artifact-consistency`.
+Dokumen ini merangkum seluruh penggunaan regex yang relevan untuk area chat + paper session
 
 Scope:
 
