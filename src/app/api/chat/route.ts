@@ -2213,12 +2213,21 @@ Aturan:
         // Does NOT detect intent (no regex). Model decides freely at step 0.
         // After model commits to revision (calls requestRevision), harness
         // enforces the full chain: updateArtifact → submitStageForValidation.
-        const revisionChainEnforcer = paperSession?.stageStatus === "pending_validation"
+        const isRevisionActive = paperSession?.stageStatus === "pending_validation" || paperSession?.stageStatus === "revision"
+        const revisionChainEnforcer = isRevisionActive
             ? ({ steps, stepNumber }: {
                 steps: Array<{ toolCalls?: Array<{ toolName: string }> }>;
                 stepNumber: number;
               }) => {
-                if (stepNumber === 0) return undefined
+                // During revision status: force tool call at step 0 (model must act, not discuss)
+                // During pending_validation: step 0 free (model decides whether to revise or discuss)
+                if (stepNumber === 0) {
+                    if (paperSession?.stageStatus === "revision") {
+                        console.info(`[REVISION][chain-enforcer] step=0 status=revision → required`)
+                        return { toolChoice: "required" as const }
+                    }
+                    return undefined
+                }
 
                 const prevToolNames = steps[stepNumber - 1]?.toolCalls?.map(tc => tc.toolName) ?? []
 
@@ -2763,6 +2772,7 @@ Aturan:
                 !shouldForceGetCurrentPaperState &&
                 !shouldForceSubmitValidation &&
                 paperSession?.stageStatus !== "pending_validation" &&
+                paperSession?.stageStatus !== "revision" &&
                 availableExactSources.length > 0
             const primaryExactSourceRoutePlan = shouldApplyDeterministicExactSourceRouting
                 ? buildDeterministicExactSourcePrepareStep({
@@ -3605,6 +3615,7 @@ Aturan:
                     !shouldForceGetCurrentPaperState &&
                     !shouldForceSubmitValidation &&
                     paperSession?.stageStatus !== "pending_validation" &&
+                    paperSession?.stageStatus !== "revision" &&
                     availableExactSources.length > 0
                 const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
                 const fallbackBaseMessages = missingArtifactNote
