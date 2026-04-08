@@ -1,8 +1,15 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
   resolveExactSourceFollowup,
   type ExactSourceSummary,
 } from "./exact-source-followup"
+
+// Mock the classifier
+vi.mock("./classifiers/exact-source-classifier", () => ({
+  classifyExactSourceIntent: vi.fn(),
+}))
+
+const mockModel = { modelId: "test-model" } as import("ai").LanguageModel
 
 const availableExactSources: ExactSourceSummary[] = [
   {
@@ -34,39 +41,79 @@ const availableExactSources: ExactSourceSummary[] = [
   },
 ]
 
+async function mockClassifier(output: Record<string, unknown>) {
+  const mod = await import("./classifiers/exact-source-classifier")
+  vi.mocked(mod.classifyExactSourceIntent).mockResolvedValueOnce({
+    output: output as Awaited<ReturnType<typeof mod.classifyExactSourceIntent>> extends { output: infer O } | null ? O : never,
+    metadata: { classifierVersion: "1.0.0" },
+  } as Awaited<ReturnType<typeof mod.classifyExactSourceIntent>>)
+}
+
+async function mockClassifierNull() {
+  const mod = await import("./classifiers/exact-source-classifier")
+  vi.mocked(mod.classifyExactSourceIntent).mockResolvedValueOnce(null)
+}
+
 describe("resolveExactSourceFollowup", () => {
-  it("returns force-inspect when exact title mention matches one source uniquely", () => {
-    const result = resolveExactSourceFollowup({
+  it("returns force-inspect when classifier detects exact_detail and title matches one source", async () => {
+    await mockClassifier({
+      mode: "force_inspect",
+      sourceIntent: "exact_detail",
+      mentionedSourceHint: "Ketergantungan Pelajar",
+      needsClarification: false,
+      confidence: 0.9,
+      reason: "User asks for author of specific article",
+    })
+
+    const result = await resolveExactSourceFollowup({
       lastUserMessage: "Siapa penulis artikel Ketergantungan Pelajar dan Mahasiswa terhadap ChatGPT?",
       recentMessages: [],
       availableExactSources,
+      model: mockModel,
     })
 
     expect(result.mode).toBe("force-inspect")
-    if (result.mode !== "force-inspect") {
-      throw new Error(`expected force-inspect, got ${result.mode}`)
+    if (result.mode === "force-inspect") {
+      expect(result.matchedSource.sourceId).toBe("source-berita-magelang")
     }
-    expect(result.matchedSource.sourceId).toBe("source-berita-magelang")
   })
 
-  it("returns force-inspect when site/domain mention matches one source uniquely", () => {
-    const result = resolveExactSourceFollowup({
+  it("returns force-inspect when classifier detects exact_detail with domain hint", async () => {
+    await mockClassifier({
+      mode: "force_inspect",
+      sourceIntent: "exact_detail",
+      mentionedSourceHint: "detikEdu",
+      needsClarification: false,
+      confidence: 0.85,
+      reason: "User asks about detikEdu article",
+    })
+
+    const result = await resolveExactSourceFollowup({
       lastUserMessage: "Apa judul lengkap artikel dari detikEdu itu?",
       recentMessages: [],
       availableExactSources: availableExactSources.filter(
         (source) => source.sourceId !== "source-berita-magelang-2"
       ),
+      model: mockModel,
     })
 
     expect(result.mode).toBe("force-inspect")
-    if (result.mode !== "force-inspect") {
-      throw new Error(`expected force-inspect, got ${result.mode}`)
+    if (result.mode === "force-inspect") {
+      expect(result.matchedSource.sourceId).toBe("source-detik")
     }
-    expect(result.matchedSource.sourceId).toBe("source-detik")
   })
 
-  it("uses prior exact-source context for short continuation prompts", () => {
-    const result = resolveExactSourceFollowup({
+  it("resolves from recent context for continuation intent", async () => {
+    await mockClassifier({
+      mode: "force_inspect",
+      sourceIntent: "continuation",
+      mentionedSourceHint: null,
+      needsClarification: false,
+      confidence: 0.8,
+      reason: "Short continuation follow-up",
+    })
+
+    const result = await resolveExactSourceFollowup({
       lastUserMessage: "lengkapnya?",
       recentMessages: [
         {
@@ -79,76 +126,132 @@ describe("resolveExactSourceFollowup", () => {
         },
       ],
       availableExactSources,
+      model: mockModel,
     })
 
     expect(result.mode).toBe("force-inspect")
-    if (result.mode !== "force-inspect") {
-      throw new Error(`expected force-inspect, got ${result.mode}`)
+    if (result.mode === "force-inspect") {
+      expect(result.matchedSource.sourceId).toBe("source-berita-magelang")
     }
-    expect(result.matchedSource.sourceId).toBe("source-berita-magelang")
   })
 
-  it("uses prior exact-source context for natural continuation phrasing", () => {
-    const result = resolveExactSourceFollowup({
-      lastUserMessage: "Itu tidak lengkap. Lengkapnya?",
-      recentMessages: [
-        {
-          role: "user",
-          content: "Apa judul artikel Ketergantungan Pelajar dan Mahasiswa terhadap ChatGPT?",
-        },
-        {
-          role: "assistant",
-          content: "Judulnya belum lengkap.",
-        },
-      ],
-      availableExactSources,
+  it("returns clarify when exact_detail intent but multiple sources match", async () => {
+    await mockClassifier({
+      mode: "clarify",
+      sourceIntent: "exact_detail",
+      mentionedSourceHint: "Berita Magelang",
+      needsClarification: true,
+      confidence: 0.85,
+      reason: "Multiple Berita Magelang sources",
     })
 
-    expect(result.mode).toBe("force-inspect")
-    if (result.mode !== "force-inspect") {
-      throw new Error(`expected force-inspect, got ${result.mode}`)
-    }
-    expect(result.matchedSource.sourceId).toBe("source-berita-magelang")
-  })
-
-  it("returns clarify when exact intent is present but source match is ambiguous", () => {
-    const result = resolveExactSourceFollowup({
+    const result = await resolveExactSourceFollowup({
       lastUserMessage: "Apa judul lengkap artikel Berita Magelang itu?",
       recentMessages: [],
       availableExactSources,
+      model: mockModel,
     })
 
     expect(result.mode).toBe("clarify")
-    if (result.mode !== "clarify") {
-      throw new Error(`expected clarify, got ${result.mode}`)
-    }
   })
 
-  it("returns clarify when requested title does not match any verified exact source", () => {
-    const result = resolveExactSourceFollowup({
-      lastUserMessage:
-        'Sebutkan verbatim paragraf kedua dari artikel: "ChatGPT sebagai Asisten Belajar Siswa SD: Peluang, Tantangan, dan Dampaknya terhadap Literasi Digital"',
+  it("returns clarify when exact_detail intent but no source matches", async () => {
+    await mockClassifier({
+      mode: "force_inspect",
+      sourceIntent: "exact_detail",
+      mentionedSourceHint: "ChatGPT sebagai Asisten Belajar",
+      needsClarification: false,
+      confidence: 0.85,
+      reason: "Specific article requested",
+    })
+
+    const result = await resolveExactSourceFollowup({
+      lastUserMessage: 'Sebutkan verbatim paragraf kedua dari artikel: "ChatGPT sebagai Asisten Belajar Siswa SD"',
       recentMessages: [],
       availableExactSources,
+      model: mockModel,
     })
 
     expect(result.mode).toBe("clarify")
-    if (result.mode !== "clarify") {
-      throw new Error(`expected clarify, got ${result.mode}`)
+    if (result.mode === "clarify") {
+      expect(result.reason).toBe("exact-intent-without-unique-source")
     }
-    expect(result.reason).toBe("exact-intent-without-unique-source")
   })
 
-  it("returns none for non exact follow-up prompts", () => {
-    const result = resolveExactSourceFollowup({
+  it("returns none for summary intent", async () => {
+    await mockClassifier({
+      mode: "none",
+      sourceIntent: "summary",
+      mentionedSourceHint: null,
+      needsClarification: false,
+      confidence: 0.9,
+      reason: "User wants summary, not exact details",
+    })
+
+    const result = await resolveExactSourceFollowup({
       lastUserMessage: "Coba ringkas isi sumber tadi.",
       recentMessages: [],
       availableExactSources,
+      model: mockModel,
     })
 
-    expect(result).toEqual({
+    expect(result.mode).toBe("none")
+  })
+
+  it("returns none when classifier returns no source intent", async () => {
+    await mockClassifier({
       mode: "none",
-      reason: "not-an-exact-source-request",
+      sourceIntent: "none",
+      mentionedSourceHint: null,
+      needsClarification: false,
+      confidence: 0.95,
+      reason: "Not a source-related request",
     })
+
+    const result = await resolveExactSourceFollowup({
+      lastUserMessage: "Apa itu metode kualitatif?",
+      recentMessages: [],
+      availableExactSources,
+      model: mockModel,
+    })
+
+    expect(result.mode).toBe("none")
+  })
+
+  it("returns none when classifier fails", async () => {
+    await mockClassifierNull()
+
+    const result = await resolveExactSourceFollowup({
+      lastUserMessage: "Siapa penulisnya?",
+      recentMessages: [],
+      availableExactSources,
+      model: mockModel,
+    })
+
+    expect(result.mode).toBe("none")
+    expect(result.reason).toBe("classifier-error")
+  })
+
+  it("returns none when no model provided", async () => {
+    const result = await resolveExactSourceFollowup({
+      lastUserMessage: "Siapa penulisnya?",
+      recentMessages: [],
+      availableExactSources,
+    })
+
+    expect(result.mode).toBe("none")
+    expect(result.reason).toBe("no-model-available")
+  })
+
+  it("returns none for empty message", async () => {
+    const result = await resolveExactSourceFollowup({
+      lastUserMessage: "",
+      recentMessages: [],
+      availableExactSources,
+      model: mockModel,
+    })
+
+    expect(result.mode).toBe("none")
+    expect(result.reason).toBe("empty-user-message")
   })
 })
