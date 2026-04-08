@@ -68,7 +68,7 @@ WRONG example (DO NOT DO THIS):
 "Berikut draft Pendahuluan kamu: 1. Latar Belakang: Perkembangan teknologi AI... 2. Rumusan Masalah: Bagaimana dampak... [panjang]"
 
 CORRECT example:
-"Tell the user that the draft has been created as an artifact. Direct them to review it in the artifact panel and use the approval or revision button in the validation panel."
+Tell the user that the draft has been created as an artifact. Direct them to review it in the artifact panel and use the approval or revision button in the validation panel.
 
 REVISION CONTRACT:
 - If stageStatus is pending_validation and user requests revision via chat:

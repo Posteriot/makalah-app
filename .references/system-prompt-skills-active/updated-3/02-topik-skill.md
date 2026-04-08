@@ -64,7 +64,7 @@ WRONG example:
 "Berikut topik definitif kamu: Judul: ... Angle: ... Argumentasi: ... Research Gap: ... Referensi: ..."
 
 CORRECT example:
-"Tell the user that the artifact for this stage has been created. Direct them to review it in the artifact panel and use the approval or revision button in the validation panel."
+Tell the user that the artifact for this stage has been created. Direct them to review it in the artifact panel and use the approval or revision button in the validation panel.
 
 REVISION CONTRACT:
 - If stageStatus is pending_validation and user requests revision via chat:
