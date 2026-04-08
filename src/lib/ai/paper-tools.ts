@@ -174,6 +174,25 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
             }),
             execute: async ({ data }) => {
                 try {
+                    // Block updateStageData after submit succeeded in this turn.
+                    // Model sometimes retries failed saves after submit, triggering
+                    // auto-rescue in Convex mutation → revision → duplicate artifact cascade.
+                    if (context.toolTracker?.sawSubmitValidationSuccess) {
+                        console.log("[updateStageData] Skipped: submitStageForValidation already succeeded this turn")
+                        return {
+                            success: true,
+                            stage: "skipped",
+                            message: "Stage data not saved — validation already submitted. Data changes should go through revision flow.",
+                            nextAction: "Do not call more drafting tools. The stage is already submitted for validation.",
+                        }
+                    }
+
+                    // Normalize keywords: model sometimes sends comma-separated string
+                    // instead of array, causing Convex schema validation error.
+                    if (data && typeof data.keywords === "string") {
+                        data.keywords = data.keywords.split(/,\s*/).map((k: string) => k.trim()).filter(Boolean)
+                    }
+
                     const session = await retryQuery(
                         () => fetchQuery(api.paperSessions.getByConversation, {
                             conversationId: context.conversationId
