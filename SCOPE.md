@@ -146,6 +146,11 @@ Create a unified semantic classifier that covers P1 + P2 concerns:
 - Review citation parsing in `paperSessions.ts`
 - Optimize if needed, do not replace with model intelligence
 
+## Agent Role Assignment
+
+- **Claude Code:** Brainstormer, planner, task creator, and executor for all implementation work on this branch.
+- **Codex (OpenAI):** Audit and code review. All review/audit tasks are delegated to Codex, not performed by Claude Code.
+
 ## Guardrails
 
 1. Never replace regex heuristic with free-form prompt without schema — use JSON/enum output

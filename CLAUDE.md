@@ -70,3 +70,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Objective:** Replace regex-based natural language heuristics in chat + paper session runtime with structured semantic classifiers. Preserve all deterministic parser/sanitizer regex.
 - **Key files in scope:** `completed-session.ts`, `route.ts` (P1), `exact-source-followup.ts`, `reference-presentation.ts`, `internal-thought-separator.ts` (P2), `paper-intent-detector.ts`, `curated-trace.ts` (P3).
 - **Files explicitly out of scope:** `MarkdownRenderer.tsx`, `ChatWindow.tsx`, `ChatContainer.tsx`, `daftarPustakaCompiler.ts`, `stageDataWhitelist.ts` — these contain deterministic parsers that must be preserved.
+
+### AGENT ROLE ASSIGNMENT
+- **Claude Code (this agent):** Brainstormer, planner, task creator, and executor for all implementation work on this branch.
+- **Codex (OpenAI):** Audit and code review. Claude Code must not self-review — all review and audit tasks are delegated to Codex.
