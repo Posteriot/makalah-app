@@ -60,6 +60,7 @@ After createArtifact, your chat response is FORBIDDEN from containing:
 - Paragraphs of draft content
 - Bullet lists of analysis, findings, or references
 - Any content that duplicates what is inside the artifact
+- False handoff phrases that promise inline content (e.g., phrases equivalent to "here is the draft", "below is the abstract") — the draft lives in the artifact, not in chat
 
 Your chat response MUST be limited to:
 - One sentence confirming the artifact was created and naming it
