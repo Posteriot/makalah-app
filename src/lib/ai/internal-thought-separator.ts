@@ -18,6 +18,12 @@ export interface UserFacingSearchPayload {
   }
 }
 
+/**
+ * These patterns are retained as non-destructive fallback during transition
+ * to instruction-based prevention (COMPOSE_PHASE_DIRECTIVE in orchestrator.ts).
+ * Monitor regex match frequency via observability logging below.
+ * Remove when match rate drops below threshold.
+ */
 const INTERNAL_THOUGHT_PATTERNS: RegExp[] = [
   /\b(bentar|sebentar|tunggu|mohon\s+tunggu)\b/i,
   /\b(aku|saya|gue)\s+(akan|mau|ingin|coba)?\s*(cari|mencari|search|cek)\b/i,
@@ -29,7 +35,13 @@ const INTERNAL_THOUGHT_PATTERNS: RegExp[] = [
 
 function looksLikeInternalThought(segment: string): boolean {
   if (!segment.trim()) return false
-  return INTERNAL_THOUGHT_PATTERNS.some((pattern) => pattern.test(segment))
+  const matched = INTERNAL_THOUGHT_PATTERNS.some((pattern) => pattern.test(segment))
+  if (matched) {
+    console.info(
+      `[internal-thought-separator] regex fallback matched: "${segment.slice(0, 60)}"`,
+    )
+  }
+  return matched
 }
 
 function stripEmptyReferenceLines(input: string): string {
