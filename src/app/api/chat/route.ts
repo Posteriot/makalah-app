@@ -3132,7 +3132,7 @@ Aturan:
                         // can happen at any stage where tool retry/fallback occurs.
                         if (paperStageScope && normalizedText.length > 0) {
                             const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
-                            const hasLeakage = /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki|mohon tunggu|coba lagi|ada kendala/i.test(normalizedText)
+                            const hasLeakage = /kesalahan teknis|kendala teknis|masalah teknis|maafkan aku|saya akan coba|memperbaiki|perbaiki|mohon tunggu|coba lagi|ada kendala|akan mencoba/i.test(normalizedText)
 
                             if (hasArtifactSuccess && hasLeakage) {
                                 if (paperToolTracker.sawSubmitValidationSuccess) {
@@ -3434,6 +3434,9 @@ Aturan:
                     execute: async ({ writer }) => {
                         let started = false
                         let sourceCount = 0
+                        // Accumulate ALL streamed text deltas for outcome-gated guard.
+                        // onFinish text only has final step — this captures full stream.
+                        let accumulatedStreamText = ""
 
                         const ensureStart = () => {
                             if (started) return
@@ -3549,9 +3552,25 @@ Aturan:
                                     console.info(`[F1-F6-TEST] ChoiceCardSpec { elements: "${elementTypes}", hasSubmitButton: ${hasSubmitBtn} }`)
                                 }
 
-                                // Outcome-gated stream override: if onFinish detected recovery leakage
-                                // and replaced persistedContent, also override the streamed text so
-                                // the UI shows clean content instead of leaked recovery prose.
+                                // Outcome-gated stream override: check FULL accumulated stream text
+                                // (not just onFinish text which only has final step) for recovery
+                                // leakage. If artifact succeeded and leakage found, override stream.
+                                if (!streamContentOverride && accumulatedStreamText.length > 0) {
+                                    const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
+                                    const fullStreamLeakage = /kesalahan teknis|kendala teknis|masalah teknis|maafkan aku|saya akan coba|memperbaiki|perbaiki|mohon tunggu|coba lagi|ada kendala|akan mencoba/i.test(accumulatedStreamText)
+                                    if (hasArtifactSuccess && fullStreamLeakage) {
+                                        const cleanMsg = paperToolTracker.sawSubmitValidationSuccess
+                                            ? "Artefak sudah diperbarui. Silakan review di panel validasi."
+                                            : "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
+                                        streamContentOverride = cleanMsg
+                                        console.info(
+                                            `[PAPER][outcome-gated-stream] stage=${paperStageScope} ` +
+                                            `full-stream leakage detected (onFinish missed it). ` +
+                                            `accumulatedLen=${accumulatedStreamText.length}`
+                                        )
+                                    }
+                                }
+
                                 if (streamContentOverride) {
                                     const overrideId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-override`
                                     writer.write({
@@ -3598,6 +3617,11 @@ Aturan:
                                 emitDurationPart()
                                 writer.write(chunk)
                                 break
+                            }
+
+                            // Accumulate text deltas for outcome-gated full-stream guard
+                            if (chunk.type === "text-delta" && typeof (chunk as { delta?: unknown }).delta === "string") {
+                                accumulatedStreamText += (chunk as { delta: string }).delta
                             }
 
                             ensureStart()
@@ -4083,6 +4107,7 @@ Aturan:
                     execute: async ({ writer }) => {
                         let started = false
                         let sourceCount = 0
+                        let accumulatedStreamText = ""
 
                         const ensureStart = () => {
                             if (started) return
@@ -4193,6 +4218,18 @@ Aturan:
                                     console.info(`[CHOICE-CARD][yaml-capture] fallback stage=${paperStageScope} specKeys=${Object.keys(fallbackCapturedChoiceSpec).join(",")}`)
                                 }
 
+                                // Full-stream leakage guard (fallback path)
+                                if (!fallbackStreamContentOverride && accumulatedStreamText.length > 0) {
+                                    const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
+                                    const fullStreamLeakage = /kesalahan teknis|kendala teknis|masalah teknis|maafkan aku|saya akan coba|memperbaiki|perbaiki|mohon tunggu|coba lagi|ada kendala|akan mencoba/i.test(accumulatedStreamText)
+                                    if (hasArtifactSuccess && fullStreamLeakage) {
+                                        fallbackStreamContentOverride = paperToolTracker.sawSubmitValidationSuccess
+                                            ? "Artefak sudah diperbarui. Silakan review di panel validasi."
+                                            : "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
+                                        console.info(`[PAPER][outcome-gated-stream][fallback] stage=${paperStageScope} full-stream leakage detected`)
+                                    }
+                                }
+
                                 // Outcome-gated stream override (fallback path)
                                 if (fallbackStreamContentOverride) {
                                     const overrideId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-override`
@@ -4240,6 +4277,10 @@ Aturan:
                                 emitDurationPart()
                                 writer.write(chunk)
                                 break
+                            }
+
+                            if (chunk.type === "text-delta" && typeof (chunk as { delta?: unknown }).delta === "string") {
+                                accumulatedStreamText += (chunk as { delta: string }).delta
                             }
 
                             ensureStart()
