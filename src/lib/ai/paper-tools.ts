@@ -489,6 +489,16 @@ The tool will:
                     );
                     if (!session) return { success: false, error: "Paper session not found." };
 
+                    if (session.stageStatus === "revision") {
+                        // Already in revision — no-op success so model proceeds to updateArtifact
+                        if (context.toolTracker) context.toolTracker.sawRequestRevision = true
+                        return {
+                            success: true,
+                            alreadyInRevision: true,
+                            message: "Already in revision mode. Proceed directly to updateArtifact with the revised content.",
+                            nextAction: "Call updateArtifact now with the revised content based on user feedback. Then call submitStageForValidation.",
+                        };
+                    }
                     if (session.stageStatus !== "pending_validation") {
                         return {
                             success: false,
