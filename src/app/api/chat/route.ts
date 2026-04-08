@@ -3124,19 +3124,20 @@ Aturan:
                         }
 
                         // Outcome-gated persisted content: replace noisy model text with clean system message
-                        // for review/finalization workflow stages where tools succeeded
+                        // when artifact lifecycle succeeded but model prose leaked recovery/error narration.
+                        // Applies to ALL stages — not just review stages — because recovery leakage
+                        // can happen at any stage where tool retry/fallback occurs.
                         if (paperStageScope && normalizedText.length > 0) {
-                            const isReviewStage = ["hasil", "diskusi", "kesimpulan", "pembaruan_abstrak", "daftar_pustaka", "lampiran", "judul"].includes(paperStageScope)
                             const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
                             const hasLeakage = /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki|mohon tunggu|coba lagi|ada kendala/i.test(normalizedText)
 
-                            if (isReviewStage && hasArtifactSuccess && hasLeakage) {
+                            if (hasArtifactSuccess && hasLeakage) {
                                 if (paperToolTracker.sawSubmitValidationSuccess) {
                                     persistedContent = "Artefak sudah diperbarui. Silakan review di panel validasi."
-                                    console.info("[PAPER][outcome-gated] replaced noisy persisted text with clean success_with_validation message")
+                                    console.info(`[PAPER][outcome-gated] stage=${paperStageScope} replaced noisy persisted text with clean success_with_validation message`)
                                 } else {
                                     persistedContent = "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
-                                    console.info("[PAPER][outcome-gated] replaced noisy persisted text with clean success_without_validation message")
+                                    console.info(`[PAPER][outcome-gated] stage=${paperStageScope} replaced noisy persisted text with clean success_without_validation message`)
                                 }
                             }
                         }
@@ -3955,18 +3956,18 @@ Aturan:
                         }
 
                         // Outcome-gated persisted content (fallback path)
+                        // Same all-stage guard as primary path
                         if (paperStageScope && normalizedText.length > 0) {
-                            const isReviewStage = ["hasil", "diskusi", "kesimpulan", "pembaruan_abstrak", "daftar_pustaka", "lampiran", "judul"].includes(paperStageScope)
                             const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
                             const hasLeakage = /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki|mohon tunggu|coba lagi|ada kendala/i.test(normalizedText)
 
-                            if (isReviewStage && hasArtifactSuccess && hasLeakage) {
+                            if (hasArtifactSuccess && hasLeakage) {
                                 if (paperToolTracker.sawSubmitValidationSuccess) {
                                     persistedContent = "Artefak sudah diperbarui. Silakan review di panel validasi."
-                                    console.info("[PAPER][outcome-gated][fallback] replaced noisy persisted text with clean success_with_validation message")
+                                    console.info(`[PAPER][outcome-gated][fallback] stage=${paperStageScope} replaced noisy persisted text with clean success_with_validation message`)
                                 } else {
                                     persistedContent = "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
-                                    console.info("[PAPER][outcome-gated][fallback] replaced noisy persisted text with clean success_without_validation message")
+                                    console.info(`[PAPER][outcome-gated][fallback] stage=${paperStageScope} replaced noisy persisted text with clean success_without_validation message`)
                                 }
                             }
                         }
