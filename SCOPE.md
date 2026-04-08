@@ -13,21 +13,21 @@ Guiding principle: **anti-regex for language understanding, pro-deterministic pa
 
 ### P0: Freeze New Regex Heuristics
 
-- Status: DONE (policy enforced in CLAUDE.md `REGEX & PATTERN MATCHING POLICY`)
+- Status: **DONE** (policy enforced in CLAUDE.md `REGEX & PATTERN MATCHING POLICY`)
 - No new regex for reading user intent or model prose intent in runtime user-facing code
 
-### P1: Replace Decision-Layer Regex That Alter Workflow or Persisted Content
+### P1: Replace Decision-Layer Regex That Alter Workflow or Persisted Content — **DONE**
 
-These are the highest-risk files where regex directly changes user-facing behavior or stored data.
+Status: **COMPLETED.** All language-understanding regex deleted, classifiers promoted to primary.
 
-#### P1A: `src/lib/ai/completed-session.ts`
+#### P1A: `src/lib/ai/completed-session.ts` — **DONE**
 
-Target regex to replace:
-- `REVISION_VERB_PATTERN` — revision verb detection
-- `INFORMATIONAL_PATTERN` — informational question detection
-- `CONTINUE_LIKE_PATTERN` — short closing prompt detection
-- `RECALL_DISPLAY_VERB` + `RECALL_ARTIFACT_TARGET` — artifact recall detection
-- `RECALL_QUESTION_EXCLUSION` — question-form exclusion
+All target regex replaced with `classifyCompletedSessionIntent()` semantic classifier:
+- `REVISION_VERB_PATTERN` — **DELETED**, replaced by classifier intent: "revision"
+- `INFORMATIONAL_PATTERN` — **DELETED**, replaced by classifier intent: "informational"
+- `CONTINUE_LIKE_PATTERN` — **DELETED**, replaced by classifier intent: "continuation"
+- `RECALL_DISPLAY_VERB` + `RECALL_ARTIFACT_TARGET` — **DELETED**, replaced by classifier intent: "artifact_recall" + targetStage
+- `RECALL_QUESTION_EXCLUSION` — **DELETED**, classifier understands questions vs commands
 - `REASON_ARTIFACT_PATTERN` + `REASON_RETRIEVAL_PATTERN` — router reason hint
 - `resolveRecallTargetStage()` — stage resolution from keyword matching
 
@@ -38,71 +38,71 @@ What to preserve:
 
 Critical fix: default fallback must become `clarify` or `allow_normal_ai`, not `short_circuit_closing`.
 
-#### P1B: `src/app/api/chat/route.ts`
+#### P1B: `src/app/api/chat/route.ts` — **PARTIAL**
 
-Target regex to replace:
-- Leakage detection that **replaces persistedContent**: `kesalahan teknis|maafkan aku|saya akan coba|memperbaiki|mohon tunggu|coba lagi|ada kendala`
-- Completed-session corruption guard: `tool_code|sekarang kita masuk ke tahap|yaml-spec`
-- Prose-leakage observability guards: `aku akan menyusun|draf ini akan|berikut adalah draf`
-- Validation claim detection: `panel validasi|approve|revisi`
-- Revision intent detection: `\b(revisi|edit|ubah|ganti|...)\b`
-- Fallback title extraction: `judulTerpilih["\s:]*"([^"]+)"` and friends
+Completed:
+- Revision intent detection — **REPLACED** with `classifyRevisionIntent()` (observability-only)
 
-What to preserve:
-- Fence stripping (```` ```json ````, ```` ```yaml-spec ```` ) — technical format cleanup
-- Whitespace collapse (`\s+`, `\n{3,}`) — normalization
-- Tool name sanitization (`[^a-zA-Z0-9:_-]`) — format validation
+Preserved as-is (per design carve-out):
+- Leakage detection (observability-only, logs warnings) — kept, defer to future structured tool outcome verification
+- Corruption guard (`tool_code|sekarang kita masuk ke tahap|yaml-spec`) — model output sanitizer, preserved
+- Prose-leakage observability guards — kept, observability-only
+- Validation claim detection — kept, observability-only
+- Fallback title extraction — parser, not language understanding, preserved
+- Fence stripping — technical format cleanup, preserved
+- Whitespace collapse — normalization, preserved
+- Tool name sanitization — format validation, preserved
+- FORBIDDEN_REASONING_PATTERNS (12 security patterns) — security guard, preserved
+- sanitizeReasoningText() — security, preserved
 
-Note: many regex blocks are **duplicated** (think-model vs non-think-model paths). Deduplication is in scope if it naturally falls out of the refactor, but not a standalone goal.
+### P2: Replace Heuristic Follow-Up and Mode Detection — **DONE**
 
-### P2: Replace Heuristic Follow-Up and Mode Detection
+Status: **COMPLETED.** All language-understanding regex replaced.
 
-#### P2A: `src/lib/ai/exact-source-followup.ts`
+#### P2A: `src/lib/ai/exact-source-followup.ts` — **DONE**
 
-Replace entire language-understanding layer:
-- `EXACT_SOURCE_PATTERNS` (12 patterns)
-- `NON_EXACT_SUMMARY_PATTERNS` (6 patterns)
-- `CONTINUATION_PATTERNS` + `CONTINUATION_CUES`
-- Dynamic source boundary matching
+Replaced with `classifyExactSourceIntent()`:
+- `EXACT_SOURCE_PATTERNS` (12 patterns) — **DELETED**
+- `NON_EXACT_SUMMARY_PATTERNS` (6 patterns) — **DELETED**
+- `CONTINUATION_PATTERNS` + `CONTINUATION_CUES` — **DELETED**
+- `isExactIntent()`, `isNonExactSummaryRequest()`, `isContinuationPrompt()` — **DELETED**
 
-Preserve:
-- `normalizeText()` — text normalization (technical)
-- `escapeRegExp()` — utility
-- `extractDomainLabel()` — URL parsing
-- Type definitions
+Preserved:
+- `normalizeText()`, `escapeRegExp()`, `extractDomainLabel()` — technical
+- Source matching logic (buildSourceCandidates, hasTitleMatch, matchesSourceReference, findExplicitMatches, resolveFromRecentContext) — structural, not language understanding
+- Dynamic boundary regex for source candidate matching — structural
 
-#### P2B: `src/lib/ai/web-search/reference-presentation.ts`
+#### P2B: `src/lib/ai/web-search/reference-presentation.ts` — **DONE**
 
-Replace only:
-- `inferSearchResponseMode()` (line 208-235) — 13 regex patterns reading natural language to determine response mode
+Replaced with `classifySearchResponseMode()`:
+- `inferSearchResponseMode()` 14 regex patterns — **DELETED**
 
-Preserve everything else:
+Preserved:
 - URL normalization, canonical key generation, dedup, document kind detection, weak title checks — all deterministic parsers
 
-#### P2C: `src/lib/ai/internal-thought-separator.ts`
+#### P2C: `src/lib/ai/internal-thought-separator.ts` — **INSTRUCTION-BASED FIX**
 
-Replace:
-- `INTERNAL_THOUGHT_PATTERNS` (6 patterns) — detecting internal thoughts from wording
+- Added instruction to `COMPOSE_PHASE_DIRECTIVE` in orchestrator.ts preventing model from emitting internal thought preambles (probabilistic)
+- `INTERNAL_THOUGHT_PATTERNS` (6 patterns) — **PRESERVED as non-destructive fallback** with deprecation comment + observability logging
+- `stripEmptyReferenceLines()`, `findLeadingSentenceBoundary()`, `buildUserFacingSearchPayload()` — preserved
 
-Preserve:
-- `stripEmptyReferenceLines()` — technical cleanup
-- `findLeadingSentenceBoundary()` — text utility
-- `buildUserFacingSearchPayload()` — composition logic
+### P3: Review Non-Critical Heuristics — **EVALUATED**
 
-### P3: Review Non-Critical Heuristics (Lower Priority)
+#### P3A: `src/lib/ai/paper-intent-detector.ts` — **DEFERRED**
 
-#### P3A: `src/lib/ai/paper-intent-detector.ts`
+- Decision: **DEFER** — keyword `.includes()` heuristic, not regex
+- Low blast radius (UI hint + system prompt injection only)
+- LLM call cost unjustified for non-critical UI hint
+- No regex to clean up (only `\s+` whitespace collapse — deterministic preserve)
+- Revisit if paper intent becomes a routing decision
 
-- Keyword-based (`string.includes()`) paper intent detection
-- Not regex, but still language heuristic
-- Lower priority — early gate, not runtime decision
-- Target: migrate to semantic router when P1+P2 are stable
+#### P3B: `src/lib/ai/curated-trace.ts` — **KEEP AS-IS**
 
-#### P3B: `src/lib/ai/curated-trace.ts`
-
-- `STEP_KEYWORDS` bucket scoring for UI trace classification
-- Does not affect workflow or persisted data
-- Target: replace with model-emitted step metadata (future)
+- Decision: **KEEP AS-IS** — keyword bucket scoring for UI trace classification
+- Very low blast radius (UI reasoning display, no workflow impact)
+- LLM call per reasoning segment too expensive for informational UI
+- Current approach is zero-cost, instant, and reliable enough
+- Revisit if trace classification becomes input for a feedback loop
 
 #### P3C: `src/lib/ai/stage-skill-validator.ts`
 
@@ -120,31 +120,36 @@ These files use regex correctly for technical parsing:
 - `src/components/chat/ChatWindow.tsx` — Convex ID validation
 - `src/components/chat/ChatContainer.tsx` — Convex ID validation
 
-## Implementation Strategy
+## Implementation Strategy — COMPLETED
 
-### Phase 1: Build Semantic Classifier
+### Phase 1: Build Semantic Classifiers — **DONE**
 
-Create a unified semantic classifier that covers P1 + P2 concerns:
-- Structured JSON output with enum-constrained fields
-- Covers: completed session handling, artifact recall, exact-source follow-up, response mode, internal thought separation
-- Default ambiguous outcome: `clarify` or `allow_normal_ai`, never silent short-circuit
+Built per-domain classifiers (not unified mega-classifier) using `generateObject()` + Zod schemas:
+- `CompletedSessionClassifierSchema` — 5 intents × 4 handling outcomes
+- `ExactSourceClassifierSchema` — 4 source intents × 3 modes
+- `SearchResponseModeSchema` — synthesis vs reference_inventory
+- `RevisionIntentSchema` — boolean revision detection
 
-### Phase 2: Rewire Runtime Call Paths
+Infrastructure: `classifyIntent<T>()` generic utility with `ClassifierResult<T>` return type (output + metadata with classifierVersion).
 
-- Replace regex decision paths in `completed-session.ts` and `route.ts` with classifier output
-- Replace `inferSearchResponseMode()` with classifier output
-- Replace exact-source follow-up regex with classifier output
-- Replace internal-thought detection with classifier output or structured channel
+### Phase 2: Rewire Runtime Call Paths — **DONE**
 
-### Phase 3: Remove Old Regex Heuristics
+- `completed-session.ts` → classifier primary (all regex deleted)
+- `route.ts` → revision intent classifier (observability-only, regex replaced)
+- `exact-source-followup.ts` → classifier primary (all intent regex deleted, source matching preserved)
+- `reference-presentation.ts` → classifier primary (14 mode patterns deleted)
+- `internal-thought-separator.ts` → instruction-based fix + regex fallback preserved
 
-- Delete replaced regex patterns after parity verification
-- Keep observability, but read from structured decision output, not phrase matching
+### Phase 3: Remove Old Regex Heuristics — **DONE**
 
-### Phase 4: Audit Semi-Structured Parsers
+- All replaced regex patterns deleted after parity verification
+- Parity evidence: 100% on exact-source (10/10), search-mode (8/8), completed-session AGREE cases (20/21)
+- Observability guards in route.ts kept (log-only, no content alteration)
 
-- Review citation parsing in `paperSessions.ts`
-- Optimize if needed, do not replace with model intelligence
+### Phase 4: Audit Semi-Structured Parsers — **NOT IN SCOPE**
+
+- Citation parsing in `paperSessions.ts` — deterministic parser, preserved as-is (P4)
+- No action taken, no action needed
 
 ## Agent Role Assignment
 

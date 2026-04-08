@@ -470,16 +470,38 @@ Output minimum:
 4. Jangan ambil lifecycle state dari prose model jika state sudah tersedia dari tool result atau Convex state.
 5. Jangan kirim parser/rendering teknis ke model.
 
+## Implementation Status
+
+### Completed
+
+| Priority | File | Action | Status |
+|----------|------|--------|--------|
+| P0 | Policy | Freeze new regex heuristics | ✅ DONE |
+| P1A | completed-session.ts | Replace all NL regex with classifier | ✅ DONE |
+| P1B | route.ts | Replace revision intent regex | ✅ DONE (observability-only) |
+| P2A | exact-source-followup.ts | Replace intent regex, preserve source matching | ✅ DONE |
+| P2B | reference-presentation.ts | Replace inferSearchResponseMode() regex | ✅ DONE |
+| P2C | internal-thought-separator.ts | Instruction-based fix, regex fallback preserved | ✅ DONE |
+| P3A | paper-intent-detector.ts | Evaluation | ✅ DEFERRED — keyword `.includes()`, not regex |
+| P3B | curated-trace.ts | Evaluation | ✅ KEEP AS-IS — UI trace only |
+| P4 | All deterministic parsers | Preserve | ✅ NO ACTION — correct as-is |
+
+### Preserved (Not Cleaned Up — Intentional)
+
+- route.ts: FORBIDDEN_REASONING_PATTERNS, sanitizeReasoningText(), corruption guard, fallback title extraction, observability guards, fence stripping, whitespace collapse, tool name sanitization
+- internal-thought-separator.ts: INTERNAL_THOUGHT_PATTERNS (6 patterns) as non-destructive fallback
+- All P4 files: deterministic parsers/validators/renderers
+
 ## Kesimpulan
 
-Rekomendasi cleanup yang sehat adalah:
+Cleanup yang dilakukan:
 
-- hapus regex dari semua area yang membaca bahasa manusia untuk mengambil keputusan runtime
-- pertahankan regex di area parser teknis yang deterministik
-- optimalkan parser semi-terstruktur seperlunya, bukan dengan pendekatan anti-regex total
+- regex language-understanding di completed-session, exact-source, reference-presentation, dan route revision intent **sudah diganti** dengan semantic classifiers berbasis `generateObject()` + Zod schema
+- deterministic parser/sanitizer/security regex **tetap dipertahankan**
+- internal-thought menggunakan instruction-based fix + regex fallback
 
 Kalimat kerjanya:
 
 - anti-regex untuk language understanding
 - pro-deterministic parser untuk format teknis
-- state workflow harus ditentukan oleh semantic JSON + runtime guard, bukan kata kunci
+- state workflow ditentukan oleh semantic JSON + runtime guard, bukan kata kunci

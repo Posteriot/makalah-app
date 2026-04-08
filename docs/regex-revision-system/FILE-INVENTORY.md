@@ -621,20 +621,27 @@
 - `src/components/chat/ChatContainer.tsx`
 - regex normalization di `src/lib/ai/paper-intent-detector.ts`
 
-## Kesimpulan Praktis
+## Final Status (Post-Implementation)
 
-### Aman dipertahankan sebagai regex
+### Replaced with semantic classifiers
 
-- parser/sanitizer URL, DOI, whitespace, range number
-- markdown rendering helpers
-- format validator seperti Convex ID
+- `completed-session.ts` — ALL language heuristic regex → `classifyCompletedSessionIntent()` ✅
+- `exact-source-followup.ts` — ALL intent regex → `classifyExactSourceIntent()` ✅
+- `reference-presentation.ts` — `inferSearchResponseMode()` 14 patterns → `classifySearchResponseMode()` ✅
+- `route.ts` — revision intent regex → `classifyRevisionIntent()` (observability-only) ✅
+- `internal-thought-separator.ts` — instruction-based fix + regex kept as fallback ⚠️
 
-### Perlu hati-hati karena rawan heuristic drift
+### Preserved as-is (deterministic / low-risk)
 
-- completed-session handling
-- revision/validation/leakage guard di route
-- exact-source follow-up
-- mode detection berbasis natural language
+- `route.ts` — security sanitizers, corruption guard, fallback title extraction, observability guards, fence stripping, whitespace collapse, tool name sanitization
+- `paperSessions.ts` — URL dedup, citation parsing, year extraction
+- `daftarPustakaCompiler.ts` — DOI normalization, key normalization, weak citation detection
+- `stageDataWhitelist.ts` — numeric range coercion
+- `MarkdownRenderer.tsx` — markdown rendering, citation markers
+- `ChatWindow.tsx`, `ChatContainer.tsx` — Convex ID validation
+- `stage-skill-validator.ts` — technical document validator
+- `paper-intent-detector.ts` — keyword `.includes()` (deferred)
+- `curated-trace.ts` — keyword bucket scoring (keep as-is)
 
 ### Prinsip refactor bila dibutuhkan
 
