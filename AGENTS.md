@@ -62,3 +62,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Anti-regex for language understanding.** Do not use regex to parse, classify, or interpret natural language input. LLMs handle language — regex does not.
 - **Pro-deterministic parser for technical formats.** Use deterministic parsers (JSON.parse, structured schemas, AST parsers) for well-defined technical formats.
 - **State workflow must be driven by semantic JSON + runtime guards, not keywords.** Workflow state transitions must be determined by structured data and explicit runtime validation, never by keyword matching or regex pattern detection.
+
+### ACTIVE BRANCH SCOPE
+- **Branch:** `regex-revision-system`
+- **Scope document:** `SCOPE.md` (root) — read this first for full task breakdown, priority map, and implementation phases.
+- **Spec documents:** `docs/regex-revision-system/` — README, FILE-INVENTORY, REGEX-CLEANUP-PRIORITIES.
+- **Objective:** Replace regex-based natural language heuristics in chat + paper session runtime with structured semantic classifiers. Preserve all deterministic parser/sanitizer regex.
+- **Key files in scope:** `completed-session.ts`, `route.ts` (P1), `exact-source-followup.ts`, `reference-presentation.ts`, `internal-thought-separator.ts` (P2), `paper-intent-detector.ts`, `curated-trace.ts` (P3).
+- **Files explicitly out of scope:** `MarkdownRenderer.tsx`, `ChatWindow.tsx`, `ChatContainer.tsx`, `daftarPustakaCompiler.ts`, `stageDataWhitelist.ts` — these contain deterministic parsers that must be preserved.
