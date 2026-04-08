@@ -1693,12 +1693,33 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
 
                         console.log("[F1-F6-TEST] createArtifact", { stage: paperSession?.currentStage, artifactId: result.artifactId, title })
                         if (paperToolTracker) paperToolTracker.sawCreateArtifactSuccess = true
+
+                        // Auto-submit: if model called submitStageForValidation before artifact existed
+                        // (wrong tool order), retry submit now that artifact is created.
+                        let autoSubmitted = false
+                        if (paperToolTracker?.sawSubmitValidationArtifactMissing && !paperToolTracker?.sawSubmitValidationSuccess) {
+                            try {
+                                await fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                                    sessionId: paperSession!._id,
+                                })
+                                autoSubmitted = true
+                                paperToolTracker.sawSubmitValidationSuccess = true
+                                console.log("[createArtifact][auto-submit] submitStageForValidation retried after artifact creation — success")
+                            } catch (autoSubmitError) {
+                                console.warn("[createArtifact][auto-submit] submitStageForValidation retry failed:", autoSubmitError)
+                            }
+                        }
+
                         return {
                             success: true,
                             artifactId: result.artifactId,
                             title,
-                            message: `Artifact "${title}" berhasil dibuat. User dapat melihatnya di panel artifact.`,
-                            nextAction: "⚠️ MANDATORY: Artifact is created successfully. Do NOT restate the draft content in chat. Do NOT output markdown headings, fenced code blocks, or paragraphs from the artifact. Do NOT mention technical issues, errors, partial saves, or source/title problems — the operation SUCCEEDED. Respond with MAX 2-3 sentences ONLY: (1) confirm artifact was created, (2) direct user to review in artifact panel, (3) call submitStageForValidation() NOW.",
+                            message: autoSubmitted
+                                ? `Artifact "${title}" berhasil dibuat dan sudah disubmit untuk validasi.`
+                                : `Artifact "${title}" berhasil dibuat. User dapat melihatnya di panel artifact.`,
+                            nextAction: autoSubmitted
+                                ? "Artifact created and submitted for validation. Do NOT call submitStageForValidation again. Do NOT mention technical issues. Respond with MAX 2-3 sentences confirming the artifact is ready for review."
+                                : "⚠️ MANDATORY: Artifact is created successfully. Do NOT restate the draft content in chat. Do NOT output markdown headings, fenced code blocks, or paragraphs from the artifact. Do NOT mention technical issues, errors, partial saves, or source/title problems — the operation SUCCEEDED. Respond with MAX 2-3 sentences ONLY: (1) confirm artifact was created, (2) direct user to review in artifact panel, (3) call submitStageForValidation() NOW.",
                         }
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : String(error)
