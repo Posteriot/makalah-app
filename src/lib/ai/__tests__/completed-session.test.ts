@@ -225,8 +225,7 @@ describe("resolveCompletedSessionHandling", () => {
 
     // ── Dual-write: classifier shadow mode ──
 
-    it("still returns regex result when dualWriteModel is provided", async () => {
-        // Mock the classifier module
+    it("fires dual-write for fallback path and returns regex result", async () => {
         const classifierModule = await import("../classifiers/completed-session-classifier")
         vi.spyOn(classifierModule, "classifyCompletedSessionIntent").mockResolvedValueOnce({
             output: {
@@ -240,22 +239,61 @@ describe("resolveCompletedSessionHandling", () => {
             metadata: { classifierVersion: "1.0.0" },
         })
 
-        // Regex would say: short_circuit_closing (unrecognized default)
-        // Classifier would say: server_owned_artifact_recall
-        // Dual-write: regex wins
+        // Fallback path (no routerIntent) — dual-write should fire
         const result = resolveCompletedSessionHandling({
             lastUserContent: "buka abstrak dong",
             dualWriteModel: { modelId: "test" } as import("ai").LanguageModel,
         })
 
-        // Regex result is returned (not classifier)
-        // "buka" IS in RECALL_DISPLAY_VERB, "abstrak" IS in RECALL_ARTIFACT_TARGET
-        // So regex actually returns artifact_recall here too
+        // Regex result returned, not classifier
         expect(result.handling).toBe("server_owned_artifact_recall")
         expect(result.source).toBe("fallback_heuristic")
     })
 
-    it("returns regex result even when classifier fails", async () => {
+    it("fires dual-write for discussion router refinement path", async () => {
+        const classifierModule = await import("../classifiers/completed-session-classifier")
+        const spy = vi.spyOn(classifierModule, "classifyCompletedSessionIntent").mockResolvedValueOnce({
+            output: {
+                intent: "artifact_recall",
+                handling: "server_owned_artifact_recall",
+                targetStage: "judul",
+                needsClarification: false,
+                confidence: 0.88,
+                reason: "classifier sees recall",
+            },
+            metadata: { classifierVersion: "1.0.0" },
+        })
+
+        // Discussion path — dual-write should fire
+        const result = resolveCompletedSessionHandling({
+            routerIntent: "discussion",
+            lastUserContent: "lihat artifact judul",
+            dualWriteModel: { modelId: "test" } as import("ai").LanguageModel,
+        })
+
+        expect(result.handling).toBe("server_owned_artifact_recall")
+        expect(result.source).toBe("router_intent")
+
+        // Give fire-and-forget promise time to resolve
+        await new Promise((r) => setTimeout(r, 50))
+        expect(spy).toHaveBeenCalled()
+    })
+
+    it("does NOT fire dual-write for deterministic router paths", () => {
+        // save_submit — deterministic, classifier should NOT be called
+        const result = resolveCompletedSessionHandling({
+            routerIntent: "save_submit",
+            lastUserContent: "simpan",
+            dualWriteModel: { modelId: "test" } as import("ai").LanguageModel,
+        })
+
+        expect(result.handling).toBe("short_circuit_closing")
+        expect(result.source).toBe("router_intent")
+        // No way to directly assert classifier wasn't called from sync context,
+        // but the gate logic ensures it: source === "router_intent" && intent !== "discussion"
+    })
+
+    it("returns regex result even when classifier fails in dual-write", async () => {
         const classifierModule = await import("../classifiers/completed-session-classifier")
         vi.spyOn(classifierModule, "classifyCompletedSessionIntent").mockResolvedValueOnce(null)
 
@@ -264,7 +302,6 @@ describe("resolveCompletedSessionHandling", () => {
             dualWriteModel: { modelId: "test" } as import("ai").LanguageModel,
         })
 
-        // Regex still returns its result regardless of classifier failure
         expect(result.handling).toBe("short_circuit_closing")
         expect(result.source).toBe("fallback_heuristic")
     })

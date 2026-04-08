@@ -116,19 +116,29 @@ export function resolveCompletedSessionHandling(args: {
     const normalized = typeof lastUserContent === "string" ? lastUserContent.trim() : ""
 
     // ── Regex decision (always runs, always returned) ──
-    const regexDecision = resolveViaRegex({ routerIntent, routerReason, normalized, hasChoiceInteractionEvent })
+    const regexResult = resolveViaRegex({ routerIntent, routerReason, normalized, hasChoiceInteractionEvent })
 
-    // ── Dual-write: fire classifier in background for parity comparison ──
-    if (dualWriteModel) {
+    // ── Dual-write: fire classifier only for paths being migrated ──
+    // Only for: fallback path + discussion refinement path
+    // NOT for: save_submit, sync_request, search, compile_daftar_pustaka, choiceInteractionEvent
+    const isDualWriteRelevant = dualWriteModel && (
+        regexResult.source === "fallback_heuristic" ||
+        (regexResult.source === "router_intent" && routerIntent === "discussion")
+    )
+
+    if (isDualWriteRelevant) {
         fireDualWriteComparison({
-            regexDecision,
+            regexDecision: regexResult,
+            regexTargetStage: regexResult.handling === "server_owned_artifact_recall"
+                ? resolveRecallTargetStage(normalized)
+                : null,
             lastUserContent: normalized,
             routerReason,
             model: dualWriteModel,
         })
     }
 
-    return regexDecision
+    return regexResult
 }
 
 // ── Internal: existing regex logic (unchanged behavior) ──
@@ -251,11 +261,12 @@ function resolveViaRegex(args: {
 
 function fireDualWriteComparison(args: {
     regexDecision: CompletedSessionDecision
+    regexTargetStage: PaperStageId | null
     lastUserContent: string
     routerReason?: string
     model: LanguageModel
 }): void {
-    const { regexDecision, lastUserContent, routerReason, model } = args
+    const { regexDecision, regexTargetStage, lastUserContent, routerReason, model } = args
 
     // Dynamic import to avoid loading classifier module when not in dual-write mode
     import("./classifiers/completed-session-classifier")
@@ -270,17 +281,32 @@ function fireDualWriteComparison(args: {
 
             const c = classifierResult.output
             const r = regexDecision
+            const discrepancies: string[] = []
 
-            // Compare handling decisions
+            // Compare handling
             if (c.handling !== r.handling) {
+                discrepancies.push(`handling: regex=${r.handling} classifier=${c.handling}`)
+            }
+
+            // Compare targetStage (only meaningful for artifact recall)
+            if (r.handling === "server_owned_artifact_recall" || c.handling === "server_owned_artifact_recall") {
+                if (c.targetStage !== regexTargetStage) {
+                    discrepancies.push(`targetStage: regex=${regexTargetStage} classifier=${c.targetStage}`)
+                }
+            }
+
+            const inputSnippet = lastUserContent.slice(0, 80)
+
+            if (discrepancies.length > 0) {
                 console.info(
-                    `[completed-session][dual-write] DISCREPANCY handling: regex=${r.handling} classifier=${c.handling} ` +
-                    `intent=${c.intent} confidence=${c.confidence} input="${lastUserContent.slice(0, 80)}"`
+                    `[completed-session][dual-write] DISCREPANCY ${discrepancies.join(" | ")} ` +
+                    `intent=${c.intent} confidence=${c.confidence} needsClarification=${c.needsClarification} ` +
+                    `input="${inputSnippet}"`
                 )
             } else {
                 console.info(
                     `[completed-session][dual-write] MATCH handling=${r.handling} ` +
-                    `intent=${c.intent} confidence=${c.confidence} input="${lastUserContent.slice(0, 80)}"`
+                    `intent=${c.intent} confidence=${c.confidence} input="${inputSnippet}"`
                 )
             }
         })
