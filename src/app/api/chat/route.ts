@@ -2827,8 +2827,14 @@ Aturan:
                 !enableWebSearch &&
                 !shouldForceGetCurrentPaperState &&
                 !shouldForceSubmitValidation &&
-                paperSession?.stageStatus !== "pending_validation" &&
-                paperSession?.stageStatus !== "revision" &&
+                // Allow force-inspect during pending_validation/revision — the
+                // exact metadata request is orthogonal to the revision flow.
+                // revisionChainEnforcer does not conflict because force-inspect
+                // completes in 2 steps (tool + text) before any revision chain.
+                (exactSourceResolution.mode === "force-inspect" || (
+                    paperSession?.stageStatus !== "pending_validation" &&
+                    paperSession?.stageStatus !== "revision"
+                )) &&
                 availableExactSources.length > 0
             const primaryExactSourceRoutePlan = shouldApplyDeterministicExactSourceRouting
                 ? buildDeterministicExactSourcePrepareStep({
@@ -2836,18 +2842,7 @@ Aturan:
                     resolution: exactSourceResolution,
                 })
                 : {
-                    // When force-inspect was resolved but full routing is skipped
-                    // (e.g., during pending_validation), still inject the discipline
-                    // note so the model knows to call inspectSourceDocument and not
-                    // infer metadata from URLs. Only the prepareStep constraint
-                    // (forced toolChoice) is omitted to avoid conflict with
-                    // revisionChainEnforcer.
-                    messages: exactSourceResolution.mode === "force-inspect"
-                        ? buildDeterministicExactSourcePrepareStep({
-                            messages: fullMessagesGateway as Array<{ role: "system" | "user" | "assistant"; content: string }>,
-                            resolution: exactSourceResolution,
-                        }).messages
-                        : fullMessagesGateway,
+                    messages: fullMessagesGateway,
                     prepareStep: undefined,
                     maxToolSteps: undefined as number | undefined,
                 }
@@ -3015,7 +3010,17 @@ Aturan:
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
                 toolChoice: forcedToolChoice,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                prepareStep: (revisionChainEnforcer ?? primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
+                prepareStep: ((() => {
+                    const forceInspect = primaryExactSourceRoutePlan.prepareStep
+                    // When force-inspect prepareStep exists, it takes priority over
+                    // revisionChainEnforcer. Force-inspect completes in steps 0-1
+                    // (tool call + text), so it never reaches revision chain steps.
+                    if (forceInspect && revisionChainEnforcer) {
+                        return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
+                            forceInspect(params) ?? revisionChainEnforcer(params)
+                    }
+                    return revisionChainEnforcer ?? forceInspect ?? deterministicSyncPrepareStep
+                })()) as any,
                 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
                 onFinish: async ({ text, providerMetadata, usage }) => {
@@ -3733,8 +3738,10 @@ Aturan:
                     !enableWebSearch &&
                     !shouldForceGetCurrentPaperState &&
                     !shouldForceSubmitValidation &&
-                    paperSession?.stageStatus !== "pending_validation" &&
-                    paperSession?.stageStatus !== "revision" &&
+                    (exactSourceResolution.mode === "force-inspect" || (
+                        paperSession?.stageStatus !== "pending_validation" &&
+                        paperSession?.stageStatus !== "revision"
+                    )) &&
                     availableExactSources.length > 0
                 const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
                 const fallbackBaseMessages = missingArtifactNote
@@ -3750,12 +3757,7 @@ Aturan:
                         resolution: exactSourceResolution,
                     })
                     : {
-                        messages: exactSourceResolution.mode === "force-inspect"
-                            ? buildDeterministicExactSourcePrepareStep({
-                                messages: fallbackBaseMessages as Array<{ role: "system" | "user" | "assistant"; content: string }>,
-                                resolution: exactSourceResolution,
-                            }).messages
-                            : fallbackBaseMessages,
+                        messages: fallbackBaseMessages,
                         prepareStep: undefined,
                         maxToolSteps: undefined as number | undefined,
                     }
@@ -3767,7 +3769,14 @@ Aturan:
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    prepareStep: (revisionChainEnforcer ?? fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
+                    prepareStep: ((() => {
+                        const forceInspect = fallbackExactSourceRoutePlan.prepareStep
+                        if (forceInspect && revisionChainEnforcer) {
+                            return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
+                                forceInspect(params) ?? revisionChainEnforcer(params)
+                        }
+                        return revisionChainEnforcer ?? forceInspect ?? fallbackDeterministicSyncPrepareStep
+                    })()) as any,
                     stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {
