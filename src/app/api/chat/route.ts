@@ -2836,7 +2836,18 @@ Aturan:
                     resolution: exactSourceResolution,
                 })
                 : {
-                    messages: fullMessagesGateway,
+                    // When force-inspect was resolved but full routing is skipped
+                    // (e.g., during pending_validation), still inject the discipline
+                    // note so the model knows to call inspectSourceDocument and not
+                    // infer metadata from URLs. Only the prepareStep constraint
+                    // (forced toolChoice) is omitted to avoid conflict with
+                    // revisionChainEnforcer.
+                    messages: exactSourceResolution.mode === "force-inspect"
+                        ? buildDeterministicExactSourcePrepareStep({
+                            messages: fullMessagesGateway as Array<{ role: "system" | "user" | "assistant"; content: string }>,
+                            resolution: exactSourceResolution,
+                        }).messages
+                        : fullMessagesGateway,
                     prepareStep: undefined,
                     maxToolSteps: undefined as number | undefined,
                 }
@@ -3739,7 +3750,12 @@ Aturan:
                         resolution: exactSourceResolution,
                     })
                     : {
-                        messages: fallbackBaseMessages,
+                        messages: exactSourceResolution.mode === "force-inspect"
+                            ? buildDeterministicExactSourcePrepareStep({
+                                messages: fallbackBaseMessages as Array<{ role: "system" | "user" | "assistant"; content: string }>,
+                                resolution: exactSourceResolution,
+                            }).messages
+                            : fallbackBaseMessages,
                         prepareStep: undefined,
                         maxToolSteps: undefined as number | undefined,
                     }

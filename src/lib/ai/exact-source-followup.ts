@@ -97,11 +97,39 @@ function matchesSourceReference(message: string, source: ExactSourceSummary): bo
   })
 }
 
+function urlSpecificity(source: ExactSourceSummary, message: string): number {
+  let best = 0
+  for (const url of [source.sourceId, source.originalUrl, source.resolvedUrl]) {
+    const normalized = normalizeText(url)
+    if (normalized && message.includes(normalized) && normalized.length > best) {
+      best = normalized.length
+    }
+  }
+  return best
+}
+
 function findExplicitMatches(
   message: string,
   availableExactSources: ExactSourceSummary[]
 ): ExactSourceSummary[] {
-  return availableExactSources.filter((source) => matchesSourceReference(message, source))
+  const matches = availableExactSources.filter((source) => matchesSourceReference(message, source))
+
+  if (matches.length <= 1) return matches
+
+  // URL specificity tiebreaker: when multiple sources match (e.g., portal root
+  // vs article URL on the same domain), prefer the source whose URL has the
+  // longest overlap with the user's message. This is deterministic — purely
+  // based on string length, not heuristic.
+  const scored = matches.map((source) => ({
+    source,
+    specificity: urlSpecificity(source, message),
+  }))
+
+  const maxSpecificity = Math.max(...scored.map((s) => s.specificity))
+  if (maxSpecificity === 0) return matches
+
+  const best = scored.filter((s) => s.specificity === maxSpecificity).map((s) => s.source)
+  return best.length > 0 ? best : matches
 }
 
 function resolveFromRecentContext(

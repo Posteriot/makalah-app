@@ -37,7 +37,7 @@ export const EXACT_SOURCE_INSPECTION_RULES = `EXACT SOURCE INSPECTION RULES:
 - Use quoteFromSource and searchAcrossSources only for semantic retrieval, not for exact paragraph positions or exact metadata verification.
 - If the requested exact detail is unavailable, say it cannot be verified exactly from the verified source data.
 - Do not infer article titles from URLs, slugs, or citation labels.
-- Do not infer site name from URL hostname, domain, or branding cues. If siteName is not returned by inspectSourceDocument, say the site name is unavailable. You may mention the domain/hostname only as a URL reference, never as verified site name metadata.
+- Do not infer site name from URL hostname, domain, or branding cues. If siteName is not returned by inspectSourceDocument, say the site name is unavailable — full stop. In exact metadata answers, omit domain/hostname/URL commentary entirely — not on the same line, not on a following line, not as trailing text, not in parentheses. Only mention domain if the user explicitly asks about the URL itself, and then outside the metadata block.
 - Never mention internal tools, RAG, retrieval, fetch pipelines, or available web sources to the user.
 - Do not say phrases like: ${EXACT_SOURCE_NARRATIVE_BANNED_PHRASES.join(", ")}.
 - Respond in natural narrative language.`
@@ -149,7 +149,8 @@ Selected source site: ${source.siteName ?? "(site unavailable)"}
 Selected source original URL: ${source.originalUrl}
 Selected source resolved URL: ${source.resolvedUrl}
 Do not answer from memory, prior assistant wording, semantic matches, or conversation context before the tool result returns.
-After the tool result returns, answer naturally without exposing internal mechanics.`
+After the tool result returns, answer naturally without exposing internal mechanics.
+STRICT METADATA OUTPUT: When presenting exact metadata fields, if a field is unavailable from the tool result, state only that it is unavailable. Do not mention domain, hostname, or URL anywhere in the metadata answer — not on the same line, not on a following line, not as trailing text, not in parentheses. Omit domain commentary entirely unless the user explicitly asks about the URL itself.`
 }
 
 export function buildDeterministicExactSourceClarifyNote() {

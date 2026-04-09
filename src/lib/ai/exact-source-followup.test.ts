@@ -180,4 +180,39 @@ describe("resolveExactSourceFollowup", () => {
     expect(result.mode).toBe("none")
     expect(result.reason).toBe("empty-user-message")
   })
+
+  it("disambiguates by URL specificity when galley URL matches both portal root and article source", async () => {
+    const ojsSources: ExactSourceSummary[] = [
+      {
+        sourceId: "https://journal.unpas.ac.id/",
+        originalUrl: "https://journal.unpas.ac.id/",
+        resolvedUrl: "https://journal.unpas.ac.id/",
+        title: "Portal Jurnal UNPAS",
+      },
+      {
+        sourceId: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        originalUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        resolvedUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        title: "Penggunaan AI dalam Pendidikan",
+      },
+    ]
+
+    await mockClassifier({
+      mode: "force_inspect", sourceIntent: "exact_detail",
+      mentionedSourceHint: null,
+      needsClarification: false, confidence: 0.9, reason: "URL match",
+    })
+
+    const result = await resolveExactSourceFollowup({
+      lastUserMessage: "Siapa penulis artikel https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455?",
+      recentMessages: [], availableExactSources: ojsSources, model: mockModel,
+    })
+
+    expect(result.mode).toBe("force-inspect")
+    if (result.mode === "force-inspect") {
+      expect(result.matchedSource.sourceId).toBe(
+        "https://journal.unpas.ac.id/index.php/pendas/article/view/32777"
+      )
+    }
+  })
 })
