@@ -773,6 +773,7 @@ ${sourcesJson}`
             availableExactSources,
             model: classifierModel,
         })
+        console.log(`[EXACT-SOURCE-RESOLUTION] mode=${exactSourceResolution.mode} reason=${exactSourceResolution.reason}${exactSourceResolution.mode === "force-inspect" ? ` matchedSourceId=${exactSourceResolution.matchedSource.sourceId.slice(0, 60)}` : ""}`)
         const shouldIncludeRawSourcesContext =
             shouldIncludeRawSourcesContextForExactFollowup(exactSourceResolution)
         const shouldIncludeExactInspectionSystemMessage =
@@ -2303,7 +2304,15 @@ Aturan:
             // variation (Indonesian, Javanese, English, slang, etc.) and will miss edge
             // cases that cause users to lose search functionality silently.
 
-            if (forcePaperToolsMode) {
+            if (exactSourceResolution.mode === "force-inspect") {
+                // Exact source follow-up already matched a unique stored source.
+                // Block search — the model should use inspectSourceDocument instead.
+                // Without this guard, the LLM search router can override force-inspect
+                // and trigger a new web search for a URL that's already stored.
+                searchRequestedByPolicy = false
+                activeStageSearchReason = "exact_source_force_inspect"
+                console.log(`[SearchDecision] Exact source force-inspect: blocking search, matched sourceId=${exactSourceResolution.matchedSource.sourceId.slice(0, 60)}`)
+            } else if (forcePaperToolsMode) {
                 // No paper session yet — block search so model calls startPaperSession first.
                 // Search will be available on the next turn once session is created.
                 // Do NOT try to regex-detect "does user want search" — let the session
