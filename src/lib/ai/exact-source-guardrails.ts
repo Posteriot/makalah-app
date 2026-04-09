@@ -33,10 +33,11 @@ export const EXACT_SOURCE_NARRATIVE_BANNED_PHRASES = [
 ]
 
 export const EXACT_SOURCE_INSPECTION_RULES = `EXACT SOURCE INSPECTION RULES:
-- For any request asking for an exact title, author, published date, paragraph number, or verbatim quote from a previously stored source, call inspectSourceDocument before answering.
+- For any request asking for an exact title, author, published date, site name, paragraph number, or verbatim quote from a previously stored source, call inspectSourceDocument before answering.
 - Use quoteFromSource and searchAcrossSources only for semantic retrieval, not for exact paragraph positions or exact metadata verification.
 - If the requested exact detail is unavailable, say it cannot be verified exactly from the verified source data.
 - Do not infer article titles from URLs, slugs, or citation labels.
+- Do not infer site name from URL hostname, domain, or branding cues. If siteName is not returned by inspectSourceDocument, say the site name is unavailable. You may mention the domain/hostname only as a URL reference, never as verified site name metadata.
 - Never mention internal tools, RAG, retrieval, fetch pipelines, or available web sources to the user.
 - Do not say phrases like: ${EXACT_SOURCE_NARRATIVE_BANNED_PHRASES.join(", ")}.
 - Respond in natural narrative language.`

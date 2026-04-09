@@ -6,7 +6,7 @@ import sys
 import os
 
 ADMIN_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48"
-CHANGE_NOTE = "updated-4: AI awareness patches — exact source tools, readArtifact, UI awareness, validation panel, choice textarea, bibliography preview"
+CHANGE_NOTE = "updated-4: siteName-from-URL leakage fix — EXACT METADATA DISCIPLINE strengthened with domain-to-siteName prohibition (5 skills)"
 SRC_DIR = ".references/system-prompt-skills-active/updated-4"
 
 SKILLS = [
