@@ -6,7 +6,7 @@ import sys
 import os
 
 ADMIN_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48"
-CHANGE_NOTE = "updated-4: siteName unavailable — absolute no-domain-in-metadata-answers rule (5 skills)"
+CHANGE_NOTE = "updated-4: ban all inline citations from metadata inspection list — source identified by tool call"
 SRC_DIR = ".references/system-prompt-skills-active/updated-4"
 
 SKILLS = [

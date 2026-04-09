@@ -108,6 +108,27 @@ function urlSpecificity(source: ExactSourceSummary, message: string): number {
   return best
 }
 
+function isArticleLevelMetadata(source: ExactSourceSummary): boolean {
+  // For canonical article authority, require author or publishedAt.
+  // siteName alone (e.g., portal root) is NOT sufficient — it doesn't
+  // represent article-level authorship or publication metadata.
+  return !!(source.author || source.publishedAt)
+}
+
+function isUrlPrefixOf(prefixSource: ExactSourceSummary, ofSource: ExactSourceSummary): boolean {
+  // Check if any URL of prefixSource is a strict prefix of any URL of ofSource.
+  // This enforces structural article relationship (e.g., /view/32777 is prefix
+  // of /view/32777/16455) and excludes unrelated sources on the same domain.
+  const prefixUrls = [prefixSource.sourceId, prefixSource.originalUrl, prefixSource.resolvedUrl]
+    .map(normalizeText).filter(Boolean)
+  const ofUrls = [ofSource.sourceId, ofSource.originalUrl, ofSource.resolvedUrl]
+    .map(normalizeText).filter(Boolean)
+
+  return prefixUrls.some((prefix) =>
+    ofUrls.some((url) => url.startsWith(prefix) && url.length > prefix.length)
+  )
+}
+
 function findExplicitMatches(
   message: string,
   availableExactSources: ExactSourceSummary[]
@@ -129,6 +150,28 @@ function findExplicitMatches(
   if (maxSpecificity === 0) return matches
 
   const best = scored.filter((s) => s.specificity === maxSpecificity).map((s) => s.source)
+  const winner = best.length === 1 ? best[0] : null
+
+  // Canonical article metadata resolution: if the best URL-specific match has
+  // no article-level metadata, check whether a STRUCTURAL PREFIX source has
+  // article-level metadata. Requirements:
+  //   1. Candidate URL must be a strict prefix of winner URL (same article)
+  //   2. Candidate must have article-level metadata (author or publishedAt)
+  //   3. siteName alone is not sufficient (excludes portal roots)
+  if (winner && !isArticleLevelMetadata(winner)) {
+    const canonicalCandidates = scored
+      .filter((s) =>
+        s.source !== winner &&
+        isArticleLevelMetadata(s.source) &&
+        isUrlPrefixOf(s.source, winner)
+      )
+      .sort((a, b) => b.specificity - a.specificity)
+    if (canonicalCandidates.length > 0) {
+      console.log(`[EXACT-SOURCE] Canonical metadata resolution: ${winner.sourceId.slice(0, 60)} → ${canonicalCandidates[0].source.sourceId.slice(0, 60)} (article-level prefix authority)`)
+      return [canonicalCandidates[0].source]
+    }
+  }
+
   return best.length > 0 ? best : matches
 }
 

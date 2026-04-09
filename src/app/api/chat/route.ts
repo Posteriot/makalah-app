@@ -2019,6 +2019,9 @@ Aturan:
                 convexToken,
                 availableSources: recentSourcesList,
                 hasRecentSources: hasRecentSourcesInDb,
+                exactSourceOverrides: exactSourceResolution.mode === "force-inspect"
+                    ? { inspectSourceId: exactSourceResolution.matchedSource.sourceId }
+                    : undefined,
                 toolTracker: paperToolTracker,
             }),
         } satisfies ToolSet
