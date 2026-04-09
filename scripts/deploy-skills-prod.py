@@ -6,8 +6,8 @@ import sys
 import os
 
 ADMIN_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48"
-CHANGE_NOTE = "updated-3: post UI testing refinements"
-SRC_DIR = ".worktrees/validation-panel-artifact-consistency/.references/system-prompt-skills-active/updated-3"
+CHANGE_NOTE = "updated-4: AI awareness patches + exact source system + canonical article metadata contract + metadata discipline"
+SRC_DIR = ".references/system-prompt-skills-active/updated-4"
 CONVEX_FLAGS = ["--prod"]
 
 SKILLS = [
