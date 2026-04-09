@@ -5,7 +5,7 @@
  * Pure, synchronous, stateless. No external dependencies.
  *
  * Operations (applied in order):
- * 1. Normalize CRLF -> LF
+ * 1. Normalize CRLF and bare CR -> LF
  * 2. Collapse 3+ consecutive blank lines -> 2 blank lines (one empty line between paragraphs)
  * 3. Deduplicate identical consecutive paragraphs
  * 4. Trim leading/trailing whitespace
@@ -17,8 +17,8 @@ export function cleanForIngestion(
   text: string,
   sourceType: IngestionSourceType
 ): string {
-  // Step 1: Normalize newlines
-  let result = text.replace(/\r\n/g, '\n')
+  // Step 1: Normalize newlines (CRLF and bare CR)
+  let result = text.replace(/\r\n?/g, '\n')
 
   // Step 2: Collapse excessive blank lines (3+ newlines -> 2 newlines)
   result = result.replace(/\n{3,}/g, '\n\n')

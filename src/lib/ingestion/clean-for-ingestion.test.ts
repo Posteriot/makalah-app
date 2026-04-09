@@ -45,6 +45,12 @@ describe('cleanForIngestion - CRLF normalization', () => {
       'Line one\nLine two'
     )
   })
+
+  it('converts bare \\r to \\n', () => {
+    expect(cleanForIngestion('Line one\rLine two', 'web')).toBe(
+      'Line one\nLine two'
+    )
+  })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -71,6 +77,12 @@ describe('cleanForIngestion - dedup consecutive paragraphs', () => {
   it('preserves non-consecutive duplicates', () => {
     const input = 'A\n\nB\n\nA'
     expect(cleanForIngestion(input, 'web')).toBe(input)
+  })
+
+  it('dedupes paragraphs that differ only by whitespace', () => {
+    expect(
+      cleanForIngestion('Hello World\n\n  Hello World\n\nPara B', 'web')
+    ).toBe('Hello World\n\nPara B')
   })
 })
 
