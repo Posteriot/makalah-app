@@ -117,7 +117,16 @@ type DialogAction = "promote" | "demote" | "delete" | "changeTier"
 With:
 ```typescript
 type SubscriptionTier = "free" | "bpp" | "pro"
+type TierOrAdmin = SubscriptionTier | "admin"
 type DialogAction = "promote" | "demote" | "delete"
+```
+
+Also update `pendingTier` state (currently line 93):
+```typescript
+// Before:
+const [pendingTier, setPendingTier] = useState<SubscriptionTier | null>(null)
+// After:
+const [pendingTier, setPendingTier] = useState<TierOrAdmin | null>(null)
 ```
 
 Add after `TIER_OPTIONS` (after line 47):
@@ -182,7 +191,8 @@ const handleDemoteClick = (user: User) => {
 Replace `handleConfirm` (lines 140-175) with:
 ```typescript
 const handleConfirm = async () => {
-  if (!selectedUser || !dialogAction || !pendingTier) return
+  if (!selectedUser || !dialogAction) return
+  if (dialogAction !== "delete" && !pendingTier) return
 
   setIsLoading(true)
   try {
@@ -221,13 +231,7 @@ const handleConfirm = async () => {
 }
 ```
 
-Note: `handleConfirm` for `delete` action doesn't need `pendingTier`, so update the guard:
-```typescript
-const handleConfirm = async () => {
-  if (!selectedUser || !dialogAction) return
-  if (dialogAction !== "delete" && !pendingTier) return
-  // ... rest
-```
+Note: The guard uses two lines — first checks `selectedUser`/`dialogAction`, then skips `pendingTier` check for delete actions.
 
 **Step 4: Update `getAvailableActions` and `getPrimaryAction`**
 
@@ -396,6 +400,23 @@ Replace the AlertDialog content (lines 613-696). The dialog title and body shoul
       <p>
         Pilih tier baru untuk <span className="font-medium text-foreground">{selectedUser?.email}</span>:
       </p>
+      {/* Current tier indicator */}
+      {(() => {
+        const currentTierOption = selectedUser?.role === "admin"
+          ? { label: "ADMIN (UNLIMITED)", color: "bg-rose-600 text-white" }
+          : TIER_OPTIONS.find((t) => t.value === selectedUser?.subscriptionStatus)
+        return currentTierOption ? (
+          <div className="rounded-action border-2 border-border px-3 py-2 text-center opacity-50">
+            <span className={cn(
+              "inline-flex items-center rounded-badge px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase",
+              currentTierOption.color
+            )}>
+              {currentTierOption.label}
+            </span>
+            <p className="mt-1 font-mono text-[10px] text-muted-foreground">Saat ini</p>
+          </div>
+        ) : null
+      })()}
       <div className="flex flex-wrap gap-2">
         {(dialogAction === "promote"
           ? getPromoteOptions(selectedUser?.subscriptionStatus ?? "free", selectedUser?.role ?? "user", currentUserRole)
