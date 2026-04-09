@@ -66,3 +66,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### AGENT ROLE ASSIGNMENT
 - **Claude Code (this agent):** Brainstormer, planner, task creator, and executor for all implementation work on this branch.
 - **Codex (OpenAI):** Audit and code review. Claude Code must not self-review — all review and audit tasks are delegated to Codex.
+
+### ACTIVE BRANCH SCOPE
+- **Branch:** `normalizer-typeScript`
+- **Scope documents:** `docs/normalizer-typeScript/context.md`, `docs/normalizer-typeScript/design-doc.md`, and `docs/normalizer-typeScript/implementation-plan.md`
+- **Documentation directory:** `docs/normalizer-typeScript/`
+- **Objective:** Consolidate the existing TypeScript normalization logic into a single ingestion normalization layer for `web-search content` and `upload file text`, used only for RAG ingestion.
+- **Explicit exclusions:** Do not introduce `just-bash` into the runtime path, do not apply the normalizer to exact-source context, and do not merge citation URL normalization into the text normalization layer.
+
+### IMPLEMENTATOR/PLANNER/EXECUTOR MANDATE FOR THIS WORKTREE
+
+You are the planner and executor for this worktree. Implement only the normalization-layer work described in the branch documents.
+
+**Primary implementation targets:**
+- `src/lib/ingestion/source-normalizer.ts`
+- `src/lib/ingestion/source-normalizer.types.ts`
+- `src/lib/ai/web-search/orchestrator.ts`
+- `src/app/api/extract-file/route.ts`
+- `src/lib/ai/rag-ingest.ts`
+- `convex/schema.ts`
+- `convex/files.ts`
+- Related tests required for normalization flow verification
+
+**Required architectural rules:**
+1. The normalization layer sits only between `fetch/extract` and `chunk/embed/ingest`.
+2. `normalizedText` is the only content allowed into the RAG ingestion path.
+3. `raw extracted text` must be preserved for audit/debug/fallback but must never be indexed into RAG.
+4. Exact-source persistence must remain close to raw source content and must not use normalized text in this branch.
+5. Citation/search URL normalization remains separate from text normalization.
+6. Reuse existing TypeScript helpers where possible; do not rewrite the pipeline from scratch.
+
+**Documentation rules for this worktree:**
+- Keep all branch documents, implementation notes, verification notes, and handoff notes inside `docs/normalizer-typeScript/`.
+
+**Expected deliverables:**
+- Source normalizer contract and implementation
+- Integration patches for upload and web-search ingestion paths
+- Schema and persistence updates for raw vs normalized content
+- Tests and verification artifacts
+- Updated branch-local docs when implementation materially changes the design
