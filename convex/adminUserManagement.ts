@@ -63,12 +63,13 @@ export const promoteToAdmin = mutation({
 })
 
 /**
- * Demote admin to user role
+ * Demote admin to user role with specified subscription tier
  * Requires superadmin permission
  */
-export const demoteToUser = mutation({
+export const demoteFromAdmin = mutation({
   args: {
     targetUserId: v.id("users"),
+    targetTier: v.union(v.literal("free"), v.literal("bpp"), v.literal("pro")),
   },
   handler: async (ctx, args) => {
     // Get current user
@@ -103,21 +104,23 @@ export const demoteToUser = mutation({
       throw new Error("Tidak bisa mengubah role superadmin")
     }
 
-    // Cannot demote already user
-    if (targetUser.role === "user") {
-      throw new Error("User sudah berstatus user biasa")
+    // Can only demote admin
+    if (targetUser.role !== "admin") {
+      throw new Error("User bukan admin, gunakan updateSubscriptionTier")
     }
 
-    // Update to user
+    const tierLabels: Record<string, string> = { free: "Gratis", bpp: "BPP", pro: "Pro" }
+
+    // Update to user with specified tier
     await ctx.db.patch(args.targetUserId, {
       role: "user",
-      subscriptionStatus: "free",
+      subscriptionStatus: args.targetTier,
       updatedAt: Date.now(),
     })
 
     return {
       success: true,
-      message: `User ${targetUser.email} berhasil diturunkan menjadi user biasa`,
+      message: `${targetUser.email} berhasil diturunkan menjadi user (${tierLabels[args.targetTier]})`,
     }
   },
 })
