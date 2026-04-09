@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowUp, ArrowDown, Trash, NavArrowLeft, NavArrowRight, EditPencil, Expand } from "iconoir-react"
+import { ArrowUp, ArrowDown, Trash, NavArrowLeft, NavArrowRight, Expand } from "iconoir-react"
 import { UserListFullscreen } from "./UserListFullscreen"
 import type { Id } from "@convex/_generated/dataModel"
 
@@ -39,8 +39,7 @@ const PAGE_SIZE = 20
 
 type SubscriptionTier = "free" | "bpp" | "pro"
 type TierOrAdmin = SubscriptionTier | "admin"
-// "changeTier" kept temporarily for JSX compatibility — Task 3 removes it
-type DialogAction = "promote" | "demote" | "delete" | "changeTier"
+type DialogAction = "promote" | "demote" | "delete"
 
 const TIER_OPTIONS: Array<{ value: SubscriptionTier; label: string; color: string }> = [
   { value: "free", label: "GRATIS", color: "bg-segment-gratis text-white" },
@@ -139,14 +138,6 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
   const handleDeleteClick = (user: User) => {
     setSelectedUser(user)
     setDialogAction("delete")
-  }
-
-  // Kept for render compatibility until Task 3 updates JSX
-  const handleTierClick = (user: User) => {
-    if (user.role === "admin" || user.role === "superadmin") return
-    setSelectedUser(user)
-    setPendingTier(null)
-    setDialogAction("promote")
   }
 
   const deleteUserFromAdmin = async (user: User) => {
@@ -260,45 +251,40 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
   const isCannotModifyRow = (user: User) =>
     currentUserRole === "superadmin" && user.role === "superadmin"
 
-  // Kept for render compatibility until Task 3 updates JSX
-  const getPrimaryAction = (user: User): "promote" | "demote" | null => {
-    const actions = getAvailableActions(user)
-    if (actions.includes("promote")) return "promote"
-    if (actions.includes("demote")) return "demote"
-    return null
-  }
-
   const canDeleteUser = (user: User) => getAvailableActions(user).includes("delete")
 
-  const renderPrimaryActionCell = (user: User) => {
-    const primaryAction = getPrimaryAction(user)
-    if (primaryAction === "promote") {
-      return (
-        <button
-          className="focus-ring inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-action border-main border border-border px-2 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-          onClick={() => handlePromoteClick(user)}
-          disabled={isLoading}
-        >
-          <ArrowUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-          <span>Promote</span>
-        </button>
-      )
+  const renderPromoteDemoteCell = (user: User) => {
+    const promoteOpts = getPromoteOptions(user.subscriptionStatus, user.role, currentUserRole)
+    const demoteOpts = getDemoteOptions(user.subscriptionStatus, user.role, currentUserRole)
+
+    if (promoteOpts.length === 0 && demoteOpts.length === 0) {
+      return <span className="text-narrative text-muted-foreground">-</span>
     }
 
-    if (primaryAction === "demote") {
-      return (
-        <button
-          className="focus-ring inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-action border-main border border-border px-2 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50"
-          onClick={() => handleDemoteClick(user)}
-          disabled={isLoading}
-        >
-          <ArrowDown className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-          <span>Demote</span>
-        </button>
-      )
-    }
-
-    return <span className="text-narrative text-muted-foreground">-</span>
+    return (
+      <div className="flex items-center gap-1.5">
+        {promoteOpts.length > 0 && (
+          <button
+            className="focus-ring inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-action border-main border border-border px-2 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => handlePromoteClick(user)}
+            disabled={isLoading}
+          >
+            <ArrowUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Promote</span>
+          </button>
+        )}
+        {demoteOpts.length > 0 && (
+          <button
+            className="focus-ring inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-action border-main border border-border px-2 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => handleDemoteClick(user)}
+            disabled={isLoading}
+          >
+            <ArrowDown className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+            <span>Demote</span>
+          </button>
+        )}
+      </div>
+    )
   }
 
   const renderDeleteActionCell = (user: User) => {
@@ -318,37 +304,40 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
     return <span className="text-narrative text-muted-foreground">-</span>
   }
 
-  const renderMobilePrimaryActionIconCell = (user: User) => {
-    const primaryAction = getPrimaryAction(user)
-    if (primaryAction === "promote") {
-      return (
-        <button
-          type="button"
-          aria-label="Promote user"
-          onClick={() => handlePromoteClick(user)}
-          disabled={isLoading}
-          className="focus-ring inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-action border-main border border-border text-emerald-600 transition-colors hover:bg-slate-200 dark:text-emerald-400 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <ArrowUp className="h-4 w-4" />
-        </button>
-      )
+  const renderMobilePromoteDemoteCell = (user: User) => {
+    const promoteOpts = getPromoteOptions(user.subscriptionStatus, user.role, currentUserRole)
+    const demoteOpts = getDemoteOptions(user.subscriptionStatus, user.role, currentUserRole)
+
+    if (promoteOpts.length === 0 && demoteOpts.length === 0) {
+      return <span className="text-muted-foreground">-</span>
     }
 
-    if (primaryAction === "demote") {
-      return (
-        <button
-          type="button"
-          aria-label="Demote user"
-          onClick={() => handleDemoteClick(user)}
-          disabled={isLoading}
-          className="focus-ring inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-action border-main border border-border text-amber-600 transition-colors hover:bg-slate-200 dark:text-amber-400 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <ArrowDown className="h-4 w-4" />
-        </button>
-      )
-    }
-
-    return <span className="text-muted-foreground">-</span>
+    return (
+      <div className="flex items-center gap-1">
+        {promoteOpts.length > 0 && (
+          <button
+            type="button"
+            aria-label="Promote user"
+            onClick={() => handlePromoteClick(user)}
+            disabled={isLoading}
+            className="focus-ring inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-action border-main border border-border text-emerald-600 transition-colors hover:bg-slate-200 dark:text-emerald-400 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ArrowUp className="h-4 w-4" />
+          </button>
+        )}
+        {demoteOpts.length > 0 && (
+          <button
+            type="button"
+            aria-label="Demote user"
+            onClick={() => handleDemoteClick(user)}
+            disabled={isLoading}
+            className="focus-ring inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-action border-main border border-border text-amber-600 transition-colors hover:bg-amber-500/10 dark:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ArrowDown className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+    )
   }
 
   const renderMobileDeleteActionIconCell = (user: User) => {
@@ -384,24 +373,8 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
     }
 
     if (columnKey === "subscription") {
-      const canChangeTier = user.role !== "admin" && user.role !== "superadmin"
       const tierOption = TIER_OPTIONS.find((t) => t.value === user.subscriptionStatus)
-      return canChangeTier ? (
-        <button
-          type="button"
-          onClick={() => handleTierClick(user)}
-          disabled={isLoading}
-          className="group/tier inline-flex items-center gap-1 rounded-badge border border-transparent px-2.5 py-1 transition-colors hover:border-border hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <span className={cn(
-            "inline-flex items-center rounded-badge px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase",
-            tierOption?.color ?? "bg-slate-700 text-slate-100"
-          )}>
-            {tierOption?.label ?? user.subscriptionStatus}
-          </span>
-          <EditPencil className="h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover/tier:opacity-100" />
-        </button>
-      ) : (
+      return (
         <span className={cn(
           "inline-flex items-center rounded-badge px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase",
           tierOption?.color ?? "bg-slate-700 text-slate-100"
@@ -424,7 +397,7 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
     }
 
     if (columnKey === "promoteAction") {
-      return renderPrimaryActionCell(user)
+      return renderPromoteDemoteCell(user)
     }
 
     if (columnKey === "deleteAction") {
@@ -607,7 +580,7 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
                                 <NoAccessIcon className="h-4 w-4" />
                               </span>
                             )
-                            : renderMobilePrimaryActionIconCell(user)
+                            : renderMobilePromoteDemoteCell(user)
                           : column.key === "deleteAction"
                             ? isCannotModifyRow(user)
                               ? (
@@ -652,36 +625,54 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {dialogAction === "changeTier"
-                ? "Ubah Subscription Tier"
-                : dialogAction === "promote"
-                  ? "Promote ke Admin"
-                  : dialogAction === "demote"
-                    ? "Demote ke User"
-                    : "Hapus User"}
+              {dialogAction === "promote"
+                ? "Promote User"
+                : dialogAction === "demote"
+                  ? "Demote User"
+                  : "Hapus User"}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
-              {dialogAction === "changeTier" ? (
+              {dialogAction === "promote" || dialogAction === "demote" ? (
                 <div className="space-y-3">
                   <p>
                     Pilih tier baru untuk <span className="font-medium text-foreground">{selectedUser?.email}</span>:
                   </p>
-                  <div className="flex gap-2">
-                    {TIER_OPTIONS.map((option) => {
-                      const isCurrent = option.value === selectedUser?.subscriptionStatus
-                      const isSelected = option.value === pendingTier
+                  {(() => {
+                    const currentTierOption = selectedUser?.role === "admin"
+                      ? { label: "ADMIN (UNLIMITED)", color: "bg-rose-600 text-white" }
+                      : TIER_OPTIONS.find((t) => t.value === selectedUser?.subscriptionStatus)
+                    return currentTierOption ? (
+                      <div className="rounded-action border-2 border-border px-3 py-2 text-center opacity-50">
+                        <span className={cn(
+                          "inline-flex items-center rounded-badge px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase",
+                          currentTierOption.color
+                        )}>
+                          {currentTierOption.label}
+                        </span>
+                        <p className="mt-1 font-mono text-[10px] text-muted-foreground">Saat ini</p>
+                      </div>
+                    ) : null
+                  })()}
+                  <div className="flex flex-wrap gap-2">
+                    {(dialogAction === "promote"
+                      ? getPromoteOptions(selectedUser?.subscriptionStatus ?? "free", selectedUser?.role ?? "user", currentUserRole)
+                      : getDemoteOptions(selectedUser?.subscriptionStatus ?? "free", selectedUser?.role ?? "user", currentUserRole)
+                    ).map((option) => {
+                      const isSelected = pendingTier === option.value
+                      const isAdminOption = option.value === "admin"
                       return (
                         <button
                           key={option.value}
                           type="button"
-                          disabled={isCurrent}
-                          onClick={() => setPendingTier(option.value)}
+                          onClick={() => setPendingTier(option.value as TierOrAdmin)}
                           className={cn(
-                            "flex-1 rounded-action border-2 px-3 py-2 text-center transition-all",
-                            isCurrent
-                              ? "cursor-not-allowed border-border opacity-40"
-                              : isSelected
-                                ? "border-primary bg-primary/10"
+                            "flex-1 min-w-[80px] rounded-action border-2 px-3 py-2 text-center transition-all",
+                            isSelected
+                              ? isAdminOption
+                                ? "border-rose-500 bg-rose-500/10"
+                                : "border-primary bg-primary/10"
+                              : isAdminOption
+                                ? "border-rose-500/30 hover:border-rose-500"
                                 : "border-border hover:border-muted-foreground"
                           )}
                         >
@@ -691,21 +682,24 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
                           )}>
                             {option.label}
                           </span>
-                          {isCurrent && (
-                            <p className="mt-1 font-mono text-[10px] text-muted-foreground">Saat ini</p>
-                          )}
                         </button>
                       )
                     })}
                   </div>
+                  {pendingTier === "admin" && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      User akan mendapatkan akses admin panel.
+                    </p>
+                  )}
+                  {dialogAction === "demote" && selectedUser?.role === "admin" && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      User akan kehilangan akses admin panel.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <p>
-                  {dialogAction === "promote"
-                    ? `Apakah Anda yakin ingin promote ${selectedUser?.email} menjadi admin? User akan mendapatkan akses ke admin panel.`
-                    : dialogAction === "demote"
-                      ? `Apakah Anda yakin ingin demote ${selectedUser?.email} menjadi user biasa? User akan kehilangan akses admin panel.`
-                      : `Apakah Anda yakin ingin menghapus ${selectedUser?.email}? User akan dihapus dan tidak bisa login lagi.`}
+                  Apakah Anda yakin ingin menghapus {selectedUser?.email}? User akan dihapus dan tidak bisa login lagi.
                 </p>
               )}
             </AlertDialogDescription>
@@ -716,15 +710,13 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirm}
-              disabled={isLoading || (dialogAction === "changeTier" && !pendingTier)}
+              disabled={isLoading || (dialogAction !== "delete" && !pendingTier)}
             >
               {isLoading
                 ? "Memproses..."
                 : dialogAction === "delete"
                   ? "Hapus"
-                  : dialogAction === "changeTier"
-                    ? "Ubah Tier"
-                    : "Konfirmasi"}
+                  : "Konfirmasi"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
