@@ -98,17 +98,21 @@ Fungsi:
 - status kelengkapan naskah dan status parsial export dipahami sebagai satu status utama yang sama
 - status utama di header naskah dipahami tampil sebagai gabungan badge kecil dan info text pendek
 - nada info text status naskah lebih menekankan progres pertumbuhan, sambil tetap jujur bahwa dokumen belum lengkap
+- badge status utama di header naskah dipahami memakai copy `Bertumbuh`
+- info text pendek di header naskah dipahami memakai copy `Naskah sedang bertumbuh seiring section tervalidasi.`
 - jumlah halaman naskah dipahami tampil di header sebagai informasi level dokumen
 - jumlah halaman di header dipahami dikomunikasikan eksplisit sebagai estimasi
 - aksi export di header dipahami sebagai satu tombol `Export` dengan pilihan format di dropdown
 - opsi format di dropdown export dipahami tetap simpel, sementara status parsial cukup dikomunikasikan di header
+- susunan header naskah dipahami dua baris: baris pertama untuk identitas `Naskah` dan judul paper, baris kedua untuk badge, info text, dan estimasi halaman, dengan area aksi di sisi kanan
+- pada baris pertama header, `Naskah` dipahami tampil sebagai label kecil di atas judul paper
 - perpindahan `Chat` dan `Naskah` memakai tombol kontekstual lawan-halaman, bukan dua tab yang tampil bersamaan
 - notifikasi update pada tombol `Naskah` di halaman `Chat` dipahami sebagai titik kecil yang ringan
 - penamaan section di sidebar naskah mengikuti nama akademik final, bukan nama stage internal sistem
 - klik item section di sidebar dipahami melompat ke awal section tersebut
 - sidebar naskah dapat menyorot section yang sedang aktif di viewport saat user scroll
 - setelah user memuat update, section yang berubah dapat diberi highlight sementara sebagai umpan balik visual
-- indikator update utama di halaman naskah dipahami sebagai banner tipis di area header dengan aksi `Muat update`
+- indikator update utama di halaman naskah dipahami sebagai banner tipis di area header dengan aksi `Update`
 
 ### Validation Flow
 

@@ -410,7 +410,7 @@ Status: active
 
 Keputusan:
 - indikator update utama di halaman `Naskah` berbentuk banner tipis di area header
-- banner ini memuat aksi utama `Muat update`
+- banner ini memuat aksi utama `Update`
 - fase awal tidak memakai toast persisten atau status bar kecil sebagai bentuk utama indikator update
 
 Alasan:
@@ -741,6 +741,57 @@ Alasan:
 - membuat `Halaman Judul` terasa sebagai bagian normal dari struktur naskah
 - menghindari pengecualian UI yang tidak perlu
 
+### D-056: Badge Status Utama Naskah Menggunakan Copy Bertumbuh
+
+Status: active
+
+Keputusan:
+- badge status utama di header `Naskah` memakai copy `Bertumbuh`
+
+Alasan:
+- paling selaras dengan arah pengalaman yang menekankan progres
+- tidak terasa seperti warning keras
+- lebih sesuai dengan model naskah yang berkembang bertahap
+
+### D-057: Info Text Status Naskah Menggunakan Copy Progresif
+
+Status: active
+
+Keputusan:
+- info text pendek di header `Naskah` memakai copy `Naskah sedang bertumbuh seiring section tervalidasi.`
+
+Alasan:
+- paling selaras dengan badge `Bertumbuh`
+- jelas tanpa terasa terlalu negatif
+- konsisten dengan arah komunikasi yang menekankan progres
+
+### D-058: Header Naskah Menggunakan Susunan Dua Baris
+
+Status: active
+
+Keputusan:
+- header `Naskah` memakai susunan dua baris
+- baris pertama memuat identitas `Naskah` dan judul paper
+- baris kedua memuat badge status, info text, dan `Estimasi X halaman`
+- area aksi berada di sisi kanan header
+
+Alasan:
+- hirarki informasi lebih jelas
+- cocok dengan banyaknya elemen status yang perlu tampil
+- tetap rapi dan mudah dipindai
+
+### D-059: Label Naskah Tampil Kecil Di Atas Judul Paper
+
+Status: active
+
+Keputusan:
+- pada baris pertama header, label `Naskah` tampil kecil di atas judul paper
+
+Alasan:
+- paling cocok dengan susunan dua baris yang sudah dipilih
+- menjaga hirarki visual antara identitas fitur dan judul dokumen
+- membuat judul paper tetap menjadi fokus utama
+
 ### D-054: Section Ditahan Jika Artifact Belum Cukup Rapi Untuk Dikompilasi
 
 Status: active
@@ -771,11 +822,11 @@ Alasan:
 
 ### O-015: Copy Final Untuk Badge Dan Info Text Status Naskah
 
-Status: open
+Status: resolved
 
-Pertanyaan:
-- copy final apa yang dipakai untuk badge status
-- copy final apa yang dipakai untuk info text pendek di header
+Jawaban:
+- copy badge status: `Bertumbuh`
+- copy info text pendek: `Naskah sedang bertumbuh seiring section tervalidasi.`
 
 ### O-017: Label Opsi Format Di Dropdown Export
 
@@ -794,25 +845,34 @@ Jawaban:
 
 ### O-012: Bentuk Penyajian Elemen Header Naskah
 
-Status: open
+Status: resolved
 
-Pertanyaan:
-- bagaimana judul, status bertumbuh/parsial, indikator update, dan export disusun di header
-- apakah `Naskah` menjadi label kecil, heading utama, atau bagian dari breadcrumb/header stack
+Jawaban:
+- header memakai susunan dua baris
+- baris pertama memuat identitas `Naskah` dan judul paper
+- baris kedua memuat badge status, info text, dan estimasi halaman
+- area aksi berada di sisi kanan
+- `Naskah` tampil sebagai label kecil di atas judul paper
 
 ### O-013: Mapping Stage Internal Ke Nama Section Akademik
 
-Status: mostly_resolved
+Status: resolved
 
-Jawaban Sementara:
-- mapping ke nama section akademik final diperlukan
-- tidak semua stage internal otomatis menjadi section tersendiri di naskah
+Jawaban:
+- `gagasan` tidak muncul di `Naskah`
+- `topik` tidak muncul sebagai section, tetapi dapat menyumbang `working title`
+- `outline` tidak muncul di `Naskah`
+- `abstrak` menjadi section `Abstrak`
+- `pendahuluan` menjadi section `Pendahuluan`
+- `tinjauan_literatur` menjadi section `Tinjauan Literatur`
+- `metodologi` menjadi section `Metodologi`
+- `hasil` menjadi section `Hasil`
+- `diskusi` menjadi section `Diskusi`
+- `kesimpulan` menjadi section `Kesimpulan`
 - `pembaruan_abstrak` memperbarui section `Abstrak`, bukan menjadi section baru
-- `judul` memperbarui judul dokumen, bukan menjadi section baru
-- `topik` dapat menyumbang `working title` untuk judul dokumen
-
-Pertanyaan Tersisa:
-- mapping spesifik stage lain ke section final paper yang tersisa seperti apa, jika ada pengecualian tambahan
+- `daftar_pustaka` menjadi section `Daftar Pustaka`
+- `lampiran` menjadi section `Lampiran` jika tersedia
+- `judul` tidak menjadi section, tetapi memperbarui judul dokumen
 
 ### O-014: Apakah Sidebar Perlu Menunjukkan Section Aktif Saat Scroll
 
@@ -823,11 +883,12 @@ Jawaban:
 
 ### O-006: Bentuk Keterangan Bahwa Naskah Masih Bertumbuh
 
-Status: open
+Status: resolved
 
-Pertanyaan:
-- apakah keterangan ini berbentuk badge status, banner halus, atau info text di header
-- bagaimana daftar section dan navigasi cepat ditampilkan tanpa membuat UI terasa seperti panel status
+Jawaban:
+- keterangan bahwa `Naskah` masih bertumbuh ditampilkan di header
+- bentuknya berupa kombinasi badge status `Bertumbuh` dan info text `Naskah sedang bertumbuh seiring section tervalidasi.`
+- daftar section tetap tampil sebagai navigasi di sidebar kiri, bukan sebagai panel status terpisah
 
 ### O-007: Bentuk Label Export Parsial
 
@@ -856,7 +917,7 @@ Status: resolved
 
 Jawaban:
 - indikator update berbentuk banner tipis di area header
-- CTA refresh `Muat update` ditempatkan di indikator yang sama
+- CTA refresh `Update` ditempatkan di indikator yang sama
 
 ### O-011: Bentuk Notifikasi Update Pada Tombol Naskah Di Topbar Chat
 
@@ -932,12 +993,12 @@ Jawaban:
 
 ### O-005: Bentuk Aksi Refresh Naskah
 
-Status: open
+Status: resolved
 
-Pertanyaan:
-- apakah aksi refresh dilakukan lewat tombol utama seperti `Muat update`
-- atau lewat banner/status bar dengan CTA yang lebih eksplisit
-- apakah setelah refresh, UI perlu menyorot bagian yang berubah
+Jawaban:
+- aksi refresh dilakukan lewat banner tipis di area header
+- CTA utamanya memakai copy `Update`
+- setelah refresh, section yang berubah diberi highlight sementara
 
 ## Decision Update Rule
 
@@ -979,7 +1040,7 @@ Saat memperbarui keputusan:
 - Diperbarui: klik section di sidebar membawa user ke awal section tersebut
 - Diperbarui: sidebar naskah menyorot section yang aktif saat user scroll
 - Diperbarui: section yang berubah diberi highlight sementara setelah refresh
-- Diperbarui: indikator update naskah berbentuk banner tipis di area header dengan tombol `Muat update`
+- Diperbarui: indikator update naskah berbentuk banner tipis di area header dengan tombol `Update`
 - Diperbarui: status bertumbuh naskah dan status parsial export digabung menjadi satu status utama
 - Diperbarui: notifikasi update pada tombol `Naskah` di halaman `Chat` menggunakan titik kecil
 - Diperbarui: status utama naskah di header memakai kombinasi badge kecil dan info text pendek
@@ -1007,3 +1068,7 @@ Saat memperbarui keputusan:
 - Diperbarui: `Halaman Judul` memakai pola highlight sidebar yang sama seperti section lain
 - Diperbarui: section ditahan jika artifact tervalidasi belum cukup rapi untuk dikompilasi ke `Naskah`
 - Diperbarui: preview web `Naskah` ditargetkan sangat dekat dengan export final, tetapi tidak dijanjikan identik
+- Diperbarui: badge status utama `Naskah` memakai copy `Bertumbuh`
+- Diperbarui: info text status `Naskah` memakai copy `Naskah sedang bertumbuh seiring section tervalidasi.`
+- Diperbarui: header `Naskah` memakai susunan dua baris dengan area aksi di sisi kanan
+- Diperbarui: label `Naskah` tampil kecil di atas judul paper pada baris pertama header
