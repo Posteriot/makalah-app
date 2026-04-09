@@ -273,7 +273,7 @@
   ├────────────────┼─────────────────────────────────────────┼──────────────┤
   │ promoteToAdmin │ Promote user to admin (superadmin only) │ targetUserId │
   ├────────────────┼─────────────────────────────────────────┼──────────────┤
-  │ demoteToUser   │ Demote admin to user (superadmin only)  │ targetUserId │
+  │ demoteFromAdmin │ Demote admin to user with target tier (superadmin only) │ targetUserId, targetTier │
   └────────────────┴─────────────────────────────────────────┴──────────────┘
   3.9 Admin Manual User Creation (convex/adminManualUserCreation.ts)
 
