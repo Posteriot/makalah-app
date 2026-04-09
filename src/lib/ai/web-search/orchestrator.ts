@@ -303,16 +303,18 @@ export async function executeWebSearch(
       let metadataReadyAt: number | null = null
 
       // Wrap PromiseLike in Promise.resolve() — PromiseLike only has .then(), not .catch()
+      // Probes are observability-only: they MUST always resolve (never reject) to avoid
+      // unhandledRejection when the retriever throws before Promise.allSettled is reached.
       const sourcesProbe = Promise.resolve(searchResult.sources)
         .then((value) => {
           sourcesReadyAt = Date.now() - retrieverStart
           console.log(`[⏱ RETRIEVER][${reqId}] sources_ready name=${retriever.name} t=${sourcesReadyAt}ms count=${Array.isArray(value) ? value.length : 0}`)
-          return value
+          return { ok: true as const, value }
         })
         .catch((err: unknown) => {
           sourcesReadyAt = Date.now() - retrieverStart
           console.log(`[⏱ RETRIEVER][${reqId}] sources_failed name=${retriever.name} t=${sourcesReadyAt}ms error=${err instanceof Error ? err.message : String(err)}`)
-          throw err
+          return { ok: false as const, error: err instanceof Error ? err.message : String(err) }
         })
 
       const metadataProbe = Promise.resolve(searchResult.providerMetadata)
@@ -320,12 +322,12 @@ export async function executeWebSearch(
           metadataReadyAt = Date.now() - retrieverStart
           const keys = value && typeof value === "object" ? Object.keys(value).join(",") : "none"
           console.log(`[⏱ RETRIEVER][${reqId}] metadata_ready name=${retriever.name} t=${metadataReadyAt}ms keys=${keys}`)
-          return value
+          return { ok: true as const, value }
         })
         .catch((err: unknown) => {
           metadataReadyAt = Date.now() - retrieverStart
           console.log(`[⏱ RETRIEVER][${reqId}] metadata_failed name=${retriever.name} t=${metadataReadyAt}ms error=${err instanceof Error ? err.message : String(err)}`)
-          throw err
+          return { ok: false as const, error: err instanceof Error ? err.message : String(err) }
         })
 
       // Await full text with timeout — prevents indefinite hang if API stops responding

@@ -105,6 +105,7 @@ RULES:
 - Each ChoiceOptionButton MUST have an on.press action that sets /selection/selectedOptionId.
 - The ChoiceSubmitButton MUST use $state references in its on.press params.
 - Option IDs should be kebab-case and descriptive.
+- The ChoiceTextarea field allows users to type a custom response instead of selecting a predefined option. The submitted customText is delivered alongside the selectedOptionId. If a choice card benefits from a free-text alternative (e.g., "suggest your own topic"), include a ChoiceTextarea element and reference its value in the submit action via { "$state": "/selection/customText" }.
 
 RECOMMENDATION (MANDATORY):
 - You MUST set recommended: true on exactly ONE ChoiceOptionButton — the option you believe is best for the user's context.

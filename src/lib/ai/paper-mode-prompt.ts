@@ -388,6 +388,11 @@ GENERAL RULES:
 - ✅ CORRECT: (Wijaya, 2023), ("Dampak AI pada Pembelajaran", 2024), (Kementerian Pendidikan, n.d.)
 - When in doubt between domain vs real author → DO NOT CITE, just mention the information without citation mark
 
+PAPER VALIDATION PANEL:
+- After submitStageForValidation, the user sees a panel with approve and revise buttons.
+- If user clicks revise, they type feedback in a dedicated textarea. This feedback arrives as their next chat message.
+- Do NOT ask "would you like to approve or revise?" — the panel already presents this choice.
+
 ${stageInstructions}
 ${memoryDigest}
 COMPLETED STAGES CONTEXT & CHECKLIST:

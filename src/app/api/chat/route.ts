@@ -773,6 +773,7 @@ ${sourcesJson}`
             availableExactSources,
             model: classifierModel,
         })
+        console.log(`[EXACT-SOURCE-RESOLUTION] mode=${exactSourceResolution.mode} reason=${exactSourceResolution.reason}${exactSourceResolution.mode === "force-inspect" ? ` matchedSourceId=${exactSourceResolution.matchedSource.sourceId.slice(0, 60)}` : ""}`)
         const shouldIncludeRawSourcesContext =
             shouldIncludeRawSourcesContextForExactFollowup(exactSourceResolution)
         const shouldIncludeExactInspectionSystemMessage =
@@ -1889,23 +1890,23 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                 },
             }),
             readArtifact: tool({
-                description: `Baca isi lengkap sebuah artifact berdasarkan ID-nya. Gunakan tool ini jika perlu merujuk konten artifact secara utuh (bukan hanya summary singkat di system prompt).
+                description: `Read the full content of an artifact by its ID. Use this tool when you need to reference complete artifact content rather than the truncated summaries in the system prompt.
 
 USE THIS TOOL WHEN:
-✓ Perlu membaca ulang artifact dari stage sebelumnya sebagai rujukan
-✓ User bertanya tentang isi spesifik sebuah artifact
-✓ Perlu mengecek konten lengkap sebelum menulis revisi atau stage berikutnya
-✓ Perlu memverifikasi detail yang mungkin ter-truncate di summary
+✓ You need to re-read a previous stage's artifact as reference material
+✓ The user asks about specific content within an artifact
+✓ You need to check full content before writing a revision or the next stage
+✓ You need to verify details that may be truncated in the artifact summary
 
-Tool ini mengembalikan: title, type, version, content lengkap, dan sources (jika ada).
-Artifact ID bisa didapat dari ARTIFACT SUMMARY di system prompt atau dari getCurrentPaperState().`,
+Returns: title, type, version, full content, and sources (if any).
+Artifact IDs are available from ARTIFACT SUMMARY in the system prompt or from getCurrentPaperState().`,
                 inputSchema: z.object({
                     artifactId: z.string()
-                        .describe("ID artifact yang ingin dibaca."),
+                        .describe("The artifact ID to read."),
                 }),
                 execute: async ({ artifactId }) => {
                     if (!artifactId?.trim()) {
-                        return { success: false, error: "artifactId tidak boleh kosong." }
+                        return { success: false, error: "artifactId must not be empty." }
                     }
                     try {
                         const artifact = await fetchQueryWithToken(api.artifacts.get, {
@@ -2303,7 +2304,15 @@ Aturan:
             // variation (Indonesian, Javanese, English, slang, etc.) and will miss edge
             // cases that cause users to lose search functionality silently.
 
-            if (forcePaperToolsMode) {
+            if (exactSourceResolution.mode === "force-inspect") {
+                // Exact source follow-up already matched a unique stored source.
+                // Block search — the model should use inspectSourceDocument instead.
+                // Without this guard, the LLM search router can override force-inspect
+                // and trigger a new web search for a URL that's already stored.
+                searchRequestedByPolicy = false
+                activeStageSearchReason = "exact_source_force_inspect"
+                console.log(`[SearchDecision] Exact source force-inspect: blocking search, matched sourceId=${exactSourceResolution.matchedSource.sourceId.slice(0, 60)}`)
+            } else if (forcePaperToolsMode) {
                 // No paper session yet — block search so model calls startPaperSession first.
                 // Search will be available on the next turn once session is created.
                 // Do NOT try to regex-detect "does user want search" — let the session
@@ -2818,8 +2827,14 @@ Aturan:
                 !enableWebSearch &&
                 !shouldForceGetCurrentPaperState &&
                 !shouldForceSubmitValidation &&
-                paperSession?.stageStatus !== "pending_validation" &&
-                paperSession?.stageStatus !== "revision" &&
+                // Allow force-inspect during pending_validation/revision — the
+                // exact metadata request is orthogonal to the revision flow.
+                // revisionChainEnforcer does not conflict because force-inspect
+                // completes in 2 steps (tool + text) before any revision chain.
+                (exactSourceResolution.mode === "force-inspect" || (
+                    paperSession?.stageStatus !== "pending_validation" &&
+                    paperSession?.stageStatus !== "revision"
+                )) &&
                 availableExactSources.length > 0
             const primaryExactSourceRoutePlan = shouldApplyDeterministicExactSourceRouting
                 ? buildDeterministicExactSourcePrepareStep({
@@ -2995,7 +3010,17 @@ Aturan:
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
                 toolChoice: forcedToolChoice,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                prepareStep: (revisionChainEnforcer ?? primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
+                prepareStep: ((() => {
+                    const forceInspect = primaryExactSourceRoutePlan.prepareStep
+                    // When force-inspect prepareStep exists, it takes priority over
+                    // revisionChainEnforcer. Force-inspect completes in steps 0-1
+                    // (tool call + text), so it never reaches revision chain steps.
+                    if (forceInspect && revisionChainEnforcer) {
+                        return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
+                            forceInspect(params) ?? revisionChainEnforcer(params)
+                    }
+                    return revisionChainEnforcer ?? forceInspect ?? deterministicSyncPrepareStep
+                })()) as any,
                 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
                 onFinish: async ({ text, providerMetadata, usage }) => {
@@ -3713,8 +3738,10 @@ Aturan:
                     !enableWebSearch &&
                     !shouldForceGetCurrentPaperState &&
                     !shouldForceSubmitValidation &&
-                    paperSession?.stageStatus !== "pending_validation" &&
-                    paperSession?.stageStatus !== "revision" &&
+                    (exactSourceResolution.mode === "force-inspect" || (
+                        paperSession?.stageStatus !== "pending_validation" &&
+                        paperSession?.stageStatus !== "revision"
+                    )) &&
                     availableExactSources.length > 0
                 const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
                 const fallbackBaseMessages = missingArtifactNote
@@ -3742,7 +3769,14 @@ Aturan:
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    prepareStep: (revisionChainEnforcer ?? fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
+                    prepareStep: ((() => {
+                        const forceInspect = fallbackExactSourceRoutePlan.prepareStep
+                        if (forceInspect && revisionChainEnforcer) {
+                            return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
+                                forceInspect(params) ?? revisionChainEnforcer(params)
+                        }
+                        return revisionChainEnforcer ?? forceInspect ?? fallbackDeterministicSyncPrepareStep
+                    })()) as any,
                     stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {

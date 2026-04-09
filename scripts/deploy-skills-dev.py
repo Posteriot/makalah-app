@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Deploy stage skills + system prompt from updated-2 to dev DB."""
+"""Deploy stage skills + system prompt from updated-4 to dev DB (wary-ferret-59)."""
 import json
 import subprocess
 import sys
 import os
 
 ADMIN_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48"
-CHANGE_NOTE = "updated-3: post UI testing refinements"
-SRC_DIR = ".worktrees/validation-panel-artifact-consistency/.references/system-prompt-skills-active/updated-3"
+CHANGE_NOTE = "updated-4: ban all inline citations from metadata inspection list — source identified by tool call"
+SRC_DIR = ".references/system-prompt-skills-active/updated-4"
 
 SKILLS = [
     ("01-gagasan-skill.md", "gagasan-skill"),
@@ -46,8 +46,34 @@ def strip_header(text):
     return text
 
 
+DEV_DEPLOYMENT_URL = "https://wary-ferret-59.convex.cloud"
+
+
+def assert_dev_deployment():
+    """Safety guard: abort if active Convex deployment is not the dev DB."""
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env.local")
+    if not os.path.exists(env_path):
+        raise RuntimeError(f"Cannot find .env.local at {env_path} — cannot verify deployment target.")
+    with open(env_path) as f:
+        for line in f:
+            if line.startswith("NEXT_PUBLIC_CONVEX_URL="):
+                url = line.strip().split("=", 1)[1]
+                if url != DEV_DEPLOYMENT_URL:
+                    raise RuntimeError(
+                        f"ABORT: Active deployment is {url}, expected {DEV_DEPLOYMENT_URL}. "
+                        f"This script is dev-only. Do NOT run against production."
+                    )
+                print(f"  ✓ Deployment target verified: {url}")
+                return
+    raise RuntimeError("NEXT_PUBLIC_CONVEX_URL not found in .env.local — cannot verify deployment target.")
+
+
 def main():
     os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    # --- Safety Check ---
+    print("=== Safety Check ===")
+    assert_dev_deployment()
 
     # --- System Prompt ---
     print("=== System Prompt ===")
