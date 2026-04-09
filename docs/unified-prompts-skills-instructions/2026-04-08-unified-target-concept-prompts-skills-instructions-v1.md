@@ -1,55 +1,106 @@
-# Konsep Unified: Prompt, Skill, dan Hardcoded Instructions
+# Konsep Unified: Prompt, Skill, Hardcoded Instructions, dan Managed Mirror
 
 ## Tujuan Dokumen
 
-Dokumen ini menyusun konsep target untuk menyatukan organisasi prompt, skill, dan hardcoded instructions di Makalah App tanpa merusak model operasional yang sudah benar, terutama source of truth di database untuk system prompt dan stage skills yang memang admin-managed.
+Dokumen ini menyusun konsep target untuk menyatukan organisasi prompt, skill, hardcoded instructions, dan managed mirror di Makalah App tanpa merusak model operasional yang sudah benar, terutama source of truth di database untuk system prompt dan stage skills yang memang admin-managed.
 
-Decision anchor untuk konsep target ini ada di `docs/unified-prompts-skills-instructions/2026-04-08-decision-record-final-migration-boundaries-v1.md`. Dokumen konsep ini harus ditafsirkan sesuai boundary final di decision record.
+Decision anchor untuk konsep target ini ada di `docs/unified-prompts-skills-instructions/2026-04-08-decision-record-final-migration-boundaries-v1.md`. Dokumen ini juga harus dibaca konsisten dengan `docs/unified-prompts-skills-instructions/2026-04-09-mirror-architecture-db-admin-agent-managed-runtime-v2.md` untuk boundary mirror DB-managed content.
 
 Versi ini menegaskan satu hal penting:
 
-**yang disatukan bukan sekadar lokasi file, tetapi ownership, contract text, composition boundary, dan precedence runtime.**
+**yang disatukan bukan sekadar lokasi file, tetapi ownership, contract text, composition boundary, precedence runtime, dan pemisahan tegas antara repo-managed prompt architecture dengan DB-managed mirror.**
 
 ## Rekomendasi Terbaik
 
 Rekomendasi terbaik adalah:
 
-**membangun unified prompt architecture di `src/agent/` sebagai layer organisasi, contracts, adapters, dan composition, tanpa memindahkan source of truth database-managed content ke filesystem dan tanpa memindahkan mentah-mentah modul hybrid yang masih bercampur dengan runtime logic.**
+**membangun unified architecture di `src/agent/` sebagai dua sublayer yang saling terkait tetapi tidak disamakan:**
+
+1. **`src/agent/managed/` untuk exported mirror dari DB-managed content yang memang masuk scope mirror awal, terutama `system prompts` dan `stage skills`,**
+2. **`src/agent/` repo-managed layer untuk prompts, skills, adapters, contracts, registry, dan composition.**
 
 Artinya:
 
-- yang disatukan adalah struktur, taxonomy, contracts, dan composition flow,
-- bukan semua persistence dipaksa menjadi file di `src/`,
-- bukan semua file yang mengandung string instruksi langsung dipindah ke `src/agent/`.
+- yang disatukan adalah struktur, taxonomy, contracts, composition flow, dan managed mirror boundary,
+- bukan semua persistence dipaksa menjadi file static,
+- bukan semua file yang mengandung string instruksi langsung dipindah ke `src/agent/`,
+- bukan semua DB-managed content diperlakukan seperti file-based prompt assets biasa.
 
 Ini pilihan terbaik karena:
 
 1. menghormati arsitektur admin-managed yang sudah ada,
 2. mengurangi prompt scattering di runtime,
-3. membuat ownership jelas,
+3. membuat ownership dan source authority jelas,
 4. membuat verification lebih rapi,
 5. menghindari duplikasi source of truth,
-6. mencegah `src/agent/` menjadi dump folder baru untuk modul campuran.
+6. mencegah `src/agent/` menjadi dump folder baru untuk modul campuran,
+7. memberi tempat yang benar untuk mirror file tanpa mencampurnya dengan prompt assets repo-managed.
 
 ## Prinsip Desain
 
-### 1. Pisahkan storage dari composition
+### 1. Pisahkan storage, mirror, dan composition
 
 Harus dibedakan antara:
 
-- tempat konten disimpan,
+- tempat konten operasional disimpan,
+- tempat snapshot mirror diekspor,
 - tempat konten dirakit menjadi runtime messages.
 
-Storage bisa tetap hybrid:
+Storage tetap hybrid:
 
 - DB untuk admin-managed prompt atau skill,
-- file untuk code-owned prompt assets dan skills.
+- file untuk code-owned prompt assets dan skills,
+- file mirror untuk exported snapshot dari DB-managed content yang memang masuk scope mirror.
 
-Tetapi composition harus dipusatkan secara arsitektural.
+Tetapi composition tetap harus dipusatkan secara arsitektural.
 
-### 2. Pisahkan text contract dari runtime logic
+### 2. Jangan samakan managed mirror dengan source of truth
 
-Ini prinsip yang belum eksplisit di versi awal.
+`src/agent/managed/` berguna untuk:
+
+- review,
+- diff git,
+- audit,
+- dokumentasi,
+- sync eksplisit file <-> DB.
+
+Tetapi `src/agent/managed/` **bukan** source of truth baru.
+
+Source of truth untuk domain admin-managed tetap:
+
+- `systemPrompts`,
+- `stageSkills`,
+- `stageSkillVersions`,
+- `styleConstitutions`.
+
+Catatan:
+
+- scope mirror awal yang dibahas eksplisit di dokumen ini adalah `system prompts` dan `stage skills`,
+- `styleConstitutions` tetap DB-managed, tetapi belum diasumsikan otomatis ikut desain mirror yang sama sampai ada keputusan lanjutan.
+
+### 3. Pisahkan model `system prompt` dari model `stage skill`
+
+Ini harus eksplisit karena codebase memang memodelkan keduanya secara berbeda.
+
+`system prompt`:
+
+- version chain,
+- `isActive`,
+- tidak punya status `draft/published/archived`.
+
+`stage skill`:
+
+- catalog row,
+- per-version lifecycle `draft/published/active/archived`,
+- `isEnabled` di level catalog,
+- runtime validation dan footer injection setelah content diambil.
+
+Akibatnya:
+
+- sync importer/exporter tidak boleh disatukan secara naif,
+- mirror file structure tidak boleh memaksakan lifecycle yang sama untuk keduanya.
+
+### 4. Pisahkan text contract dari runtime logic
 
 Harus dibedakan antara:
 
@@ -66,7 +117,7 @@ Surface seperti ini wajib dipecah dulu sebelum dianggap "berhasil dimigrasi":
 - `src/lib/ai/paper-tools.ts`
 - `src/lib/refrasa/prompt-builder.ts`
 
-### 3. Bedakan jenis instruksi secara eksplisit
+### 5. Bedakan jenis instruksi secara eksplisit
 
 Struktur target harus membedakan:
 
@@ -78,13 +129,14 @@ Struktur target harus membedakan:
 - compose skill,
 - tool description contract,
 - feature-specific prompt contract,
-- local runtime note yang valid hanya pada flow tertentu.
+- local runtime note yang valid hanya pada flow tertentu,
+- managed mirror snapshot untuk DB-managed content.
 
-### 4. Jangan jadikan route sebagai prompt warehouse
+### 6. Jangan jadikan route sebagai prompt warehouse
 
 Route boleh memutuskan kapan instruksi dipakai, tetapi tidak boleh menjadi tempat utama menyimpan teks instruksi panjang atau precedence rules implisit.
 
-### 5. Pertahankan DB untuk domain yang memang operasional
+### 7. Pertahankan DB untuk domain yang memang operasional
 
 Tetap pertahankan:
 
@@ -92,7 +144,7 @@ Tetap pertahankan:
 - `stageSkills` dan `stageSkillVersions` sebagai source of truth skill per stage,
 - `styleConstitutions` sebagai source of truth constitution Refrasa.
 
-Kalau ini dipindahkan ke file, lo bakal kehilangan:
+Kalau ini dipindahkan menjadi source authority file static, lo bakal kehilangan:
 
 - lifecycle admin,
 - activate atau deactivate,
@@ -100,15 +152,15 @@ Kalau ini dipindahkan ke file, lo bakal kehilangan:
 - audit log,
 - runtime validation berbasis DB.
 
-### 6. File-based prompts harus hidup di namespace yang sama
+### 8. File-based prompts harus hidup di namespace yang sama
 
 Prompt code-owned yang tersebar di `src/lib/ai`, `src/lib/json-render`, dan subdomain lain harus dikonsolidasikan secara namespace, walau caller atau domain logic-nya belum tentu ikut pindah.
 
-### 7. Bedakan prompt agentic vs prompt utilitarian
+### 9. Bedakan prompt agentic vs prompt utilitarian
 
 Tidak semua prompt yang ada di repo harus masuk `src/agent/`.
 
-Yang cocok masuk `src/agent/`:
+Yang cocok masuk `src/agent/` repo-managed layer:
 
 - prompt yang membentuk perilaku agent,
 - prompt yang reusable lintas flow,
@@ -120,11 +172,30 @@ Yang tidak perlu dipaksa masuk `src/agent/`:
 - prompt test atau verification,
 - prompt satu-fungsi yang hanya dipakai helper teknis seperti OCR atau title generation.
 
-## Struktur Ideal yang Diusulkan
+## Struktur Target yang Diusulkan
 
 ```text
 src/
   agent/
+    managed/
+      system-prompts/
+        <prompt-chain>/
+          current.content.md
+          meta.json
+          versions/
+      stage-skills/
+        <stage-scope>/
+          current.active.md
+          meta.json
+          versions/
+      checksums/
+      manifest.json
+    sync/
+      export-system-prompts.ts
+      import-system-prompts.ts
+      export-stage-skills.ts
+      import-stage-skills.ts
+      diff-managed-vs-db.ts
     prompts/
       global/
         fallback-system-prompt.ts
@@ -150,6 +221,9 @@ src/
         choice-context-notes.ts
         exact-source-inspection-rules.ts
         source-provenance-rules.ts
+      paper-stage-fallbacks/
+        index.ts
+        <stage-specific-files>
     skills/
       search/
         web-search-quality/
@@ -160,6 +234,7 @@ src/
       prompt-registry.ts
       skill-registry.ts
       tool-instruction-registry.ts
+      managed-content-registry.ts
     adapters/
       system-prompts.ts
       stage-skills.ts
@@ -177,9 +252,43 @@ src/
       prompt-surface-status.ts
       message-stack.ts
       tool-instruction-kinds.ts
+      managed-content.ts
 ```
 
-## Makna Tiap Folder
+## Makna Tiap Area
+
+### `src/agent/managed/`
+
+Tempat exported mirror untuk DB-managed content dalam scope mirror awal.
+
+Isi:
+
+- snapshot content canonical dari DB,
+- metadata sync,
+- version export yang berguna untuk diff dan audit.
+
+Scope awal:
+
+- `system prompts`,
+- `stage skills`.
+
+Bukan tempat:
+
+- runtime authority,
+- augmentation behavior,
+- precedence logic,
+- fallback activation wiring,
+- source of truth baru.
+
+### `src/agent/sync/`
+
+Tempat surface-specific import/export pipeline.
+
+Prinsip:
+
+- importer `system prompts` terpisah dari importer `stage skills`,
+- jangan bikin satu importer generik yang menyamakan lifecycle keduanya,
+- diff dan validation harus terjadi sebelum write-back ke DB.
 
 ### `src/agent/prompts/`
 
@@ -191,7 +300,8 @@ Isi:
 - note reusable,
 - directive phase-specific,
 - router prompt,
-- feature-specific prompt contracts yang memang code-owned.
+- feature-specific prompt contracts yang memang code-owned,
+- fallback stage instruction yang pure.
 
 Bukan tempat:
 
@@ -200,7 +310,8 @@ Bukan tempat:
 - tool execution,
 - heuristics non-prompt,
 - classifier runtime,
-- prompt utilitarian yang hanya hidup untuk helper teknis lokal.
+- prompt utilitarian yang hanya hidup untuk helper teknis lokal,
+- mirror snapshot DB-managed content.
 
 ### `src/agent/skills/`
 
@@ -220,7 +331,8 @@ Layer registry untuk menjawab:
 - ownership-nya apa,
 - source-nya apa,
 - status migrasinya apa,
-- dipakai di mode apa.
+- dipakai di mode apa,
+- mana surface yang repo-managed vs managed mirror.
 
 ### `src/agent/adapters/`
 
@@ -235,9 +347,7 @@ Prinsip adapter:
 
 ### `src/agent/compose/`
 
-Ini layer paling penting.
-
-Semua perakitan runtime messages harus bergerak ke sini secara bertahap.
+Layer paling penting untuk perakitan runtime messages.
 
 Target fungsi:
 
@@ -251,7 +361,8 @@ Target fungsi:
 Catatan:
 
 - composer boleh menerima hasil query atau adapter,
-- composer tidak harus menjadi tempat query data mentah.
+- composer tidak harus menjadi tempat query data mentah,
+- composer bekerja di atas content canonical dari DB atau prompt assets repo-managed, bukan dari file mirror sebagai authority runtime.
 
 ### `src/agent/contracts/`
 
@@ -265,8 +376,7 @@ Contoh definisi yang perlu eksplisit:
 - `PromptSurfaceStatus`
 - `MessageStackLayer`
 - `ToolInstructionKind`
-
-Ini penting supaya unified architecture bukan cuma soal folder, tapi juga bahasa konseptual yang sama di seluruh codebase.
+- `ManagedContentKind`
 
 ## Ownership Model yang Diusulkan
 
@@ -283,7 +393,33 @@ Masuk registry sebagai:
 - `source: "convex-db"`
 - `ownership: "admin-managed"`
 
-### B. Code-managed prompt assets
+Mirror export untuk `system prompts` dan `stage skills` boleh hidup di `src/agent/managed/`, tetapi authority tetap di DB.
+
+Untuk `style constitutions`, keputusan saat ini tetap:
+
+- source of truth di DB,
+- akses runtime lewat adapter,
+- mirror file belum dianggap bagian scope implementasi awal.
+
+### B. Managed mirror snapshot
+
+Masuk `src/agent/managed/`:
+
+- exported system prompt chains,
+- exported stage skill snapshots,
+- checksum dan manifest sync.
+
+Masuk registry sebagai:
+
+- `source: "mirror-export"`
+- `ownership: "derived-from-db"`
+
+Catatan:
+
+- ini bukan source runtime utama,
+- ini bukan persistence authority baru.
+
+### C. Code-managed prompt assets
 
 Pindah atau direlokasi ke `src/agent/prompts/`:
 
@@ -300,7 +436,7 @@ Masuk registry sebagai:
 - `source: "code"`
 - `ownership: "repo-managed"`
 
-### C. Hybrid prompt surfaces
+### D. Hybrid prompt surfaces
 
 Masuk jalur `extract contract first`:
 
@@ -316,7 +452,7 @@ Masuk registry sebagai:
 - `ownership: "repo-managed"`
 - `status: "extract-contract-first"`
 
-### D. File-based skills
+### E. File-based skills
 
 Tetap file-based, tetapi berada di namespace `src/agent/skills/`.
 
@@ -325,7 +461,7 @@ Masuk registry sebagai:
 - `source: "filesystem"`
 - `ownership: "repo-managed"`
 
-### E. Local utilities dan ops artifacts
+### F. Local utilities dan ops artifacts
 
 Tetap di domain lokal atau migrations:
 
@@ -348,7 +484,8 @@ Tetap di domain lokal atau migrations:
 
 1. Resolver atau adapter menyediakan active stage skill atau fallback.
 2. Composer paper mode merakit memory digest, artifact summaries, invalidated artifacts, status note, dan stage instruction.
-3. Route tidak lagi memegang prompt string panjang atau precedence implicit.
+3. Runtime boleh menambahkan augmentation lokal seperti artifact footer setelah content canonical diambil.
+4. Route tidak lagi memegang prompt string panjang atau precedence implicit.
 
 ### Web search target
 
@@ -362,6 +499,13 @@ Tetap di domain lokal atau migrations:
 1. Constitution tetap diambil dari DB lewat adapter.
 2. Prompt contracts Refrasa hidup di namespace `src/agent/prompts/features/`.
 3. Builder domain Refrasa tetap boleh lokal bila memang lebih sehat.
+
+### Managed mirror target
+
+1. Admin mutation atau explicit sync job memperbarui DB.
+2. Exporter menulis snapshot ke `src/agent/managed/`.
+3. Importer file-to-DB hanya berjalan eksplisit, tidak otomatis.
+4. Runtime tidak membaca file mirror sebagai authority utama.
 
 ## Risiko Arsitektural yang Harus Diantisipasi
 
@@ -384,15 +528,30 @@ Risiko:
 
 - adapter diam-diam menyimpan fallback baru,
 - text contract hasil ekstraksi menyimpang dari DB-managed content,
+- file mirror diperlakukan sebagai authority runtime,
 - prompt final tidak jelas authority-nya.
 
 Mitigasi:
 
 - adapter harus tipis,
 - registry wajib mencatat ownership dan source,
-- composer hanya menyusun, bukan menyimpan source baru.
+- composer hanya menyusun, bukan menyimpan source baru,
+- managed mirror harus ditandai sebagai derived export, bukan canonical source.
 
-### 3. Drift precedence
+### 3. Penyamaan model `system prompt` dan `stage skill`
+
+Risiko:
+
+- importer/exporter dipaksa satu bentuk,
+- system prompt diperlakukan seolah punya `draft/published/archived`,
+- stage skill kehilangan lifecycle aslinya.
+
+Mitigasi:
+
+- pisahkan sync pipeline per surface,
+- jangan pakai satu model metadata generik untuk semua DB-managed content.
+
+### 4. Drift precedence
 
 Risiko:
 
@@ -404,12 +563,12 @@ Mitigasi:
 - precedence system messages harus didefinisikan eksplisit,
 - parity verification wajib mengecek urutan stack, bukan cuma keberadaan file baru.
 
-### 4. Verification yang dangkal
+### 5. Verification yang dangkal
 
 Risiko:
 
 - migrasi dinyatakan selesai karena lint dan typecheck lolos,
-- padahal behavior tool calling dan search compose berubah.
+- padahal behavior tool calling, stage skill lifecycle, atau search compose berubah.
 
 Mitigasi:
 
@@ -421,7 +580,8 @@ Mitigasi:
 
 - relokasi asset yang pure,
 - relokasi skill file-based,
-- ekstraksi string inline yang jelas.
+- ekstraksi string inline yang jelas,
+- desain export mirror untuk DB-managed content.
 
 ### Harus menunggu pemisahan kontrak
 
@@ -443,8 +603,9 @@ Mitigasi:
 Unified prompt architecture yang benar untuk repo ini adalah:
 
 - **DB tetap memegang content operasional yang memang admin-managed,**
-- **`src/agent/` memegang prompt assets, skills, adapters, contracts, dan composition,**
+- **`src/agent/managed/` memegang exported mirror untuk DB-managed content tanpa menjadi authority runtime baru,**
+- **`src/agent/` repo-managed layer memegang prompt assets, skills, adapters, contracts, registry, dan composition,**
 - **surface hybrid dipecah dulu menjadi text contract dan runtime logic,**
 - **composer memegang precedence runtime secara eksplisit.**
 
-Itu versi yang paling realistis, paling aman, dan paling sesuai dengan bentuk codebase saat ini.
+Itu versi yang paling realistis, paling aman, dan paling sesuai dengan bentuk codebase saat ini setelah mempertimbangkan boundary mirror dan perbedaan model data antara `systemPrompts` dan `stageSkills`.
