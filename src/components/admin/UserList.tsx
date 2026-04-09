@@ -93,7 +93,7 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
   const [pendingTier, setPendingTier] = useState<SubscriptionTier | null>(null)
 
   const promoteToAdmin = useMutation(api.adminUserManagement.promoteToAdmin)
-  const demoteToUser = useMutation(api.adminUserManagement.demoteToUser)
+  const demoteFromAdmin = useMutation(api.adminUserManagement.demoteFromAdmin)
   const updateTier = useMutation(api.adminUserManagement.updateSubscriptionTier)
 
   const handlePromoteClick = (user: User) => {
@@ -154,8 +154,9 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
         })
         toast.success(result.message)
       } else if (dialogAction === "demote") {
-        const result = await demoteToUser({
+        const result = await demoteFromAdmin({
           targetUserId: selectedUser._id,
+          targetTier: "free",
         })
         toast.success(result.message)
       } else if (dialogAction === "delete") {
