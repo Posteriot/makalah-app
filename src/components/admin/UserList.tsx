@@ -38,6 +38,8 @@ interface UserListProps {
 const PAGE_SIZE = 20
 
 type SubscriptionTier = "free" | "bpp" | "pro"
+type TierOrAdmin = SubscriptionTier | "admin"
+// "changeTier" kept temporarily for JSX compatibility — Task 3 removes it
 type DialogAction = "promote" | "demote" | "delete" | "changeTier"
 
 const TIER_OPTIONS: Array<{ value: SubscriptionTier; label: string; color: string }> = [
@@ -45,6 +47,32 @@ const TIER_OPTIONS: Array<{ value: SubscriptionTier; label: string; color: strin
   { value: "bpp", label: "BPP", color: "bg-segment-bpp text-white" },
   { value: "pro", label: "PRO", color: "bg-segment-pro text-black" },
 ]
+const TIER_HIERARCHY: readonly string[] = ["free", "bpp", "pro", "unlimited"]
+
+const ADMIN_OPTION = { value: "admin" as const, label: "ADMIN", color: "bg-rose-600 text-white" }
+
+function getPromoteOptions(subscriptionStatus: string, role: string, currentUserRole: string): Array<{ value: string; label: string; color: string }> {
+  if (role === "admin" || role === "superadmin") return []
+  const currentIndex = TIER_HIERARCHY.indexOf(subscriptionStatus)
+  const tierOptions = TIER_OPTIONS.filter((_, i) => i > currentIndex)
+  // Only superadmin can promote to admin
+  if (currentUserRole === "superadmin") {
+    return [...tierOptions, ADMIN_OPTION]
+  }
+  return tierOptions
+}
+
+function getDemoteOptions(subscriptionStatus: string, role: string, currentUserRole: string): Array<{ value: string; label: string; color: string }> {
+  if (role === "superadmin") return []
+  if (role === "admin") {
+    // Only superadmin can demote admin
+    if (currentUserRole !== "superadmin") return []
+    return [...TIER_OPTIONS].reverse()
+  }
+  const currentIndex = TIER_HIERARCHY.indexOf(subscriptionStatus)
+  return TIER_OPTIONS.filter((_, i) => i < currentIndex).reverse()
+}
+
 type DynamicColumnKey =
   | "role"
   | "subscription"
@@ -90,7 +118,7 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
   const [dynamicColumnStart, setDynamicColumnStart] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  const [pendingTier, setPendingTier] = useState<SubscriptionTier | null>(null)
+  const [pendingTier, setPendingTier] = useState<TierOrAdmin | null>(null)
 
   const promoteToAdmin = useMutation(api.adminUserManagement.promoteToAdmin)
   const demoteFromAdmin = useMutation(api.adminUserManagement.demoteFromAdmin)
@@ -98,11 +126,13 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
 
   const handlePromoteClick = (user: User) => {
     setSelectedUser(user)
+    setPendingTier(null)
     setDialogAction("promote")
   }
 
   const handleDemoteClick = (user: User) => {
     setSelectedUser(user)
+    setPendingTier(null)
     setDialogAction("demote")
   }
 
@@ -111,12 +141,12 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
     setDialogAction("delete")
   }
 
+  // Kept for render compatibility until Task 3 updates JSX
   const handleTierClick = (user: User) => {
-    // Only allow for regular users (admin/superadmin always unlimited)
     if (user.role === "admin" || user.role === "superadmin") return
     setSelectedUser(user)
     setPendingTier(null)
-    setDialogAction("changeTier")
+    setDialogAction("promote")
   }
 
   const deleteUserFromAdmin = async (user: User) => {
@@ -139,29 +169,31 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
 
   const handleConfirm = async () => {
     if (!selectedUser || !dialogAction) return
+    if (dialogAction !== "delete" && !pendingTier) return
 
     setIsLoading(true)
     try {
-      if (dialogAction === "changeTier" && pendingTier) {
-        const result = await updateTier({
-          targetUserId: selectedUser._id,
-          newTier: pendingTier,
-        })
-        toast.success(result.message)
-      } else if (dialogAction === "promote") {
-        const result = await promoteToAdmin({
-          targetUserId: selectedUser._id,
-        })
-        toast.success(result.message)
-      } else if (dialogAction === "demote") {
-        const result = await demoteFromAdmin({
-          targetUserId: selectedUser._id,
-          targetTier: "free",
-        })
-        toast.success(result.message)
-      } else if (dialogAction === "delete") {
+      if (dialogAction === "delete") {
         const message = await deleteUserFromAdmin(selectedUser)
         toast.success(message)
+      } else if (pendingTier === "admin") {
+        // Promote to admin (role change)
+        const result = await promoteToAdmin({ targetUserId: selectedUser._id })
+        toast.success(result.message)
+      } else if (selectedUser.role === "admin") {
+        // Demote from admin to specific tier
+        const result = await demoteFromAdmin({
+          targetUserId: selectedUser._id,
+          targetTier: pendingTier as "free" | "bpp" | "pro",
+        })
+        toast.success(result.message)
+      } else {
+        // Tier change for regular user
+        const result = await updateTier({
+          targetUserId: selectedUser._id,
+          newTier: pendingTier as "free" | "bpp" | "pro",
+        })
+        toast.success(result.message)
       }
     } catch (error: unknown) {
       const errorMessage =
@@ -211,22 +243,24 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
   }
 
   const getAvailableActions = (user: User): DialogAction[] => {
-    if (currentUserRole === "superadmin") {
-      if (user.role === "user") return ["promote", "delete"]
-      if (user.role === "admin") return ["demote", "delete"]
-      return []
+    const actions: DialogAction[] = []
+    const promoteOpts = getPromoteOptions(user.subscriptionStatus, user.role, currentUserRole)
+    const demoteOpts = getDemoteOptions(user.subscriptionStatus, user.role, currentUserRole)
+    if (promoteOpts.length > 0) actions.push("promote")
+    if (demoteOpts.length > 0) actions.push("demote")
+    // Delete permissions unchanged
+    if (currentUserRole === "superadmin" && user.role !== "superadmin") {
+      actions.push("delete")
+    } else if (currentUserRole === "admin" && user.role === "user") {
+      actions.push("delete")
     }
-
-    if (currentUserRole === "admin" && user.role === "user") {
-      return ["delete"]
-    }
-
-    return []
+    return actions
   }
 
   const isCannotModifyRow = (user: User) =>
     currentUserRole === "superadmin" && user.role === "superadmin"
 
+  // Kept for render compatibility until Task 3 updates JSX
   const getPrimaryAction = (user: User): "promote" | "demote" | null => {
     const actions = getAvailableActions(user)
     if (actions.includes("promote")) return "promote"
