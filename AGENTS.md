@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -64,58 +64,5 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **State workflow must be driven by semantic JSON + runtime guards, not keywords.** Workflow state transitions must be determined by structured data and explicit runtime validation, never by keyword matching or regex pattern detection.
 
 ### AGENT ROLE ASSIGNMENT
-- **Claude Code:** Brainstormer, planner, task creator, and executor for all implementation work on this branch.
-- **Codex (OpenAI) / Review Agent:** Audit and code review. All review/audit tasks are delegated here, not performed by Claude Code.
-
-### ACTIVE BRANCH SCOPE
-- **Branch:** `tools-features-ui-ai-awarness`
-- **Scope document:** `SCOPE.md` (root) — read this first for full awareness mapping, gap analysis, and implementation targets.
-- **Reference files:** `.references/system-prompt-skills-active/updated-4/` — system prompt and 14 stage skill files (editable working copies).
-- **Documentation directory:** `docs/tools-features-ui-ai-awarness/` — all context, design, plan, implementation, verification, and handoff documents.
-- **Objective:** Detect, analyze, verify, audit, and fix the MOKA model's awareness of all tools, features, UI components, and functions available in its runtime environment. Close blind spots where the model does not know about capabilities it has or UI elements the user can see.
-
-### AUDITOR & REVIEWER MANDATE FOR THIS WORKTREE
-
-You are acting as the auditor and reviewer for work performed by Claude Code in this branch. Your job is to verify that the model's awareness has been correctly and completely addressed.
-
-**What you are auditing:**
-
-The model (MOKA) must be aware of six categories of tools/features/UI. For each, verify that:
-- The system prompt or relevant skill file explicitly mentions the feature
-- The description accurately matches the actual implementation in code
-- The model receives enough context to complement (not duplicate/contradict) the UI
-
-**The six categories:**
-
-1. **Tools per stage** — All tools available to the model, including exact source tools (inspectSourceDocument, quoteFromSource, searchAcrossSources) and readArtifact. Verify tool descriptions in `paper-tools.ts` match what the system prompt/skills tell the model.
-
-2. **Artifact system** — ArtifactViewer, ArtifactPanel, ArtifactEditor (inline editing by user), ArtifactToolbar (copy/export), ArtifactTabs (multi-tab view). Verify the model knows what the user can see and do with artifacts.
-
-3. **PaperValidationPanel** — Approve/revise buttons, revision feedback textarea, dirty state warning. Verify the model knows this is the authority boundary for stage lifecycle decisions and does not duplicate its function.
-
-4. **Choice card (json-renderer YAML)** — ChoiceCardShell, ChoiceOptionButton, ChoiceTextarea, ChoiceSubmitButton, decisionMode (exploration/commit), recommended badge. Verify the model understands the visual language and its boundaries.
-
-5. **Process/status UI** — UnifiedProcessCard (task progress), ChatProcessStatusBar (real-time status), ToolStateIndicator (tool execution state), ReasoningTracePanel (reasoning visualization), thinking loader above chat input. Verify the model adjusts its chat output to complement what the user already sees.
-
-6. **Source system** — SourcesPanel (source metadata + verification status), InlineCitationChip (clickable inline citations). Verify the model understands the source verification UX.
-
-**Review criteria:**
-
-- **Accuracy:** Instructions match actual code behavior. If the system prompt says "user sees X in the panel", verify that component actually displays X.
-- **Completeness:** No tool or major UI component is left unmentioned when the model would benefit from knowing about it.
-- **No over-instruction:** Features that are purely observability (no model action needed) should be documented as "awareness-only" — the model should not try to control or reference them explicitly.
-- **Consistency:** Tool descriptions in code (`paper-tools.ts`), injected context (`paper-mode-prompt.ts`), system prompt (`system-prompt.md`), and skill files (`01-14`) must not contradict each other.
-- **Language policy:** All model-facing instructions in English. Only user-facing UI strings in Indonesian.
-
-**High-risk audit targets:**
-- `system-prompt.md` — any additions must not bloat the prompt beyond what the model can effectively use.
-- `paper-mode-prompt.ts` — injected context must not create conflicting instructions with skill files.
-- Exact source tools — these are the biggest current gap. Verify instructions are added and accurate.
-- Choice card boundary — verify no instruction accidentally tells the model to use choice cards for stage approval.
-
-**Reject criteria:**
-- Any instruction that contradicts the actual code implementation.
-- Any awareness patch that tells the model about a feature that does not exist or works differently than described.
-- Any change that adds model awareness but breaks existing behavior (e.g., telling model about inline editing causing it to stop using updateArtifact tool).
-- Any instruction written in Indonesian (violates MODEL INSTRUCTION LANGUAGE POLICY).
-- Claims of completion without verification evidence.
+- **Claude Code (this agent):** Brainstormer, planner, task creator, and executor for all implementation work on this branch.
+- **Codex (OpenAI):** Audit and code review. Claude Code must not self-review — all review and audit tasks are delegated to Codex.
