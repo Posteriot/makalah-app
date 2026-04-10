@@ -1,431 +1,211 @@
-# Design Doc: TypeScript Source Normalizer
+# Design Doc: Ingestion Text Cleanup (Lean)
 
 ## Ringkasan
 
-Dokumen ini menjabarkan desain teknis untuk `TypeScript source normalizer` yang akan menjadi boundary resmi antara `fetch/extract` dan `chunking/RAG ingest`.
+Tambahkan satu fungsi chokepoint `cleanForIngestion(text, sourceType)` yang dipanggil tepat sebelum `ingestToRag()` di kedua path (upload file dan web-search). Tujuannya bukan arsitektur baru, tapi memastikan ada satu tempat untuk membersihkan text sebelum chunking dan embedding.
 
-Tujuan utamanya bukan mengganti logic existing, tetapi mengonsolidasikan logic normalization yang saat ini tersebar ke dalam satu layer ingestion yang jelas, ringan, dan bisa diobservasi.
-
-Dokumen ini mengikuti keputusan di `context.md`:
-
-- fokus ke konsolidasi helper TypeScript yang sudah ada
-- tidak menambahkan runtime baru seperti `just-bash`
-- hanya dipakai untuk ingestion RAG
-- menjaga exact-source tetap dekat ke source asli
+Dokumen ini menggantikan design doc sebelumnya yang terlalu besar scope-nya. Keputusan lean ini didasarkan pada verifikasi langsung terhadap codebase per 2026-04-10.
 
 ## Problem Statement
 
-Saat ini jalur ingestion content di makalahapp masih terdistribusi:
+Saat ini dua jalur ingestion mengirim content langsung ke `ingestToRag()` tanpa post-processing:
 
-- web source diparse di `src/lib/ai/web-search/content-fetcher.ts`
-- upload source diekstrak di `src/app/api/extract-file/route.ts`
-- file formatter tertentu hidup di extractor masing-masing
-- chunking langsung menerima string content yang datang dari banyak tempat
+1. **Upload file** (`extract-file/route.ts:261`): `extractedText` langsung masuk `ingestToRag()`
+2. **Web search** (`orchestrator.ts:1114`): `fetched.fullContent` langsung masuk `ingestToRag()`
 
-Masalah yang muncul:
+Tidak ada satu tempat pun untuk menerapkan cleanup sebelum content masuk chunking dan embedding.
 
-- tidak ada satu kontrak normalization yang konsisten
-- tidak ada strategy per source type yang eksplisit
-- tidak ada metadata normalization yang bisa dipakai untuk observability
-- file upload hanya menyimpan `extractedText`, belum bisa memisahkan `raw` vs `normalized`
+### Dampak nyata di 100K user
 
-Pada saat yang sama, fondasi normalizer TypeScript sebenarnya sudah ada, tetapi tersebar:
+- PDF extraction (`pdf-parse`) menghasilkan text dengan broken line wraps, repeated headers/footers per page, dan whitespace inconsistency. Ini noise yang masuk embedding.
+- DOCX extraction (`mammoth`) menghasilkan raw text tanpa paragraph normalization.
+- Web content sudah melalui Readability+Turndown (HTML->Markdown), jadi relatif bersih. Tapi bisa punya excessive blank lines dari Turndown output.
+- Chunker (`chunking.ts`) splits berdasarkan `\n\s*\n+` dan heading regex. Noisy whitespace bisa menghasilkan chunk boundaries yang suboptimal.
 
-- citation/search normalization di `src/lib/citations/normalizer.ts`
-- URL cleanup/validation di `src/lib/citations/apaWeb.ts` dan `src/lib/citations/url-validation.ts`
-- web parsing dasar di `src/lib/ai/web-search/content-fetcher.ts`
-- XLSX formatting di `src/lib/file-extraction/xlsx-extractor.ts`
-- chunking di `src/lib/ai/chunking.ts`
+### Yang bukan masalah
 
-Jadi kebutuhan saat ini bukan membuat kemampuan baru dari nol, tetapi memberi boundary ingestion yang lebih jelas.
+- Exact-source path sudah terpisah clean — pakai `documentText` dan `paragraphs` di orchestrator, bukan `fullContent`. Tidak perlu disentuh.
+- Citation/URL normalization sudah punya domain sendiri di `src/lib/citations/`. Tidak boleh dicampur.
+- File extractors sendiri sudah berfungsi baik. Yang kurang adalah post-processing antara extract dan ingest.
 
 ## Goals
 
-- Menyediakan satu `normalization layer` resmi untuk ingestion RAG.
-- Mendukung dua jalur awal:
-  - web-search content
-  - upload file text
-- Menetapkan strategy eksplisit per source type.
-- Memisahkan `raw content` dan `normalized content`.
-- Menjaga overhead runtime tetap ringan.
+- Satu chokepoint function antara extract dan ingest.
+- Cleanup konservatif yang tidak mengubah meaning content.
+- Bisa diuji dengan snapshot tests.
+- Tidak perlu schema migration.
+- Tidak perlu abstraksi per source type yang elaborate.
 
 ## Non-Goals
 
-- Tidak dipakai untuk `exact-source context`.
-- Tidak mengganti seluruh citation normalizer yang sudah ada.
-- Tidak memasukkan citation URL normalization ke dalam text normalization layer.
-- Tidak menambahkan runtime/tool baru seperti `just-bash`.
-- Tidak melakukan semantic rewriting konten.
+- Tidak menyentuh exact-source path.
+- Tidak mengganti citation normalizer.
+- Tidak menambah schema fields (rawExtractedText, normalizedText, normalizationMeta).
+- Tidak membuat strategy pattern per source type.
+- Tidak membuat derived artifacts.
+- Tidak menambah runtime baru.
 
-## Proposed Architecture
+## Proposed Design
 
-### Target flow
+### Satu file, satu fungsi
 
-```text
-fetch / extract
-  -> normalizeSourceContent()
-  -> chunkContent()
-  -> embedTexts()
-  -> ingestToRag()
 ```
-
-### Layer responsibilities
-
-#### 1. Extract / Fetch layer
-
-Tanggung jawab:
-
-- mengambil content dari source
-- menghasilkan `raw content`
-- tidak bertanggung jawab untuk cleanup ingestion yang kompleks
-
-Implementasi existing:
-
-- `src/lib/ai/web-search/content-fetcher.ts`
-- `src/app/api/extract-file/route.ts`
-- `src/lib/file-extraction/*`
-
-#### 2. Normalization layer
-
-Tanggung jawab:
-
-- menerima `raw content`
-- menerapkan cleanup sesuai `sourceKind`
-- menghasilkan:
-  - `normalizedText`
-  - `normalizationMeta`
-  - `derivedArtifacts?`
-
-Modul baru:
-
-- `src/lib/ingestion/source-normalizer.ts`
-- `src/lib/ingestion/source-normalizer.types.ts`
-
-#### 3. Chunking / Embedding / Ingest layer
-
-Tanggung jawab:
-
-- hanya bekerja dengan `normalizedText`
-- tidak lagi menerima string mentah dari berbagai jalur
-
-Implementasi existing:
-
-- `src/lib/ai/chunking.ts`
-- `src/lib/ai/rag-ingest.ts`
-
-## API Contract
-
-### Type definitions
+src/lib/ingestion/clean-for-ingestion.ts
+```
 
 ```ts
-export type SourceKind =
-  | "html"
-  | "pdf_text"
-  | "docx_text"
-  | "xlsx_markdown"
-  | "pptx_text"
-  | "plain_text"
-  | "image_ocr"
+type IngestionSourceType = "web" | "upload"
 
-export interface NormalizeSourceInput {
-  sourceKind: SourceKind
-  rawContent: string
-  sourceUrl?: string
-  title?: string
-  metadata?: Record<string, unknown>
-}
-
-export interface NormalizeSourceOutput {
-  normalizedText: string
-  normalizationMeta: {
-    sourceKind: SourceKind
-    originalLength: number
-    normalizedLength: number
-    appliedSteps: string[]
-    warnings?: string[]
-    normalizerVersion: string
-  }
-  derivedArtifacts?: {
-    references?: Array<{ url: string; title?: string }>
-    sections?: Array<{ heading?: string; length: number }>
-  }
-}
+function cleanForIngestion(text: string, sourceType: IngestionSourceType): string
 ```
 
-### Main function
+Pure function. Synchronous. Stateless. Returns cleaned string.
 
-```ts
-export function normalizeSourceContent(
-  input: NormalizeSourceInput
-): NormalizeSourceOutput
-```
+### Cleanup operations
 
-## Source Strategies
+Semua source types mendapat cleanup dasar yang sama:
 
-### `html`
+1. **Normalize newlines**: `\r\n` -> `\n`
+2. **Collapse excessive blank lines**: 3+ blank lines -> 2 blank lines
+3. **Dedup identical consecutive paragraphs**: split on `\n\n`, compare trimmed, hapus duplikat berurutan. Ini address repeated headers/footers dari PDF extraction.
+4. **Trim**: leading/trailing whitespace (terakhir, setelah dedup selesai dengan paragraph boundaries utuh)
 
-Input source:
+Tidak ada cleanup tambahan per source type di fase ini. Kalau nanti ada evidence bahwa source type tertentu butuh treatment khusus, bisa ditambah di fungsi yang sama tanpa perlu abstraksi baru.
 
-- hasil `Readability + Turndown`
-- bisa berasal dari `web-search content`
+### Kenapa tidak per-source-type strategies
 
-Cleanup aman:
+Verifikasi terhadap codebase menunjukkan:
 
-- trim whitespace global
-- collapse blank lines berlebih
-- dedup paragraph identik berurutan
-- heading markdown repair
-- trim boilerplate ringan yang jelas non-konten
+| Source | State saat extract | Apakah butuh strategy terpisah? |
+|---|---|---|
+| Web (HTML) | Sudah melalui Readability+Turndown. Bersih. | Tidak |
+| PDF | `pdf-parse` raw output. Trim saja. | Dedup paragraphs cukup |
+| DOCX | `mammoth` raw text. Trim saja. | Tidak |
+| XLSX | Sudah formatted sebagai markdown tables | Tidak |
+| PPTX | Raw text, biasanya bersih per slide | Tidak |
+| TXT | Plain text, trim saja | Tidak |
+| Image OCR | OCR output, biasanya pendek | Tidak |
 
-Catatan:
-
-- cleanup harus konservatif
-- jangan menghapus section yang belum bisa dibuktikan sebagai boilerplate
-
-### `pdf_text`
-
-Input source:
-
-- text hasil extractor PDF
-
-Cleanup aman:
-
-- normalize whitespace
-- collapse broken line wraps
-- dedup repeated header/footer sederhana
-- rapikan paragraph separation
-
-Catatan:
-
-- jangan gabung paragraf secara agresif
-- jangan ubah urutan kalimat
-
-### `docx_text`
-
-Input source:
-
-- text hasil extractor DOCX
-
-Cleanup aman:
-
-- normalize blank lines
-- rapikan paragraph spacing
-- heading-ish line normalization ringan
-
-### `xlsx_markdown`
-
-Input source:
-
-- markdown hasil formatter XLSX existing
-
-Cleanup aman:
-
-- trim whitespace
-- normalize jarak antar sheet
-- pertahankan struktur table markdown
-
-### `pptx_text`
-
-Input source:
-
-- text hasil extractor PPTX
-
-Cleanup aman:
-
-- normalize spacing
-- rapikan slide separator jika ada
-
-### `plain_text`
-
-Input source:
-
-- TXT atau source text polos lain
-
-Cleanup aman:
-
-- trim
-- normalize newline
-- dedup paragraph identik berurutan
-
-### `image_ocr`
-
-Input source:
-
-- hasil OCR image
-
-Cleanup aman:
-
-- trim
-- normalize whitespace
-- paragraph cleanup minimal
-
-## Data Persistence Changes
-
-### Existing state
-
-Table `files` saat ini hanya menyimpan:
-
-- `extractedText`
-- `extractionStatus`
-- `extractionError`
-
-### Proposed changes
-
-Tambahkan field berikut ke `files`:
-
-- `rawExtractedText?: string`
-- `normalizedText?: string`
-- `normalizationMeta?: { ... }`
-- `normalizerVersion?: string`
-
-### Rationale
-
-- `rawExtractedText` dipakai untuk audit dan debugging
-- `normalizedText` dipakai untuk chunking dan RAG
-- `normalizationMeta` dipakai untuk observability dan diagnosis
-- `rawExtractedText` tidak boleh ikut masuk index RAG agar tidak menambah noise dan duplikasi
+Semua bisa ditangani oleh 4 operasi cleanup yang sama. Strategy pattern jadi premature abstraction.
 
 ## Integration Points
 
-### 1. Web-search content path
+### 1. Upload file path
 
-Lokasi:
+Lokasi: `src/app/api/extract-file/route.ts:259-266`
 
-- `src/lib/ai/web-search/content-fetcher.ts`
-- `src/lib/ai/web-search/orchestrator.ts`
+Sekarang:
+```ts
+void ingestToRag({
+  content: extractedText,
+  ...
+})
+```
 
-Proposed integration:
+Setelah:
+```ts
+import { cleanForIngestion } from "@/lib/ingestion/clean-for-ingestion"
 
-- setelah `FetchedContent.fullContent` atau `pageContent` siap
-- sebelum `ingestToRag()`
+void ingestToRag({
+  content: cleanForIngestion(extractedText, "upload"),
+  ...
+})
+```
 
-Perilaku:
+Satu baris berubah. Tidak ada perubahan lain di route.
 
-- simpan raw web content di memory scope request
-- kirim ke `normalizeSourceContent({ sourceKind: "html", ... })`
-- hasil `normalizedText` yang di-ingest ke RAG
-- raw web content tidak ikut di-index ke RAG
-- exact-source persistence tetap menggunakan content yang dekat ke source asli
+### 2. Web search path
 
-### 2. Upload file path
+Lokasi: `src/lib/ai/web-search/orchestrator.ts:1114-1118`
 
-Lokasi:
+Sekarang:
+```ts
+await ingestToRag({
+  content: fetched.fullContent,
+  ...
+})
+```
 
-- `src/app/api/extract-file/route.ts`
+Setelah:
+```ts
+import { cleanForIngestion } from "@/lib/ingestion/clean-for-ingestion"
 
-Proposed integration:
+await ingestToRag({
+  content: cleanForIngestion(fetched.fullContent, "web"),
+  ...
+})
+```
 
-- extractor menghasilkan `extractedText` mentah
-- route memanggil `normalizeSourceContent()` sesuai file type
-- Convex menyimpan raw + normalized
-- `ingestToRag()` menerima `normalizedText`
-- `rawExtractedText` disimpan untuk audit/debug/fallback, bukan untuk indexing
+Satu baris berubah. Exact-source persist (`documentText`, `paragraphs`) tidak terpengaruh karena dihandle terpisah di `persistExactSources()`.
 
-### 3. Chat attachment rendering
+### 3. Schema
 
-Lokasi:
+**Tidak ada perubahan schema.** `extractedText` di table `files` tetap menyimpan raw extraction output. Normalization diterapkan on-the-fly sebelum ingest. Alasan:
 
-- `src/app/api/chat/route.ts`
-
-Open design choice:
-
-- tetap pakai `extractedText` lama untuk file context sementara
-- atau migrasi bertahap ke `normalizedText`
-
-Rekomendasi:
-
-- fase awal tetap kompatibel dulu
-- setelah schema stabil, file context bisa pindah ke `normalizedText`
+- Cleanup-nya konservatif (trim, collapse whitespace, dedup) — diff antara raw dan cleaned minimal.
+- Doubles storage per file di 100K user base bukan trade-off yang worth it untuk cleanup level ini.
+- Kalau nanti butuh audit, `extractedText` sudah menjadi de facto raw text.
 
 ## Observability
 
-Observability di desain ini berfungsi untuk membedakan tiga sumber masalah:
+Minimal logging di fungsi cleanup:
 
-- extractor menghasilkan text mentah yang buruk
-- normalizer terlalu agresif atau terlalu lemah
-- chunking/retrieval memberi hasil buruk walau normalized text sudah baik
+```ts
+const originalLength = text.length
+const cleaned = /* ... */
+if (cleaned.length !== originalLength) {
+  console.log(`[Ingestion Cleanup] source=${sourceType} before=${originalLength} after=${cleaned.length} diff=${originalLength - cleaned.length}`)
+}
+```
 
-### Minimal telemetry yang perlu ada
+Tidak perlu metadata yang disimpan ke database. Log ini cukup untuk mendeteksi apakah cleanup terlalu agresif atau tidak berdampak sama sekali.
 
-- `sourceKind`
-- `originalLength`
-- `normalizedLength`
-- `appliedSteps`
-- `warnings`
-- `normalizerVersion`
+## Testing Plan
 
-### Tujuan observability
+### Unit tests (`clean-for-ingestion.test.ts`)
 
-- tahu apakah normalizer terlalu agresif
-- tahu apakah normalizer memberi value nyata
-- membedakan bug extractor vs bug normalizer
+- Input bersih -> output identik (no-op behavior)
+- `\r\n` normalization
+- Excessive blank lines collapsed
+- Identical consecutive paragraphs deduped
+- Non-identical paragraphs preserved
+- Empty/whitespace-only input -> empty string
+- Markdown structure (headings, tables, code blocks) preserved
 
-## Tradeoffs
+### Regression checks
 
-### Kenapa desain ini baik
-
-- reuse logic existing
-- low-risk untuk runtime
-- jelas boundary-nya
-- gampang diuji
-- mudah diperluas nanti
-
-### Keterbatasan desain
-
-- fase awal belum menyentuh exact-source path
-- rules cleanup masih konservatif
-- butuh perubahan schema untuk file upload path
+- Chunk count tidak berubah drastis setelah cleanup diterapkan
+- Existing test suites tetap pass
+- Exact-source path tidak terpengaruh
 
 ## Risks
 
-### Risk 1: over-normalization
+### Risk 1: Dedup terlalu agresif
 
-Dampak:
+Paragraf yang memang legitimately repeated (e.g., refrain di puisi, repeated disclaimer) bisa terhapus.
 
-- konten penting hilang
-- retrieval quality turun
+Mitigasi: Hanya dedup **consecutive** identical paragraphs, bukan global dedup. Legitimate repetition jarang terjadi secara berurutan di dokumen akademis/bisnis yang jadi target utama makalahapp.
 
-Mitigasi:
+### Risk 2: Cleanup tidak berdampak
 
-- simpan `rawExtractedText`
-- cleanup konservatif
-- test snapshot per source type
+Mungkin saja cleanup minimal ini tidak measurably improve retrieval quality.
 
-### Risk 2: schema migration complexity
+Mitigasi: Ini acceptable outcome. Cost implementasinya sangat rendah (satu file, satu fungsi, dua baris integrasi). Dan chokepoint yang dibuat tetap valuable sebagai tempat untuk menambah logic nanti kalau ada evidence.
 
-Dampak:
+## Definition of Done
 
-- perubahan data model `files`
+- `cleanForIngestion()` implemented dan tested
+- Kedua path ingestion (upload, web-search) memanggil fungsi ini sebelum `ingestToRag()`
+- Exact-source path tidak terpengaruh
+- Unit tests pass
+- Tidak ada schema migration
 
-Mitigasi:
+## File Terkait
 
-- additive migration
-- backward-compatible reads
-
-### Risk 3: inconsistent ingestion behavior
-
-Dampak:
-
-- sebagian source lewat normalizer, sebagian tidak
-
-Mitigasi:
-
-- centralize entry point
-- pastikan semua path ingestion menuju normalizer yang sama
-
-## Related Files
-
-- `src/lib/ai/web-search/content-fetcher.ts`
-- `src/lib/ai/web-search/orchestrator.ts`
-- `src/lib/ai/chunking.ts`
-- `src/lib/ai/rag-ingest.ts`
-- `src/app/api/extract-file/route.ts`
-- `src/app/api/chat/route.ts`
-- `src/lib/file-extraction/pdf-extractor.ts`
-- `src/lib/file-extraction/docx-extractor.ts`
-- `src/lib/file-extraction/pptx-extractor.ts`
-- `src/lib/file-extraction/txt-extractor.ts`
-- `src/lib/file-extraction/xlsx-extractor.ts`
-- `src/lib/file-extraction/image-ocr.ts`
-- `convex/files.ts`
-- `convex/schema.ts`
+- `src/lib/ingestion/clean-for-ingestion.ts` (baru)
+- `src/lib/ingestion/clean-for-ingestion.test.ts` (baru)
+- `src/app/api/extract-file/route.ts` (edit 1 baris)
+- `src/lib/ai/web-search/orchestrator.ts` (edit 1 baris)
+- `src/lib/ai/rag-ingest.ts` (tidak berubah)
+- `src/lib/ai/chunking.ts` (tidak berubah)
+- `convex/schema.ts` (tidak berubah)

@@ -1,270 +1,176 @@
-# Implementation Plan: TypeScript Source Normalizer
+# Implementation Plan: Ingestion Text Cleanup
 
 ## Ringkasan
 
-Rencana ini memecah implementasi `TypeScript source normalizer` menjadi tahapan kecil yang aman, mudah diuji, dan tidak memaksa refactor besar sekaligus.
+Plan ini mengimplementasikan `cleanForIngestion()` — satu fungsi chokepoint antara extract dan ingest. Scope sengaja kecil: satu file baru, dua baris integrasi, tidak ada schema migration.
 
-Target fase awal:
-
-- web-search content
-- upload file text
-- raw vs normalized content separation
-- integration ke RAG path
+Mengacu pada: `docs/normalizer-typeScript/design-doc.md` (lean version, 2026-04-10).
 
 ## Prinsip Eksekusi
 
-- additive changes dulu
-- backward-compatible reads
-- cleanup konservatif
-- observability disiapkan sejak awal
-- exact-source path tidak disentuh dulu
-- reuse helper TypeScript existing, jangan rewrite total
-- citation URL normalization tetap berada di layer terpisah
-- `raw` content tidak boleh ikut menjadi jalur indexing RAG
+- Tidak ada schema migration.
+- Tidak ada abstraksi per source type.
+- Cleanup konservatif — jangan ubah meaning content.
+- Exact-source path tidak disentuh.
+- Citation/URL normalization tetap di domain sendiri.
+- Test dulu, integrasi belakangan.
 
-## Phase 0: Baseline dan Persiapan
+## Step 1: Implement `cleanForIngestion()`
 
-### Tujuan
+### File baru
 
-Memastikan titik integrasi dan dampak schema dipahami sebelum coding inti.
+`src/lib/ingestion/clean-for-ingestion.ts`
 
-### Task
+### Signature
 
-1. Petakan source type yang sudah aktif:
-   - html/web content
-   - txt
-   - pdf
-   - docx
-   - xlsx
-   - pptx
-   - image OCR
-2. Pastikan titik ingestion yang menuju RAG:
-   - `src/lib/ai/web-search/orchestrator.ts`
-   - `src/app/api/extract-file/route.ts`
-3. Pastikan pembacaan attachment file yang existing masih mengandalkan `extractedText`.
-4. Inventaris helper existing yang akan diorkestrasi, bukan diganti:
-   - `src/lib/ai/web-search/content-fetcher.ts`
-   - `src/lib/file-extraction/xlsx-extractor.ts`
-   - `src/lib/ai/chunking.ts`
-   - citation/url normalizer yang relevan untuk tetap dibiarkan di domainnya
+```ts
+type IngestionSourceType = "web" | "upload"
 
-### Output
+export function cleanForIngestion(text: string, sourceType: IngestionSourceType): string
+```
 
-- daftar source kind final
-- daftar titik integrasi final
+### Cleanup operations (semua source types)
 
-## Phase 1: Buat Kontrak dan Modul Dasar
+1. Normalize newlines: `\r\n` -> `\n`
+2. Collapse excessive blank lines: 3+ blank lines -> 2 blank lines
+3. Dedup identical consecutive paragraphs (split on `\n\n`, compare trimmed, remove consecutive duplicates)
+4. Trim leading/trailing whitespace
 
-### Tujuan
+### Logging
 
-Membangun abstraction normalization layer tanpa mengubah flow business logic besar dulu.
+```ts
+if (cleaned.length !== text.length) {
+  console.log(`[Ingestion Cleanup] source=${sourceType} before=${text.length} after=${cleaned.length} diff=${text.length - cleaned.length}`)
+}
+```
 
-### Task
+### Edge cases
 
-1. Tambah file:
-   - `src/lib/ingestion/source-normalizer.types.ts`
-   - `src/lib/ingestion/source-normalizer.ts`
-2. Definisikan:
-   - `SourceKind`
-   - `NormalizeSourceInput`
-   - `NormalizeSourceOutput`
-3. Implement helper umum:
-   - trim whitespace
-   - normalize blank lines
-   - dedup paragraph identik berurutan
-   - heading markdown cleanup ringan
-4. Tambah `normalizerVersion` constant.
+- Empty string / whitespace-only -> return `""`
+- Already clean text -> return unchanged (no-op)
+- `sourceType` parameter reserved untuk future per-type logic, tapi di fase ini tidak mempengaruhi behavior
 
 ### Deliverable
 
-- satu entry point `normalizeSourceContent()`
-- unit tests dasar untuk helper umum
+- `src/lib/ingestion/clean-for-ingestion.ts` implemented
 
-## Phase 2: Implement Strategy per Source Type
+## Step 2: Unit Tests
 
-### Tujuan
+### File baru
 
-Membuat normalization behavior eksplisit per source kind.
+`src/lib/ingestion/clean-for-ingestion.test.ts`
 
-### Task
+### Test cases
 
-1. Tambah strategy internal untuk:
-   - `html`
-   - `plain_text`
-   - `pdf_text`
-   - `docx_text`
-   - `xlsx_markdown`
-   - `pptx_text`
-   - `image_ocr`
-2. Pastikan setiap strategy menghasilkan:
-   - `normalizedText`
-   - `appliedSteps`
-   - `warnings` bila perlu
-3. Hindari transform yang berpotensi mengubah meaning content.
-
-### Deliverable
-
-- strategy map yang eksplisit dan mudah diperluas
-- tests per source kind dengan input-output snapshot kecil
-
-## Phase 3: Integrasi ke Upload File Path
-
-### Tujuan
-
-Menjadikan upload file sebagai jalur pertama yang menyimpan raw + normalized content.
-
-### Task
-
-1. Ubah schema `files` di `convex/schema.ts` dengan field additive:
-   - `rawExtractedText`
-   - `normalizedText`
-   - `normalizationMeta`
-   - `normalizerVersion`
-2. Update mutation di `convex/files.ts` agar bisa menerima field baru.
-3. Update `src/app/api/extract-file/route.ts`:
-   - extractor tetap menghasilkan `raw extracted text`
-   - route memetakan file type ke `SourceKind`
-   - panggil `normalizeSourceContent()`
-   - simpan raw + normalized
-   - kirim `normalizedText` ke `ingestToRag()`
-   - pastikan `rawExtractedText` tidak pernah dikirim ke `ingestToRag()`
-4. Pertahankan compatibility sementara dengan `extractedText` sampai semua consumer aman dimigrasikan.
+| Test | Input | Expected |
+|---|---|---|
+| No-op on clean text | `"Hello world\n\nParagraph two"` | Identical output |
+| CRLF normalization | `"Line one\r\nLine two"` | `"Line one\nLine two"` |
+| Collapse blank lines | `"A\n\n\n\n\nB"` | `"A\n\nB"` |
+| Dedup consecutive paragraphs | `"Para A\n\nPara A\n\nPara B"` | `"Para A\n\nPara B"` |
+| Preserve non-consecutive duplicates | `"A\n\nB\n\nA"` | Identical output |
+| Trim whitespace | `"  \n text \n  "` | `"text"` |
+| Empty input | `""` | `""` |
+| Whitespace-only | `"   \n\n  "` | `""` |
+| Markdown headings preserved | `"# Title\n\nText"` | Identical output |
+| Markdown tables preserved | `"| A | B |\n| --- | --- |\n| 1 | 2 |"` | Identical output |
+| Code blocks preserved | `` "```\ncode\n```" `` | Identical output |
+| Mixed: CRLF + blank lines + dedup | Complex input | All operations applied |
 
 ### Deliverable
 
-- upload file path sudah melewati normalizer
-- RAG ingest upload memakai `normalizedText`
+- `src/lib/ingestion/clean-for-ingestion.test.ts` — all tests green
 
-## Phase 4: Integrasi ke Web Search Path
+## Step 3: Integrate Upload Path
 
-### Tujuan
+### File edit
 
-Menyatukan web source ingestion ke normalization layer yang sama.
+`src/app/api/extract-file/route.ts`
 
-### Task
+### Change
 
-1. Di `src/lib/ai/web-search/orchestrator.ts`, identifikasi titik sebelum `ingestToRag()`.
-2. Gunakan `normalizeSourceContent({ sourceKind: "html", ... })` pada content yang akan diingest.
-3. Pastikan:
-   - exact-source persistence tetap memakai content yang dekat ke raw source
-   - normalized content hanya dipakai untuk RAG ingest
-   - raw web content tidak ikut di-index ke RAG
-4. Tambahkan logging ringan untuk web normalization.
+Di sekitar line 259-268, ubah `content: extractedText` menjadi `content: cleanForIngestion(extractedText, "upload")`.
 
-### Deliverable
+Tambah import di atas file:
+```ts
+import { cleanForIngestion } from "@/lib/ingestion/clean-for-ingestion"
+```
 
-- web-search RAG ingest memakai normalized content
-- exact-source path tetap aman
+### Verification
 
-## Phase 5: Backward Compatibility dan Consumer Cleanup
-
-### Tujuan
-
-Meredakan transisi schema tanpa mematahkan feature existing.
-
-### Task
-
-1. Audit pembaca field file content, terutama:
-   - `src/app/api/chat/route.ts`
-2. Tentukan policy sementara:
-   - fallback ke `extractedText` jika `normalizedText` belum ada
-3. Setelah migration stabil, putuskan apakah `fileContext` di chat akan memakai `normalizedText`.
+- Existing extraction flow tetap berfungsi.
+- `extractedText` yang disimpan ke Convex (`updateExtractionResult`) tetap raw — tidak terpengaruh.
+- Hanya content yang dikirim ke `ingestToRag()` yang dibersihkan.
 
 ### Deliverable
 
-- seluruh pembaca field file content tetap aman selama transisi
+- Upload path memanggil `cleanForIngestion()` sebelum `ingestToRag()`
 
-## Phase 6: Observability
+## Step 4: Integrate Web Search Path
 
-### Tujuan
+### File edit
 
-Membuat efek normalizer bisa diukur.
+`src/lib/ai/web-search/orchestrator.ts`
 
-### Task
+### Change
 
-1. Simpan metadata minimal:
-   - `originalLength`
-   - `normalizedLength`
-   - `appliedSteps`
-   - `warnings`
-   - `sourceKind`
-   - `normalizerVersion`
-2. Tambahkan log yang cukup untuk diagnosis:
-   - source id
-   - source kind
-   - before/after length
-3. Jika perlu, expose nanti ke AI Ops sebagai tahap lanjutan.
+Di sekitar line 1114-1118, ubah `content: fetched.fullContent` menjadi `content: cleanForIngestion(fetched.fullContent, "web")`.
+
+Tambah import di atas file:
+```ts
+import { cleanForIngestion } from "@/lib/ingestion/clean-for-ingestion"
+```
+
+### Verification
+
+- Exact-source persist (`persistExactSources`) tetap memakai `documentText` dan `paragraphs` — tidak terpengaruh.
+- `pageContent` untuk compose context tidak terpengaruh.
+- Hanya content yang dikirim ke `ingestToRag()` yang dibersihkan.
 
 ### Deliverable
 
-- normalizer punya jejak diagnosis dasar
+- Web search path memanggil `cleanForIngestion()` sebelum `ingestToRag()`
 
-## Testing Plan
+## Step 5: Smoke Test End-to-End
 
-### Unit tests
+### Checks
 
-- helper normalization umum
-- strategy per source kind
-- no-op behavior pada content yang sudah bersih
-- dedup paragraph behavior
-- heading cleanup behavior
+1. Upload file (PDF) -> verify text masuk RAG, retrieval tetap berfungsi.
+2. Upload file (DOCX) -> verify text masuk RAG.
+3. Web search -> verify content di-ingest, exact-source tidak berubah.
+4. Verify log `[Ingestion Cleanup]` muncul dengan `before`/`after` yang masuk akal.
+5. Verify chunk count tidak berubah drastis dibanding sebelum cleanup.
+6. Existing test suites tetap pass — tidak ada regresi di luar scope cleanup.
 
-### Integration tests
+### Deliverable
 
-- upload file route:
-  - extractor -> normalize -> save -> ingest
-- web search path:
-  - fetched content -> normalize -> ingest
+- Confidence bahwa integrasi aman di kedua path.
 
-### Regression checks
+## Rollout
 
-- chunk count tidak melonjak aneh
-- content length tidak turun drastis tanpa alasan
-- exact-source path tidak berubah behavior
-- raw content tidak pernah ikut ke jalur indexing
-- citation/url normalizer tidak tertarik masuk ke text normalization layer
+Tidak perlu staged rollout — perubahan ini additive dan low-risk:
+- Fungsi pure, stateless, synchronous.
+- Kalau ada bug, rollback = revert 2 baris import + call.
+- Tidak ada schema migration yang perlu dirollback.
 
-## Rollout Strategy
+## File Summary
 
-### Tahap rollout
-
-1. Landing schema + normalizer module
-2. Aktifkan di upload path
-3. Verifikasi behavior
-4. Aktifkan di web-search path
-5. Evaluasi apakah consumer lain perlu pindah ke `normalizedText`
-
-### Kenapa urutan ini
-
-- upload path lebih lokal dan lebih mudah didiagnosis
-- web-search path lebih sensitif karena terkait retrieval online
-
-## Open Questions
-
-- Apakah `files.extractedText` akan dipertahankan sebagai alias compatibility atau nanti dihapus?
-- Apakah `normalizedText` juga akan dipakai untuk file context injection di chat?
-- Apakah raw content besar perlu disimpan penuh atau capped dengan metadata?
+| File | Action |
+|---|---|
+| `src/lib/ingestion/clean-for-ingestion.ts` | Baru |
+| `src/lib/ingestion/clean-for-ingestion.test.ts` | Baru |
+| `src/app/api/extract-file/route.ts` | Edit (1 import + 1 line change) |
+| `src/lib/ai/web-search/orchestrator.ts` | Edit (1 import + 1 line change) |
+| `src/lib/ai/rag-ingest.ts` | Tidak berubah |
+| `src/lib/ai/chunking.ts` | Tidak berubah |
+| `convex/schema.ts` | Tidak berubah |
+| `convex/files.ts` | Tidak berubah |
 
 ## Definition of Done
 
-Sebuah implementasi dianggap selesai kalau:
-
-- semua ingestion path target melewati `normalizeSourceContent()`
-- upload file menyimpan `raw` dan `normalized` content
-- RAG ingest memakai `normalizedText`
-- exact-source tetap tidak memakai normalized text
-- raw content tidak ikut di-index ke RAG
-- tests dasar dan integration checks lulus
-- observability minimal tersedia
-
-## File Terkait
-
-- `docs/normalizer-typeScript/context.md`
-- `docs/normalizer-typeScript/design-doc.md`
-- `src/lib/ingestion/source-normalizer.ts`
-- `src/lib/ingestion/source-normalizer.types.ts`
-- `src/lib/ai/web-search/orchestrator.ts`
-- `src/app/api/extract-file/route.ts`
-- `src/lib/ai/rag-ingest.ts`
-- `convex/schema.ts`
-- `convex/files.ts`
+- `cleanForIngestion()` implemented dan tested.
+- Kedua path ingestion memanggil fungsi ini sebelum `ingestToRag()`.
+- Exact-source path tidak terpengaruh.
+- Unit tests pass.
+- Tidak ada schema migration.
+- Log cleanup muncul di runtime.
