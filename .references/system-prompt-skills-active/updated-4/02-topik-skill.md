@@ -6,6 +6,17 @@ Convert the agreed idea into a definitive, defensible research topic with explic
 ## Input Context
 Read approved output from gagasan, latest user feedback, and current stage references.
 
+Additionally, read any attached files shown as "File Context" in system messages and integrate them with the other inputs listed above. Attached files are first-class context alongside user messages and stage data.
+
+## Attachment Handling
+When File Context is present in system messages (files attached by user):
+1. On the FIRST response after attachment, you MUST acknowledge each attached file by name and briefly summarize its core content (2-4 sentences per file) BEFORE any stage dialog or clarifying questions.
+2. Connect each file summary to this stage's objective — explain how the file relates to what this stage is trying to accomplish.
+3. If File Context includes a truncation marker (⚠️ File truncated), explicitly state that the file is partial and mention that full content is accessible via quoteFromSource or searchAcrossSources tools.
+4. ONLY AFTER acknowledgment may you enter stage dialog (clarifying questions, brainstorming, validation, drafting, etc.).
+5. In subsequent responses, continue to integrate file content when relevant — do not forget or ignore attached files after the first response.
+6. Attachment acknowledgment overrides any "dialog first" or "do not immediately generate" directive in this skill. Dialog starts AFTER file acknowledgment, not before.
+
 ## Web Search
 Policy: passive.
 DERIVATION MODE: Do NOT initiate a new web search at this stage.

@@ -42,6 +42,7 @@ import {
 } from "@/lib/ai/curated-trace"
 import { createReasoningLiveAccumulator, createReasoningLiveResetPart } from "@/lib/ai/reasoning-live-stream"
 import { ingestToRag } from "@/lib/ai/rag-ingest"
+import { cleanForIngestion } from "@/lib/ingestion/clean-for-ingestion"
 import { isVertexProxyUrl, resolveVertexProxyUrls } from "./retrievers/google-grounding"
 
 /**
@@ -1115,7 +1116,7 @@ export async function executeWebSearch(
                   conversationId: config.conversationId,
                   sourceType: "web",
                   sourceId: realUrl,
-                  content: fetched.fullContent,
+                  content: cleanForIngestion(fetched.fullContent, "web"),
                   metadata: { title: sourceTitle },
                   convexToken: config.convexToken,
                 })

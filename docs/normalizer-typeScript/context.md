@@ -1,5 +1,7 @@
 # Context: TypeScript Source Normalizer
 
+> **SUPERSEDED (2026-04-10):** Dokumen ini adalah catatan historis dari diskusi awal. Keputusan akhir ada di `design-doc.md` (lean version). Perbedaan utama: tidak ada schema migration, tidak ada 7 source strategies, tidak ada `normalizeSourceContent()` — diganti oleh satu fungsi `cleanForIngestion()`.
+
 ## Tujuan
 
 Dokumen ini merangkum keputusan dan konteks diskusi tentang kebutuhan `TypeScript normalization layer` untuk ingestion content di makalahapp, khususnya pada jalur:
