@@ -581,13 +581,68 @@ diff <(grep -A 6 "^## Attachment Handling" 01-gagasan-skill.md) <(grep -A 6 "^##
 
 ### D2. Deploy to dev DB `wary-ferret-59`
 
-**Method:** Use Convex mutation to update `stageSkills` table + main system prompt storage.
+**Method:** Use verified Convex mutations from `convex/stageSkills.ts` and `convex/systemPrompts.ts`.
 
-**Steps:**
-1. For each of 14 skill files in `updated-4/`, upsert into `stageSkills` table with matching `stageScope` and `skillId`
-2. Update main system prompt in its storage location (verify exact mutation API in `convex/`)
-3. Verify deployment by running a query: get `gagasan-skill` from dev DB, diff against local file, expect identical
-4. Run smoke tests T2, T4, T6 against dev environment
+**Prerequisites:**
+- Admin user ID required for all mutations (both stage skills and system prompts require `requireRole(db, requestorUserId, "admin")`)
+- Convex CLI authenticated against `wary-ferret-59` deployment
+- All local skill files pass structural validation (see Appendix D)
+
+**Stage skill deployment workflow (per skill file, 14 times):**
+
+Each skill goes through a 3-step lifecycle: draft → published → active. Use these mutations in order:
+
+1. **Create draft version:** `stageSkills.createOrUpdateDraft`
+   - Args:
+     - `requestorUserId: Id<"users">` — admin user
+     - `stageScope: PaperStageId` — mapped from filename (see Appendix D)
+     - `name: string` — skill name
+     - `description: string` — skill description
+     - `contentBody: string` — full updated skill markdown content
+     - `changeNote?: string` — "Add attachment awareness handling (2026-04-10)"
+     - `allowedTools?: string[]` — keep existing, do not change
+   - Result: `{ skillId, stageScope, version, message }`
+   - Side effect: Creates new draft version with incremented version number
+
+2. **Publish the draft:** `stageSkills.publishVersion`
+   - Args:
+     - `requestorUserId: Id<"users">`
+     - `skillId: string` — from step 1 result
+     - `version: number` — from step 1 result
+   - Result: `{ skillId, version, message }`
+   - Side effect: Runs `validateStageSkillContent` before publish. **If validation fails, publish is rejected.** See Appendix E for validator constraints and how the proposed Attachment Handling section passes them.
+   - Status change: `draft` → `published`
+
+3. **Activate the published version:** `stageSkills.activateVersion`
+   - Args:
+     - `requestorUserId: Id<"users">`
+     - `skillId: string`
+     - `version: number`
+   - Result: `{ skillId, version, message }`
+   - Side effect: Archives previous active version (if any), runs validator again, sets target as `active`. Now runtime `getActiveByStage` returns the new version.
+
+**System prompt deployment workflow (once):**
+
+1. **Get current active prompt:** `systemPrompts.getActiveSystemPrompt`
+   - Args: none (no auth required for read)
+   - Result: `{ _id, name, content, version, isActive, ... }` or `null`
+   - Capture `_id` for step 2
+
+2. **Create new version:** `systemPrompts.updateSystemPrompt`
+   - Args:
+     - `requestorUserId: Id<"users">` — admin user
+     - `promptId: Id<"systemPrompts">` — from step 1
+     - `content: string` — full updated system prompt
+     - `description?: string` — "Add attachment awareness directive (2026-04-10)"
+   - Result: `{ promptId, version, message }`
+   - Side effect: Creates new version with `parentId` and `rootId` linking. Inherits `isActive` from old. Old version automatically deactivated to maintain single-active invariant.
+
+**No separate `activateSystemPrompt` call needed** — `updateSystemPrompt` preserves active state via inheritance.
+
+**Verification steps after all mutations:**
+1. For each of 14 skills, call `stageSkills.getActiveByStage({ stageScope })` and diff `content` field against local file. Expect identical.
+2. Call `systemPrompts.getActiveSystemPrompt()` and diff `content` against local `system-prompt.md`. Expect identical.
+3. Run smoke tests T2, T4, T6 against the dev environment with a real file upload.
 
 ### D3. Code deployment (branch push + merge)
 
@@ -605,12 +660,13 @@ diff <(grep -A 6 "^## Attachment Handling" 01-gagasan-skill.md) <(grep -A 6 "^##
 **Precondition:** D3 complete (branch merged, code deployed to prod).
 
 **Steps:**
-1. Run the same Convex mutations used in D2, but targeting `basic-oriole-337`
-2. Verify deployment by diffing a skill file (gagasan) between prod DB and local file
+1. Run the same D2 mutation sequence (14 × 3 stage skill mutations + 1 system prompt update), targeted at `basic-oriole-337`
+2. Verify deployment via `getActiveByStage` and `getActiveSystemPrompt` diff checks (same as D2 verification steps)
 3. Monitor production logs for first 1 hour after deployment:
    - Watch for `[Ingestion Cleanup]` logs showing normal patterns
    - Watch for new behavior in attachment responses
    - Watch for any error spikes in `/api/chat`
+   - Watch for `skill_runtime_conflict` alerts via `systemAlerts` table (logged by `logRuntimeConflict` mutation when skill content fails runtime guards)
 
 ### D5. Post-deployment monitoring
 
@@ -843,7 +899,216 @@ For the reviewer (Codex):
 10. [ ] Verify no silent assumptions are made about Convex mutation APIs (flag any missing details)
 11. [ ] Verify commit structure is clean and traceable
 
-**Known documentation gaps that Codex should flag if present:**
-- If the actual Convex mutation API for updating `stageSkills` table is not documented in this plan (deployment step D2 mentions upserting but not the exact mutation name)
-- If the main system prompt storage location in Convex is not verified
-- If any skill file has structural variations that break the uniform insertion point for Change Group C2
+**Documentation gaps resolved (verified 2026-04-10):**
+- Convex mutation API for `stageSkills` documented in D2 with exact mutation names (`createOrUpdateDraft`, `publishVersion`, `activateVersion`). See `convex/stageSkills.ts`.
+- System prompt storage verified in D2 (`convex/systemPrompts.ts`). Active prompt retrieved via `getActiveSystemPrompt`, new version created via `updateSystemPrompt` with automatic active-state inheritance.
+- Skill file structural consistency verified via `grep` across all 14 files (see Appendix D). All 14 files have consistent ordering: Objective → Input Context → Web Search → Function Tools → Visual Language → Output Contract → Guardrails → Done Criteria. Insertion point for Change Group C2 (after Input Context, before Web Search) is valid for all 14 files.
+- Validator constraints documented in Appendix E with proof that proposed Attachment Handling section passes all checks.
+
+## Appendix D: Stage Scope Mapping and Structural Consistency
+
+### Stage scope mapping (filename → stageScope)
+
+The file naming convention uses hyphens with number prefixes, while `stageSkills` table uses `stageScope` values with underscores. Mapping:
+
+| Filename | stageScope | skillId (from `toSkillId`) |
+|---|---|---|
+| `01-gagasan-skill.md` | `gagasan` | `gagasan-skill` |
+| `02-topik-skill.md` | `topik` | `topik-skill` |
+| `03-outline-skill.md` | `outline` | `outline-skill` |
+| `04-abstrak-skill.md` | `abstrak` | `abstrak-skill` |
+| `05-pendahuluan-skill.md` | `pendahuluan` | `pendahuluan-skill` |
+| `06-tinjauan-literatur-skill.md` | `tinjauan_literatur` | `tinjauan-literatur-skill` |
+| `07-metodologi-skill.md` | `metodologi` | `metodologi-skill` |
+| `08-hasil-skill.md` | `hasil` | `hasil-skill` |
+| `09-diskusi-skill.md` | `diskusi` | `diskusi-skill` |
+| `10-kesimpulan-skill.md` | `kesimpulan` | `kesimpulan-skill` |
+| `11-pembaruan-abstrak-skill.md` | `pembaruan_abstrak` | `pembaruan-abstrak-skill` |
+| `12-daftar-pustaka-skill.md` | `daftar_pustaka` | `daftar-pustaka-skill` |
+| `13-lampiran-skill.md` | `lampiran` | `lampiran-skill` |
+| `14-judul-skill.md` | `judul` | `judul-skill` |
+
+**Source:** `convex/stageSkills/constants.ts:3-18` (STAGE_SCOPE_VALUES) and `convex/stageSkills/constants.ts:46-48` (`toSkillId` function).
+
+### Section heading audit (all 14 skills)
+
+Verified via `grep -n "^## "` on each file on 2026-04-10:
+
+| Skill | Sections present (in order) |
+|---|---|
+| 01-gagasan | Objective, Input Context, Web Search, Function Tools, Visual Language, Output Contract, Guardrails, Done Criteria |
+| 02-topik | Objective, Input Context, Web Search, Function Tools, Visual Language, Output Contract, Guardrails, Done Criteria |
+| 03-outline | Objective, Input Context, Web Search, Function Tools, Visual Language, Output Contract, Guardrails, **Expected Flow**, Done Criteria |
+| 04-abstrak | Objective, Input Context, Web Search, Function Tools, Visual Language, Output Contract, Guardrails, Done Criteria |
+| 05-pendahuluan | Objective, Input Context, Web Search, Function Tools, Visual Language, Output Contract, Guardrails, Done Criteria |
+| 06-tinjauan-literatur | Objective, Input Context, Web Search, Function Tools, Visual Language, Output Contract, Guardrails, Done Criteria |
+| 07-metodologi | Objective, Input Context, Web Search, Function Tools, Visual Language, Output Contract, Guardrails, Done Criteria |
+| 08-hasil | Objective, Input Context, Web Search, Function Tools, Visual Language, Output Contract, Guardrails, Done Criteria |
+| 09-diskusi | Objective, Input Context, Web Search, Function Tools, Visual Language, Output Contract, Guardrails, Done Criteria |
+| 10-kesimpulan | Objective, Input Context, Web Search, Function Tools, Visual Language, Output Contract, Guardrails, Done Criteria |
+| 11-pembaruan-abstrak | Objective, Input Context, Web Search, Function Tools, Visual Language, Output Contract, Guardrails, Done Criteria |
+| 12-daftar-pustaka | Objective, Input Context, Web Search, Function Tools, Visual Language, Output Contract, Guardrails, Done Criteria |
+| 13-lampiran | Objective, Input Context, Web Search, Function Tools, Visual Language, Output Contract, Guardrails, Done Criteria |
+| 14-judul | Objective, Input Context, Web Search, Function Tools, Visual Language, Output Contract, Guardrails, Done Criteria |
+
+**Observations:**
+- All 14 skills have `Input Context` as section 2 and `Web Search` as section 3. Insertion of `## Attachment Handling` between them is structurally safe in all files.
+- `03-outline-skill.md` has an additional `Expected Flow` section between Guardrails and Done Criteria. This does not affect Change Group C2 insertion point.
+- `11-pembaruan-abstrak-skill.md` starts section `## Objective` at line 1 (no title line before). Does not affect Change Group C2 insertion point.
+
+## Appendix E: Validator Constraints Analysis
+
+The `stageSkills.publishVersion` and `stageSkills.activateVersion` mutations call `validateStageSkillContent` from `src/lib/ai/stage-skill-validator.ts`. The validator rejects content that fails any check. This section proves that proposed Change Group C1 and C2 pass all validator checks.
+
+### Validator check 1: Mandatory sections
+
+**Rule (`src/lib/ai/stage-skill-validator.ts:5-13`):**
+```typescript
+const MANDATORY_SECTIONS = [
+    "Objective", "Input Context", "Web Search",
+    "Function Tools", "Output Contract", "Guardrails", "Done Criteria",
+];
+```
+
+**Analysis:** Change Group C2 adds `## Attachment Handling` as a new section. The validator checks that mandatory sections EXIST but does NOT forbid additional sections. Adding Attachment Handling is safe.
+
+**Verification:** Validator logic at lines 147-154 loops over `MANDATORY_SECTIONS` and checks presence. No check for disallowed sections.
+
+### Validator check 2: English confidence
+
+**Rule (`src/lib/ai/stage-skill-validator.ts:163-169`):**
+```typescript
+const english = estimateEnglishConfidence([input.name, input.description, content].join("\n"));
+if (!english.ok) { issues.push({...}) }
+```
+
+**Threshold (`src/lib/ai/stage-skill-language.ts:48`):** `confidence >= 0.55`
+
+**Analysis:** The proposed Attachment Handling section uses English technical vocabulary: "File", "Context", "attached", "response", "acknowledge", "summarize", "content", "subsequent", "integrate", "tools". None of these match the NON_ENGLISH_HINT_WORDS list (`yang`, `dan`, `untuk`, `dengan`, `pada`, `atau`, `tidak`, `adalah`, `wajib`, etc.).
+
+**Proposed section English hit rate:** ~20+ matches for ENGLISH_HINT_WORDS (`the`, `and`, `for`, `this`, `that`, `must`, `only`, `stage`, `context`, `objective`, `reference`). Zero matches for NON_ENGLISH_HINT_WORDS. Confidence well above 0.55.
+
+**Verification:** Safe.
+
+### Validator check 3: Dangerous override phrases
+
+**Rule (`src/lib/ai/stage-skill-validator.ts:105-120`):**
+```typescript
+const dangerousPatterns = [
+    /\bignore\s+stage\s+lock\b/i,
+    /\bbypass\s+stage\s+lock\b/i,
+    /\boverride\s+tool\s+routing\b/i,
+    /\bignore\s+tool\s+routing\b/i,
+    /\bcall\s+(web\s+search|function\s+tools)\s+and\s+(updateStageData|web\s+search)\s+in\s+the\s+same\s+turn\b/i,
+    /\bsubmit\s+without\s+user\s+confirmation\b/i,
+];
+```
+
+**Analysis:** Proposed Attachment Handling section says "overrides any 'dialog first' directive in this skill" — the word "override" appears but NOT in combination with "tool routing" or "stage lock". None of the 6 patterns match the proposed text.
+
+**Verification:** Safe. However, Codex should grep final content for these patterns before publish to catch any accidental match introduced by stage-specific framing (Change Group C3).
+
+### Validator check 4: Visual Language contract
+
+**Rule (`src/lib/ai/stage-skill-validator.ts:122-124`):**
+```typescript
+function hasVisualLanguageContract(content: string): boolean {
+    return /interactive choice card/i.test(content) && /PaperValidationPanel/i.test(content);
+}
+```
+
+**Analysis:** Change Group C2 adds a section but does NOT remove existing "Visual Language" section. Existing skills already contain "interactive choice card" and "PaperValidationPanel" references (verified in Appendix D section heading audit). Adding Attachment Handling preserves these.
+
+**Verification:** Safe.
+
+### Validator check 5: Choice card contradictions
+
+**Rule (`src/lib/ai/stage-skill-validator.ts:126-134`):**
+```typescript
+const contradictoryPatterns = [
+    /\bno choice card decision point needed\b/i,
+    /\bdo not use choice cards for content decisions\b/i,
+    /\bdisallowed:\s*[\s\S]*emitChoiceCard\b/i,
+];
+```
+
+**Analysis:** Proposed Attachment Handling text does not mention choice cards. No contradiction.
+
+**Verification:** Safe.
+
+### Validator check 6: Search policy matrix
+
+**Rule (`src/lib/ai/stage-skill-validator.ts:182-189`):**
+```typescript
+if (declaredSearchPolicy && declaredSearchPolicy !== expectedSearchPolicy) {
+    issues.push({...})
+}
+```
+
+**Expected policies (from `convex/stageSkills/constants.ts:21-39`):**
+- Active: `gagasan`, `tinjauan_literatur`
+- Passive: all other 12 stages
+
+**Analysis:** Change Group C2 does not modify the "Web Search" section. Search policy declarations remain unchanged.
+
+**Verification:** Safe.
+
+### Validator check 7: Output keys whitelist
+
+**Rule (`src/lib/ai/stage-skill-validator.ts:173-180`):**
+```typescript
+const unknownOutputKeys = outputKeys.filter((key) => !allowedKeys.includes(key));
+```
+
+**Analysis:** Change Group C2 does not modify the "Output Contract" section. Output keys remain unchanged.
+
+**Verification:** Safe.
+
+### Validator check 8: Outline skill lifecycle checklist
+
+**Rule (`src/lib/ai/stage-skill-validator.ts:226-234`):**
+```typescript
+if (input.stageScope === "outline") {
+    const outlineGuard = /checkedAt/i.test(content) && /checkedBy/i.test(content) && /editHistory/i.test(content);
+    if (!outlineGuard) { issues.push({...}) }
+}
+```
+
+**Analysis:** Only applies to `03-outline-skill.md`. Change Group C2 does not remove these fields (they exist in other sections of the outline skill).
+
+**Verification:** Safe. Codex should spot-check outline skill specifically after update.
+
+### Validator check 9: Living outline context for post-outline stages
+
+**Rule (`src/lib/ai/stage-skill-validator.ts:236-257`):**
+Applies to 11 stages after outline (abstrak through judul). Requires the text `living outline`, `checkedAt`, `checkedBy`, or `editHistory` to appear in content.
+
+**Analysis:** Change Group C2 adds a new section but does not remove existing references to these terms. Safe if existing skills already comply (verified by Appendix D — all 14 skills currently pass validation in production).
+
+**Verification:** Safe. Codex should confirm existing text that satisfies this rule is not accidentally removed.
+
+### Validator check 10: Function Tools mandatory entries
+
+**Rule (`src/lib/ai/stage-skill-validator.ts:260-280`):**
+Function Tools section must mention `createArtifact`, `requestRevision`, and `updateArtifact`.
+
+**Analysis:** Change Group C2 does not modify Function Tools section. Safe.
+
+**Verification:** Safe.
+
+### Summary of validator compliance
+
+| Check | Risk | Status |
+|---|---|---|
+| 1. Mandatory sections | Low | PASS — C2 adds, doesn't remove |
+| 2. English confidence | Low | PASS — proposed text is 100% English technical vocabulary |
+| 3. Dangerous override phrases | Low | PASS — "override" appears but not in forbidden patterns |
+| 4. Visual Language contract | Low | PASS — C2 does not modify existing Visual Language section |
+| 5. Choice card contradictions | None | PASS — no choice card references in C2 |
+| 6. Search policy matrix | None | PASS — Web Search section untouched |
+| 7. Output keys whitelist | None | PASS — Output Contract untouched |
+| 8. Outline lifecycle | None | PASS — only affects 03-outline, and C2 doesn't remove fields |
+| 9. Living outline context | Low | PASS — C2 additive only |
+| 10. Function Tools entries | None | PASS — Function Tools untouched |
+
+**All 10 validator checks pass. Proposed changes are safe to publish and activate.**

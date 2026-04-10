@@ -22,6 +22,17 @@
 
 ## Expanded scope (added 2026-04-10 by user decision)
 
+### Scope expansion #2 (added 2026-04-10 same day): Widen investigation surface
+
+**Correction:** Earlier investigation was self-restricted to read-only files excluding Convex mutation mapping. User called this out as self-restricting scope. Scope is widened to include:
+
+- Convex mutation API verification for `stageSkills` table updates
+- System prompt storage location in Convex
+- Structural consistency audit of all 14 skill files in `.references/system-prompt-skills-active/updated-4/`
+- Any other read-only verification needed to make the fix plan executable without assumptions
+
+**Rule reinforcement:** Per `feedback_branch_scope.md` memory — never self-restrict scope. If a fact is needed to execute cleanly, verify it.
+
 ### Scope: Attachment awareness bug
 
 **Problem:** Model does not respond to attached files unless the user explicitly prompts "read the document." Evidence from test 2 (`screenshots/test-2/`):
