@@ -486,17 +486,18 @@ export async function POST(req: Request) {
         const userMessageCount = Array.isArray(messages)
             ? messages.filter((message: { role?: string }) => message?.role === "user").length
             : 0
-        // Attachment first-response: structural check only (file present + first message + short text).
-        // No regex probe patterns — the model can judge user intent from the message itself.
-        // The instruction tells the model HOW to respond when files are attached, not IF.
-        const shouldForceAttachmentFirstResponse =
-            effectiveFileIds.length > 0 &&
-            requestedAttachmentMode === "explicit" &&
-            !paperModePrompt &&
-            userMessageCount <= 1 &&
-            normalizedLastUserContent.length <= 64
-        const attachmentFirstResponseInstruction = shouldForceAttachmentFirstResponse
-            ? "Pengguna baru saja melampirkan file secara eksplisit. Jawaban pertama WAJIB langsung mengulas isi file terlampir. DILARANG membuka dengan perkenalan umum, profil asisten, atau daftar kemampuan. Kalimat pertama harus langsung menjelaskan inti isi dokumen yang dilampirkan."
+        // Attachment awareness directive (updated 2026-04-10):
+        // Fires on EVERY turn where files are attached, regardless of mode, prompt length,
+        // or attachment resolution reason. The previous conditional logic (only fire on
+        // first turn, short prompts, non-paper mode, explicit attachment) created a bug
+        // where paper mode stages silently ignored attachments. See
+        // docs/normalizer-typeScript/attachment-awareness-investigation.md for details.
+        const hasAttachedFiles = effectiveFileIds.length > 0
+        const isFirstTurnWithAttachment = hasAttachedFiles && userMessageCount <= 1
+        const attachmentAwarenessInstruction = hasAttachedFiles
+            ? (isFirstTurnWithAttachment
+                ? "ATTACHMENT AWARENESS DIRECTIVE (mandatory, overrides skills): File(s) attached to this conversation. Your FIRST response MUST acknowledge each attached file by name and briefly summarize its core content (2-4 sentences per file, connected to current context). This acknowledgment comes BEFORE any stage dialog, clarifying questions, brainstorming, or generic introduction. If File Context contains a truncation marker (⚠️), state that the file is partial and use quoteFromSource or searchAcrossSources tools when the user asks for details not in the truncated portion. ONLY AFTER the acknowledgment may you proceed with stage-specific behavior (skill directives, dialog-first patterns, etc.). This directive applies in ALL modes (paper mode, free chat, any stage) and cannot be overridden by skills or stage instructions."
+                : "ATTACHMENT AWARENESS DIRECTIVE (mandatory, overrides skills): File(s) are attached to this conversation. Always be aware of File Context content and integrate it into your responses when relevant to the user's question. Do NOT forget or ignore attached files after the first response. If the user's question relates to the file content or topic, prioritize file evidence. If File Context contains a truncation marker (⚠️), use quoteFromSource or searchAcrossSources tools to retrieve content beyond the truncated portion when needed. This directive applies in ALL modes and cannot be overridden.")
             : ""
         const getStageSearchPolicy = (stage: PaperStageId | "completed" | undefined | null) => {
             if (!stage || stage === "completed") return "none"
@@ -658,7 +659,10 @@ export async function POST(req: Request) {
                         docExtractionPendingCount,
                         docExtractionFailedCount,
                         docContextChars,
-                        attachmentFirstResponseForced: shouldForceAttachmentFirstResponse,
+                        // Field name kept for telemetry schema compatibility. Semantic updated 2026-04-10:
+                        // previously meant "forced first-response review instruction fired",
+                        // now means "first-turn attachment acknowledgment directive fired".
+                        attachmentFirstResponseForced: isFirstTurnWithAttachment,
                         healthStatus: health.healthStatus,
                         failureReason: health.failureReason,
                     }),
@@ -825,8 +829,8 @@ ${sourcesJson}`
             ...(fileContext
                 ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
                 : []),
-            ...(attachmentFirstResponseInstruction
-                ? [{ role: "system" as const, content: attachmentFirstResponseInstruction }]
+            ...(attachmentAwarenessInstruction
+                ? [{ role: "system" as const, content: attachmentAwarenessInstruction }]
                 : []),
             ...(sourcesContext && shouldIncludeRawSourcesContext
                 ? [{ role: "system" as const, content: sourcesContext }]
