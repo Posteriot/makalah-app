@@ -38,12 +38,10 @@ export function cleanForIngestion(
   // Step 4: Trim leading/trailing whitespace
   result = result.trim()
 
-  // Logging
-  if (result.length !== text.length) {
-    console.log(
-      `[Ingestion Cleanup] source=${sourceType} before=${text.length} after=${result.length} diff=${text.length - result.length}`
-    )
-  }
+  // Logging — always fires so we can verify the cleanup layer is running
+  console.log(
+    `[Ingestion Cleanup] source=${sourceType} before=${text.length} after=${result.length} diff=${text.length - result.length}`
+  )
 
   return result
 }

@@ -29,9 +29,11 @@ describe('cleanForIngestion - no-op on clean text', () => {
     expect(cleanForIngestion(input, 'web')).toBe(input)
   })
 
-  it('does not log when text is unchanged', () => {
+  it('always logs, even when text is unchanged (diff=0)', () => {
     cleanForIngestion('Hello world\n\nParagraph two', 'upload')
-    expect(consoleSpy).not.toHaveBeenCalled()
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('diff=0')
+    )
   })
 })
 
