@@ -1,0 +1,219 @@
+{
+  "timestamp": "2026-04-10T11:10:11.545Z",
+  "target": "wary-ferret-59",
+  "systemPrompt": {
+    "status": "updated",
+    "previousPromptId": "js75ddrvtwswg0dmfekrrx9and84g8rx",
+    "newPromptId": "js74f2czdchsvpcs3xrhpdf52d84jr80",
+    "version": 25
+  },
+  "stageSkills": [
+    {
+      "stageScope": "gagasan",
+      "skillId": "gagasan-skill",
+      "version": 24,
+      "status": "active"
+    },
+    {
+      "stageScope": "topik",
+      "skillId": "topik-skill",
+      "version": 24,
+      "status": "active"
+    },
+    {
+      "stageScope": "outline",
+      "skillId": "outline-skill",
+      "version": 25,
+      "status": "active"
+    },
+    {
+      "stageScope": "abstrak",
+      "skillId": "abstrak-skill",
+      "version": 24,
+      "status": "active"
+    },
+    {
+      "stageScope": "pendahuluan",
+      "skillId": "pendahuluan-skill",
+      "version": 24,
+      "status": "active"
+    },
+    {
+      "stageScope": "tinjauan_literatur",
+      "skillId": "tinjauan-literatur-skill",
+      "version": 23,
+      "status": "active"
+    },
+    {
+      "stageScope": "metodologi",
+      "skillId": "metodologi-skill",
+      "version": 23,
+      "status": "active"
+    },
+    {
+      "stageScope": "hasil",
+      "skillId": "hasil-skill",
+      "version": 24,
+      "status": "active"
+    },
+    {
+      "stageScope": "diskusi",
+      "skillId": "diskusi-skill",
+      "version": 25,
+      "status": "active"
+    },
+    {
+      "stageScope": "kesimpulan",
+      "skillId": "kesimpulan-skill",
+      "version": 25,
+      "status": "active"
+    },
+    {
+      "stageScope": "pembaruan_abstrak",
+      "skillId": "pembaruan-abstrak-skill",
+      "version": 25,
+      "status": "active"
+    },
+    {
+      "stageScope": "daftar_pustaka",
+      "skillId": "daftar-pustaka-skill",
+      "version": 24,
+      "status": "active"
+    },
+    {
+      "stageScope": "lampiran",
+      "skillId": "lampiran-skill",
+      "version": 23,
+      "status": "active"
+    },
+    {
+      "stageScope": "judul",
+      "skillId": "judul-skill",
+      "version": 24,
+      "status": "active"
+    }
+  ],
+  "verification": {
+    "status": "complete",
+    "dryRun": {
+      "failedStages": 0,
+      "passedStages": 14,
+      "results": [
+        {
+          "issues": [],
+          "ok": true,
+          "skillId": "gagasan-skill",
+          "source": "latest_published",
+          "stageScope": "gagasan",
+          "version": 23
+        },
+        {
+          "issues": [],
+          "ok": true,
+          "skillId": "topik-skill",
+          "source": "latest_published",
+          "stageScope": "topik",
+          "version": 23
+        },
+        {
+          "issues": [],
+          "ok": true,
+          "skillId": "outline-skill",
+          "source": "latest_published",
+          "stageScope": "outline",
+          "version": 24
+        },
+        {
+          "issues": [],
+          "ok": true,
+          "skillId": "abstrak-skill",
+          "source": "latest_published",
+          "stageScope": "abstrak",
+          "version": 23
+        },
+        {
+          "issues": [],
+          "ok": true,
+          "skillId": "pendahuluan-skill",
+          "source": "latest_published",
+          "stageScope": "pendahuluan",
+          "version": 23
+        },
+        {
+          "issues": [],
+          "ok": true,
+          "skillId": "tinjauan-literatur-skill",
+          "source": "latest_published",
+          "stageScope": "tinjauan_literatur",
+          "version": 22
+        },
+        {
+          "issues": [],
+          "ok": true,
+          "skillId": "metodologi-skill",
+          "source": "latest_published",
+          "stageScope": "metodologi",
+          "version": 22
+        },
+        {
+          "issues": [],
+          "ok": true,
+          "skillId": "hasil-skill",
+          "source": "latest_published",
+          "stageScope": "hasil",
+          "version": 23
+        },
+        {
+          "issues": [],
+          "ok": true,
+          "skillId": "diskusi-skill",
+          "source": "latest_published",
+          "stageScope": "diskusi",
+          "version": 24
+        },
+        {
+          "issues": [],
+          "ok": true,
+          "skillId": "kesimpulan-skill",
+          "source": "latest_published",
+          "stageScope": "kesimpulan",
+          "version": 24
+        },
+        {
+          "issues": [],
+          "ok": true,
+          "skillId": "pembaruan-abstrak-skill",
+          "source": "latest_published",
+          "stageScope": "pembaruan_abstrak",
+          "version": 24
+        },
+        {
+          "issues": [],
+          "ok": true,
+          "skillId": "daftar-pustaka-skill",
+          "source": "latest_published",
+          "stageScope": "daftar_pustaka",
+          "version": 23
+        },
+        {
+          "issues": [],
+          "ok": true,
+          "skillId": "lampiran-skill",
+          "source": "latest_published",
+          "stageScope": "lampiran",
+          "version": 22
+        },
+        {
+          "issues": [],
+          "ok": true,
+          "skillId": "judul-skill",
+          "source": "latest_published",
+          "stageScope": "judul",
+          "version": 23
+        }
+      ],
+      "success": true,
+      "totalStages": 14
+    }
+  }
+}
