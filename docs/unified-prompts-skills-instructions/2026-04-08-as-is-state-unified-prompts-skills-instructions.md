@@ -88,6 +88,7 @@ File dan module utama:
 - runtime resolver: `src/lib/ai/stage-skill-resolver.ts`
 - validator konten skill: `src/lib/ai/stage-skill-validator.ts`
 - query dan mutation lifecycle: `convex/stageSkills.ts`
+- constants dan search policy defaults: `convex/stageSkills/constants.ts`
 - schema storage: `convex/schema.ts`
 - admin manager UI: `src/components/admin/StageSkillsManager.tsx`
 - admin form dialog: `src/components/admin/StageSkillFormDialog.tsx`
@@ -100,7 +101,9 @@ Keadaan nyata saat ini:
 - status native per versi adalah `draft`, `published`, `active`, `archived`,
 - enable atau disable hidup di row katalog `stageSkills`,
 - admin form bekerja dengan markdown penuh yang mengandung frontmatter,
-- frontmatter itu dibentuk lewat `buildSkillMarkdown()` dan dibaca lewat `parseSkillMarkdown()`.
+- frontmatter itu dibentuk lewat `buildSkillMarkdown()` dan dibaca lewat `parseSkillMarkdown()` di `src/components/admin/StageSkillFormDialog.tsx`,
+- fields frontmatter yang ada di content: `name`, `description`, `stageScope`, `searchPolicy` (`"active"` | `"passive"`), `metadataInternal` (nested `metadata:` block dengan key `internal`),
+- `stageScope` di DB memakai underscore (contoh: `tinjauan_literatur`), sedangkan `skillId` dan konvensi penamaan lain memakai hyphen (contoh: `tinjauan-literatur-skill`) lewat `toSkillId()` di `convex/stageSkills/constants.ts`.
 
 Implikasi current-state:
 
@@ -323,9 +326,10 @@ File utama:
 ### Paper mode
 
 1. Resolver mencoba mengambil active stage skill dari DB.
-2. Jika skill invalid atau tidak ada, resolver fallback ke `paper-stages`.
-3. Jika skill valid, resolver menambahkan `ARTIFACT_CREATION_FOOTER` ke content aktif.
-4. Paper mode prompt menggabungkan stage instructions, memory digest, artifact summaries, invalidated artifacts, dan status notes.
+2. Content skill divalidasi lewat `validateStageSkillContent()` di `src/lib/ai/stage-skill-validator.ts` sebelum dipakai.
+3. Jika skill invalid atau tidak ada, resolver fallback ke `paper-stages`.
+4. Jika skill valid, resolver menambahkan `ARTIFACT_CREATION_FOOTER` ke content aktif.
+5. Paper mode prompt menggabungkan stage instructions, memory digest, artifact summaries, invalidated artifacts, dan status notes.
 
 File utama:
 

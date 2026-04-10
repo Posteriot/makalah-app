@@ -172,7 +172,7 @@ Checklist ini sengaja dikoreksi supaya:
 - [ ] Pastikan exporter `stage skills` membaca `stageSkills` dan `stageSkillVersions` secara terpisah
 - [ ] Pastikan importer `stage skills` menjaga perbedaan catalog row vs version row
 - [ ] Pastikan importer `stage skills` membuat draft baru, bukan overwrite aktif langsung
-- [ ] Pastikan importer/exporter menjaga markdown penuh + frontmatter yang dibangun `buildSkillMarkdown()` dan diparse `parseSkillMarkdown()`
+- [ ] Pastikan importer/exporter menjaga markdown penuh + frontmatter yang dibangun `buildSkillMarkdown()` dan diparse `parseSkillMarkdown()` di `src/components/admin/StageSkillFormDialog.tsx` — fields frontmatter wajib: `name`, `description`, `stageScope`, `searchPolicy`, `metadataInternal` (nested `metadata:` block dengan key `internal`)
 
 ### Registry dan Boundary Mirror
 
@@ -288,6 +288,8 @@ Checklist ini sengaja dikoreksi supaya:
 - [ ] Verifikasi `meta.json` untuk `stage skills` membedakan field canonical katalog vs snapshot turunan
 - [ ] Verifikasi importer `system prompts` dan importer `stage skills` benar-benar terpisah
 - [ ] Verifikasi stage skill export/import menjaga markdown + frontmatter tanpa drift
+- [ ] Verifikasi mapping `stageScope` underscore (DB) ke folder name hyphen (filesystem) konsisten — referensi: `toSkillId()` di `convex/stageSkills/constants.ts`
+- [ ] Verifikasi `meta.json` stage skill menyertakan `searchPolicy` yang di-derive dari frontmatter content
 - [ ] Verifikasi `style constitutions` tidak ikut scope mirror awal
 
 ### Runtime Behavior Verification

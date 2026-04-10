@@ -93,12 +93,15 @@ Ini harus eksplisit karena codebase memang memodelkan keduanya secara berbeda.
 - catalog row,
 - per-version lifecycle `draft/published/active/archived`,
 - `isEnabled` di level catalog,
+- content disimpan sebagai markdown penuh dengan frontmatter berisi `name`, `description`, `stageScope`, `searchPolicy`, `metadataInternal` (nested `metadata:` block dengan key `internal`),
+- `stageScope` di DB memakai underscore (contoh: `tinjauan_literatur`), folder mirror dan `skillId` memakai hyphen (referensi: `toSkillId()` di `convex/stageSkills/constants.ts`),
 - runtime validation dan footer injection setelah content diambil.
 
 Akibatnya:
 
 - sync importer/exporter tidak boleh disatukan secara naif,
-- mirror file structure tidak boleh memaksakan lifecycle yang sama untuk keduanya.
+- mirror file structure tidak boleh memaksakan lifecycle yang sama untuk keduanya,
+- exporter stage skill harus normalize stageScope underscore ke hyphen untuk folder naming.
 
 ### 4. Pisahkan text contract dari runtime logic
 
