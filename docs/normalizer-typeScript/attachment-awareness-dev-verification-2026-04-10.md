@@ -61,6 +61,47 @@ Deployment progress file:
 
 - `snapshots/deployment-progress-2026-04-10T11-10-11Z.json`
 
+### Verification layer semantics (important clarification added 2026-04-10 in response to Codex Audit 6)
+
+The deployment script runs TWO verification layers. They validate different things:
+
+**Layer 1 (authoritative): Readback diff against local files** — `scripts/deploy-attachment-awareness-dev.mjs:128-140`
+
+For each of the 14 stage skills, the script calls `stageSkills.getActiveByStage({ stageScope })` after the activate mutation and compares the returned `active.content` byte-for-byte against the expected content loaded from `.references/system-prompt-skills-active/updated-4/<skill>.md`. Any mismatch throws and aborts the deploy.
+
+The same readback-and-diff is performed for the system prompt against `.references/system-prompt-skills-active/updated-4/system-prompt.md`.
+
+This is the authoritative proof that the NEWLY ACTIVE version on the dev DB matches the local target files. The deploy script returning `"ok": true` in the result JSON implies all 14 readback diffs plus the system prompt readback diff passed. If any had failed, the script would have thrown before reaching the completion log.
+
+**Layer 2 (secondary, non-authoritative): `runPreActivationDryRun`** — `scripts/deploy-attachment-awareness-dev.mjs:142-149`
+
+The script then calls `stageSkills.runPreActivationDryRun` and records the result into the progress JSON under `verification.dryRun`. This is useful as a validator regression check, but it does NOT validate the newly active version. Here's why:
+
+Per `convex/stageSkills.ts:1028-1031`, the dry run picks candidate content in this precedence order for each stage:
+```
+const candidate = latestDraft ?? latestPublished ?? active;
+```
+
+The `versions` query uses `.order("desc")` on `_creationTime`, so after the deploy sequence (`createOrUpdateDraft` → `publishVersion` → `activateVersion`):
+- `latestDraft` is undefined — no drafts remain; the one we created was immediately activated
+- `latestPublished` is the PREVIOUS active version that `activateVersion` just demoted to `"published"` status — the most recently `_creationTime`-ordered published version is usually the just-demoted one
+- `active` is the newly deployed version
+
+The candidate = `undefined ?? <just-demoted-previous-active> ?? <newly-deployed-active>` = **just-demoted-previous-active**.
+
+So `runPreActivationDryRun` after an activate cycle validates the **previous** version (now published), not the **newly active** version. It is still a useful sanity check (confirms the previous version was structurally valid at deploy time), but it is NOT the deployment verification proof.
+
+**Where to find the authoritative verification proof in committed artifacts:**
+1. **Deploy script result JSON** — the `"ok": true` above implies all 14 readback diffs passed (script would have thrown otherwise)
+2. **Deploy script source** — `scripts/deploy-attachment-awareness-dev.mjs:128-140` shows the readback-diff logic
+3. **Progress JSON `stageSkills` array** — lists all 14 skills with their newly active version numbers, recorded after each successful readback
+
+The progress JSON's `verification.dryRun` field should be read as "latest_published candidate validator result," not "newly active deployment validator result." A future revision of the deployment script could either:
+- Stop recording dry run into the `verification` field (move it to `sanityChecks`), or
+- Add a new `verification.readbackDiff` field that captures the per-stage readback result explicitly
+
+This clarification does NOT change the correctness of the actual deployment — the readback diff at lines 128-140 is authoritative and it passed for all 14 skills and the system prompt. This only corrects the semantic framing of the progress JSON's `verification.dryRun` field.
+
 ## Smoke Tests
 
 ### T2 — First turn with medium file in paper mode
@@ -136,9 +177,9 @@ Summary:
 - Status: `PASS (non-blocking observation)`
 - Attempts: `5`
 - Mentioned file name: `5/5`
-- Summarized content: `5/5`
+- Summarized content: `4/5` (attempt 1 unverified after Codex Audit 6 correction — see observation log correction note)
 - Integrated into turn: `5/5`
-- Severe limitation threshold: `NOT TRIGGERED`
+- Severe limitation threshold: `NOT TRIGGERED` (threshold requires ≥3 of 5 attempts to ignore the file entirely; all 5 at minimum mentioned and integrated the file)
 
 ## T9 Regression Test
 
@@ -163,8 +204,21 @@ Failure set:
 
 Failure shape:
 
-- Each failing assertion receives `Promise {}` instead of the expected string mode.
-- This failure set matches the already known pre-existing baseline mentioned before deployment.
+- Each failing assertion receives `Promise {}` instead of the expected string mode — signature of a sync test calling an async function without `await`.
+
+Scope evidence (why these are pre-existing, not introduced by this branch):
+
+- Neither the test file `__tests__/reference-presentation.test.ts` nor its target `src/lib/ai/web-search/reference-presentation.ts` is touched by any commit in this branch. Verifiable via:
+  ```bash
+  git log --oneline $(git merge-base main normalizer-typeScript)..normalizer-typeScript -- \
+    __tests__/reference-presentation.test.ts \
+    src/lib/ai/web-search/reference-presentation.ts
+  ```
+  This command returns zero commits when run against the branch state at commit `6f2cc73e` (dev-verification head), confirming these files were not modified by Change Groups A, B, or C.
+- The failure mode (`Promise {}` sync/async mismatch) is a property of `reference-presentation.ts` and its sync test — it can only be caused by changes to those files, which this branch makes none of.
+- The Audit 4 report previously confirmed these same 3 failures existed on the baseline commit used for that audit (see `git diff 0c3f2b95..31e4a913` audit history).
+
+Therefore these 3 failures are classified as pre-existing, unrelated to the attachment awareness work in this branch.
 
 ## T10 Skill Diff Verification
 
