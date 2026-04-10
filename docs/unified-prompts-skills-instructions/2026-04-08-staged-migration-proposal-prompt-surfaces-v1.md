@@ -60,7 +60,7 @@ Ini yang terbaik karena:
 | Chat route inline tool descriptions | `src/app/api/chat/route.ts` | `extract contract first` | `src/agent/prompts/tools/chat-tool-descriptions.ts` | Harus dipecah dari registrasi tool dan route flow dulu. | Phase 4 |
 | Compaction summarization prompts | `src/lib/ai/compaction-prompts.ts`, digunakan dari `src/lib/ai/context-compaction.ts` | `move asset now` | `src/agent/prompts/compaction/compaction-prompts.ts` | Prompt asset cukup jelas dan relatif bersih. | Phase 1 |
 | Refrasa system prompt assets | `src/lib/refrasa/prompt-builder.ts` | `extract contract first` | `src/agent/prompts/features/refrasa-system-prompt.ts` dan `src/agent/compose/build-refrasa-prompts.ts` | Builder domain dan prompt asset masih bercampur. | Phase 4 |
-| Active style constitution for Refrasa | `convex/styleConstitutions.ts`, `src/app/api/refrasa/route.ts` | `wrap with adapter` | `src/agent/adapters/style-constitutions.ts` | Source of truth tetap DB-managed. | Phase 4 |
+| Active style constitution for Refrasa | `convex/styleConstitutions.ts`, `src/app/api/refrasa/route.ts` | `wrap with adapter` | `src/agent/adapters/style-constitutions.ts` | Source of truth tetap DB-managed. Adapter dibuat bareng DB-managed adapter lain di Phase 2 supaya boundary uniform dan tidak menghalangi compose centralization di phase berikutnya. | Phase 2 |
 | Title generation prompt | `src/lib/ai/title-generator.ts` | `keep local` | `src/lib/ai/title-generator.ts` | Utility prompt satu-fungsi. | No migration |
 | OCR image extraction instruction | `src/lib/file-extraction/image-ocr.ts` | `keep local` | `src/lib/file-extraction/image-ocr.ts` | Prompt OCR milik subsystem extraction. | No migration |
 | Admin provider validation prompt | `src/app/api/admin/validate-provider/route.ts` | `keep local` | tetap lokal di route atau helper lokal | Verification-only, bukan runtime contract agent. | Optional cleanup |
@@ -118,6 +118,7 @@ Item:
 
 - adapter global system prompt,
 - adapter stage skills,
+- adapter style constitutions,
 - search router prompt,
 - attachment first-response instruction,
 - choice context note contract.
@@ -160,8 +161,7 @@ Item:
 
 - paper workflow tool descriptions,
 - chat route inline tool descriptions,
-- Refrasa prompt contracts,
-- adapter style constitutions.
+- Refrasa prompt contracts.
 
 Output minimum:
 
