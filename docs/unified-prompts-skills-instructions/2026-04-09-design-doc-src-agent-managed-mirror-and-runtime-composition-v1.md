@@ -90,12 +90,26 @@ Konsekuensi desain:
 
 ### 2. Stage skill content bukan plain text
 
-Stage skill current-state disimpan sebagai markdown penuh dengan frontmatter yang dibentuk lewat `buildSkillMarkdown()` dan dibaca lewat `parseSkillMarkdown()`.
+Stage skill current-state disimpan sebagai markdown penuh dengan frontmatter yang dibentuk lewat `buildSkillMarkdown()` dan dibaca lewat `parseSkillMarkdown()` di `src/components/admin/StageSkillFormDialog.tsx`.
+
+Fields frontmatter yang ada di content:
+
+- `name`
+- `description`
+- `stageScope`
+- `searchPolicy` (`"active"` | `"passive"`)
+- `metadataInternal` (nested `metadata:` block dengan key `internal`)
+
+Catatan tambahan:
+
+- `stageScope` di DB schema memakai underscore (contoh: `tinjauan_literatur`), tetapi `skillId` dan folder naming convention memakai hyphen (referensi konversi: `toSkillId()` di `convex/stageSkills/constants.ts`),
+- search policy defaults per stage tersedia di `getExpectedSearchPolicy()` di file yang sama.
 
 Konsekuensi desain:
 
-- sync pipeline untuk stage skills harus menjaga bentuk markdown + frontmatter tetap stabil,
-- body-only serialization tidak boleh jadi format authority.
+- sync pipeline untuk stage skills harus menjaga bentuk markdown + frontmatter tetap stabil termasuk semua fields di atas,
+- body-only serialization tidak boleh jadi format authority,
+- exporter harus normalize stageScope underscore ke hyphen untuk folder naming di mirror.
 
 ### 3. Runtime menambahkan augmentation lokal
 
@@ -428,6 +442,44 @@ developer edit mirror file
 2. importer `system prompts` dan `stage skills` wajib terpisah
 3. stage skill markdown + frontmatter wajib dipertahankan
 4. mirror hanya memuat canonical content sebelum augmentation runtime
+
+### 6. Sync Invariants
+
+Keempat invariant ini wajib dipegang oleh semua importer dan exporter mirror, apapun surface-nya. Dokumen ini menetapkan invariant secara eksplisit karena tidak ada anchor doc sebelumnya yang membahas keempat hal ini secara sistematis.
+
+#### 6.1 Timestamps preservation
+
+Aturan:
+
+- `createdAt`, `updatedAt`, `publishedAt`, `activatedAt` tidak boleh direset pada round-trip `export → edit → import`.
+- Exporter wajib menulis timestamps original ke `meta.json`.
+- Importer wajib merestore timestamps dari `meta.json` kalau ada, atau menandai entri baru dengan timestamp operasi import kalau tidak ada.
+- Round-trip equivalence didefinisikan di level content dan version number, bukan byte-identical di level timestamp.
+
+#### 6.2 `createdBy` durability
+
+Aturan:
+
+- Exporter wajib menulis `creatorEmail` (bukan hanya user id Convex) ke `meta.json` sebagai audit trail durable.
+- Importer wajib menerima `creatorEmail` sebagai data historis, dan meng-stamp entri baru dengan identity operator yang menjalankan import.
+- Identitas operator import tidak boleh diwariskan dari file; file mirror tidak membawa auth context.
+
+#### 6.3 Version number race protection
+
+Aturan:
+
+- Importer wajib transaction-scoped per entitas (`rootId` untuk system prompts, `skillRefId` untuk stage skills).
+- Importer wajib validate `version` uniqueness sebelum write untuk cegah dua import paralel menulis version number yang sama.
+- Kalau conflict terdeteksi, importer wajib abort surface tersebut dan melapor ke operator, bukan overwrite.
+
+#### 6.4 Activation uniqueness dan auto-activate ban
+
+Aturan:
+
+- Importer tidak boleh auto-activate untuk kedua surface. `isActive` hanya boleh berubah lewat admin lifecycle atau rule aktivasi eksplisit dari operator.
+- Untuk stage skills, importer wajib create entry baru sebagai `status: draft`, bukan `published` atau `active`.
+- Untuk system prompts, importer wajib create version baru dengan `isActive: false`.
+- `isActive` adalah global per chain untuk system prompts dan global per skill catalog untuk stage skills. Importer tidak boleh menghasilkan state dengan dua `isActive: true` untuk entitas yang sama.
 
 ## Migration Slices
 
