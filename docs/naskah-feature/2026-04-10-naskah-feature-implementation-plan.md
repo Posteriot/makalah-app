@@ -10,14 +10,33 @@
 
 ---
 
+## Codebase Anchors (verified pre-execution)
+
+These are the real files and symbols the plan integrates with. Any task that references a different name is a bug and must be corrected to match this list:
+
+- **Stage approval mutation:** `convex/paperSessions.ts::approveStage` — sets `stageData[currentStage].validatedAt = now`, advances `currentStage`, and (for `judul` stage) already writes `paperTitle` and `workingTitle` on the session. This is one rebuild trigger.
+- **Rewind mutation:** `convex/paperSessions.ts::rewindToStage` — calls `clearValidatedAt(...)` and `invalidateArtifactsForStages(...)` for the invalidated range. This is the second rebuild trigger.
+- **Stage order constant:** `convex/paperSessions/constants.ts::STAGE_ORDER`. Canonical list: `gagasan`, `topik`, `outline`, `abstrak`, `pendahuluan`, `tinjauan_literatur`, `metodologi`, `hasil`, `diskusi`, `kesimpulan`, `pembaruan_abstrak`, `daftar_pustaka`, `lampiran`, `judul`. The naskah compiler's section mapping MUST use these exact keys.
+- **Existing export compiler (reference only, do NOT reuse for phase 1):** `src/lib/export/content-compiler.ts::compilePaperContent` — reads `stageData` directly and implements the `pembaruan_abstrak → abstrak` override via `ringkasanPenelitianBaru ?? ringkasanPenelitian` and `keywordsBaru ?? keywords`. Mirror this override semantics in the naskah compiler, but keep the code path independent.
+- **Validated artifact reference shape:** per-stage entries in `session.stageData` have the shape `{ validatedAt?: number; artifactId?: Id<"artifacts">; revisionCount?: number; ...stageFields }`. A stage is a valid naskah input iff `validatedAt` is a number AND (for content stages) either `artifactId` resolves to a non-invalidated artifact OR the stage still carries legacy inline fields such as `ringkasanPenelitian`. Fetch artifact content via `ctx.db.get(artifactId as Id<"artifacts">)` and check `invalidatedAt` is undefined before using it.
+- **Session-level `isDirty`:** `convex/paperSessions.ts` maintains `session.isDirty` at session level and resets it to `false` on approve. Do NOT conflate this with naskah `update pending`. Naskah `update pending` is a per-user comparison of `naskahSnapshots.revision` vs `naskahViews.lastViewedRevision`.
+- **Title resolver:** `src/lib/paper/title-resolver.ts::resolvePaperDisplayTitle` already handles `paperTitle > workingTitle > conversationTitle > fallback`. `approveStage` already writes both `paperTitle` and `workingTitle` when stage `judul` is approved. The compiler reads `session.paperTitle`/`session.workingTitle` and optionally `stageData.topik` for a phase-1 working title fallback; **do not modify `title-resolver.ts`** — it is a reference only.
+- **Chat shell host:** `src/components/chat/layout/ChatLayout.tsx` is where `TopBar` is mounted and where session/conversation context is available. TopBar today takes only `isSidebarCollapsed`, `onToggleSidebar`, `artifactCount` — no session. Naskah availability and `updatePending` props must be plumbed from `ChatLayout.tsx` into `TopBar.tsx`. Do NOT assume TopBar can fetch session state on its own.
+- **Active route for chat:** `src/app/chat/[conversationId]/page.tsx`. Follow the same route pattern for the naskah page (see Task 4).
+- **Convex test harness:** convex tests in this repo use **vitest with a hand-mocked `ctx` object** (see `convex/paperSessions.test.ts`), NOT `convex-test`. New convex tests MUST follow the mocked-ctx pattern.
+- **Convex generated types (`convex/_generated/api.d.ts`):** **auto-generated** by `npx convex dev` / `npx convex codegen`. NEVER edit or commit it manually. It updates automatically once new Convex functions are defined and codegen runs.
+
+---
+
 ### Task 1: Define Naskah Domain Types And Pure Compiler
 
 **Files:**
 - Create: `src/lib/naskah/types.ts`
 - Create: `src/lib/naskah/compiler.ts`
 - Create: `src/lib/naskah/compiler.test.ts`
-- Modify: `src/lib/paper/title-resolver.ts`
-- Reference: `src/lib/export/content-compiler.ts`
+- Reference: `src/lib/paper/title-resolver.ts` (do NOT modify — existing resolver already covers `paperTitle > workingTitle > conversationTitle > fallback`)
+- Reference: `src/lib/export/content-compiler.ts` (mirror the `pembaruan_abstrak ?? abstrak` override, but keep code path independent)
+- Reference: `convex/paperSessions/constants.ts` (STAGE_ORDER canonical keys)
 - Reference: `docs/naskah-feature/2026-04-10-naskah-design-doc.md`
 
 **Step 1: Write the failing tests**
@@ -36,19 +55,26 @@ import { compileNaskahSnapshot } from "./compiler";
 describe("compileNaskahSnapshot", () => {
   it("builds the first snapshot from abstrak plus working title", () => {
     const result = compileNaskahSnapshot({
-      stageData: makeStageData({
-        topik: validatedStage({ title: "Judul Kerja" }),
-        abstrak: validatedStage({ content: "<h1>Abstrak</h1><p>Isi</p>" }),
-      }),
-      artifactsById: makeArtifacts(),
+      stageData: {
+        topik: { validatedAt: 1, definitif: "Judul Kerja" },
+        abstrak: { validatedAt: 2, artifactId: "art_abstrak_1" },
+      },
+      artifactsById: {
+        art_abstrak_1: { _id: "art_abstrak_1", content: "Isi abstrak." },
+      },
+      paperTitle: null,
+      workingTitle: null,
     });
 
     expect(result.isAvailable).toBe(true);
     expect(result.title).toBe("Judul Kerja");
-    expect(result.sections.map((section) => section.key)).toEqual(["abstrak"]);
+    expect(result.titleSource).toBe("topik_definitif");
+    expect(result.sections.map((s) => s.key)).toEqual(["abstrak"]);
   });
 });
 ```
+
+Fixture fields above use real schema names from `convex/schema.ts:537-688` and `src/lib/paper/stage-types.ts`. Do not introduce alias fields like `topik.title` or `abstrak.content` — the compiler reads `topik.definitif`, `abstrak.ringkasanPenelitian`, and `judul.judulTerpilih` only.
 
 **Step 2: Run test to verify it fails**
 
@@ -59,13 +85,41 @@ Expected: FAIL because `compileNaskahSnapshot` and helper types do not exist yet
 **Step 3: Write minimal implementation**
 
 Implement:
-- `NaskahSectionKey`, `NaskahCompiledSnapshot`, `NaskahAvailability`, `NaskahCompileInput`
-- a pure compiler that:
-  - reads validated artifact refs from `stageData`
-  - maps internal stages to final academic sections
-  - resolves title from `topik` then `judul`
-  - applies deterministic compile guard
-  - returns `isAvailable`, `sections`, and `pageEstimate`
+- `NaskahSectionKey` (union of final academic keys only, e.g. `"abstrak" | "pendahuluan" | "tinjauan_literatur" | "metodologi" | "hasil" | "diskusi" | "kesimpulan" | "daftar_pustaka" | "lampiran"`).
+- `NaskahCompiledSnapshot`, `NaskahAvailability`, `NaskahCompileInput`.
+- a **pure** compiler `compileNaskahSnapshot(input)` that:
+  - takes `stageData` (the session's stageData), `artifactsById` (a map of already-loaded artifact records, keyed by `Id<"artifacts">` string), and session title fields (`paperTitle`, `workingTitle`) as inputs. Must not touch Convex `ctx` directly — the Convex wrapper is responsible for fetching artifacts and passing them in.
+  - treats a stage as eligible only when BOTH:
+    1. `stageData[stage].validatedAt` is a number, AND
+    2. the stage's content source is resolvable (either the referenced artifact exists, is non-invalidated, and yields content, OR the legacy inline stage field exists).
+  - maps internal stages to final academic sections using the canonical mapping below. Stages that are not in the mapping (`gagasan`, `outline`) are silently ignored. `topik` contributes only a working title. `judul` contributes only the final paper title. `pembaruan_abstrak` overrides the `abstrak` section via the same `?? ` fallback pattern as `content-compiler.ts`.
+  - resolves title in this strict order, with explicit `titleSource` classification:
+    1. validated `judul` stage with non-empty `judulTerpilih` → `titleSource: "judul_final"`
+    2. non-empty `session.paperTitle` → `titleSource: "paper_title"` (NOT gated by `validatedAt`; the trim check is the only gate)
+    3. non-empty `session.workingTitle` → `titleSource: "working_title"`
+    4. validated `topik` stage with non-empty `definitif` → `titleSource: "topik_definitif"`
+    5. fallback `"Paper Tanpa Judul"` → `titleSource: "fallback"`
+  - applies a deterministic compile guard that rejects content when ANY of: `content.trim() === ""`, OR a line matches `^\s*\[(TODO|TBD|PLACEHOLDER)\]\s*$` (case-insensitive, multiline), OR content contains `{{\s*\w+\s*}}` (mustache hole). No heading regex is enforced in phase 1 — there is no verified shape of validated artifact bodies in the codebase yet, and pinning a heading regex against an imagined shape is a known footgun.
+  - returns `{ isAvailable, reasonIfUnavailable, title, titleSource, sections, pageEstimate, status, sourceArtifactRefs }`. `isAvailable === true` iff at least the `abstrak` section survived the guard (matching D-008). `reasonIfUnavailable` is one of `"empty_session"` (no validated stages at all), `"no_validated_abstrak"` (some stages validated but none map to abstrak), or `"abstrak_guard_failed"` (abstrak considered but resolver dropped it).
+
+Canonical section mapping (single source of truth — mirror in compiler):
+
+| Internal stage | Final section | Notes |
+|---|---|---|
+| `gagasan` | — | ignored |
+| `topik` | — | contributes `workingTitle` only |
+| `outline` | — | ignored |
+| `abstrak` | `Abstrak` | base content |
+| `pembaruan_abstrak` | `Abstrak` | overrides base when present and validated |
+| `pendahuluan` | `Pendahuluan` | |
+| `tinjauan_literatur` | `Tinjauan Literatur` | |
+| `metodologi` | `Metodologi` | |
+| `hasil` | `Hasil` | |
+| `diskusi` | `Diskusi` | |
+| `kesimpulan` | `Kesimpulan` | |
+| `daftar_pustaka` | `Daftar Pustaka` | |
+| `lampiran` | `Lampiran` | only when eligible |
+| `judul` | — | overrides title only |
 
 Keep `pageEstimate` simple in phase 1:
 
@@ -85,7 +139,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add src/lib/naskah/types.ts src/lib/naskah/compiler.ts src/lib/naskah/compiler.test.ts src/lib/paper/title-resolver.ts
+git add src/lib/naskah/types.ts src/lib/naskah/compiler.ts src/lib/naskah/compiler.test.ts
 git commit -m "feat: add naskah compiler primitives"
 ```
 
@@ -95,9 +149,11 @@ git commit -m "feat: add naskah compiler primitives"
 - Modify: `convex/schema.ts`
 - Create: `convex/naskah.ts`
 - Create: `convex/naskah.test.ts`
-- Modify: `convex/_generated/api.d.ts`
-- Reference: `convex/paperSessions.ts`
-- Reference: `convex/artifacts.ts`
+- Reference: `convex/paperSessions.ts` (`approveStage`, `rewindToStage`)
+- Reference: `convex/artifacts.ts` (`invalidatedAt` field)
+- Reference: `convex/paperSessions.test.ts` (convex test harness pattern — mocked `ctx` via vitest, NOT `convex-test`)
+
+**Do NOT touch `convex/_generated/api.d.ts` — it is auto-generated by `npx convex dev` / `npx convex codegen` and regenerates once `convex/naskah.ts` defines new exports. Any manual edit will be overwritten.**
 
 **Step 1: Write the failing tests**
 
@@ -127,28 +183,32 @@ Expected: FAIL because the module and schema entries do not exist yet.
 
 **Step 3: Write minimal implementation**
 
-Add a dedicated `naskahSnapshots` table with fields such as:
-- `sessionId`
-- `revision`
-- `compiledAt`
-- `status`
-- `title`
-- `sections`
-- `pageEstimate`
-- `sourceArtifactRefs`
+Add a dedicated `naskahSnapshots` table in `convex/schema.ts` with fields:
+- `sessionId: v.id("paperSessions")`
+- `revision: v.number()` — monotonic per session
+- `compiledAt: v.number()`
+- `status: v.union(v.literal("growing"), v.literal("stable"))`
+- `title: v.string()`
+- `sections: v.array(v.any())` — serialized `NaskahSection[]`
+- `pageEstimate: v.number()`
+- `sourceArtifactRefs: v.array(v.object({ stage: v.string(), artifactId: v.optional(v.id("artifacts")), revisionCount: v.optional(v.number()), usedForRender: v.boolean(), resolution: v.union(v.literal("artifact"), v.literal("inline"), v.literal("dropped"), v.literal("overridden")) }))` — provenance refs per stage that the compiler actually considered (gated by `validatedAt != null`). `usedForRender` is true only when the ref supplied bytes to a rendered section. `resolution` captures the resolver outcome: `"artifact"` when the artifact body won, `"inline"` when inline fallback won, `"dropped"` when the resolver itself could not produce content (empty content, invalidated artifact with no inline, or guard rejection), and `"overridden"` when this stage had a valid source but was discarded because a higher-precedence stage won the section (e.g. `abstrak` when `pembaruan_abstrak` wins). The pembaruan_abstrak/abstrak override path MUST store both refs when both stages are validated.
+- Index: `by_session` on `sessionId` so `getLatestSnapshot` can query cheaply.
 
-Add a lightweight viewed-state table, for example `naskahViews`:
-- `sessionId`
-- `userId`
-- `lastViewedRevision`
-- `viewedAt`
+Add a lightweight viewed-state table `naskahViews`:
+- `sessionId: v.id("paperSessions")`
+- `userId: v.id("users")`
+- `lastViewedRevision: v.number()`
+- `viewedAt: v.number()`
+- Index: `by_session_user` on `(sessionId, userId)`.
 
-Implement Convex functions:
-- `getAvailability(sessionId)`
-- `getLatestSnapshot(sessionId)`
-- `getViewState(sessionId, userId)`
-- `markViewed(sessionId, revision)`
-- `computeUpdatePending(latestRevision, viewedRevision)`
+Implement Convex functions in `convex/naskah.ts`:
+- `getAvailability(sessionId)` query — returns `{ isAvailable, availableAtRevision, reasonIfUnavailable }` from the latest snapshot; falls back to `isAvailable: false` when no snapshot exists.
+- `getLatestSnapshot(sessionId)` query — returns the most recent `naskahSnapshots` row by index, or `null`.
+- `getViewState(sessionId, userId)` query — returns the `naskahViews` row or `null`.
+- `markViewed(sessionId, revision)` mutation — upserts `naskahViews` for `(sessionId, currentUser)`.
+- `deriveUpdatePending({ latestRevision, viewedRevision })` — **plain exported helper function, not a Convex handler.** Returns `latestRevision !== viewedRevision` when both defined, `true` when viewed is undefined and latest exists, `false` otherwise. This is the symbol the failing test imports.
+
+All Convex handlers MUST follow the mocked-ctx vitest pattern from `convex/paperSessions.test.ts` — do NOT use `convex-test` in phase 1.
 
 **Step 4: Run test to verify it passes**
 
@@ -159,18 +219,20 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add convex/schema.ts convex/naskah.ts convex/naskah.test.ts convex/_generated/api.d.ts
+git add convex/schema.ts convex/naskah.ts convex/naskah.test.ts
 git commit -m "feat: add naskah snapshot read model"
 ```
 
 ### Task 3: Trigger Snapshot Rebuild On Validation-Relevant Changes
 
 **Files:**
-- Modify: `convex/paperSessions.ts`
-- Modify: `convex/artifacts.ts`
-- Modify: `convex/paperSessions.test.ts`
-- Create: `convex/naskahRebuild.ts`
+- Modify: `convex/paperSessions.ts` — hook `rebuildNaskahSnapshot` at the tail of `approveStage` (after `ctx.db.patch`) and at the tail of `rewindToStage` (after stage invalidation writes).
+- Modify: `convex/paperSessions.test.ts` — follow the existing mocked-ctx pattern.
+- Create: `convex/naskahRebuild.ts` — async helper `rebuildNaskahSnapshot(ctx, sessionId)` that loads the session, resolves artifacts via `ctx.db.get` for each validated stage's `artifactId`, calls `compileNaskahSnapshot` from `src/lib/naskah/compiler.ts`, and writes a new row into `naskahSnapshots` only when the compiled output differs from the previous snapshot (compare by a stable hash of `title + sections`).
 - Reference: `convex/paperSessions/constants.ts`
+- Reference: `convex/artifacts.ts` (skip artifacts with non-undefined `invalidatedAt`)
+
+**Note:** `convex/artifacts.ts` does NOT need modification in this task — artifact invalidation is already handled inside `rewindToStage` via `invalidateArtifactsForStages`. The naskah rebuild only needs to run AFTER those mutations complete.
 
 **Step 1: Write the failing tests**
 
@@ -197,18 +259,17 @@ Expected: FAIL on missing rebuild side effects and snapshot records.
 **Step 3: Write minimal implementation**
 
 Implement a rebuild helper that:
-- loads the session
-- reads current validated artifact references
-- calls `compileNaskahSnapshot`
-- writes a new snapshot only when compiled output meaningfully changes
-- updates availability state
+- loads the session via `ctx.db.get(sessionId)`
+- iterates each stage in `STAGE_ORDER`, reads `stageData[stage]`, and — when `validatedAt` is set AND `artifactId` is present — calls `ctx.db.get(artifactId)` and skips the artifact when its `invalidatedAt` is defined
+- calls `compileNaskahSnapshot({ stageData, artifactsById, paperTitle, workingTitle })`
+- computes a stable hash of the compiled `title + sections` and compares to the latest snapshot; writes a new row with `revision = previous + 1` only when the hash differs
+- when `isAvailable` flips from false to true, the new row's `revision` seeds availability
 
-Wire it into stage lifecycle points that already change validated state:
-- approval
-- rewind / invalidation
-- artifact replacement only after revalidation
+Wire the helper at exactly these two call sites:
+1. `convex/paperSessions.ts::approveStage` — add `await rebuildNaskahSnapshot(ctx, args.sessionId);` AFTER the existing `await ctx.db.patch(args.sessionId, patchData);` call at the tail of the handler. This covers `abstrak`, `judul`, `pembaruan_abstrak`, and every other stage approval.
+2. `convex/paperSessions.ts::rewindToStage` — add the same call AFTER `await ctx.db.patch(args.sessionId, { ... })` at the tail of the handler. This covers invalidation-driven snapshot shrinkage.
 
-Do not trigger rebuild from plain draft edits.
+Do NOT hook `updateStageData`, `submitForValidation`, or any draft-edit mutation — those do not cross the validation boundary. Do NOT hook artifact content edits directly — the rebuild must be downstream of a `validatedAt` write.
 
 **Step 4: Run test to verify it passes**
 
@@ -219,20 +280,23 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add convex/paperSessions.ts convex/artifacts.ts convex/paperSessions.test.ts convex/naskahRebuild.ts
+git add convex/paperSessions.ts convex/paperSessions.test.ts convex/naskahRebuild.ts
 git commit -m "feat: rebuild naskah snapshots from validation events"
 ```
 
 ### Task 4: Expose Naskah Availability And Route-Aware Navigation
 
 **Files:**
-- Create: `src/app/chat/naskah/page.tsx`
-- Modify: `src/app/chat/layout.tsx`
-- Modify: `src/components/chat/shell/TopBar.tsx`
+- Create: `src/app/chat/[conversationId]/naskah/page.tsx` — the `/chat/:conversationId/naskah` route (matches the existing `src/app/chat/[conversationId]/page.tsx` pattern; naskah is scoped per conversation, not global).
+- Modify: `src/components/chat/layout/ChatLayout.tsx` — this is the real shell that mounts `TopBar`. Plumb naskah availability + `updatePending` into TopBar from here, and accept a `routeContext: "chat" | "naskah"` prop so the same layout can host both pages.
+- Modify: `src/components/chat/shell/TopBar.tsx` — add optional props `naskahAvailable: boolean`, `naskahUpdatePending: boolean`, `routeContext: "chat" | "naskah"`, and render the contextual Chat/Naskah link button accordingly. Keep defaults false/`"chat"` so existing callers are unaffected.
 - Create: `src/lib/hooks/useNaskah.ts`
 - Create: `src/lib/hooks/useNaskah.test.ts`
 - Reference: `src/lib/hooks/usePaperSession.ts`
-- Reference: `src/components/chat/ChatContainer.tsx`
+- Reference: `src/components/chat/layout/ChatLayout.tsx` (existing TopBar mount site, around line 337)
+- Reference: `src/app/chat/[conversationId]/page.tsx`
+
+**Note:** The plan originally referenced `src/app/chat/layout.tsx` and `src/components/chat/ChatContainer.tsx` as edit points. Do NOT edit `src/app/chat/layout.tsx` — it is a thin generic layout. The real session-aware shell that mounts TopBar is `src/components/chat/layout/ChatLayout.tsx`. `ChatContainer.tsx` is not the shell and should not be modified for naskah wiring.
 
 **Step 1: Write the failing tests**
 
@@ -258,14 +322,16 @@ Expected: FAIL because the hook, route wiring, and navigation behavior do not ex
 **Step 3: Write minimal implementation**
 
 Implement:
-- `useNaskah(sessionId)` to read availability, latest snapshot, view state, and pending flag
-- route-aware `TopBar` props for `Chat` vs `Naskah`
-- a new `/chat/naskah` page that:
-  - redirects or guards when unavailable
-  - loads the latest snapshot
-  - renders a shell placeholder for the next task
+- `useNaskah(sessionId)` — thin hook that wraps `useQuery(api.naskah.getAvailability, ...)`, `useQuery(api.naskah.getLatestSnapshot, ...)`, and `useQuery(api.naskah.getViewState, ...)`. Derives `updatePending` locally using the `deriveUpdatePending` helper imported from `convex/naskah.ts`. Exposes `markViewed()` as a bound mutation.
+- route-aware `TopBar` props and a small `NaskahButton` / `ChatButton` sub-component inside `TopBar.tsx` that renders the contextual link. The button is a Next `Link` to `/chat/:conversationId/naskah` or `/chat/:conversationId` respectively.
+- `src/components/chat/layout/ChatLayout.tsx` passes `naskahAvailable`, `naskahUpdatePending`, and `routeContext` into TopBar; `routeContext` is derived from `usePathname()`.
+- the new `/chat/[conversationId]/naskah/page.tsx` route that:
+  - reuses `ChatLayout` with `routeContext="naskah"` (or a naskah-specific equivalent if layout nesting makes that cleaner)
+  - guards when `availability.isAvailable === false` by rendering an unavailable state inline (do NOT redirect — per D-012, Naskah opens normally even while growing)
+  - loads the latest snapshot via `useNaskah`
+  - renders a placeholder shell for the preview components created in Task 5
 
-Keep export actions disabled or omitted in this phase.
+Keep export actions disabled or omitted in this phase (per D-015, D-036).
 
 **Step 4: Run test to verify it passes**
 
@@ -276,7 +342,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add src/app/chat/naskah/page.tsx src/app/chat/layout.tsx src/components/chat/shell/TopBar.tsx src/lib/hooks/useNaskah.ts src/lib/hooks/useNaskah.test.ts
+git add src/app/chat/[conversationId]/naskah/page.tsx src/components/chat/layout/ChatLayout.tsx src/components/chat/shell/TopBar.tsx src/lib/hooks/useNaskah.ts src/lib/hooks/useNaskah.test.ts
 git commit -m "feat: add naskah route and topbar entry point"
 ```
 
@@ -289,8 +355,8 @@ git commit -m "feat: add naskah route and topbar entry point"
 - Create: `src/components/naskah/NaskahPreview.tsx`
 - Create: `src/components/naskah/NaskahPage.test.tsx`
 - Create: `src/components/naskah/naskah.css.ts` or `src/components/naskah/naskahTokens.ts`
-- Modify: `src/app/chat/naskah/page.tsx`
-- Reference: `src/lib/export/pdf-builder.ts`
+- Modify: `src/app/chat/[conversationId]/naskah/page.tsx`
+- Reference: `src/lib/export/pdf-builder.ts` (A4 margins: 2.5cm top/bottom, 3cm left, 2cm right, Times-Roman, line-height 1.5 — mirror these for the web preview so phase 1 preview stays visually close to the eventual export path)
 
 **Step 1: Write the failing tests**
 
@@ -404,7 +470,7 @@ git commit -m "feat: add naskah manual refresh flow"
 - Modify: `docs/naskah-feature/context.md`
 - Modify: `docs/naskah-feature/correction-checklist-context-decisions.md`
 - Create: `src/components/chat/shell/TopBar.naskah-integration.test.tsx`
-- Create: `src/app/chat/naskah/page.test.tsx`
+- Create: `src/app/chat/[conversationId]/naskah/page.test.tsx`
 
 **Step 1: Write the failing tests**
 
@@ -422,7 +488,7 @@ it("does not render active export controls in phase 1", () => {
 
 **Step 2: Run test to verify it fails**
 
-Run: `npm exec vitest run src/components/chat/shell/TopBar.naskah-integration.test.tsx src/app/chat/naskah/page.test.tsx`
+Run: `npm exec vitest run src/components/chat/shell/TopBar.naskah-integration.test.tsx src/app/chat/[conversationId]/naskah/page.test.tsx`
 
 Expected: FAIL until the final wiring is complete.
 
@@ -435,7 +501,7 @@ Finish the remaining integration glue:
 
 **Step 4: Run test to verify it passes**
 
-Run: `npm exec vitest run src/components/chat/shell/TopBar.naskah-integration.test.tsx src/app/chat/naskah/page.test.tsx`
+Run: `npm exec vitest run src/components/chat/shell/TopBar.naskah-integration.test.tsx src/app/chat/[conversationId]/naskah/page.test.tsx`
 
 Expected: PASS
 
@@ -447,14 +513,14 @@ Run:
 - `npm exec vitest run convex/paperSessions.test.ts`
 - `npm exec vitest run src/components/naskah/NaskahPage.test.tsx`
 - `npm exec vitest run src/components/naskah/NaskahRefresh.test.tsx`
-- `npm exec vitest run src/components/chat/shell/TopBar.naskah-integration.test.tsx src/app/chat/naskah/page.test.tsx`
+- `npm exec vitest run src/components/chat/shell/TopBar.naskah-integration.test.tsx src/app/chat/[conversationId]/naskah/page.test.tsx`
 
 Expected: PASS
 
 **Step 6: Commit**
 
 ```bash
-git add docs/naskah-feature/2026-04-10-naskah-design-doc.md docs/naskah-feature/decisions.md docs/naskah-feature/context.md docs/naskah-feature/correction-checklist-context-decisions.md src/components/chat/shell/TopBar.naskah-integration.test.tsx src/app/chat/naskah/page.test.tsx
+git add docs/naskah-feature/2026-04-10-naskah-design-doc.md docs/naskah-feature/decisions.md docs/naskah-feature/context.md docs/naskah-feature/correction-checklist-context-decisions.md src/components/chat/shell/TopBar.naskah-integration.test.tsx src/app/chat/[conversationId]/naskah/page.test.tsx
 git commit -m "feat: ship phase-one naskah workspace"
 ```
 
