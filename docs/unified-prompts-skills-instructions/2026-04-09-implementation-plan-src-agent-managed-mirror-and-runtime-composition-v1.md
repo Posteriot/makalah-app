@@ -43,13 +43,13 @@ Urutan PR terbaik:
 
 1. namespace foundation
 2. pure prompt asset moves per subdomain
-3. runtime adapters untuk chat + paper
+3. runtime adapters untuk chat, paper, dan Refrasa constitution
 4. inline prompt contract extraction
 5. managed mirror foundation
 6. system prompt mirror pipeline
 7. stage skill mirror pipeline
 8. compose centralization per flow
-9. Refrasa and tool-contract follow-up
+9. Refrasa prompt extraction and tool-contract follow-up
 
 ## Prasyarat
 
@@ -242,6 +242,14 @@ Catatan batching:
 
 Jangan pindah branching logic-nya penuh. Pindahkan hanya text guidance ke `search-results-context-prompt.ts`.
 
+**Step 3b: Audit paper-stages submodules sebelum relokasi**
+
+Sebelum memindahkan fallback stage instructions, audit semua submodule di `src/lib/ai/paper-stages/` untuk memastikan:
+
+- setiap stage yang terdaftar di `STAGE_SCOPE_VALUES` (`convex/stageSkills/constants.ts`) punya fallback instruction yang tidak undefined,
+- switch statement di `paper-stages/index.ts` tidak silent-fail ke string kosong kalau stage name berubah,
+- hasil audit dicatat sebelum relokasi supaya post-relokasi parity test bisa dibandingkan.
+
 **Step 4: Ekstrak fallback stage instruction set**
 
 Pindahkan text assets ke `src/agent/prompts/paper-stage-fallbacks/`, tetapi pertahankan resolver/domain logic yang masih dibutuhkan.
@@ -292,6 +300,8 @@ Lanjutkan PR berikutnya dengan commit terpisah untuk `search/`, lalu commit terp
 
 Pindahkan `web-search-quality` ke `src/agent/skills/search/web-search-quality/`.
 
+Catatan FS dependency: `src/lib/ai/skills/web-search-quality/index.ts` memakai `fs.readFileSync` untuk load `SKILL.md` saat runtime. Pastikan path FS loader ikut di-update ke lokasi baru dan test loader tetap hijau setelah pindah.
+
 **Step 2: Update loader**
 
 Semua loader harus mengarah ke namespace baru tanpa mengubah behavior skill.
@@ -323,8 +333,10 @@ git commit -m "feat: move web search quality skill into src-agent"
 **Files:**
 - Create: `src/agent/adapters/system-prompts.ts`
 - Create: `src/agent/adapters/stage-skills.ts`
+- Create: `src/agent/adapters/style-constitutions.ts`
 - Modify: `src/lib/ai/chat-config.ts`
 - Modify: `src/lib/ai/stage-skill-resolver.ts`
+- Modify: `src/app/api/refrasa/route.ts`
 
 **Step 1: Buat adapter system prompt**
 
@@ -346,6 +358,14 @@ Update caller agar:
 - `chat-config.ts` pakai adapter
 - `stage-skill-resolver.ts` pakai adapter untuk fetch active skill
 
+**Step 3b: Buat adapter style constitution dan update Refrasa route**
+
+Adapter `src/agent/adapters/style-constitutions.ts` membungkus akses ke `getActiveConstitution` di `convex/styleConstitutions.ts` tanpa menyentuh mirror scope (constitution tetap di luar scope mirror awal).
+
+Update `src/app/api/refrasa/route.ts` supaya memakai adapter ini, bukan direct Convex query. Jangan pindahkan prompt builder atau composition logic Refrasa di task ini — itu tetap ditunda ke Task 10.
+
+Alasan constitution adapter masuk task ini: checklist Phase 2 eksplisit menaruh `src/agent/adapters/style-constitutions.ts` bareng adapter DB-managed lain. Boundary adapter harus uniform supaya compose centralization di Phase 4 tidak terblokir oleh adapter yang belum ada.
+
 **Step 4: Verifikasi**
 
 Run:
@@ -358,14 +378,15 @@ npx vitest run src/lib/ai/stage-skill-resolver.test.ts src/lib/ai/stage-skill-va
 **Step 5: Commit**
 
 ```bash
-git add src/agent/adapters/system-prompts.ts src/agent/adapters/stage-skills.ts src/lib/ai/chat-config.ts src/lib/ai/stage-skill-resolver.ts
-git commit -m "feat: add runtime adapters for chat and paper prompt surfaces"
+git add src/agent/adapters/system-prompts.ts src/agent/adapters/stage-skills.ts src/agent/adapters/style-constitutions.ts src/lib/ai/chat-config.ts src/lib/ai/stage-skill-resolver.ts src/app/api/refrasa/route.ts
+git commit -m "feat: add runtime adapters for chat, paper, and refrasa constitution"
 ```
 
 Catatan batching:
 
-- jangan masukkan adapter Refrasa di task ini,
-- adapter style constitution harus ikut PR Refrasa supaya scope core chat tidak ketarik ke feature-specific flow.
+- constitution adapter masuk task ini karena boundary DB-managed adapter harus uniform dan tidak boleh tertunda,
+- Refrasa prompt extraction dan tool-contract follow-up tetap ditunda ke Task 10,
+- jangan mencampur Refrasa compose builder atau prompt contract extraction di task ini.
 
 ### Task 5: Ekstrak Inline Prompt Contracts dari Chat Route dan Choice Flow
 
@@ -441,6 +462,13 @@ Type minimal:
 - sync metadata shape
 - checksum manifest shape
 
+Sync metadata shape wajib include (per design doc Section 6 Sync Invariants):
+
+- `creatorEmail` (string) — durable audit trail; bukan hanya user id Convex (6.2).
+- `createdAt`, `updatedAt`, `publishedAt`, `activatedAt` — ISO timestamps original dari DB (6.1).
+- `version` (number) — dengan uniqueness constraint per `rootId` untuk system prompts atau per `skillRefId` untuk stage skills (6.3).
+- `sourceEntity` — pembeda `systemPrompt` vs `stageSkill`.
+
 **Step 3: Tambahkan diff utility**
 
 `diff-managed-vs-db.ts` harus bisa membandingkan snapshot mirror dengan hasil baca canonical DB.
@@ -483,15 +511,21 @@ Exporter harus membaca:
 
 - active chain
 - version chain
-- metadata canonical yang relevan
+- metadata canonical: `createdAt`, `updatedAt`, `creatorEmail` (resolved dari `createdBy` user id ke email untuk durable audit trail)
+
+Per design doc Section 6.1 dan 6.2, exporter wajib menulis timestamps original dan `creatorEmail` ke `meta.json`. Timestamps tidak boleh direset; `createdBy` tidak boleh hanya disimpan sebagai user id Convex karena user id tidak durable di file mirror.
 
 **Step 3: Implement importer**
 
-Rules importer:
+Rules importer (per design doc Section 6 Sync Invariants):
 
-- create version row baru di `systemPrompts`
-- tidak menambahkan status draft/published/archived
-- tidak auto-activate tanpa rule eksplisit
+- transaction-scoped per `rootId` untuk cegah version race pada concurrent import (6.3).
+- validate `version` uniqueness sebelum write; abort surface dan lapor ke operator kalau conflict terdeteksi (6.3).
+- create version row baru di `systemPrompts` dengan `isActive: false` (6.4).
+- tidak menambahkan status `draft/published/archived` (system prompts tidak punya lifecycle itu).
+- tidak auto-activate tanpa rule eksplisit operator (6.4).
+- preserve timestamps dari `meta.json` kalau ada; kalau tidak ada, stamp dengan timestamp operasi import (6.1).
+- stamp `createdBy` dengan identity operator yang menjalankan import job; `creatorEmail` dari file hanya disimpan sebagai audit trail historis, bukan sebagai auth context (6.2).
 
 **Step 4: Verifikasi structure**
 
@@ -525,6 +559,18 @@ git commit -m "feat: add system prompt mirror pipeline"
 
 Stage skill parser harus mempertahankan markdown + frontmatter.
 
+Reference implementation untuk format frontmatter: `buildSkillMarkdown()` dan `parseSkillMarkdown()` di `src/components/admin/StageSkillFormDialog.tsx`.
+
+Fields frontmatter yang harus dipreserve:
+
+- `name`
+- `description`
+- `stageScope`
+- `searchPolicy` (`"active"` | `"passive"`)
+- `metadataInternal` (nested `metadata:` block dengan key `internal`)
+
+Verified di codebase: `parseSkillMarkdown()` baris 100-111 di `src/components/admin/StageSkillFormDialog.tsx` membaca `metadata:` block dan extract key `internal` ke field `metadataInternal`. `buildSkillMarkdown()` baris 147-148 emit balik ke markdown. Parser serializer mirror wajib preserve kelima field ini.
+
 **Step 2: Implement exporter**
 
 Exporter harus membaca:
@@ -532,26 +578,47 @@ Exporter harus membaca:
 - catalog row `stageSkills`
 - version rows `stageSkillVersions`
 - active/published/draft snapshots
+- per version: `createdAt`, `updatedAt`, `publishedAt`, `activatedAt`, dan `creatorEmail` (resolved dari `createdBy` user id)
+
+Per design doc Section 6.1 dan 6.2, exporter wajib menulis semua timestamps lifecycle dan `creatorEmail` per version ke `meta.json`. Ini wajib untuk durability audit trail dan round-trip equivalence di level content + version number.
+
+Catatan penting:
+
+- `stageScope` di DB memakai underscore (contoh: `tinjauan_literatur`)
+- folder mirror harus memakai hyphen (contoh: `tinjauan-literatur/`)
+- referensi mapping: `toSkillId()` di `convex/stageSkills/constants.ts`
+- `searchPolicy` defaults per stage ada di `getExpectedSearchPolicy()` di file yang sama
 
 **Step 3: Implement importer**
 
-Rules importer:
+Rules importer (per design doc Section 6 Sync Invariants):
 
-- menjaga perbedaan catalog row vs version row
-- membuat draft baru
-- tidak overwrite active version langsung
+- transaction-scoped per `skillRefId` untuk cegah version race pada concurrent import (6.3).
+- validate `version` uniqueness per `skillRefId` sebelum write; abort surface dan lapor ke operator kalau conflict terdeteksi (6.3).
+- menjaga perbedaan catalog row vs version row.
+- membuat draft baru dengan `status: draft`; jangan auto-promote ke `published` atau `active` (6.4).
+- tidak overwrite active version langsung.
+- preserve timestamps dari `meta.json` kalau ada; kalau tidak ada, stamp dengan timestamp operasi import (6.1).
+- stamp `createdBy` dengan identity operator yang menjalankan import job; `creatorEmail` dari file hanya disimpan sebagai audit trail historis, bukan sebagai auth context (6.2).
 
 **Step 4: Verifikasi structure**
 
 Expected output:
 
-- `src/agent/managed/stage-skills/<stage-scope>/current.active.md`
-- `meta.json`
+- `src/agent/managed/stage-skills/<stage-scope>/current.active.md` (folder pakai hyphen, bukan underscore)
+- `meta.json` (termasuk field `searchPolicy`)
 - `versions/*.draft.md|*.published.md|*.active.md`
 
-**Step 5: Verifikasi format**
+**Step 5: Verifikasi format byte-identical roundtrip**
 
-Run validation terhadap `buildSkillMarkdown()` / `parseSkillMarkdown()` parity.
+Tulis test yang:
+
+1. Ambil sample stage skill content yang dibangun oleh `buildSkillMarkdown()` (reference: `src/components/admin/StageSkillFormDialog.tsx` baris 134-155).
+2. Parse lewat mirror parser baru (`parse-stage-skill-file.ts`).
+3. Serialize kembali lewat mirror serializer baru (`serialize-stage-skill-file.ts`).
+4. Bandingkan hasil serializer byte-by-byte dengan output `buildSkillMarkdown()` untuk input yang sama.
+
+Test harus fail kalau ada drift sekecil apapun di whitespace, quoting, urutan field, atau field yang hilang (khususnya `metadataInternal` yang disimpan sebagai nested `metadata:` block). Verifikasi field-level saja tidak cukup karena admin form sensitif ke format exact.
 
 **Step 6: Commit**
 
@@ -680,12 +747,12 @@ git commit -m "feat: centralize chat system message assembly"
 - Modify: `src/lib/ai/paper-tools.ts`
 - Modify: `src/app/api/chat/route.ts`
 - Modify: `src/lib/refrasa/prompt-builder.ts`
-- Modify: `src/app/api/refrasa/route.ts`
-- Create: `src/agent/adapters/style-constitutions.ts`
 - Create: `src/agent/prompts/tools/paper-tool-descriptions.ts`
 - Create: `src/agent/prompts/tools/chat-tool-descriptions.ts`
 - Create: `src/agent/prompts/features/refrasa-system-prompt.ts`
 - Create: `src/agent/compose/build-refrasa-prompts.ts`
+
+Catatan: `src/agent/adapters/style-constitutions.ts` dan modifikasi `src/app/api/refrasa/route.ts` sudah dilakukan di Task 4. Task ini fokus ke prompt extraction dan tool-contract saja.
 
 **Step 1: Ekstrak tool descriptions**
 
@@ -697,13 +764,7 @@ Pindahkan prompt assets yang code-managed ke `features/refrasa-system-prompt.ts`
 
 Builder domain boleh tetap lokal bila itu lebih bersih.
 
-**Step 3: Tambahkan adapter style constitution**
-
-Adapter hanya untuk runtime access. Jangan tambahkan mirror logic.
-
-Update `refrasa/route.ts` supaya memakai adapter ini.
-
-**Step 4: Verifikasi**
+**Step 3: Verifikasi**
 
 Run:
 
@@ -712,14 +773,14 @@ npm run typecheck
 npx vitest run src/lib/ai/paper-tools.inspect-source.test.ts src/lib/ai/paper-tools.compileDaftarPustaka.test.ts
 ```
 
-**Step 5: Manual behavior check**
+**Step 4: Manual behavior check**
 
 Uji flow Refrasa untuk memastikan adapter constitution tetap benar dan tidak menyentuh mirror scope awal.
 
-**Step 6: Commit**
+**Step 5: Commit**
 
 ```bash
-git add src/agent/prompts/tools src/agent/prompts/features src/agent/adapters/style-constitutions.ts src/agent/compose/build-refrasa-prompts.ts src/lib/ai/paper-tools.ts src/lib/refrasa/prompt-builder.ts src/app/api/chat/route.ts src/app/api/refrasa/route.ts
+git add src/agent/prompts/tools src/agent/prompts/features src/agent/compose/build-refrasa-prompts.ts src/lib/ai/paper-tools.ts src/lib/refrasa/prompt-builder.ts src/app/api/chat/route.ts
 git commit -m "feat: extract tool contracts and refrasa prompt subdomain"
 ```
 
@@ -755,7 +816,20 @@ Verifikasi:
 - `stage skills` export menghasilkan `current.active.md`, `meta.json`, `versions/`
 - `style constitutions` tidak ikut scope mirror awal
 - importers terpisah
-- stage skill frontmatter tidak drift
+- stage skill frontmatter tidak drift (semua lima field termasuk `metadataInternal` preserved byte-identical)
+
+**Step 3b: Audit boundary runtime vs mirror**
+
+Run:
+
+```bash
+rg "src/agent/managed" src/ --type ts
+```
+
+Expected:
+
+- zero hits di luar `src/agent/sync/`.
+- kalau ada caller runtime di `src/lib/`, `src/app/`, atau subdomain lain yang import dari `src/agent/managed/`, itu violation boundary core (mirror jadi runtime authority) dan harus dihapus sebelum task dianggap selesai.
 
 **Step 4: Runtime verification**
 
