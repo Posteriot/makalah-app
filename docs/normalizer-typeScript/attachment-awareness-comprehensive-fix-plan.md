@@ -88,8 +88,8 @@ Every one of the 14 paper stage skills (`01-gagasan-skill.md` through `14-judul-
 - Deploy to Convex prod database `basic-oriole-337` after branch is pushed to main
 
 **Verification:**
-- Unit test coverage for changed code paths in `route.ts`
-- Manual smoke test with PDF upload in paper mode and non-paper mode
+- Smoke tests T2-T11 with real file uploads (route.ts is not currently unit-tested; smoke tests are the primary verification path)
+- Regression test T9 (`npx vitest run`) to confirm no existing tests regress
 - Verify Codex audit clears the plan
 
 ### Out of Scope
@@ -137,16 +137,18 @@ Five open questions from the investigation report were answered:
 
 **Answer:** Raise limits + truncation marker + manual RAG fallback via existing tools. Claude Code recommendation approved by user.
 
-**Specific values:**
+**Specific values (initial operating point, not a proven optimum):**
 - `MAX_FILE_CONTEXT_CHARS_PER_FILE`: `6000` → `80000` (13.3x increase)
 - `MAX_FILE_CONTEXT_CHARS_TOTAL`: `20000` → `240000` (12x increase)
 
-**Rationale:**
-- 80,000 chars ≈ 20,000 tokens ≈ 25-30 pages of typical academic prose. Fits complete journal articles.
-- 240,000 chars ≈ 60,000 tokens ≈ 3 full reference papers. Handles multi-source comparison workflows.
-- 60,000 tokens is 7.5% of 800,000 token budget threshold — leaves 92.5% headroom for conversation, system prompts, and response generation.
-- Gemini 2.5 Flash window is 1,000,000 tokens. 60K tokens is well within practical attention quality range.
+**Rationale (estimates, not hard math):**
+- Rough char-to-token ratio: ~4 chars/token for English prose, potentially higher for noisy PDF extraction or Indonesian text. Estimates below use 4 chars/token as a baseline — actual token counts may vary ±20%.
+- 80,000 chars ≈ **~20,000 tokens estimated** ≈ roughly 25-30 pages of typical academic prose. Fits most complete journal articles.
+- 240,000 chars ≈ **~60,000 tokens estimated** ≈ roughly 3 full reference papers. Handles typical multi-source comparison workflows.
+- ~60,000 tokens is approximately 7.5% of 800,000 token budget threshold — leaves substantial headroom for conversation, system prompts, and response generation.
+- Gemini 2.5 Flash window is 1,000,000 tokens. Estimated 60K tokens is well within practical attention quality range.
 - Files exceeding 80,000 chars get a truncation marker and the model is instructed to use `quoteFromSource` or `searchAcrossSources` (already available in every skill's tool list).
+- **These are initial operating points.** Post-deployment monitoring (D5) should inform whether values should be tuned up or down. If cost or latency metrics degrade, lower the limits. If users report truncation issues on typical academic content, raise them.
 
 **Why not auto-RAG retrieval on every turn:**
 - Embedding-based retrieval adds latency (embed query + vector search + chunk fetch).
@@ -349,7 +351,100 @@ const attachmentAwarenessInstruction = hasAttachedFiles
 
 **Action:** `grep -rn attachmentFirstResponseInstruction src/`
 
-**Expected result after A3 and A4:** Zero matches. If matches exist, update all references.
+**Expected result after A3, A4, A6:** Zero matches. If matches exist, update all references.
+
+#### A6. Update attachment telemetry field reference (added in response to Codex audit 2026-04-10)
+
+**Location:** `src/app/api/chat/route.ts:635`
+
+**Problem:** Telemetry payload references `shouldForceAttachmentFirstResponse` — a variable removed by A3. Without this update, the code won't compile and A5's grep check also won't match the intent.
+
+**Before:**
+```typescript
+attachmentFirstResponseForced: shouldForceAttachmentFirstResponse,
+```
+
+**After:**
+```typescript
+// Field name kept for telemetry schema compatibility. Semantic updated 2026-04-10:
+// previously meant "forced first-response review instruction fired",
+// now means "first-turn attachment acknowledgment directive fired".
+attachmentFirstResponseForced: isFirstTurnWithAttachment,
+```
+
+**Rationale:**
+- Preserve the telemetry field name to avoid breaking downstream dashboards, aggregates, or queries
+- Update the value source to closest-matching new variable (`isFirstTurnWithAttachment`)
+- Document the semantic shift inline so future readers see it
+
+**Grep verification after A6:** `grep -rn shouldForceAttachmentFirstResponse src/` should return zero matches.
+
+#### A7. Emit omitted-files notice when total budget cap is hit (added in response to Codex audit 2026-04-10)
+
+**Location:** `src/app/api/chat/route.ts:560-563` (and loop body downstream)
+
+**Problem:** Current code uses `break` when `totalCharsUsed >= MAX_FILE_CONTEXT_CHARS_TOTAL`, exiting the loop before the 5th/6th/etc. file name is added to `fileContext`. Model has no way to know those files exist. This violates the "attachment awareness is unconditional" mandate for multi-file scenarios.
+
+**Before:**
+```typescript
+for (const file of files) {
+    const isImageFile = file.type?.startsWith("image/")
+    if (isImageFile) {
+        imageFileCount += 1
+        continue
+    }
+
+    docFileCount += 1
+
+    // Check if we've exceeded total limit (paper mode only)
+    if (isPaperModeForFiles && totalCharsUsed >= MAX_FILE_CONTEXT_CHARS_TOTAL) {
+        break
+    }
+
+    fileContext += `[File: ${file.name}]\n`
+    // ... extraction status handling ...
+}
+```
+
+**After:**
+```typescript
+const omittedFileNames: string[] = []
+for (const file of files) {
+    const isImageFile = file.type?.startsWith("image/")
+    if (isImageFile) {
+        imageFileCount += 1
+        continue
+    }
+
+    docFileCount += 1
+
+    // Check if we've exceeded total limit (paper mode only)
+    // Track omitted files instead of silently breaking (2026-04-10 fix)
+    if (isPaperModeForFiles && totalCharsUsed >= MAX_FILE_CONTEXT_CHARS_TOTAL) {
+        omittedFileNames.push(file.name)
+        continue
+    }
+
+    fileContext += `[File: ${file.name}]\n`
+    // ... extraction status handling ...
+}
+
+// After loop: emit omitted-files notice so the model knows additional files exist
+if (omittedFileNames.length > 0) {
+    fileContext += `\n⚠️ Additional file(s) omitted from File Context due to total budget limit: ${omittedFileNames.join(", ")}. Full content accessible via quoteFromSource or searchAcrossSources tools when user asks about them.\n\n`
+}
+```
+
+**Rationale:**
+- Changes `break` to `continue` so all files are traversed and counted
+- Tracks omitted file names in a local array
+- Emits a single notice after the loop listing all omitted files
+- Model can now tell user: "You uploaded N files, I can fully see M of them, the rest (file names) are accessible via tools"
+- `docFileCount` still reflects all doc files correctly — the counter increments before the budget check
+
+**Edge case:** If all files exceed budget (e.g., first file is 500K chars), `fileContext` would only contain the notice. This is acceptable — the model knows files exist and can use tools.
+
+**Telemetry semantic note:** `docContextChars` (tracked at `route.ts:589`) only counts the injected file text from `textToAdd`, NOT the length of the truncation marker (A2) or the omitted-files notice (A7). Post-fix, telemetry slightly under-reports total prompt growth from file context. This is intentional — the counter tracks file content volume specifically, not surrounding framing text. If precise prompt-size observability is needed, add a separate `fileContextTotalChars = fileContext.length` measurement alongside `docContextChars`. This is out of scope for the current fix but flagged for future consideration.
 
 ### Change Group B: System prompt content
 
@@ -401,21 +496,48 @@ Apply the same two updates to every skill file in `.references/system-prompt-ski
 13. `13-lampiran-skill.md`
 14. `14-judul-skill.md`
 
-#### C1. Update "Input Context" section in each skill
+#### C1. Add attachment mention to "Input Context" section in each skill (ADDITIVE ONLY — updated 2026-04-10 in response to Codex audit)
 
-**Current pattern (example from `01-gagasan-skill.md` line 7):**
+**Rule:** This change is **strictly additive**. Do NOT replace or rewrite any existing Input Context content. Different skills have different Input Context bodies — some reference validator-required fields (e.g., `checkedAt`/`checkedBy`/`editHistory` in outline, "living outline" in post-outline stages). Wholesale replacement would violate:
+- `outline_living_checklist_missing` validator rule (outline skill only, `stage-skill-validator.ts:226-234`)
+- `post_outline_context_missing` validator rule (11 post-outline stages, `stage-skill-validator.ts:236-257`)
+
+**Transformation rule per skill file:**
+
+Keep the existing `## Input Context` section body **verbatim**. Append ONE new paragraph at the end of the section, separated by a blank line:
+
 ```
+Additionally, read any attached files shown as "File Context" in system messages and integrate them with the other inputs listed above. Attached files are first-class context alongside user messages and stage data.
+```
+
+**Example — `01-gagasan-skill.md` BEFORE:**
+```markdown
 ## Input Context
 Read the latest user message, current stage data, recent web search references, and any prior approved stage summaries.
 ```
 
-**Replacement pattern:**
-```
+**Example — `01-gagasan-skill.md` AFTER:**
+```markdown
 ## Input Context
-Read the latest user message, any attached files (shown as "File Context" in system messages), current stage data, recent web search references, and any prior approved stage summaries.
+Read the latest user message, current stage data, recent web search references, and any prior approved stage summaries.
+
+Additionally, read any attached files shown as "File Context" in system messages and integrate them with the other inputs listed above. Attached files are first-class context alongside user messages and stage data.
 ```
 
-**Rationale:** Makes attachment presence explicit in the skill's declared input surface. Stops implicit exclusion.
+**Example — `03-outline-skill.md` BEFORE (preserved verbatim to show validator fields stay intact):**
+
+Whatever existing text references `checkedAt`/`checkedBy`/`editHistory` (for outline-specific validator check) remains untouched. The append happens at the END of the existing section body.
+
+**Example — post-outline stages (abstrak, pendahuluan, etc.):**
+
+Whatever existing text references "living outline" or similar context (for post-outline validator check) remains untouched. The append happens at the END of the existing section body.
+
+**Verification after each edit:**
+1. Diff the file against its previous state — the only addition should be the new paragraph and its preceding blank line
+2. Confirm original stage-specific validator-required text still exists (search for `checkedAt` in outline, search for `living outline` in post-outline stages)
+3. Run `validateStageSkillContent` mentally — all 10 checks should still pass
+
+**Rationale:** Makes attachment presence explicit in the skill's declared input surface without touching validator-required content. Stops implicit exclusion while preserving all stage-specific semantics.
 
 #### C2. Add "Attachment Handling" section to each skill
 
@@ -449,9 +571,11 @@ Individual skills MAY append one additional sentence to step 2 of the Attachment
 
 ## Testing Plan
 
-### T1. Unit tests for `route.ts` changes
+### T1. Route-level changes are not unit tested (verified 2026-04-10)
 
-**No new test files.** The changes in `route.ts` are integration-level (the route is not unit tested in the current test suite). Verification happens via smoke tests.
+**No new unit tests.** `src/app/api/chat/route.ts` is not currently unit-tested in the repo. The changes in Change Group A are integration-level. Verification for A1-A7 happens exclusively via smoke tests T2-T11 and regression suite T9.
+
+**This replaces the earlier overstated claim of "unit test coverage" in Scope and DoD.** See updated Scope and Definition of Done sections below.
 
 ### T2. Smoke test: Paper mode with PDF attachment, short prompt
 
@@ -527,18 +651,57 @@ Individual skills MAY append one additional sentence to step 2 of the Attachment
 - Model acknowledges the file AND mentions it is partial
 - Model offers to explore specific sections on request
 
-### T7. Smoke test: Multiple files total budget
+### T7. Smoke test: Multiple files total budget (updated 2026-04-10)
 
-**Setup:** Same as T2.
+**Setup:** Same as T2. Requires A7 (omitted-files notice code) to be applied.
 
 **Test:**
 1. Upload 5 files, each 60,000 chars
 2. Expected total: 300,000 chars, but MAX_FILE_CONTEXT_CHARS_TOTAL = 240,000
 
+**Expected (after A7 applied):**
+- First 4 files fit fully (~240,000 chars total)
+- 5th file omitted from direct File Context
+- File Context ends with `⚠️ Additional file(s) omitted from File Context due to total budget limit: [filename5]. Full content accessible via quoteFromSource or searchAcrossSources tools when user asks about them.`
+- Model's acknowledgment lists ALL 5 files by name (4 with summaries from direct context, 1 with "accessible via tools" mention)
+- `docFileCount` telemetry shows 5, not 4
+
+**Pre-A7 behavior (should NOT happen after fix):**
+- 5th file silently missing from File Context
+- Model unaware of 5th file existence
+- `docFileCount` shows 5 (counter increments before break), but there is no mention of file #5
+
+**Fail conditions:**
+- File Context missing the omitted-files notice
+- Model mentions only 4 files
+- `docFileCount` != 5
+
+### T11. Smoke test: New file attached mid-conversation (added 2026-04-10)
+
+**Setup:** Open new conversation in paper mode, stage=gagasan. Do NOT upload a file yet.
+
+**Test:**
+1. Send message: "Gue mau diskusi topik dulu sebelum lampirkan dokumen." (turn 1, no file)
+2. Receive model response (turn 1 assistant)
+3. Send message: "Oke, nih gue lampirkan." + upload PDF (turn 2, fresh file)
+4. Receive model response (turn 2 assistant)
+
 **Expected:**
-- First 4 files fit fully (240,000 chars total)
-- 5th file either truncated or omitted (per existing budget logic)
-- Model acknowledges all files AND mentions budget limit if relevant
+- Turn 1 response: Generic gagasan dialog, no file mentioned (no file attached yet)
+- Turn 2 response: Since `userMessageCount = 2`, the "first-turn" instruction variant does NOT fire. The "subsequent-turn" instruction variant fires instead, which says: "Always be aware of File Context content and integrate it into your responses when relevant"
+- Model should still acknowledge the newly attached PDF because the subsequent-turn instruction directs it to "integrate file content when relevant"
+- **However, this is a known limitation documented in Risk 7.** The "full summary required" language only fires on turn 1 messages.
+- If the model does not adequately acknowledge the new file in turn 2, the fix is still an improvement over pre-fix behavior (where no directive fired at all), but a follow-up fix tracking "new file detection per turn" may be needed.
+
+**Fail conditions (immediate):**
+- Turn 2 response does not mention the newly uploaded PDF by name
+- Turn 2 response continues generic brainstorming as if no file exists
+
+**Partial pass:**
+- Turn 2 mentions file but does not summarize (acceptable per Risk 7 limitation)
+
+**Full pass:**
+- Turn 2 mentions file AND integrates content relevantly AND summarizes
 
 ### T8. Regression test: No files attached
 
@@ -559,25 +722,89 @@ Individual skills MAY append one additional sentence to step 2 of the Attachment
 - Only the pre-existing 3 failures in `reference-presentation.test.ts` remain (documented as not our regression)
 - `clean-for-ingestion.test.ts` still passes (18 tests)
 
-### T10. Skill file diff verification
+### T10. Skill file diff verification (updated 2026-04-10)
 
-**Action:** For each of the 14 skills:
+**Action:** For each of the 14 skills, extract the `## Attachment Handling` section body using a block extractor, then diff pairwise.
+
+**Block extraction using awk:**
 ```bash
-diff <(grep -A 6 "^## Attachment Handling" 01-gagasan-skill.md) <(grep -A 6 "^## Attachment Handling" 02-topik-skill.md)
+awk '/^## Attachment Handling$/,/^## /' 01-gagasan-skill.md | sed '$d' > /tmp/attach-01.txt
+awk '/^## Attachment Handling$/,/^## /' 02-topik-skill.md | sed '$d' > /tmp/attach-02.txt
+diff /tmp/attach-01.txt /tmp/attach-02.txt
 ```
 
-**Expected:** Core 6-step content is identical across all 14 skills. Only stage-specific framing (if any) differs.
+The `sed '$d'` strips the trailing "## " line that marks the start of the next section.
+
+**Alternative using Node/Python parser:** Parse each skill file as markdown, locate the `## Attachment Handling` heading, extract all content until the next `## ` heading at the same level. Compare extracted blocks directly.
+
+**Expected:** Core 6-step content is byte-identical across all 14 skills. Only optional stage-specific framing (C3, appended to step 2) may differ. If C3 is not used, the extracted blocks must be byte-identical across all 14.
+
+**Why not `grep -A 6`:** If a skill adds line wrapping or C3 stage-specific framing that extends the section beyond 6 lines, `-A 6` would miss differences. Block extraction is robust to content length variations.
 
 ## Deployment Plan
 
-### D1. Pre-deployment verification
+### D1. Pre-deployment verification and snapshot
 
 1. All code changes committed to `normalizer-typeScript` branch
 2. Skill files updated in `.references/system-prompt-skills-active/updated-4/`
-3. Smoke tests T2-T8 pass on local dev server
+3. Smoke tests T2-T11 pass on local dev server
 4. Regression test T9 passes
 5. Skill diff verification T10 passes
 6. Codex audit of this fix plan completed and any findings addressed
+
+#### D1.5. Pre-deployment snapshot (mandatory — added 2026-04-10 in response to Codex audit)
+
+Before executing D2, create a full backup snapshot of the current active state of all 14 stage skills plus the active system prompt. This snapshot is the rollback source for R2 and R4.
+
+**Snapshot storage location:** `snapshots/pre-deployment-YYYY-MM-DD-HHMMSS.json` in the worktree root (create `snapshots/` directory if it does not exist). File name uses deployment start timestamp for traceability.
+
+**Snapshot content structure:**
+```json
+{
+  "timestamp": "2026-04-10T15:30:00.000Z",
+  "sourceDatabase": "wary-ferret-59",
+  "stageSkills": [
+    {
+      "stageScope": "gagasan",
+      "skillId": "gagasan-skill",
+      "activeVersion": 7,
+      "activeContent": "...(full markdown content)...",
+      "name": "...",
+      "description": "...",
+      "allowedTools": [...]
+    },
+    // ... 13 more entries, one per stage
+  ],
+  "systemPrompt": {
+    "promptId": "...",
+    "version": 3,
+    "name": "...",
+    "content": "...(full system prompt text)...",
+    "description": "..."
+  }
+}
+```
+
+**Snapshot creation procedure:**
+
+1. For each of 14 stage scopes, call `stageSkills.getActiveByStage({ stageScope })` and capture:
+   - `skillId`, `version`, `content`, `name` (from skill catalog), `description`, `allowedTools`
+2. Call `systemPrompts.getActiveSystemPrompt()` and capture the full record
+3. Write the combined JSON to the snapshot file
+4. Verify the snapshot file is non-empty and contains all 14 skills + 1 system prompt
+
+**Snapshot verification before proceeding to D2:**
+
+- File exists at expected path
+- JSON parses without errors
+- `stageSkills` array has exactly 14 entries
+- Every `stageScope` in STAGE_SCOPE_VALUES is present
+- Every `activeContent` field is non-empty string
+- `systemPrompt.content` is non-empty string
+
+**If snapshot verification fails, do NOT proceed to D2.** Fix the snapshot creation issue first.
+
+**Same snapshot procedure applies before D4 (prod deployment).** Create a separate snapshot file named `snapshots/pre-deployment-prod-YYYY-MM-DD-HHMMSS.json` targeting `basic-oriole-337`.
 
 ### D2. Deploy to dev DB `wary-ferret-59`
 
@@ -619,7 +846,7 @@ Each skill goes through a 3-step lifecycle: draft → published → active. Use 
      - `skillId: string`
      - `version: number`
    - Result: `{ skillId, version, message }`
-   - Side effect: Archives previous active version (if any), runs validator again, sets target as `active`. Now runtime `getActiveByStage` returns the new version.
+   - Side effect: Demotes previous active version to `"published"` status (NOT archived — verified at `convex/stageSkills.ts:493-498`), runs validator again, sets target as `"active"`. Now runtime `getActiveByStage` returns the new version. Previous version remains in version history as `"published"` and can be re-activated via rollback flow.
 
 **System prompt deployment workflow (once):**
 
@@ -709,28 +936,63 @@ Each skill goes through a 3-step lifecycle: draft → published → active. Use 
 2. Keep the truncation marker code (it still works with smaller limits)
 3. Keep skill updates (they reference tools, not specific limits)
 
-### R4. Full rollback (if multiple issues compound)
+### R4. Full rollback (if multiple issues compound) — updated 2026-04-10
 
-**Trigger:** Multiple issues from R1, R2, R3 simultaneously.
+**Trigger:** Multiple issues from R1, R2, R3 simultaneously, OR a critical user-facing regression that cannot be isolated to a single layer.
+
+**Precondition:** D1.5 snapshot file exists and is valid. If no snapshot exists, R4 is not executable — in that case, apply R1, R2, R3 individually and accept partial rollback.
 
 **Steps:**
-1. Revert entire `normalizer-typeScript` branch merge on main
-2. Redeploy
-3. Revert skill DB state to pre-deployment snapshot
-4. Document issues in `docs/normalizer-typeScript/` and plan a corrected fix
+
+1. **Locate the snapshot file:** `snapshots/pre-deployment-YYYY-MM-DD-HHMMSS.json` (for dev) or `snapshots/pre-deployment-prod-YYYY-MM-DD-HHMMSS.json` (for prod).
+
+2. **Restore all 14 stage skills from snapshot** — for each entry in `snapshot.stageSkills`:
+   - Call `stageSkills.createOrUpdateDraft({ requestorUserId, stageScope, name, description, contentBody: snapshot.activeContent, changeNote: "Rollback to pre-deployment snapshot [timestamp]", allowedTools })` → returns new draft version number
+   - Call `stageSkills.publishVersion({ requestorUserId, skillId, version })` → publishes the draft
+   - Call `stageSkills.activateVersion({ requestorUserId, skillId, version })` → activates the restored version
+   - Wait for success response before proceeding to next skill
+   - If any step fails, log the failed skill and CONTINUE with remaining skills (best-effort restore; partial rollback is better than none)
+
+3. **Restore system prompt from snapshot:**
+   - Call `systemPrompts.getActiveSystemPrompt()` to get current (broken) active prompt ID
+   - Call `systemPrompts.updateSystemPrompt({ requestorUserId, promptId: currentActiveId, content: snapshot.systemPrompt.content, description: "Rollback to pre-deployment snapshot [timestamp]" })` → creates a new version with snapshot content that is automatically active via inherit rule
+
+4. **Revert code deployment:**
+   - Revert the merge commit on main that introduced Change Group A
+   - Push the revert
+   - Vercel redeploys automatically with reverted code
+
+5. **Verify rollback completeness:**
+   - For each of 14 stages, call `stageSkills.getActiveByStage` and diff `content` against the snapshot's `activeContent` — expect identical
+   - Call `systemPrompts.getActiveSystemPrompt()` and diff against snapshot — expect identical
+   - Run smoke test T2 — should exhibit the original bug (because we reverted the fix), confirming rollback worked
+
+6. **Document the rollback:**
+   - Create `docs/normalizer-typeScript/rollback-log-YYYY-MM-DD.md`
+   - Record: trigger reason, snapshot file used, skills restored, skills that failed to restore (if any), final verification results
+   - Plan a corrected fix based on what went wrong
+
+**Sequencing note on atomicity:** The 14-skill restore is NOT a single transaction. If the rollback is interrupted mid-sequence (e.g., network failure at skill 7 of 14), the database is left in a mixed state. To recover from mid-rollback failure, re-run R4 from step 1 — the snapshot is idempotent source of truth. Document partial restore state in the rollback log.
 
 ## Definition of Done
 
-**Code:**
-- [ ] `route.ts` changes A1, A2, A3, A4 applied
-- [ ] A5 grep check returns zero matches
+**Code (Change Group A):**
+- [ ] A1 applied (raised file context limits)
+- [ ] A2 applied (truncation marker)
+- [ ] A3 applied (unconditional attachment directive)
+- [ ] A4 applied (fullMessagesBase variable rename)
+- [ ] A5 grep check returns zero matches for `attachmentFirstResponseInstruction` and `shouldForceAttachmentFirstResponse`
+- [ ] A6 applied (telemetry field source updated to `isFirstTurnWithAttachment`)
+- [ ] A7 applied (omitted-files notice emitted after loop)
 - [ ] `npx tsc --noEmit` shows zero errors
-- [ ] `npx vitest run` shows same pass/fail baseline as pre-fix (except the 3 pre-existing failures in `reference-presentation.test.ts`)
+- [ ] `npx vitest run` shows same pass/fail baseline as pre-fix (except the 3 pre-existing failures in `reference-presentation.test.ts`). Note: route.ts is not unit-tested; verification happens via smoke tests.
 
-**Content:**
+**Content (Change Groups B and C):**
 - [ ] `system-prompt.md` B1 update applied
-- [ ] All 14 skill files have C1 (Input Context update)
-- [ ] All 14 skill files have C2 (Attachment Handling section)
+- [ ] All 14 skill files have C1 applied ADDITIVELY (new paragraph appended to Input Context section, existing content preserved verbatim)
+- [ ] All 14 skill files have C2 applied (new Attachment Handling section inserted between Input Context and Web Search)
+- [ ] Outline skill (`03-outline-skill.md`) still contains `checkedAt`/`checkedBy`/`editHistory` references after C1+C2
+- [ ] Post-outline skills (04 through 14) still contain "living outline" or equivalent references after C1+C2
 - [ ] T10 skill diff verification passes
 
 **Smoke tests:**
@@ -739,19 +1001,23 @@ Each skill goes through a 3-step lifecycle: draft → published → active. Use 
 - [ ] T4 passes (non-paper mode)
 - [ ] T5 passes (subsequent turn)
 - [ ] T6 passes (large file truncation)
-- [ ] T7 passes (multiple files budget)
+- [ ] T7 passes (multiple files budget with omitted-files notice)
 - [ ] T8 passes (no attachment regression)
+- [ ] T11 passes (new file attached mid-conversation) — partial pass acceptable per Risk 7f
 
 **Deployment:**
-- [ ] D2 complete (dev DB `wary-ferret-59`)
-- [ ] D3 complete (branch merged, code in prod)
-- [ ] D4 complete (prod DB `basic-oriole-337`)
+- [ ] D1.5 pre-deployment snapshot created and verified (dev)
+- [ ] D2 complete (dev DB `wary-ferret-59`) — all 14 skills + system prompt active and diff-verified
+- [ ] D3 complete (branch merged, code in prod via Vercel)
+- [ ] D1.5 pre-deployment snapshot created and verified (prod)
+- [ ] D4 complete (prod DB `basic-oriole-337`) — all 14 skills + system prompt active and diff-verified
 - [ ] D5 24h monitoring shows no regressions
 
 **Audit:**
-- [ ] Codex audit of this plan completed
-- [ ] Codex findings (if any) addressed
+- [ ] Codex audit of this plan completed with verdict of APPROVE or APPROVE-WITH-CHANGES
+- [ ] All Codex critical and important findings addressed
 - [ ] Codex audit of implementation commits completed
+- [ ] Codex final pre-push audit completed
 
 ## Open Risks
 
@@ -833,7 +1099,67 @@ Each skill goes through a 3-step lifecycle: draft → published → active. Use 
 - Document the exact mutation commands used for traceability
 - If one deployment fails mid-process, roll back partial changes before retrying
 
-### Risk 7: The `userMessageCount <= 1` branching is imperfect
+### Risk 7a: Mixed-stage runtime risk during sequential 14-skill deployment (added 2026-04-10)
+
+**Description:** D2 deploys 14 stage skills sequentially, not as an atomic transaction. If the deployment process is interrupted after skill 5 of 14 (e.g., network failure, Convex timeout, manual kill), the environment is left in a mixed state: 5 stages run the new Attachment Handling directive, 9 stages run the old content.
+
+**Probability:** Low-medium. Convex mutations are individually atomic, but the sequence is not.
+
+**Impact:** Users on different stages see inconsistent behavior — some stages acknowledge attachments, others ignore them.
+
+**Mitigation:**
+- Document deployment progress in a progress file (e.g., `snapshots/deployment-progress-YYYY-MM-DD.json`) tracking which skills have completed draft→publish→activate cycle
+- If deployment interrupts, resume from last successful skill by reading progress file
+- After all 14 complete, run `stageSkills.runPreActivationDryRun` (if available) or manual `getActiveByStage` spot check against expected content
+- If mid-deployment interruption cannot be resumed, execute R4 to restore snapshot state
+- Treat the full D2 sequence as "one deployment event" — do not ship to users until all 14 stages are verified
+
+### Risk 7b: Omitted-file invisibility under total budget overflow (resolved by A7)
+
+**Description:** Before A7, when `totalCharsUsed >= MAX_FILE_CONTEXT_CHARS_TOTAL`, the loop broke without emitting any notice. Files beyond the budget disappeared silently from the model's context. User could upload 5 files, and the model would never know file #5 existed.
+
+**Status:** **Addressed by Change A7** (omitted-files notice). After A7 is applied, the model receives an explicit list of omitted file names and is instructed to use `quoteFromSource` or `searchAcrossSources` tools for their content.
+
+**Residual risk:** The notice relies on the model following the instruction. If the model ignores the notice and pretends file #5 doesn't exist, T7 would catch this. Low residual risk because the notice text is explicit and mentions tools.
+
+### Risk 7c: Telemetry semantic drift on `attachmentFirstResponseForced` (resolved by A6)
+
+**Description:** The telemetry field `attachmentFirstResponseForced` at `route.ts:635` previously meant "forced first-response review instruction fired" (the old `shouldForceAttachmentFirstResponse` boolean). After A3, the variable is removed and the semantic changes. Without A6, downstream dashboards and aggregates that consume this field would either break or silently drift.
+
+**Status:** **Addressed by Change A6** (inline documentation + value source update to `isFirstTurnWithAttachment`). Field name preserved for schema compatibility.
+
+**Residual risk:** Dashboards that rely on the old semantic definition ("forced directive") may show lower/different counts after the fix. Low residual risk — the semantic shift is documented inline.
+
+### Risk 7d: Code/content deployment skew (added 2026-04-10)
+
+**Description:** The fix has two deployment layers: Vercel code deploy (Change Group A) and Convex content deploy (Change Group B + C). If they are deployed out of sync, users temporarily see:
+- **Scenario 1:** New code + old skills = code raises limits and adds directive, but skills still say "dialog first" without attachment handling → partial fix
+- **Scenario 2:** New skills + old code = skills instruct attachment acknowledgment, but code still has the `!paperModePrompt` guard preventing the directive from firing → skills update is no-op until code deploys
+
+**Probability:** Medium. Vercel and Convex deploys are not transactionally linked.
+
+**Impact:** Brief window of inconsistent user experience. Worst case: confusing behavior for minutes to hours between the two deploy steps.
+
+**Mitigation:**
+- Sequence: deploy code first (D3), wait for Vercel to finish and propagate, THEN deploy content to Convex prod (D4)
+- Rationale for ordering: new code with old skills is a graceful partial fix (at least the code-level directive fires); new skills with old code is silently broken
+- Announce deploy window in team channel to avoid user confusion
+- Monitor both layers during the transition window via Vercel dashboard and Convex logs
+
+### Risk 7e: Over-anchoring on stale attachments during topic pivots (added 2026-04-10)
+
+**Description:** With unconditional attachment awareness firing every turn, the "subsequent-turn" instruction tells the model to "integrate file content when relevant." If the user pivots topics mid-conversation (e.g., uploads a paper, discusses it for 10 turns, then asks an unrelated question), the model may over-anchor on the old file and try to connect it to the new topic.
+
+**Probability:** Medium in long conversations with multiple topic shifts.
+
+**Impact:** Responses feel forced or irrelevant when user has moved on from the attached file's subject.
+
+**Mitigation:**
+- The "subsequent-turn" instruction wording uses "when relevant" as a qualifier, giving the model permission to ignore the file when the user's current question is unrelated
+- Monitor post-deployment user feedback for "model keeps bringing up the old PDF" complaints
+- If this becomes a pattern, add a "topic relevance check" to the subsequent-turn instruction (e.g., "Only reference file content when the current user question or task is related to the file's subject")
+
+### Risk 7f: The `userMessageCount <= 1` branching is imperfect (was Risk 7 before 2026-04-10)
 
 **Description:** The fix uses `userMessageCount <= 1` to distinguish "first turn" from "subsequent turns." This is based on total user messages, not "first turn after this specific file was attached." If a user has an existing conversation, attaches a new file in turn 5, the directive will fire the "subsequent turn" version even though it's the first time this new file appears.
 
@@ -871,17 +1197,25 @@ Files touched by this plan:
 
 **Total files touched:** 16 (1 code, 1 system prompt, 14 skills)
 
-## Appendix B: Commit Structure
+## Appendix B: Commit Structure (updated 2026-04-10)
 
 Proposed commit sequence for clean git history:
 
 1. `feat(chat): raise file context limits to 80K/240K chars with truncation marker` — Change Group A1, A2
-2. `fix(chat): remove conditional gating of attachment awareness directive` — Change Group A3, A4, A5
-3. `docs(system-prompt): strengthen attachment awareness directive` — Change Group B
-4. `docs(skills): add attachment handling to all 14 paper stage skills` — Change Group C (single commit for consistency)
-5. `chore(deploy): update dev database wary-ferret-59 with new skills and system prompt` — deployment marker commit (optional, captures deployment timestamp)
+2. `feat(chat): emit omitted-files notice when total budget cap is hit` — Change Group A7
+3. `fix(chat): remove conditional gating of attachment awareness directive` — Change Group A3, A4, A5, A6
+4. `docs(system-prompt): strengthen attachment awareness directive` — Change Group B
+5. `docs(skills): add attachment handling section to all 14 paper stage skills (additive)` — Change Group C (single commit for consistency, explicitly additive per C1 transformation rule)
+6. `chore(deploy): update dev database wary-ferret-59 with new skills and system prompt` — deployment marker commit (captures deployment timestamp and snapshot file reference)
 
 Each commit should reference this plan document: `Refs: docs/normalizer-typeScript/attachment-awareness-comprehensive-fix-plan.md`
+
+**Sequencing rationale:**
+- A1+A2 first: low-risk constant changes, builds successfully on its own
+- A7 second: adds omitted-files logic that depends on A1+A2 constants being in place
+- A3+A4+A5+A6 together: coherent rename + telemetry update, must ship as one commit to avoid broken build
+- B and C separate from A: content changes have different review cycle and deploy to Convex separately
+- C as single commit: 14 skill files updated together preserves atomic content change in git history
 
 ## Appendix C: Codex Audit Checklist
 
@@ -904,6 +1238,29 @@ For the reviewer (Codex):
 - System prompt storage verified in D2 (`convex/systemPrompts.ts`). Active prompt retrieved via `getActiveSystemPrompt`, new version created via `updateSystemPrompt` with automatic active-state inheritance.
 - Skill file structural consistency verified via `grep` across all 14 files (see Appendix D). All 14 files have consistent ordering: Objective → Input Context → Web Search → Function Tools → Visual Language → Output Contract → Guardrails → Done Criteria. Insertion point for Change Group C2 (after Input Context, before Web Search) is valid for all 14 files.
 - Validator constraints documented in Appendix E with proof that proposed Attachment Handling section passes all checks.
+
+**Codex Audit Round 1 response log (2026-04-10):**
+
+Codex returned BLOCK verdict with 1 critical, 5 important, 3 minor findings plus 5 missing risks. All findings verified against codebase. Plan revised as follows:
+
+| Codex finding | Severity | Resolution |
+|---|---|---|
+| C1 replacement-style would delete validator-required fields (outline lifecycle, post-outline context) | Critical | Rewrote C1 as strictly additive — appends new paragraph to existing Input Context, preserves all existing text verbatim |
+| A3/A4 incomplete — `route.ts:635` telemetry reference breaks build | Important | Added A6 (update telemetry field source to `isFirstTurnWithAttachment`, preserve field name for schema compatibility) |
+| T7 expectation does not match current `break` behavior | Important | Added A7 (emit omitted-files notice) AND updated T7 to match new expected behavior |
+| D2 misstates `activateVersion` as "archives" previous active | Important | Corrected to "demotes to published" with file:line evidence (`convex/stageSkills.ts:493-498`) |
+| R4 snapshot never defined | Important | Added D1.5 pre-deployment snapshot step with explicit file path, JSON structure, creation procedure, and verification. Rewrote R4 to use the snapshot concretely. |
+| Unit test claim contradicts T1 content | Important | Removed "unit test coverage" from Scope. Rewrote T1 to state clearly that route is not unit-tested. Updated DoD accordingly. |
+| T10 grep -A 6 is brittle | Minor | Updated T10 to use awk block extraction |
+| Char-to-token math presented as hard conversion | Minor | Labeled as estimate (±20%) in Decision 3 rationale |
+| `docContextChars` doesn't track marker length | Minor | Added telemetry semantic note to A7 section |
+| Missing risk: mixed-stage runtime deployment | Missing risk | Added Risk 7a |
+| Missing risk: omitted-file invisibility | Missing risk | Added Risk 7b (marked resolved by A7) |
+| Missing risk: telemetry semantic drift | Missing risk | Added Risk 7c (marked resolved by A6) |
+| Missing risk: code/content deploy skew | Missing risk | Added Risk 7d with mitigation sequencing |
+| Missing risk: over-anchoring on stale attachments | Missing risk | Added Risk 7e |
+
+All 14 findings addressed in this document revision. Plan is ready for Round 2 audit.
 
 ## Appendix D: Stage Scope Mapping and Structural Consistency
 
