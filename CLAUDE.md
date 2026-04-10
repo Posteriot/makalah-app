@@ -69,10 +69,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### ACTIVE BRANCH SCOPE
 - **Branch:** `normalizer-typeScript`
-- **Scope documents:** `docs/normalizer-typeScript/context.md`, `docs/normalizer-typeScript/design-doc.md`, and `docs/normalizer-typeScript/implementation-plan.md` — read these first before implementation.
+- **Primary scope documents:** `docs/normalizer-typeScript/context.md`, `docs/normalizer-typeScript/design-doc.md`, and `docs/normalizer-typeScript/implementation-plan.md` — read these first before implementation.
+- **Session scope index:** `SCOPE.md` at the worktree root — authoritative active-scope file for this session. Always read `SCOPE.md` before resuming work.
 - **Documentation directory:** `docs/normalizer-typeScript/` — all context, design, plan, implementation notes, verification notes, and handoff materials for this branch must stay here.
-- **Objective:** Consolidate the existing TypeScript-based normalization logic into a single ingestion normalization layer for `web-search content` and `upload file text`, used only for RAG ingestion.
+- **Primary objective:** Consolidate the existing TypeScript-based normalization logic into a single ingestion normalization layer for `web-search content` and `upload file text`, used only for RAG ingestion. Status: implementation complete as of 2026-04-10.
 - **Explicit exclusions:** Do not introduce `just-bash` into the runtime path, do not apply the normalizer to exact-source context, and do not mix citation URL normalization into the text normalization layer.
+
+### EXPANDED SCOPE (added 2026-04-10)
+- **Secondary objective:** Investigate attachment awareness bug — model ignores uploaded files unless user explicitly prompts to read them. READ-ONLY investigation, no code changes.
+- **Investigation deliverable:** `docs/normalizer-typeScript/attachment-awareness-investigation.md` — root cause analysis with file:line references and proposed fix options with tradeoffs.
+- **Hard rule:** No implementation, no test changes, no refactors until user explicitly validates the investigation report.
+- **Stop condition:** After writing the investigation report, STOP and wait for user validation. Do not proceed to any fix.
+- **Out of scope during investigation:** Modifying skill instruction files, search router logic, RAG retrieval code, or any other production code.
 
 ### IMPLEMENTATOR/PLANNER/EXECUTOR MANDATE FOR THIS WORKTREE
 

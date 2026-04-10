@@ -69,10 +69,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### ACTIVE BRANCH SCOPE
 - **Branch:** `normalizer-typeScript`
-- **Scope documents:** `docs/normalizer-typeScript/context.md`, `docs/normalizer-typeScript/design-doc.md`, and `docs/normalizer-typeScript/implementation-plan.md`
+- **Primary scope documents:** `docs/normalizer-typeScript/context.md`, `docs/normalizer-typeScript/design-doc.md`, and `docs/normalizer-typeScript/implementation-plan.md`
+- **Session scope index:** `SCOPE.md` at the worktree root — this is the authoritative active-scope file. Always read `SCOPE.md` before starting or continuing any work in this worktree.
 - **Documentation directory:** `docs/normalizer-typeScript/`
-- **Objective:** Consolidate the existing TypeScript normalization logic into a single ingestion normalization layer for `web-search content` and `upload file text`, used only for RAG ingestion.
+- **Primary objective:** Implement the lean `cleanForIngestion()` layer between extract and RAG ingest for `web-search content` and `upload file text`. Status: implementation complete as of 2026-04-10.
 - **Explicit exclusions:** Do not introduce `just-bash` into the runtime path, do not apply the normalizer to exact-source context, and do not merge citation URL normalization into the text normalization layer.
+
+### EXPANDED SCOPE (added 2026-04-10)
+- **Secondary objective:** Investigate attachment awareness bug — model does not respond to uploaded files unless user explicitly prompts to read them. Investigation only, no code changes until user validates findings.
+- **Investigation deliverable:** `docs/normalizer-typeScript/attachment-awareness-investigation.md` — root cause analysis with file:line references and proposed fix options.
+- **Hard rule for expanded scope:** READ-ONLY investigation. No implementation, no test changes, no refactors until user explicitly approves.
+- **Stop condition:** After investigation report is written, stop and wait for user validation. Do not proceed to any fix.
+- **Out of scope during investigation:** Modifying skill instruction files, search router logic, RAG retrieval code, or any other production code.
 
 ### IMPLEMENTATOR/PLANNER/EXECUTOR MANDATE FOR THIS WORKTREE
 
