@@ -78,15 +78,12 @@ Fondasi yang sudah ada:
 - export DOCX dan PDF untuk paper final
 
 Gap yang masih ada:
-- route/topbar `Naskah` belum ada
-- compiled naskah state belum ada
-- web paginated preview belum ada
-- model `availability Naskah`, `update pending`, dan compiled snapshot belum ada
 - export existing hanya valid untuk session `completed`
-- compiler existing masih membaca `stageData` untuk export final, bukan layer `Naskah`
+- compiler existing di jalur export final masih membaca `stageData`, bukan compiled snapshot `Naskah`
+- export `Naskah` khusus masih deferred walaupun route, shell, compiler, snapshot state, dan preview web fase 1 sudah ada
 
 Implikasinya:
-- fase awal `Naskah` harus memperkenalkan layer desain baru, bukan sekadar reuse ringan dari jalur export sekarang
+- fase awal `Naskah` memang membutuhkan layer desain baru, bukan sekadar reuse ringan dari jalur export sekarang
 
 ## Design Principles
 

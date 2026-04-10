@@ -15,10 +15,10 @@ Status saat ini berdasarkan audit codebase:
 - authoring tetap dilakukan di artifact
 - pipeline export existing masih berbasis `stageData` dan masih dibatasi untuk session `completed`
 - `stageData` saat ini adalah layer koordinasi workflow, bukan compiled naskah state
-- state khusus `naskah` seperti availability, `update pending`, dan compiled snapshot belum ada
-- entry point, topbar behavior, dan route khusus `Naskah` belum ada di codebase
+- state khusus `naskah` seperti availability, `update pending`, compiled snapshot, dan viewed revision sudah ada
+- entry point, topbar behavior, route khusus `Naskah`, dan refresh manual fase 1 sudah ada di codebase
 - `validatedAt` adalah fondasi paling nyata untuk pertumbuhan section yang tervalidasi
-- keputusan fase 1 harus mengakui gap antara intent produk dan state implementasi sekarang
+- keputusan fase 1 sekarang terutama menyisakan gap export, bukan gap route atau snapshot state
 
 ## Active Decisions
 
@@ -94,7 +94,6 @@ Keputusan:
 - `naskah` tidak menjadi panel berdampingan di halaman chat
 - `naskah` diposisikan sebagai halaman tersendiri fullscreen
 - akses ke `naskah` dilakukan lewat tombol `Naskah` di topbar halaman chat
-- route dan entry point tersebut belum ada di codebase saat ini, jadi ini masih target implementasi
 
 Alasan:
 - memberi ruang maksimal untuk preview A4 dan pagination
@@ -136,7 +135,6 @@ Status: active
 Keputusan:
 - tombol `Naskah` di topbar halaman chat hanya muncul ketika `Naskah` sudah dianggap tersedia
 - `Naskah` dianggap tersedia ketika `abstrak` sudah tervalidasi dan compiler dapat membentuk minimal compiled content dari artifact tervalidasi
-- karena route dan topbar khusus belum ada, keputusan ini masih menunggu implementasi shell baru
 
 Alasan:
 - ada ambang yang jelas kapan paper utuh sudah cukup layak untuk mulai dilihat
@@ -289,8 +287,6 @@ Keputusan:
 - jika tombol `Naskah` di topbar menunjukkan ada update pending lalu user mengkliknya, sistem tetap hanya membuka halaman `Naskah`
 - update terbaru tidak otomatis dimuat saat navigasi
 - indikator update ditampilkan di dalam halaman `Naskah`, dan user memutuskan kapan memuatnya
-- keputusan ini menunggu adanya snapshot/version state yang bisa dibandingkan secara eksplisit
-- sebelum model snapshot/revision tersedia, keputusan ini harus dibaca sebagai intent arsitektur, belum sebagai perilaku yang sudah operasional
 
 Alasan:
 - konsisten dengan prinsip refresh manual
@@ -474,7 +470,6 @@ Keputusan:
 - notifikasi update pada tombol `Naskah` di halaman `Chat` ditampilkan sebagai titik kecil
 - fase awal tidak memakai badge teks `update`
 - fase awal tidak memakai badge angka jumlah update
-- indikator ini bergantung pada model `update pending` yang belum ada di codebase sekarang
 
 Alasan:
 - paling ringan secara visual
@@ -985,7 +980,6 @@ Status: resolved with implementation dependency
 Jawaban:
 - indikator update berbentuk banner tipis di area header
 - CTA refresh `Update` ditempatkan di indikator yang sama
-- catatan: ini membutuhkan model update pending yang belum ada di codebase sekarang
 
 ### O-011: Bentuk Notifikasi Update Pada Tombol Naskah Di Topbar Chat
 
@@ -993,7 +987,6 @@ Status: resolved with implementation dependency
 
 Jawaban:
 - notifikasi update pada tombol `Naskah` ditampilkan sebagai titik kecil
-- catatan: ini bergantung pada topbar/route `Naskah` yang belum ada
 
 ## Deferred Or Rejected Directions
 
@@ -1098,8 +1091,8 @@ Saat memperbarui keputusan:
 - Diperjelas: source compile fase 1 `Naskah` dibaca dari artifact tervalidasi yang direferensikan oleh `stageData`, bukan dari `stageData` sebagai isi final
 - Diperjelas: update pending didefinisikan sebagai mismatch compiled revision terbaru vs revision yang terakhir dimuat user
 - Diperjelas: export existing masih completed-only dan belum mendukung export parsial untuk `Naskah`
-- Diperjelas: state khusus `Naskah` seperti availability, compiled snapshot, dan `update pending` belum ada
-- Diperjelas: topbar dan route `Naskah` belum ada di codebase
+- Ditutup: state khusus `Naskah` seperti availability, compiled snapshot, viewed revision, dan `update pending` sudah diimplementasikan untuk fase 1
+- Ditutup: topbar, route `Naskah`, manual refresh, dan highlight pasca-refresh sudah diimplementasikan untuk fase 1
 - Diperjelas: `validatedAt` adalah fondasi paling nyata untuk pertumbuhan section
 - Diperjelas: compile guard `cukup rapi` harus deterministik dan menolak placeholder atau structural error
 - Diperbarui: beberapa keputusan UI dan export ditandai dengan dependency atau diturunkan menjadi deferred bila belum supported oleh arsitektur sekarang

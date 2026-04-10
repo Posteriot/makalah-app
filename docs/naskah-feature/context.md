@@ -164,11 +164,11 @@ Aplikasi codebase yang ada tetapi belum cocok untuk `Naskah` fase awal:
 - compiler paper yang ada masih membaca `stageData`
 - artifact viewer yang ada belum dirancang sebagai full paper viewer
 
-Belum ada di codebase:
-- route atau topbar `Naskah`
+Sudah ada di codebase untuk fase 1:
+- route dan topbar `Naskah` sebagai halaman saudara dari `Chat`
 - compiled naskah state yang terpisah dari export state
 - web paginated preview untuk paper utuh
-- compiled snapshot atau revision state khusus untuk manual refresh `Naskah`
+- compiled snapshot, viewed revision, dan manual refresh `Naskah`
 
 ## Constraints
 
@@ -196,9 +196,9 @@ Artifact yang sudah tervalidasi belum tentu otomatis cukup rapi untuk dimasukkan
 Pagination di web harus diperlakukan sebagai estimasi yang sangat dekat, bukan jaminan 100% identik dengan Word/PDF final.
 Target produk fase awal adalah membuat preview web sedekat mungkin dengan hasil export final, tanpa menjanjikan identitas absolut.
 
-### Belum Ada State Update Naskah
+### State Update Naskah Sudah Eksplisit
 
-Codebase sekarang belum memiliki state eksplisit untuk availability `Naskah`, `update pending`, atau compiled snapshot/revision yang bisa dibandingkan dengan tampilan yang sedang dibuka.
+Codebase sekarang sudah memiliki state eksplisit untuk availability `Naskah`, `update pending`, dan compiled snapshot/revision yang dibandingkan dengan revision yang terakhir dimuat user.
 
 ## Risks Baseline
 

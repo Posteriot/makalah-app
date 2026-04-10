@@ -257,3 +257,4 @@ Setiap kali satu section selesai dikoreksi, status checklist terkait wajib diper
 - [x] Pass audit keras selesai untuk membuang detail UI yang terlalu dini dari `context.md`, menurunkan potensi salah baca pada keputusan export fase 1, dan menandai open questions yang baru resolved di level intent tetapi masih punya dependency implementasi.
 - [x] Residual risk terakhir dibersihkan dengan memindahkan mapping section yang masih decision-ish keluar dari `context.md`, sehingga dokumen konteks tetap lean dan `decisions.md` menjadi satu-satunya tempat untuk aturan mapping aktif.
 - [x] Final pass konsistensi istilah selesai untuk menyeragamkan istilah availability `Naskah`, `update pending`, dan compiled snapshot/revision antar dua dokumen.
+- [x] Docs sync akhir selesai untuk membuang caveat yang sudah tidak benar lagi setelah route, topbar, snapshot state, manual refresh, dan highlight pasca-refresh fase 1 benar-benar mendarat di codebase.
