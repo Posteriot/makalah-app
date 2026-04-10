@@ -13,6 +13,7 @@ interface NaskahHeaderProps {
   status: NaskahSnapshotStatus
   pageEstimate: number
   updatePending: boolean
+  isRefreshing?: boolean
   onRefresh?: () => void
 }
 
@@ -31,6 +32,7 @@ export function NaskahHeader({
   status,
   pageEstimate,
   updatePending,
+  isRefreshing = false,
   onRefresh,
 }: NaskahHeaderProps) {
   return (
@@ -81,14 +83,16 @@ export function NaskahHeader({
           <button
             type="button"
             onClick={onRefresh}
+            disabled={isRefreshing}
             className={cn(
               "rounded-action px-3 py-1 text-sm font-medium",
               "bg-[var(--chat-info)] text-white",
+              "disabled:cursor-not-allowed disabled:opacity-60",
               "hover:bg-[color:color-mix(in_oklab,var(--chat-info)_88%,black)]",
               "transition-colors",
             )}
           >
-            Update
+            {isRefreshing ? "Memuat..." : "Update"}
           </button>
         </div>
       )}

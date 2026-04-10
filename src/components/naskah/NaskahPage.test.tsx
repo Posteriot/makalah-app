@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react"
+import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
 import { NaskahPage } from "./NaskahPage"
@@ -222,7 +222,7 @@ describe("NaskahPage — header", () => {
     ).toBeInTheDocument()
   })
 
-  it("B5: clicking the Update button calls onRefresh; absent button when updatePending is false", () => {
+  it("B5: clicking the Update button calls onRefresh; absent button when updatePending is false", async () => {
     const onRefresh = vi.fn()
 
     const { rerender } = render(
@@ -246,7 +246,10 @@ describe("NaskahPage — header", () => {
     )
 
     const header = screen.getByTestId("naskah-header")
-    fireEvent.click(within(header).getByRole("button", { name: /update/i }))
+    await act(async () => {
+      fireEvent.click(within(header).getByRole("button", { name: /update/i }))
+      await Promise.resolve()
+    })
     expect(onRefresh).toHaveBeenCalledTimes(1)
   })
 })

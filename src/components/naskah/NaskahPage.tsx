@@ -1,9 +1,12 @@
 "use client"
 
+import { useEffect, useRef, useState } from "react"
 import type { NaskahCompiledSnapshot } from "@/lib/naskah/types"
 import { NaskahHeader } from "./NaskahHeader"
 import { NaskahPreview } from "./NaskahPreview"
 import { NaskahSidebar } from "./NaskahSidebar"
+
+const HIGHLIGHT_DURATION_MS = 3_000
 
 interface NaskahPageProps {
   snapshot: NaskahCompiledSnapshot
@@ -39,26 +42,96 @@ export function NaskahPage({
   updatePending,
   onRefresh,
 }: NaskahPageProps) {
+  const [visibleSnapshot, setVisibleSnapshot] = useState(snapshot)
+  const [pendingSnapshot, setPendingSnapshot] =
+    useState<NaskahCompiledSnapshot | null>(null)
+  const [highlightedSectionKeys, setHighlightedSectionKeys] = useState<
+    NaskahCompiledSnapshot["sections"][number]["key"][]
+  >([])
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const visibleRevisionRef = useRef<number | null>(
+    getSnapshotRevision(snapshot),
+  )
+
+  useEffect(() => {
+    const nextRevision = getSnapshotRevision(snapshot)
+    const visibleRevision = visibleRevisionRef.current
+
+    if (visibleRevision == null) {
+      setVisibleSnapshot(snapshot)
+      visibleRevisionRef.current = nextRevision
+      return
+    }
+
+    if (nextRevision === visibleRevision) {
+      setVisibleSnapshot(snapshot)
+      return
+    }
+
+    if (updatePending) {
+      setPendingSnapshot(snapshot)
+      return
+    }
+
+    setVisibleSnapshot(snapshot)
+    setPendingSnapshot(null)
+    visibleRevisionRef.current = nextRevision
+  }, [snapshot, updatePending])
+
+  useEffect(() => {
+    if (highlightedSectionKeys.length === 0) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setHighlightedSectionKeys([])
+    }, HIGHLIGHT_DURATION_MS)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [highlightedSectionKeys])
+
+  const activeSnapshot = visibleSnapshot
+
+  const handleRefresh = async () => {
+    const nextSnapshot = pendingSnapshot ?? snapshot
+    const changedKeys = getChangedSectionKeys(visibleSnapshot, nextSnapshot)
+
+    setIsRefreshing(true)
+    try {
+      await onRefresh?.()
+      setVisibleSnapshot(nextSnapshot)
+      setPendingSnapshot(null)
+      visibleRevisionRef.current = getSnapshotRevision(nextSnapshot)
+      setHighlightedSectionKeys(changedKeys)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   return (
     <div className="flex h-full flex-col bg-[var(--chat-background)]">
       <NaskahHeader
-        title={snapshot.title}
-        titleSource={snapshot.titleSource}
-        status={snapshot.status}
-        pageEstimate={snapshot.pageEstimate}
+        title={activeSnapshot.title}
+        titleSource={activeSnapshot.titleSource}
+        status={activeSnapshot.status}
+        pageEstimate={activeSnapshot.pageEstimate}
         updatePending={updatePending}
-        onRefresh={onRefresh}
+        isRefreshing={isRefreshing}
+        onRefresh={handleRefresh}
       />
 
-      {snapshot.isAvailable ? (
+      {activeSnapshot.isAvailable ? (
         <div className="flex min-h-0 flex-1">
           <aside className="w-64 shrink-0 border-r border-[color:var(--chat-border)]">
-            <NaskahSidebar sections={snapshot.sections} />
+            <NaskahSidebar
+              sections={activeSnapshot.sections}
+              highlightedSectionKeys={highlightedSectionKeys}
+            />
           </aside>
           <main className="min-w-0 flex-1">
             <NaskahPreview
-              title={snapshot.title}
-              sections={snapshot.sections}
+              title={activeSnapshot.title}
+              sections={activeSnapshot.sections}
             />
           </main>
         </div>
@@ -72,4 +145,25 @@ export function NaskahPage({
       )}
     </div>
   )
+}
+
+function getSnapshotRevision(
+  snapshot: NaskahCompiledSnapshot,
+): number | null {
+  return "revision" in snapshot && typeof snapshot.revision === "number"
+    ? snapshot.revision
+    : null
+}
+
+function getChangedSectionKeys(
+  previousSnapshot: NaskahCompiledSnapshot,
+  nextSnapshot: NaskahCompiledSnapshot,
+): NaskahCompiledSnapshot["sections"][number]["key"][] {
+  const previousSectionsByKey = new Map(
+    previousSnapshot.sections.map((section) => [section.key, section.content]),
+  )
+
+  return nextSnapshot.sections
+    .filter((section) => previousSectionsByKey.get(section.key) !== section.content)
+    .map((section) => section.key)
 }

@@ -6,10 +6,11 @@ import {
   NASKAH_TITLE_PAGE_LABEL,
   getNaskahSectionAnchorId,
 } from "@/lib/naskah/anchors"
-import type { NaskahSection } from "@/lib/naskah/types"
+import type { NaskahSection, NaskahSectionKey } from "@/lib/naskah/types"
 
 interface NaskahSidebarProps {
   sections: NaskahSection[]
+  highlightedSectionKeys?: NaskahSectionKey[]
 }
 
 /**
@@ -23,7 +24,10 @@ interface NaskahSidebarProps {
  * Active-section highlight on scroll (D-027) is intentionally deferred
  * to a later phase. Phase 1 ships without it.
  */
-export function NaskahSidebar({ sections }: NaskahSidebarProps) {
+export function NaskahSidebar({
+  sections,
+  highlightedSectionKeys = [],
+}: NaskahSidebarProps) {
   return (
     <nav
       data-testid="naskah-sidebar"
@@ -44,9 +48,12 @@ export function NaskahSidebar({ sections }: NaskahSidebarProps) {
         <a
           key={section.key}
           href={`#${getNaskahSectionAnchorId(section.key)}`}
+          data-changed={highlightedSectionKeys.includes(section.key)}
           className={cn(
             "rounded-action px-3 py-2 text-sm",
             "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
+            highlightedSectionKeys.includes(section.key) &&
+              "bg-[color:color-mix(in_oklab,var(--chat-info)_14%,transparent)] ring-1 ring-[color:color-mix(in_oklab,var(--chat-info)_55%,transparent)]",
             "transition-colors",
           )}
         >
