@@ -1,367 +1,493 @@
-# Keadaan Sekarang: Prompt, Skill, dan Hardcoded Instructions
+# Keadaan Sekarang: Prompt, Skill, Hardcoded Instructions, dan Arah Perubahan
 
 ## Tujuan Dokumen
 
-Dokumen ini memetakan keadaan aktual arsitektur prompt, skill, dan hardcoded instructions di codebase Makalah App per 8 April 2026. Fokusnya bukan proposal solusi, tetapi inventaris sumber instruksi yang benar-benar dipakai runtime, titik coupling, dan masalah organisasi yang muncul dari struktur saat ini.
+Dokumen ini mendeskripsikan **kondisi aktual codebase saat ini** untuk arsitektur prompt, skill, hardcoded instructions, dan runtime composition di Makalah App.
+
+Dokumen ini harus akurat terhadap:
+
+- codebase yang berjalan sekarang,
+- model data Convex yang benar-benar aktif sekarang,
+- admin workflow yang benar-benar ada sekarang,
+- route, resolver, dan orchestrator yang benar-benar menyusun prompt saat runtime.
+
+Dokumen ini **bukan** proposal target final. Dokumen ini adalah baseline current-state. Karena itu, bagian yang membahas perubahan ke depan harus dibaca sebagai **delta dari keadaan sekarang**, bukan sebagai sesuatu yang sudah terimplementasi.
+
+Dokumen acuan lain yang relevan:
+
+- `docs/unified-prompts-skills-instructions/2026-04-08-decision-record-final-migration-boundaries-v1.md`
+- `docs/unified-prompts-skills-instructions/2026-04-08-prompt-surface-classification-matrix-v1.md`
+- `docs/unified-prompts-skills-instructions/2026-04-09-mirror-architecture-db-admin-agent-managed-runtime-v2.md`
+
+Jika ada konflik antara dokumen ini dan codebase aktual, codebase yang menang.
+
+## Cara Baca Dokumen Ini
+
+Dokumen ini dibagi jadi tiga lapisan:
+
+1. **keadaan sekarang**: apa yang benar-benar ada dan dipakai saat ini,
+2. **tegangan arsitektural saat ini**: masalah atau coupling yang memang sudah ada sekarang,
+3. **delta ke target**: area mana yang diperkirakan akan berubah oleh keputusan arsitektur berikutnya.
+
+Bagian `delta ke target` sengaja dipisah supaya dokumen ini tidak berubah menjadi dokumen desain terselubung.
 
 ## Ringkasan Eksekutif
 
-Saat ini sistem instruksi AI tidak berada dalam satu source of truth tunggal. Ia tersebar ke beberapa lapisan yang masing-masing punya fungsi berbeda:
+Saat ini sistem instruksi AI **belum** punya satu namespace arsitektural yang terpadu. Yang ada sekarang adalah gabungan beberapa lapisan yang hidup berdampingan:
 
-1. Konten yang dikelola admin dan disimpan di database Convex.
-2. Konten fallback dan helper prompt yang hardcoded di `src/lib`.
-3. Skill berbasis file `SKILL.md`.
-4. Prompt dan note inline yang dibangun langsung di flow runtime, terutama di `src/app/api/chat/route.ts` dan orchestrator web search.
-5. Tool descriptions dan feature-specific prompt builders yang juga berfungsi sebagai instruction layer.
+1. konten operasional yang memang DB-managed,
+2. prompt dan note yang code-managed,
+3. skill file-based,
+4. inline instructions di route dan orchestrator,
+5. tool descriptions yang berfungsi sebagai contract aktif ke model,
+6. feature-local prompt builders di luar chat utama.
 
-Masalah utamanya bukan sekadar "file tercecer", tetapi:
+Masalah utamanya bukan sekadar "prompt tersebar", tetapi:
 
-- ownership instruksi belum dibedakan dengan tegas,
-- source of truth berbeda-beda tergantung jenis instruksi,
-- perakitan final system messages masih tersebar,
-- audit drift antar layer cukup mahal,
-- route besar menanggung terlalu banyak tanggung jawab prompt composition.
+- ownership antar surface belum dibedakan cukup tegas,
+- beberapa surface adalah hybrid antara text contract dan runtime logic,
+- route besar masih memegang terlalu banyak precedence runtime,
+- ada augmentasi instruksi yang baru muncul saat runtime,
+- model `system prompt` dan `stage skills` memang sudah berbeda sejak level storage dan lifecycle.
 
-## Peta Lapisan Instruksi Saat Ini
+## Keadaan Sekarang
 
-### 1. Database-Managed Prompt
+### 1. Database-Managed Operational Content
 
-Lapisan ini adalah prompt yang memang didesain untuk bisa dikelola admin, di-versioning, diaktifkan, dinonaktifkan, dan diaudit.
+Lapisan ini adalah content yang memang didesain untuk dikelola admin, disimpan di DB, dan dipakai runtime sebagai content operasional.
 
 #### Global system prompt
 
-- Runtime fetch prompt aktif: [src/lib/ai/chat-config.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/chat-config.ts#L90)
-- Query/mutation prompt di Convex: [convex/systemPrompts.ts](/C:/Users/eriks/Desktop/makalahapp/convex/systemPrompts.ts#L14)
-- Schema storage prompt: [convex/schema.ts](/C:/Users/eriks/Desktop/makalahapp/convex/schema.ts#L281)
-- Admin manager UI: [src/components/admin/SystemPromptsManager.tsx](/C:/Users/eriks/Desktop/makalahapp/src/components/admin/SystemPromptsManager.tsx#L66)
+File dan module utama:
+
+- runtime fetch: `src/lib/ai/chat-config.ts`
+- query dan mutation: `convex/systemPrompts.ts`
+- schema storage: `convex/schema.ts`
+- admin manager UI: `src/components/admin/SystemPromptsManager.tsx`
+- admin form dialog: `src/components/admin/SystemPromptFormDialog.tsx`
+- version history UI: `src/components/admin/VersionHistoryDialog.tsx`
+
+Keadaan nyata saat ini:
+
+- global system prompt disimpan di tabel `systemPrompts`,
+- query runtime membaca prompt aktif lewat `getActiveSystemPrompt`,
+- setiap update membuat row versi baru,
+- status native yang ada adalah `isActive`,
+- tidak ada lifecycle native `draft/published/archived`.
+
+Implikasi current-state:
+
+- DB adalah source of truth operasional untuk global system prompt,
+- fallback file-based hanya berfungsi sebagai safety net saat DB prompt tidak tersedia,
+- model data system prompt sudah berbentuk version chain + active flag.
 
 #### Stage skills per stage paper workflow
 
-- Resolver runtime: [src/lib/ai/stage-skill-resolver.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/stage-skill-resolver.ts#L81)
-- Validator konten skill: [src/lib/ai/stage-skill-validator.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/stage-skill-validator.ts#L136)
-- Query/mutation lifecycle skill: [convex/stageSkills.ts](/C:/Users/eriks/Desktop/makalahapp/convex/stageSkills.ts#L105)
-- Schema stage skill: [convex/schema.ts](/C:/Users/eriks/Desktop/makalahapp/convex/schema.ts#L298)
-- Admin manager UI: [src/components/admin/StageSkillsManager.tsx](/C:/Users/eriks/Desktop/makalahapp/src/components/admin/StageSkillsManager.tsx#L41)
+File dan module utama:
 
-#### Implikasi arsitektural
+- runtime resolver: `src/lib/ai/stage-skill-resolver.ts`
+- validator konten skill: `src/lib/ai/stage-skill-validator.ts`
+- query dan mutation lifecycle: `convex/stageSkills.ts`
+- constants dan search policy defaults: `convex/stageSkills/constants.ts`
+- schema storage: `convex/schema.ts`
+- admin manager UI: `src/components/admin/StageSkillsManager.tsx`
+- admin form dialog: `src/components/admin/StageSkillFormDialog.tsx`
+- version history UI: `src/components/admin/StageSkillVersionHistoryDialog.tsx`
 
-- DB bukan sekadar cache. Ia adalah source of truth operasional untuk prompt global dan stage skills.
-- Karena ada UI admin, versioning, activate/deactivate, publish, rollback, dan validation, storage ini punya peran domain-level yang nyata.
-- Artinya, upaya unifikasi tidak boleh secara sembrono memindahkan semua source of truth ke filesystem.
+Keadaan nyata saat ini:
+
+- katalog skill disimpan di `stageSkills`,
+- konten versi disimpan di `stageSkillVersions`,
+- status native per versi adalah `draft`, `published`, `active`, `archived`,
+- enable atau disable hidup di row katalog `stageSkills`,
+- admin form bekerja dengan markdown penuh yang mengandung frontmatter,
+- frontmatter itu dibentuk lewat `buildSkillMarkdown()` dan dibaca lewat `parseSkillMarkdown()` di `src/components/admin/StageSkillFormDialog.tsx`,
+- fields frontmatter yang ada di content: `name`, `description`, `stageScope`, `searchPolicy` (`"active"` | `"passive"`), `metadataInternal` (nested `metadata:` block dengan key `internal`),
+- `stageScope` di DB memakai underscore (contoh: `tinjauan_literatur`), sedangkan `skillId` dan konvensi penamaan lain memakai hyphen (contoh: `tinjauan-literatur-skill`) lewat `toSkillId()` di `convex/stageSkills/constants.ts`.
+
+Implikasi current-state:
+
+- stage skills adalah DB-managed operational content,
+- lifecycle-nya memang lebih kaya daripada `systemPrompts`,
+- source of truth runtime tetap di Convex,
+- format content stage skill bukan body polos, tetapi markdown penuh dengan metadata.
+
+#### Style constitutions untuk Refrasa
+
+File dan module utama:
+
+- source of truth: `convex/styleConstitutions.ts`
+- consumer runtime: `src/app/api/refrasa/route.ts`
+
+Keadaan nyata saat ini:
+
+- constitution aktif tetap DB-managed,
+- mutation dan version history-nya dikelola di `convex/styleConstitutions.ts`,
+- belum ada desain mirror yang diterapkan di codebase,
+- route Refrasa mengonsumsi constitution sebagai bagian dari builder prompt feature-specific.
+
+Implikasi current-state:
+
+- constitution termasuk surface DB-managed,
+- ia punya lifecycle admin sendiri yang terpisah dari `stageSkills`,
+- tetapi saat ini ia hidup di jalur feature Refrasa, bukan di unified agent namespace baru.
 
 ### 2. Code-Managed Fallback Prompt dan Helper Prompt
 
-Lapisan ini berisi prompt yang dikelola lewat code, bukan admin UI.
+Lapisan ini berisi prompt yang dikelola lewat code dan dipakai sebagai fallback, helper, atau reusable prompt asset.
 
 #### Fallback global system prompt
 
-- Fallback minimal ketika DB gagal atau tidak ada active prompt: [src/lib/ai/chat-config.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/chat-config.ts#L13)
+File utama:
 
-Peran:
+- `src/lib/ai/chat-config.ts`
 
-- menjaga chat tetap hidup,
-- memberi sinyal limited mode,
-- menyalakan alert operasional.
+Keadaan nyata saat ini:
+
+- file yang sama memegang fallback text,
+- file yang sama juga memegang `logFallbackActivation()` dan alert wiring,
+- fallback dipakai saat tidak ada active system prompt dari DB.
+
+Implikasi current-state:
+
+- fallback text ada, tetapi belum dipisah bersih dari side effect operasional,
+- ini bukan pure prompt asset yang berdiri sendiri.
 
 #### Fallback stage instructions
 
-- Registry fallback stage instruction: [src/lib/ai/paper-stages/index.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/paper-stages/index.ts#L34)
-- Dipakai saat stage skill aktif tidak ada atau gagal validasi: [src/lib/ai/paper-mode-prompt.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/paper-mode-prompt.ts#L125)
+File utama:
 
-Peran:
+- `src/lib/ai/paper-stages/index.ts`
+- submodules di `src/lib/ai/paper-stages/`
+- consumer: `src/lib/ai/paper-mode-prompt.ts`
 
-- baseline local fallback,
-- guard terhadap broken DB content,
-- transisi historis sebelum semua stage skill hidup stabil di DB.
+Keadaan nyata saat ini:
 
-#### Search retriever prompt
+- fallback stage instruction set tetap file-based,
+- ia dipakai ketika active stage skill tidak ada atau gagal validasi,
+- ia berfungsi sebagai safety net lokal terhadap DB content yang kosong atau rusak.
 
-- Prompt retriever model: [src/lib/ai/search-system-prompt.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/search-system-prompt.ts#L12)
+#### Search retriever prompt dan prompt code-managed lain
 
-Peran:
+File utama:
 
-- mengajar model retriever cara mencari,
-- membedakan phase retriever dari compose,
-- memberi priority-source guidance.
+- `src/lib/ai/search-system-prompt.ts`
+- `src/lib/ai/paper-workflow-reminder.ts`
+- `src/lib/json-render/choice-yaml-prompt.ts`
+- `src/lib/ai/compaction-prompts.ts`
 
-#### Prompt lain yang code-owned
+Keadaan nyata saat ini:
 
-- Paper workflow reminder: [src/lib/ai/paper-workflow-reminder.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/paper-workflow-reminder.ts#L15)
-- Choice card YAML system prompt: [src/lib/json-render/choice-yaml-prompt.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/json-render/choice-yaml-prompt.ts#L12)
-- Compaction prompts: [src/lib/ai/compaction-prompts.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/compaction-prompts.ts#L12)
+- retriever prompt dan augmentation hints masih hidup di module search sendiri,
+- workflow reminder hidup sebagai helper prompt terpisah,
+- choice card YAML prompt hidup di subdomain json-render,
+- compaction prompts hidup di subdomain AI support.
 
-#### Implikasi arsitektural
+Implikasi current-state:
 
-- Lapisan ini legitimate untuk tetap ada di code.
-- Masalahnya bukan bahwa mereka hardcoded, tetapi bahwa penempatannya belum punya satu namespace organisasi yang jelas.
+- prompt code-managed memang ada dan valid sebagai lapisan tersendiri,
+- tetapi namespace-nya masih tersebar.
 
 ### 3. File-Based Skill
 
-Saat ini skill web search quality sudah memakai pola `SKILL.md`.
+Saat ini ada setidaknya satu skill file-based yang sudah jelas memakai pola `SKILL.md`.
 
-- Skill content: [src/lib/ai/skills/web-search-quality/SKILL.md](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/skills/web-search-quality/SKILL.md#L1)
-- Runtime parser dan composer: [src/lib/ai/skills/web-search-quality/index.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/skills/web-search-quality/index.ts#L23)
-- Public entrypoint skill: [src/lib/ai/skills/index.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/skills/index.ts#L4)
+File utama:
 
-Peran:
+- `src/lib/ai/skills/web-search-quality/SKILL.md`
+- `src/lib/ai/skills/web-search-quality/index.ts`
+- `src/lib/ai/skills/index.ts`
 
-- quality judgment di phase compose,
-- source scoring/checking,
-- natural-language policy layer untuk search response.
+Keadaan nyata saat ini:
 
-#### Implikasi arsitektural
-
-- Ini sudah paling dekat ke pola "unified prompt assets".
-- Tapi dia masih hidup di `src/lib/ai/skills`, sementara prompt lain ada di lokasi lain.
+- skill web search quality dipakai sebagai natural-language policy layer untuk compose phase,
+- loader dan parser masih mengarah ke lokasi lama di `src/lib/ai/skills/`,
+- ini adalah surface paling dekat ke bentuk target `skills/` file-based.
 
 ### 4. Inline Runtime Instructions
 
-Ini lapisan paling berat dari sisi coupling.
+Lapisan ini adalah instruction text yang masih hidup langsung di caller runtime besar.
 
-#### Chat route menyusun banyak system messages
+#### Chat route
 
-- Base assembly: [src/app/api/chat/route.ts](/C:/Users/eriks/Desktop/makalahapp/src/app/api/chat/route.ts#L788)
-- Dynamic note injection: [src/app/api/chat/route.ts](/C:/Users/eriks/Desktop/makalahapp/src/app/api/chat/route.ts#L2729)
-- Router prompt inline: [src/app/api/chat/route.ts](/C:/Users/eriks/Desktop/makalahapp/src/app/api/chat/route.ts#L1145)
-- Search decision note flow: [src/app/api/chat/route.ts](/C:/Users/eriks/Desktop/makalahapp/src/app/api/chat/route.ts#L2287)
+File utama:
 
-Jenis instruksi yang masih inline:
+- `src/app/api/chat/route.ts`
 
-- router prompt,
-- workflow response discipline note,
-- completed-session override,
-- search/tool mode notes,
-- missing artifact note,
-- exact-source routing notes,
-- attachment-first-response note.
+Keadaan nyata saat ini:
 
-#### Web search orchestrator juga punya directive sendiri
+- chat route masih menyusun banyak system messages secara inline,
+- route memegang router prompt,
+- route memegang attachment-first instruction,
+- route memegang search atau tool mode notes,
+- route juga memegang decision precedence kapan note tertentu ikut masuk stack.
 
-- Compose phase directive: [src/lib/ai/web-search/orchestrator.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/web-search/orchestrator.ts#L47)
+Implikasi current-state:
 
-Peran:
+- `route.ts` bukan cuma gudang string,
+- `route.ts` juga adalah pusat precedence, timing injeksi, dan condition wiring.
 
-- override perilaku model pada compose phase,
-- mencegah promise-to-search,
-- memutus interference dari prompt lain.
+#### Web search orchestrator
 
-#### Implikasi arsitektural
+File utama:
 
-- Inline prompt semacam ini sering valid secara fungsi, tapi buruk untuk maintainability jika jumlahnya besar.
-- Saat satu route memegang too many prompt strings, review drift jadi susah.
-- Reuse rendah karena note menjadi "terkunci" di route tertentu.
+- `src/lib/ai/web-search/orchestrator.ts`
+- `src/lib/ai/search-results-context.ts`
 
-### 5. Tool Description dan Feature-Specific Instruction Builders
+Keadaan nyata saat ini:
 
-Lapisan ini sebelumnya belum disebut eksplisit, padahal secara nyata ikut membentuk perilaku model.
+- compose phase directive hidup di orchestrator,
+- search results context builder hidup di module terpisah,
+- keduanya bersama-sama membentuk contract perilaku compose phase,
+- builder context tidak hanya memegang string, tetapi juga branching mode dan fallback behavior.
 
-#### Tool descriptions sebagai instruction surface
+### 5. Tool Descriptions dan Feature-Specific Prompt Builders
 
-Tool descriptions di AI SDK bukan metadata pasif. Mereka adalah bagian dari instruction layer yang dibaca model untuk memutuskan kapan dan bagaimana tool dipakai.
+Lapisan ini sering terlewat kalau orang cuma mencari "prompt string", padahal secara runtime ia sangat menentukan perilaku model.
 
-- Tool factory paper workflow: [src/lib/ai/paper-tools.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/paper-tools.ts#L58)
-- Contoh deskripsi `startPaperSession`: [src/lib/ai/paper-tools.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/paper-tools.ts#L68)
-- Contoh deskripsi `updateStageData`: [src/lib/ai/paper-tools.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/paper-tools.ts#L125)
-- Contoh deskripsi `compileDaftarPustaka`: [src/lib/ai/paper-tools.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/paper-tools.ts#L273)
+#### Paper workflow tool descriptions
 
-Peran:
+File utama:
 
-- memberi instruksi operasional ke model,
-- mendefinisikan auto-stage behavior,
-- menjelaskan format data yang diharapkan,
-- menjadi guardrail tool calling di luar system prompt utama.
+- `src/lib/ai/paper-tools.ts`
+- `src/app/api/chat/route.ts`
 
-#### Search compose context builder
+Keadaan nyata saat ini:
 
-- Search results context builder: [src/lib/ai/search-results-context.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/search-results-context.ts#L63)
+- deskripsi tool bersifat instruction-heavy,
+- deskripsi itu menempel pada schema, sequencing, execute contract, dan tool registration,
+- sebagian lagi masih inline di chat route.
 
-Peran:
+Implikasi current-state:
 
-- membentuk instruction-bearing context untuk compose phase,
-- mengatur mode `synthesis`, `reference_inventory`, dan `mixed`,
-- menentukan bagaimana raw findings dikirim ke model.
+- ini bukan pure prompt assets,
+- ini adalah hybrid contract surface.
 
-Ini bukan sekadar formatter. Ia adalah instruction layer karena teks yang dibangunnya berisi perintah langsung seperti "You MUST synthesize these sources in your response."
+#### Choice context dan exact-source notes
 
-#### Feature-specific prompt builder di luar chat utama
+File utama:
 
-- Refrasa prompt builder: [src/lib/refrasa/prompt-builder.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/refrasa/prompt-builder.ts#L112)
+- `src/lib/chat/choice-request.ts`
+- `src/lib/ai/exact-source-guardrails.ts`
 
-Peran:
+Keadaan nyata saat ini:
 
-- membangun system prompt dan prompt user untuk flow Refrasa,
-- menyimpan academic escape clause hardcoded,
-- menjadi contoh nyata bahwa codebase punya prompt architecture lain di luar chat route utama.
+- choice context note masih hidup berdampingan dengan validation dan finalize heuristics,
+- exact-source guardrails menghasilkan lebih dari satu note atau rules surface,
+- keduanya masih kuat terikat ke runtime logic.
 
-#### Implikasi arsitektural
+#### Refrasa prompt builder
 
-- Jika bicara "prompt, skills, dan hardcoded instructions" secara 100% codebase-compliant, layer ini wajib masuk inventaris.
-- Tanpa memasukkan tool descriptions dan feature-specific builders, audit akan bias ke chat flow saja.
+File utama:
+
+- `src/lib/refrasa/prompt-builder.ts`
+- `src/app/api/refrasa/route.ts`
+
+Keadaan nyata saat ini:
+
+- Refrasa punya builder prompt sendiri di luar chat route utama,
+- builder menyatukan constitution optional, escape clause, dan output format,
+- builder ini masih berupa module feature-level, bukan prompt asset namespace yang terpisah.
+
+### 6. Prompt Surface Utilitarian Non-Chat
+
+Ada surface prompt lain yang nyata di repo, tetapi tidak semuanya bagian dari inti arsitektur agent.
+
+File utama:
+
+- `src/lib/ai/title-generator.ts`
+- `src/lib/file-extraction/image-ocr.ts`
+- `src/app/api/admin/validate-provider/route.ts`
+- `src/app/api/admin/verify-model-compatibility/route.ts`
+- `src/lib/ai/context-compaction.ts`
+- `src/lib/ai/compaction-prompts.ts`
+
+Keadaan nyata saat ini:
+
+- sebagian surface benar-benar utilitarian dan sebaiknya tetap lokal,
+- sebagian lain support agent runtime tetapi bukan pusat arsitektur chat,
+- verification prompts dan admin checks memang hidup di domain operasionalnya sendiri.
 
 ## Alur Runtime Saat Ini
 
 ### Normal chat
 
-1. Chat route fetch global system prompt aktif dari DB lewat `getSystemPrompt()`.
-2. Jika ada paper session, route build paper mode prompt lewat `getPaperModeSystemPrompt()`.
-3. Route menyusun message stack dengan tambahan file context, source context, choice context, dan runtime notes.
+1. Chat route mengambil global system prompt aktif dari DB lewat `getSystemPrompt()`.
+2. Jika ada paper session, route membangun paper mode prompt lewat `getPaperModeSystemPrompt()`.
+3. Route menyusun message stack dengan file context, source context, choice context, dan runtime notes.
 4. Jika search aktif, flow pindah ke orchestrator.
 
-Referensi:
+File utama:
 
-- [src/app/api/chat/route.ts](/C:/Users/eriks/Desktop/makalahapp/src/app/api/chat/route.ts#L352)
-- [src/lib/ai/paper-mode-prompt.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/paper-mode-prompt.ts#L80)
+- `src/app/api/chat/route.ts`
+- `src/lib/ai/chat-config.ts`
+- `src/lib/ai/paper-mode-prompt.ts`
 
 ### Paper mode
 
-1. Resolver mencoba ambil active stage skill dari DB.
-2. Jika skill invalid atau tidak ada, fallback ke `paper-stages`.
-3. Paper mode prompt menggabungkan stage instructions, memory digest, artifact summaries, invalidated artifacts, status notes, dan global rules.
+1. Resolver mencoba mengambil active stage skill dari DB.
+2. Content skill divalidasi lewat `validateStageSkillContent()` di `src/lib/ai/stage-skill-validator.ts` sebelum dipakai.
+3. Jika skill invalid atau tidak ada, resolver fallback ke `paper-stages`.
+4. Jika skill valid, resolver menambahkan `ARTIFACT_CREATION_FOOTER` ke content aktif.
+5. Paper mode prompt menggabungkan stage instructions, memory digest, artifact summaries, invalidated artifacts, dan status notes.
 
-Referensi:
+File utama:
 
-- [src/lib/ai/stage-skill-resolver.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/stage-skill-resolver.ts#L93)
-- [src/lib/ai/paper-mode-prompt.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/paper-mode-prompt.ts#L120)
+- `src/lib/ai/stage-skill-resolver.ts`
+- `src/lib/ai/paper-mode-prompt.ts`
+
+Catatan penting:
+
+- runtime paper mode **tidak** memakai raw skill content secara mentah,
+- ada augmentation lokal setelah content diambil dari DB.
 
 ### Web search
 
-1. Router memutuskan search vs non-search lewat prompt inline.
+1. Router di chat route memutuskan search vs non-search.
 2. Retriever phase memakai `getSearchSystemPrompt()`.
-3. Compose phase memakai SKILL.md + compose directive orchestrator + `search-results-context`.
+3. Compose phase memakai gabungan SKILL.md, compose directive, dan search-results context.
 
-Referensi:
+File utama:
 
-- [src/app/api/chat/route.ts](/C:/Users/eriks/Desktop/makalahapp/src/app/api/chat/route.ts#L1145)
-- [src/lib/ai/search-system-prompt.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/search-system-prompt.ts#L12)
-- [src/lib/ai/web-search/orchestrator.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/web-search/orchestrator.ts#L59)
-- [src/lib/ai/search-results-context.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/search-results-context.ts#L63)
+- `src/app/api/chat/route.ts`
+- `src/lib/ai/search-system-prompt.ts`
+- `src/lib/ai/web-search/orchestrator.ts`
+- `src/lib/ai/search-results-context.ts`
 
-### Refrasa dan feature prompt lain
+### Refrasa
 
-1. Refrasa memiliki prompt builder sendiri di luar chat route utama.
-2. Prompt tersebut menyatukan constitution optional, hardcoded escape clause, dan output format JSON.
+1. Refrasa memiliki route dan builder sendiri di luar chat route utama.
+2. Builder menyatukan constitution dari DB, hardcoded clauses, dan output format.
 
-Referensi:
+File utama:
 
-- [src/lib/refrasa/prompt-builder.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/refrasa/prompt-builder.ts#L21)
-- [src/app/api/refrasa/route.ts](/C:/Users/eriks/Desktop/makalahapp/src/app/api/refrasa/route.ts#L72)
+- `src/lib/refrasa/prompt-builder.ts`
+- `src/app/api/refrasa/route.ts`
+- `convex/styleConstitutions.ts`
 
-### Prompt surface utilitarian non-chat
+## Tegangan Arsitektural Saat Ini
 
-Ada prompt surface lain yang bukan bagian dari chat orchestration utama, tetapi tetap nyata di codebase:
+Bagian ini tetap current-state. Ini bukan target design, tetapi masalah nyata yang sudah ada sekarang.
 
-- Title generation prompt: [src/lib/ai/title-generator.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/title-generator.ts#L14)
-- OCR image extraction instruction: [src/lib/file-extraction/image-ocr.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/file-extraction/image-ocr.ts#L131)
-- Provider validation test prompt: [src/app/api/admin/validate-provider/route.ts](/C:/Users/eriks/Desktop/makalahapp/src/app/api/admin/validate-provider/route.ts#L117)
-- Model compatibility verification prompts: [src/app/api/admin/verify-model-compatibility/route.ts](/C:/Users/eriks/Desktop/makalahapp/src/app/api/admin/verify-model-compatibility/route.ts#L117)
-- Context compaction summarization prompts: [src/lib/ai/context-compaction.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/context-compaction.ts#L143), [src/lib/ai/compaction-prompts.ts](/C:/Users/eriks/Desktop/makalahapp/src/lib/ai/compaction-prompts.ts#L12)
+### 1. Hybrid surfaces lebih banyak dari yang terlihat
 
-Karakteristik lapisan ini:
+Beberapa modul bukan murni prompt asset dan bukan murni business logic. Mereka adalah hybrid:
 
-- sebagian adalah utility prompt,
-- sebagian adalah verification/test prompt,
-- sebagian adalah feature-local prompt yang tidak cocok diperlakukan sebagai system prompt utama.
+- `src/lib/ai/paper-mode-prompt.ts`
+- `src/lib/chat/choice-request.ts`
+- `src/lib/ai/search-results-context.ts`
+- `src/lib/refrasa/prompt-builder.ts`
+- `src/lib/ai/paper-tools.ts`
 
-Implikasinya, unified architecture nanti harus membedakan prompt agentic vs prompt utilitarian.
+Konsekuensi:
 
-## Titik Ketersebaran Utama
+- klasifikasi "tinggal move" terlalu menyederhanakan realita,
+- migrasi aman harus dimulai dari pemisahan `text contract` vs `runtime logic`.
 
-### Ketersebaran berdasarkan ownership
+### 2. Runtime augmentation adalah fakta penting
 
-- Admin-managed content ada di DB.
-- Code-managed reusable prompts ada di `src/lib/ai` dan `src/lib/json-render`.
-- Code-managed prompt builders juga ada di feature lain seperti `src/lib/refrasa`.
-- Search skill file ada di `src/lib/ai/skills`.
-- Runtime notes masih inline di route/orchestrator.
-- Tool descriptions menambah instruction layer yang tersebar di factory tools.
-- Ada juga utility/test prompts di title generation, OCR, provider validation, dan compatibility verification.
+Beberapa surface mengalami augmentasi lokal saat runtime:
 
-### Ketersebaran berdasarkan purpose
+- active stage skill ditambah `ARTIFACT_CREATION_FOOTER` di `src/lib/ai/stage-skill-resolver.ts`,
+- fallback global prompt terikat ke alert logging di `src/lib/ai/chat-config.ts`,
+- exact-source guardrails menghasilkan lebih dari satu note surface.
 
-- "system prompt" tidak berarti satu file atau satu sumber.
-- Ada prompt yang sifatnya base, ada yang contextual, ada yang phase-specific, ada yang emergency fallback.
-- Ada juga instruksi yang sifatnya tool-scoped dan feature-scoped.
-- Ada juga prompt yang sifatnya utilitarian dan tidak perlu masuk prompt stack agent utama.
-- Karena taxonomy ini belum eksplisit, semua terasa seperti "prompt tercecer".
+Konsekuensi:
 
-### Ketersebaran berdasarkan assembly
+- content canonical dan prompt final runtime bukan hal yang sama,
+- audit prompt stack saat ini memang harus membaca caller runtime, bukan cuma sumber kontennya.
 
-- Tempat penyimpanan instruksi berbeda.
-- Tempat perakitan final message stack juga tersebar.
-- Sebagian instruction bahkan tidak tampil sebagai "prompt file", melainkan sebagai `description`, context builder, atau prompt-builder feature.
-- Ini membuat audit sebuah perilaku model butuh melacak banyak file sekaligus.
+### 3. Route dan orchestrator masih jadi pusat precedence
 
-## Masalah Arsitektural yang Nyata
+Masalah terbesar saat ini bukan hanya prompt tersebar di file berbeda, tetapi aturan precedence masih implicit di caller besar:
 
-### 1. Prompt composition terlalu dekat ke route logic
+- `src/app/api/chat/route.ts`
+- `src/lib/ai/web-search/orchestrator.ts`
 
-`src/app/api/chat/route.ts` memegang terlalu banyak tanggung jawab:
+Konsekuensi:
 
-- auth,
-- conversation lifecycle,
-- attachment state,
-- router search decision,
-- prompt composition,
-- tool orchestration,
-- fallback provider flow,
-- persistence.
+- kalau string dipindah tanpa memindahkan composition boundary,
+- route besar tetap akan jadi prompt warehouse dengan import path baru saja.
 
-Akibatnya, prompt-related reasoning bercampur dengan application flow.
+### 4. Model `system prompt` dan `stage skills` memang sudah berbeda
 
-### 2. Ownership belum eksplisit
+Perbedaan ini sudah nyata di codebase sekarang:
 
-Saat ini belum ada jawaban eksplisit yang sederhana untuk pertanyaan berikut:
+- `systemPrompts` memakai version chain + `isActive`,
+- `stageSkills` memakai catalog row + `stageSkillVersions`,
+- `stageSkillVersions` punya status `draft/published/active/archived`.
 
-- prompt mana yang boleh diedit admin,
-- prompt mana yang harus immutable di code,
-- note mana yang reusable,
-- note mana yang benar-benar local ke satu flow,
-- tool descriptions mana yang dianggap bagian dari contract AI,
-- prompt builder feature mana yang masuk scope unified architecture.
+Konsekuensi:
 
-### 3. Drift antar layer mudah terjadi
+- current-state repo memang tidak mendukung asumsi satu lifecycle tunggal untuk semua DB-managed content,
+- semua desain lanjutan harus menghormati perbedaan ini.
 
-Contoh drift yang secara arsitektural mungkin:
+### 5. Format stage skill bukan plain text bebas
 
-- system prompt aktif di DB bilang A,
-- stage skill aktif bilang B,
-- fallback stage instruction bilang C,
-- route inline note bilang D.
+Current-stage skill content sekarang:
 
-Validator sudah membantu untuk stage skill, tetapi belum ada prompt registry terpusat yang membuat drift antarlayer lebih mudah terlihat.
+- disimpan sebagai markdown penuh,
+- memuat frontmatter seperti `name`, `description`, dan `metadata`,
+- dibangun dan diparse lewat helper admin form.
 
-### 4. Search stack sudah semi-unified, tapi belum full
+Konsekuensi:
 
-Search stack sebenarnya paling maju:
+- sinkronisasi file-to-DB di masa depan tidak bisa memperlakukan stage skill sebagai body text biasa,
+- baseline current-state ini penting supaya desain target tidak salah mengira format content-nya.
 
-- retriever prompt terpisah,
-- compose skill pakai `SKILL.md`,
-- orchestrator punya directive sendiri,
-- context builder compose ada di `search-results-context.ts`.
+## Delta ke Target
 
-Tetapi ketiganya masih tidak duduk di namespace arsitektural yang sama.
+Bagian ini **bukan** keadaan sekarang. Ini adalah ringkasan perubahan yang diperkirakan akan terjadi menurut keputusan arsitektur lanjutan.
 
-### 5. Migrasi historis masih meninggalkan jejak yang menyebar
+### 1. Yang diperkirakan tetap
 
-Contoh:
+Hal-hal berikut diperkirakan **tetap benar** setelah migrasi:
 
-- seed default system prompt: [convex/migrations/seedDefaultSystemPrompt.ts](/C:/Users/eriks/Desktop/makalahapp/convex/migrations/seedDefaultSystemPrompt.ts#L103)
-- banyak migration update prompt dan skill di `convex/migrations`
+- DB tetap menjadi source of truth operasional untuk `system prompts`,
+- DB tetap menjadi source of truth operasional untuk `stage skills`,
+- `style constitutions` tetap DB-managed,
+- runtime augmentation seperti footer injection tetap menjadi concern runtime, bukan canonical content.
 
-Ini penting secara histori, tapi menambah biaya mental saat orang mencoba menjawab "prompt sebenarnya ada di mana".
+### 2. Yang diperkirakan berubah
 
-## Kesimpulan As-Is
+Hal-hal berikut diperkirakan akan berubah:
 
-Keadaan sekarang bisa dirangkum begini:
+- prompt assets code-managed akan dipusatkan ke namespace `src/agent/`,
+- access runtime ke content DB-managed akan dibungkus adapter,
+- composition boundary akan dipusatkan lebih eksplisit,
+- sebagian inline prompt string akan diekstrak dari route dan orchestrator,
+- akan ada area `src/agent/managed/` sebagai exported mirror untuk scope awal tertentu.
 
-- Secara fungsional, arsitektur ini sudah bekerja karena tiap lapisan punya peran nyata.
-- Secara organisasi, arsitektur ini belum unified.
-- Problem terbesarnya bukan bahwa prompt berada di lebih dari satu tempat, tetapi bahwa tidak ada direktori dan kontrak ownership yang menyatukan cara kita memahami semuanya.
+### 3. Yang harus dibedakan tegas saat update dokumen lain
 
-Kalau dibiarkan seperti sekarang, risiko jangka menengahnya adalah:
+Supaya dokumen seri ini tidak rancu, pemisahan berikut harus dijaga:
 
-- review prompt makin mahal,
-- perubahan perilaku model makin susah diaudit,
-- route dan orchestrator makin gemuk,
-- tool descriptions dan feature prompt builders sulit diinventaris kalau taxonomy tetap kabur,
-- tim sulit membedakan content asset vs runtime assembly logic.
+- current-state vs target-state,
+- canonical DB content vs mirror export,
+- runtime access adapter vs mirror file,
+- system prompt lifecycle vs stage skill lifecycle,
+- prompt asset murni vs hybrid contract surface.
+
+## Batas yang Tidak Boleh Salah Dibaca
+
+Dokumen ini **tidak** berarti bahwa hal-hal berikut sudah ada sekarang:
+
+- `src/agent/managed/` sudah terimplementasi,
+- importer atau exporter mirror sudah ada,
+- adapter runtime sudah menjadi jalur utama semua DB-managed content,
+- precedence sudah dipusatkan ke compose layer baru,
+- prompt scattering sudah selesai dirapikan.
+
+Semua itu adalah ranah dokumen target dan rencana implementasi, bukan kondisi aktual.
+
+## Kesimpulan
+
+Keadaan sekarang menunjukkan bahwa unified prompt architecture memang dibutuhkan. Tapi baseline current-state yang benar adalah:
+
+- prompt system saat ini memang tersebar ke beberapa lapisan,
+- DB-managed content sudah menjadi bagian operasional nyata,
+- route dan orchestrator masih memegang precedence yang besar,
+- surface hybrid cukup banyak,
+- runtime augmentation adalah bagian riil dari perilaku sistem sekarang.
+
+Jadi, dokumen ini harus dipakai sebagai **peta kondisi saat ini**, lalu dibaca berdampingan dengan dokumen target untuk memahami **apa yang ada sekarang** dan **apa yang nanti akan berubah**.
