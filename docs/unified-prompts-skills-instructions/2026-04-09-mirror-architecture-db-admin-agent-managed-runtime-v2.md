@@ -56,7 +56,8 @@ Model saat ini:
 Implikasi:
 
 - stage skills harus dimirror sebagai **catalog metadata + per-version status snapshot**,
-- importer dan exporter untuk stage skill harus memahami lifecycle ini.
+- importer dan exporter untuk stage skill harus memahami lifecycle ini,
+- `stageScope` di DB memakai underscore (contoh: `tinjauan_literatur`, `pembaruan_abstrak`, `daftar_pustaka`), sedangkan folder mirror memakai hyphen (contoh: `tinjauan-literatur/`). Fungsi `toSkillId()` di `convex/stageSkills/constants.ts` sudah menjadi referensi konversi ini. Exporter harus normalize secara konsisten.
 
 ### 3. Runtime Augmentation
 
@@ -163,8 +164,9 @@ Sisi referensi non-DB:
 Catatan penting:
 
 - form admin `stage skill` menyimpan markdown penuh dengan frontmatter,
-- format itu dibangun lewat `buildSkillMarkdown()` dan diparse lewat `parseSkillMarkdown()`,
-- importer/exporter mirror harus menjaga format ini tetap stabil.
+- format itu dibangun lewat `buildSkillMarkdown()` dan diparse lewat `parseSkillMarkdown()` di `src/components/admin/StageSkillFormDialog.tsx`,
+- fields frontmatter yang ada di content: `name`, `description`, `stageScope`, `searchPolicy` (`"active"` | `"passive"`), `metadataInternal` (nested `metadata:` block dengan key `internal`),
+- importer/exporter mirror harus menjaga format ini tetap stabil termasuk semua fields frontmatter.
 
 ## Diagram ASCII Lengkap
 
@@ -473,6 +475,7 @@ Contoh:
     "emitChoiceCard"
   ],
   "isEnabled": true,
+  "searchPolicy": "active",
   "activeVersion": 3,
   "publishedVersion": 2,
   "draftVersion": 4,
@@ -484,6 +487,7 @@ Contoh:
 Catatan:
 
 - `allowedTools` dan `isEnabled` merepresentasikan katalog canonical,
+- `searchPolicy` di-derive dari frontmatter content aktif (bukan field schema DB), tetapi berguna sebagai metadata export karena menentukan search behavior per stage,
 - `activeVersion`, `publishedVersion`, `draftVersion` adalah **derived export snapshot**,
 - importer harus tetap mengambil source authority dari DB rows yang relevan.
 
@@ -496,6 +500,11 @@ Catatan:
 5. Jangan bikin satu importer generik yang menghapus perbedaan surface.
 6. Jangan bikin source of truth baru di `src/agent/managed/`.
 7. Jangan buang format markdown + frontmatter milik stage skill saat export/import.
+8. Importer wajib preserve metadata canonical (creator email, timestamps original) di `meta.json`; jangan strip atau reset saat roundtrip.
+9. Importer wajib validate `version` uniqueness per `rootId`/`skillRefId` sebelum write untuk cegah race condition dari concurrent import.
+10. Importer stage skills wajib create entry baru sebagai `status: draft`; jangan auto-promote ke `published` atau `active`.
+11. Importer system prompts wajib create version baru dengan `isActive: false`; auto-activate dilarang tanpa rule eksplisit operator.
+12. Identitas operator import harus diambil dari user yang menjalankan import job, bukan diwariskan dari file mirror; file tidak membawa auth context.
 
 ## Hal yang Sengaja Tidak Ditetapkan di Dokumen Ini
 
@@ -532,7 +541,7 @@ Itu harus dibahas di dokumen arsitektur penyatuan `src/agent/` yang terpisah, su
 - `convex/schema.ts`
 - `convex/systemPrompts.ts`
 - `convex/stageSkills.ts`
-- `convex/stageSkills/constants.ts`
+- `convex/stageSkills/constants.ts` — memegang `STAGE_SCOPE_VALUES`, `ACTIVE_SEARCH_STAGES`, `PASSIVE_SEARCH_STAGES`, `getExpectedSearchPolicy()`, dan `toSkillId()` yang mengkonversi underscore ke hyphen
 
 ### Referensi Non-DB Saat Ini
 
