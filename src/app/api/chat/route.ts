@@ -525,6 +525,7 @@ export async function POST(req: Request) {
         let docExtractionPendingCount = 0
         let docExtractionFailedCount = 0
         let docContextChars = 0
+        const omittedFileNames: string[] = []  // 2026-04-10: track files omitted due to budget cap
         if (effectiveFileIds.length > 0) {
             let files = await fetchQueryWithToken(api.files.getFilesByIds, {
                 userId: userId as Id<"users">,
@@ -564,8 +565,11 @@ export async function POST(req: Request) {
                 docFileCount += 1
 
                 // Check if we've exceeded total limit (paper mode only)
+                // 2026-04-10: Changed from break to continue + omitted tracking so the model
+                // knows additional files exist beyond the budget and can fetch them via tools
                 if (isPaperModeForFiles && totalCharsUsed >= MAX_FILE_CONTEXT_CHARS_TOTAL) {
-                    break
+                    omittedFileNames.push(file.name)
+                    continue
                 }
 
                 fileContext += `[File: ${file.name}]\n`
@@ -613,6 +617,11 @@ export async function POST(req: Request) {
                 } else {
                     docExtractionFailedCount += 1
                 }
+            }
+
+            // 2026-04-10: Emit omitted-files notice so the model knows additional files exist
+            if (omittedFileNames.length > 0) {
+                fileContext += `\n⚠️ Additional file(s) omitted from File Context due to total budget limit: ${omittedFileNames.join(", ")}. Full content accessible via quoteFromSource or searchAcrossSources tools when user asks about them.\n\n`
             }
         }
         if (hasAttachmentSignal) {
