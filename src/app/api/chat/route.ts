@@ -508,8 +508,14 @@ export async function POST(req: Request) {
         // ════════════════════════════════════════════════════════════════
         // Phase 2 Task 2.3.1: File Context Limits (Paper Mode Only)
         // ════════════════════════════════════════════════════════════════
-        const MAX_FILE_CONTEXT_CHARS_PER_FILE = 6000
-        const MAX_FILE_CONTEXT_CHARS_TOTAL = 20000
+        // Phase 2 Task 2.3.1 updated 2026-04-10: Raised limits for Gemini 2.5 Flash 1M context.
+        // Previous values (6000/20000) were legacy from 8K-32K context era.
+        // New values target full academic paper support: 80K chars (~20K tokens) per file,
+        // 240K chars (~60K tokens) total = 7.5% of 800K token budget threshold.
+        // Files exceeding per-file limit receive a truncation marker directing the model
+        // to use quoteFromSource or searchAcrossSources tools for deeper content.
+        const MAX_FILE_CONTEXT_CHARS_PER_FILE = 80000
+        const MAX_FILE_CONTEXT_CHARS_TOTAL = 240000
 
         // Task 6.1-6.4: Fetch file records dan inject context
         let fileContext = ""
@@ -571,9 +577,14 @@ export async function POST(req: Request) {
                 } else if (file.extractionStatus === "success" && file.extractedText) {
                     // Task 6.2-6.3: Extract and format text
                     // Task 2.3.1: Apply per-file limit in paper mode
+                    // 2026-04-10: Added truncation marker so the model knows when content is partial
+                    const originalLength = file.extractedText.length
                     let textToAdd = file.extractedText
+                    let wasTruncated = false
+
                     if (isPaperModeForFiles && textToAdd.length > MAX_FILE_CONTEXT_CHARS_PER_FILE) {
                         textToAdd = textToAdd.slice(0, MAX_FILE_CONTEXT_CHARS_PER_FILE)
+                        wasTruncated = true
                     }
 
                     // Check remaining total budget
@@ -581,13 +592,19 @@ export async function POST(req: Request) {
                         const remainingBudget = MAX_FILE_CONTEXT_CHARS_TOTAL - totalCharsUsed
                         if (textToAdd.length > remainingBudget) {
                             textToAdd = textToAdd.slice(0, remainingBudget)
+                            wasTruncated = true
                         }
                         totalCharsUsed += textToAdd.length
                     }
 
                     docExtractionSuccessCount += 1
                     docContextChars += textToAdd.length
-                    fileContext += textToAdd + "\n\n"
+                    fileContext += textToAdd
+                    if (wasTruncated) {
+                        fileContext += `\n\n⚠️ File truncated at ${textToAdd.length} chars (original: ${originalLength} chars). Full content accessible via quoteFromSource or searchAcrossSources tools.\n\n`
+                    } else {
+                        fileContext += "\n\n"
+                    }
                 } else if (file.extractionStatus === "failed") {
                     // Task 6.6: Handle failed state
                     docExtractionFailedCount += 1
