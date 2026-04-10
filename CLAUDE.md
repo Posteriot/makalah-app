@@ -68,49 +68,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Codex (OpenAI):** Audit and code review. Claude Code must not self-review — all review and audit tasks are delegated to Codex.
 
 ### ACTIVE BRANCH SCOPE
-- **Branch:** `normalizer-typeScript`
-- **Primary scope documents:** `docs/normalizer-typeScript/context.md`, `docs/normalizer-typeScript/design-doc.md`, and `docs/normalizer-typeScript/implementation-plan.md` — read these first before implementation.
-- **Session scope index:** `SCOPE.md` at the worktree root — authoritative active-scope file for this session. Always read `SCOPE.md` before resuming work.
-- **Documentation directory:** `docs/normalizer-typeScript/` — all context, design, plan, implementation notes, verification notes, and handoff materials for this branch must stay here.
-- **Primary objective:** Consolidate the existing TypeScript-based normalization logic into a single ingestion normalization layer for `web-search content` and `upload file text`, used only for RAG ingestion. Status: implementation complete as of 2026-04-10.
-- **Explicit exclusions:** Do not introduce `just-bash` into the runtime path, do not apply the normalizer to exact-source context, and do not mix citation URL normalization into the text normalization layer.
-
-### EXPANDED SCOPE (added 2026-04-10)
-- **Secondary objective:** Investigate attachment awareness bug — model ignores uploaded files unless user explicitly prompts to read them. READ-ONLY investigation, no code changes.
-- **Investigation deliverable:** `docs/normalizer-typeScript/attachment-awareness-investigation.md` — root cause analysis with file:line references and proposed fix options with tradeoffs.
-- **Hard rule:** No implementation, no test changes, no refactors until user explicitly validates the investigation report.
-- **Stop condition:** After writing the investigation report, STOP and wait for user validation. Do not proceed to any fix.
-- **Out of scope during investigation:** Modifying skill instruction files, search router logic, RAG retrieval code, or any other production code.
+- **Branch:** `tools-features-ui-ai-awarness`
+- **Scope document:** `SCOPE.md` (root) — read this first for full awareness mapping, gap analysis, and implementation targets.
+- **Reference files:** `.references/system-prompt-skills-active/updated-4/` — system prompt and 14 stage skill files (the editable working copies).
+- **Documentation directory:** `docs/tools-features-ui-ai-awarness/` — all context, design, plan, implementation, verification, and handoff documents go here.
+- **Objective:** Detect, analyze, verify, audit, and fix the MOKA model's awareness of all tools, features, UI components, and functions available in its runtime environment. Close blind spots where the model does not know about capabilities it has or UI elements the user can see.
 
 ### IMPLEMENTATOR/PLANNER/EXECUTOR MANDATE FOR THIS WORKTREE
 
-You are the planner and executor for this worktree. Your mandate is to implement the TypeScript source normalization layer described in the branch documents and keep the work tightly bounded.
+You are the brainstormer, planner, and executor for this branch. Your work spans two layers:
 
-**Primary implementation targets:**
-- `src/lib/ingestion/source-normalizer.ts`
-- `src/lib/ingestion/source-normalizer.types.ts`
-- `src/lib/ai/web-search/orchestrator.ts`
-- `src/app/api/extract-file/route.ts`
-- `src/lib/ai/rag-ingest.ts`
-- `convex/schema.ts`
-- `convex/files.ts`
-- Any supporting tests required to validate the normalization flow
+**Instruction layer (system prompt + skill files):**
+- Edit files in `.references/system-prompt-skills-active/updated-4/` — these are the working copies of `system-prompt.md` and `01-gagasan-skill.md` through `14-judul-skill.md`.
+- After edits, await user command to deploy to dev DB (wary-ferret-59), then prod DB (basic-oriole-337).
 
-**Required architectural rules:**
-1. The normalization layer exists only between `fetch/extract` and `chunk/embed/ingest`.
-2. `normalizedText` is the only content that may enter the RAG ingestion path.
-3. `raw extracted text` must be preserved for audit/debug/fallback, but must never be indexed into RAG.
-4. Exact-source persistence must stay close to raw source content and must not use normalized text in this branch.
-5. Citation/search URL normalization remains in its own domain and must not be folded into the text normalization layer.
-6. Reuse existing TypeScript helpers where possible; do not rewrite the pipeline from scratch.
+**Code layer (tool descriptions + injected context):**
+- `src/lib/ai/paper-tools.ts` — tool descriptions in Zod `.describe()` strings and `tool({ description })` blocks.
+- `src/lib/ai/paper-mode-prompt.ts` — dynamically injected context sections (revision notes, artifact context, stage instructions).
+- `src/app/api/chat/route.ts` — system message composition, tool provisioning, context injection order.
+- `src/lib/json-render/choice-yaml-prompt.ts` — CHOICE_YAML_SYSTEM_PROMPT for choice card rendering.
+- Any other file where model-facing instructions or context are composed.
 
-**Documentation and working notes:**
-- Keep all branch documentation in `docs/normalizer-typeScript/`.
-- If you create implementation notes, verification notes, or handoff notes, store them in the same directory.
+**Audit targets — the model must be aware of:**
+1. **Tools per stage** — all available tools and when/how to use them, including exact source tools (inspectSourceDocument, quoteFromSource, searchAcrossSources) and readArtifact.
+2. **Artifact system** — ArtifactViewer, ArtifactPanel, ArtifactEditor (inline editing by user), ArtifactToolbar (copy/export), ArtifactTabs (multi-tab view).
+3. **PaperValidationPanel** — approve/revise buttons, revision feedback textarea, dirty state warning, authority boundary over stage lifecycle.
+4. **Choice card (json-renderer YAML)** — ChoiceCardShell, ChoiceOptionButton, ChoiceTextarea, ChoiceSubmitButton, decisionMode (exploration/commit), recommended badge.
+5. **Process/status UI** — UnifiedProcessCard (task progress), ChatProcessStatusBar (real-time status), ToolStateIndicator (tool execution state), ReasoningTracePanel (reasoning visualization), thinking loader above chat input.
+6. **Source system** — SourcesPanel (source metadata + verification status), InlineCitationChip (clickable inline citations).
 
-**Expected deliverables:**
-- Source normalizer contract and implementation
-- Integration patches for upload and web-search ingestion paths
-- Schema and persistence updates for raw vs normalized content
-- Tests and verification artifacts
-- Updated branch-local documentation if the implementation changes the agreed design
+**Awareness means:** The model knows what the user can see and interact with, so it can complement the UI (not duplicate or contradict it). For each feature: does the model know it exists? Does the model know what the user sees? Does the model adjust its output accordingly?
+
+**Deliverables:**
+- Awareness mapping document (what's aware, what's not, what's partial)
+- Patches to system prompt and skill files to close gaps
+- Code-level patches to tool descriptions and injected context where needed
+- Verification checklist and report
+- Handoff document for deploy

@@ -1319,6 +1319,73 @@ Codex returned APPROVE-WITH-CHANGES — 0 critical, 2 important, 3 minor finding
 
 All 5 findings + 1 new risk addressed in this revision. Plan ready for Round 3 audit.
 
+**Codex Audit Round 3 response log (2026-04-10):**
+
+Codex returned APPROVE — 0 critical, 0 important, 3 minor findings only. Go verdict. All 3 minor nits addressed as quick cleanups:
+
+| Round 3 finding | Severity | Resolution |
+|---|---|---|
+| D1 pre-deploy verification line says "T2-T11 pass" but T11 is non-blocking observation | Minor | Changed wording to "T2-T8 pass, T11 executed and logged" |
+| R4 step 2 uses placeholder `<new draft version from previous call>` — named pseudo-variable cleaner | Minor | Replaced with `const { version: draftVersion } = await stageSkills.createOrUpdateDraft(...)` pattern |
+| T11 ">50% of test runs" threshold implies repeated runs but minimum count not prescribed | Minor | Added explicit "Repetition protocol: Run the T11 scenario at least 5 independent attempts" and clarified ">50%" as "3 or more of 5 attempts" |
+
+Plan fully approved for execution phase. Commit `0c3f2b95` captured these minor cleanups.
+
+**Codex Audit Round 4 response log (2026-04-10):**
+
+First audit of actual code commits (Change Group A). Commits `290047b2`, `38262dc4`, `31e4a913`. Codex returned APPROVE-WITH-CHANGES — 0 critical, 0 important, 3 minor findings (all optional cleanups). "Go" verdict for Change Group B.
+
+| Round 4 finding | Severity | Resolution |
+|---|---|---|
+| Omitted-files notice can grow arbitrarily with many omitted files | Minor | Acknowledged as future operational improvement. Not blocking — noted for potential follow-up to cap notice length. |
+| Telemetry field name `attachmentFirstResponseForced` still reads like forcing gate after A6 semantic shift; potential future rename to `attachmentFirstTurnBranchSelected` | Minor | Acknowledged as future schema migration. No downstream consumers currently affected. |
+| Inline comments around new directive + budget logic getting dense | Minor | Acknowledged — readability watch for future attachment-logic landings in this block. |
+
+Verification results: all 5 behavioral correctness checks PASS, 2 telemetry semantic checks PASS, 3 regression risk checks PASS (D.12 and D.13 PARTIAL as acknowledged limitations), 2 pre-execution readiness checks PASS. Plan approved for Change Group B (Commit 4 + Commit 5).
+
+**Codex Audit Round 5 response log (2026-04-10):**
+
+Audit of content commits (Change Group B + C). Commits `d9590804` (system-prompt.md) and `79e6f8d9` (14 skill files). Codex returned **APPROVE with ZERO findings**. Go verdict for D1.5 snapshot + D2 deployment.
+
+| Section | Result |
+|---|---|
+| A.1-A.5 Content correctness (B1 block + C1 additive + C2 uniform) | All PASS |
+| B.6-B.14 Validator compliance (9 validator checks) | All PASS |
+| C.15-C.17 Structural integrity (diff scope, no C3, 11-pembaruan structure) | All PASS |
+| D.18-D.20 Pre-deployment readiness | All PASS |
+| New risks | None |
+
+Content commits entered the execution phase cleanly. No plan revision needed for Round 5.
+
+**Codex Audit Round 6 response log (2026-04-10):**
+
+Audit of dev deployment evidence (D1.5 snapshot + D2 deploy scripts + smoke tests + T11 log). Commit `6f2cc73e` (deployment tooling + artifacts). Codex returned APPROVE-WITH-CHANGES — 0 critical, 3 important, 2 minor findings, 2 new risks.
+
+| Round 6 finding | Severity | Resolution |
+|---|---|---|
+| `runPreActivationDryRun` validates latest_published candidate (just-demoted previous active), not newly active version — progress JSON's `verification.dryRun` field semantically misleading | Important | Added "Verification layer semantics" section to dev verification doc separating Layer 1 (authoritative readback diff at `scripts/deploy-attachment-awareness-dev.mjs:128-140`) from Layer 2 (secondary dry run with candidate resolution bug documented). Actual deployment correctness unchanged — readback diff is authoritative. |
+| T9 framing "matches pre-existing baseline" too strong without baseline artifact link | Important | Replaced with verifiable claim: `git log` command showing zero commits in branch for `reference-presentation.test.ts` and `reference-presentation.ts`. Failure signature `Promise {}` is a property of files this branch does not modify. |
+| T11 attempt 1 log claimed `summarize_content=YES` but evidence snippet had no summary quote | Important | Downgraded attempt 1 to `UNVERIFIED` in observation log table. Added correction note. Recalculated totals from 5/5 to 4/5 summarization. Severe limitation threshold unchanged (threshold requires ≥3 ignoring entirely, which never happened). |
+| Snapshot verifier only checks count + non-empty content, doesn't validate rollback-critical fields (skillId, name, description, allowedTools, promptId, version) | Minor | Acknowledged as future improvement to `create-convex-snapshot.mjs`. Current snapshot file is sufficient for rollback (Codex confirmed fields are actually present). Not blocking. |
+| Deploy script hardcodes ADMIN_ID and is not idempotent for rerun with same content | Minor | Acknowledged as future improvement. For the specific deploy performed, not a problem. Not blocking. |
+| New risk: deployment-progress false security on rerun (verification.complete could mean published valid, not active valid) | New risk | Implicitly addressed via verification layer semantics clarification — future deployment scripts should restructure progress JSON. |
+| New risk: evidence drift risk if baseline claims stay without concrete pointers | New risk | Addressed via T9 verifiable claim format. Future audits should require link-to-artifact for baseline claims. |
+
+All 3 important findings addressed in commit `2d8b7518`. Minor findings documented as future work.
+
+**Codex Audit Round 7 response log (2026-04-10):**
+
+Pre-push final review combined with Audit 6 resolution verification. Codex returned APPROVE-WITH-CHANGES — 0 critical, 3 important, 0 minor findings, 1 new risk.
+
+| Round 7 finding | Severity | Resolution |
+|---|---|---|
+| T11 correction not fully propagated — stale `5/5` line still present in dev verification doc readiness summary | Important | Updated the readiness summary line to match the corrected totals: `5/5` acknowledgment, `4/5` confirmed summary with attempt 1 unverified, `5/5` integration, severe limitation threshold NOT TRIGGERED |
+| Appendix C audit trail incomplete — only Rounds 1-2 logged, Rounds 3-6 missing | Important | Added explicit audit round logs for Rounds 3, 4, 5, 6, and 7 (this entry) to Appendix C. Each round has a finding/resolution table. |
+| Branch-specific instruction files (AGENTS.md, CLAUDE.md, SCOPE.md) in merge diff would leak worktree-only scope into main | Important | Reverted AGENTS.md and CLAUDE.md to merge-base state (removes the normalizer-typeScript EXPANDED SCOPE blocks I added). Emptied SCOPE.md back to its 0-byte pre-branch state. Preserved the session scope history content in a new branch-local file `docs/normalizer-typeScript/session-scope-history.md` for audit trail continuity. |
+| New risk: merging AGENTS.md and CLAUDE.md as-is would leave stale branch-specific operational instructions in main | New risk | Directly addressed by the revert above. No residual risk after Round 7 resolution. |
+
+All 3 important findings addressed in Round 7 resolution commit. Plan and branch ready for push/PR/merge pending Codex re-audit.
+
 ## Appendix D: Stage Scope Mapping and Structural Consistency
 
 ### Stage scope mapping (filename → stageScope)

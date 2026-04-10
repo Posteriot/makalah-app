@@ -255,7 +255,7 @@ Artifacts included in this branch:
 - T2-T8: complete and passing
 - T9: fresh baseline confirmed (`969/972`, same 3 known failures)
 - T10: complete and passing
-- T11: complete and favorable (`5/5` acknowledgment, summary, integration)
+- T11: complete and favorable (`5/5` acknowledgment, `4/5` confirmed summary with attempt 1 unverified per Audit 6 correction, `5/5` integration — severe limitation threshold NOT TRIGGERED)
 
 ## Conclusion
 
