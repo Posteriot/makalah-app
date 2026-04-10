@@ -68,21 +68,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Codex (OpenAI):** Audit and code review. Claude Code must not self-review — all review and audit tasks are delegated to Codex.
 
 ### ACTIVE BRANCH SCOPE
-- **Branch:** `tier-promote-demote`
-- **Documentation directory:** `docs/tier-promote-demote/` — design doc and implementation plan.
-- **Objective:** Replace binary promote/demote (user↔admin) in admin panel User Management with tier-aware promote/demote supporting free↔bpp↔pro↔admin transitions.
+
 
 ### IMPLEMENTATOR/PLANNER/EXECUTOR MANDATE FOR THIS WORKTREE
 
 You are the brainstormer, planner, and executor for this branch.
 
 **Files in scope:**
-- `convex/adminUserManagement.ts` — refactor `demoteToUser` → `demoteFromAdmin` with `targetTier` arg.
-- `src/components/admin/UserList.tsx` — tier-aware promote/demote UI, unified dialog, static subscription badge.
-- `.references/tools-apis-list/documentation.md` and `.references/tools-apis-list/README.md` — update mutation references.
-
-**Deliverables:**
-- Backend mutation refactor (demoteFromAdmin)
-- Frontend tier-aware promote/demote buttons and dialog
-- Documentation reference updates
-- Manual verification report

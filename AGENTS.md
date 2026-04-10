@@ -52,6 +52,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Do not skip unfinished processes.
 - It's better to take longer than to draw conclusions without evidence.
 
+
 ### AI TOOLS & SKILLS ARCHITECTURE PRINCIPLE
 - **Tools must be simple executors.** Do not add filtering, scoring, or quality judgment to tool pipelines. Tools retrieve data — that's it.
 - **Skills (SKILL.md) provide intelligence.** Quality judgment, blocklists, evaluation criteria, and response composition rules belong in natural language skill instructions, not in code. Ref: `references/skills/resources.anthropic.com.md`
