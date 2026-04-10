@@ -1125,7 +1125,7 @@ export function MarkdownRenderer({ markdown, className, sources, context }: Mark
   const hasCitationMarkers = /\[\d+(?:\s*,\s*\d+)*\]/.test(markdown)
   const shouldAppendFallbackChip = context !== "artifact" && !!sources && sources.length > 0 && !hasCitationMarkers
   return (
-    <div className={`[overflow-wrap:anywhere] break-words ${className ?? ""}`}>
+    <div className={`[overflow-wrap:anywhere] break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 ${className ?? ""}`}>
       {renderBlocks(blocks, "md", sources, { appendFallbackChip: shouldAppendFallbackChip }, context)}
     </div>
   )

@@ -1077,7 +1077,7 @@ export function MessageBubble({
                 )}>
                     {/* File Attachments Badge */}
                     {shouldRenderAttachmentChips && (
-                        <div className="mb-3 flex flex-wrap gap-1.5">
+                        <div className="mt-0.5 mb-3 flex flex-wrap gap-1.5">
                             {fileIds.map((fid: string, idx: number) => {
                                 const fileMeta = fileMetaMap?.get(fid)
                                 const name = fileNames[idx] || fileMeta?.name || fileNameMap?.get(fid) || "file"
