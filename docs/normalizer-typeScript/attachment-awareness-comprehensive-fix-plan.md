@@ -716,7 +716,9 @@ Individual skills MAY append one additional sentence to step 2 of the Attachment
 
 **Recording:** Log the results in `docs/normalizer-typeScript/t11-observation-log-YYYY-MM-DD.md` after each test run. This creates an evidence trail for the Risk 7f follow-up decision.
 
-**If T11 shows the limitation is severe** (e.g., >50% of test runs show the model ignoring the new file entirely), flag this as a blocker for the user to decide whether to scope a follow-up fix (new file detection per turn) before shipping or ship with the limitation documented in release notes.
+**Repetition protocol:** Run the T11 scenario **at least 5 independent attempts** (fresh conversations each time) to get a meaningful signal. Record each attempt's results in the observation log.
+
+**If T11 shows the limitation is severe** (e.g., 3 or more of 5 attempts — i.e., >50% — show the model ignoring the new file entirely), flag this as a blocker for the user to decide whether to scope a follow-up fix (new file detection per turn) before shipping or ship with the limitation documented in release notes.
 
 **T11 is NOT in Definition of Done.** T2-T10 are the success gate. T11 is reference data only.
 
@@ -764,7 +766,7 @@ The `sed '$d'` strips the trailing "## " line that marks the start of the next s
 
 1. All code changes committed to `normalizer-typeScript` branch
 2. Skill files updated in `.references/system-prompt-skills-active/updated-4/`
-3. Smoke tests T2-T11 pass on local dev server
+3. Smoke tests T2-T8 pass on local dev server; T11 executed and results logged to observation log (T11 is non-blocking observation, not a success gate)
 4. Regression test T9 passes
 5. Skill diff verification T10 passes
 6. Codex audit of this fix plan completed and any findings addressed
@@ -964,9 +966,9 @@ Each skill goes through a 3-step lifecycle: draft → published → active. Use 
 1. **Locate the snapshot file:** `snapshots/pre-deployment-YYYY-MM-DD-HHMMSS.json` (for dev) or `snapshots/pre-deployment-prod-YYYY-MM-DD-HHMMSS.json` (for prod).
 
 2. **Restore all 14 stage skills from snapshot** — for each `entry` in `snapshot.stageSkills`:
-   - Call `stageSkills.createOrUpdateDraft({ requestorUserId, stageScope: entry.stageScope, name: entry.name, description: entry.description, contentBody: entry.activeContent, changeNote: "Rollback to pre-deployment snapshot [timestamp]", allowedTools: entry.allowedTools })` → returns new draft version number
-   - Call `stageSkills.publishVersion({ requestorUserId, skillId: entry.skillId, version: <new draft version from previous call> })` → publishes the draft
-   - Call `stageSkills.activateVersion({ requestorUserId, skillId: entry.skillId, version: <same version> })` → activates the restored version
+   - Call `const { version: draftVersion } = await stageSkills.createOrUpdateDraft({ requestorUserId, stageScope: entry.stageScope, name: entry.name, description: entry.description, contentBody: entry.activeContent, changeNote: "Rollback to pre-deployment snapshot [timestamp]", allowedTools: entry.allowedTools })` → returns new draft version number in `draftVersion`
+   - Call `await stageSkills.publishVersion({ requestorUserId, skillId: entry.skillId, version: draftVersion })` → publishes the draft
+   - Call `await stageSkills.activateVersion({ requestorUserId, skillId: entry.skillId, version: draftVersion })` → activates the restored version
    - Wait for success response before proceeding to next entry
    - If any step fails for this entry, log the failed `entry.skillId` and CONTINUE with remaining entries (best-effort restore; partial rollback is better than none)
 
