@@ -2,21 +2,23 @@
 
 ## Purpose
 
-Dokumen ini menyimpan keputusan kerja yang bisa berubah seiring iterasi fitur `naskah`.
+Dokumen ini menyimpan keputusan kerja yang dipakai sebagai rujukan arsitektur dan implementasi fitur `naskah`.
 Isinya mencakup keputusan aktif, arah yang ditolak atau ditunda, pertanyaan terbuka, dan log perubahan keputusan.
+Setiap keputusan harus dibaca berdampingan dengan kondisi codebase yang sudah diverifikasi.
 
 Untuk konteks yang lebih stabil, lihat `docs/naskah-feature/context.md`.
 
 ## Current Active Direction
 
-Status saat ini berdasarkan percakapan:
-- fitur dipahami sebagai `naskah`
-- `naskah` adalah compiled paper workspace
-- `naskah` mengambil isi dari artifact final/validated
-- `artifact` tetap menjadi source of truth
-- edit tetap dilakukan di artifact pada fase awal
-- `naskah` read-only pada fase awal
-- `naskah` hadir sebagai halaman fullscreen terpisah dari workspace chat/artifact
+Status saat ini berdasarkan audit codebase:
+- `naskah` diposisikan sebagai compiled paper workspace read-only pada fase awal
+- authoring tetap dilakukan di artifact
+- pipeline export existing masih berbasis `stageData` dan masih dibatasi untuk session `completed`
+- `stageData` saat ini adalah layer koordinasi workflow, bukan compiled naskah state
+- state khusus `naskah` seperti availability, `update pending`, dan compiled snapshot belum ada
+- entry point, topbar behavior, dan route khusus `Naskah` belum ada di codebase
+- `validatedAt` adalah fondasi paling nyata untuk pertumbuhan section yang tervalidasi
+- keputusan fase 1 harus mengakui gap antara intent produk dan state implementasi sekarang
 
 ## Active Decisions
 
@@ -25,8 +27,10 @@ Status saat ini berdasarkan percakapan:
 Status: active
 
 Keputusan:
-- isi utama tetap berakar pada artifact
-- `naskah` tidak menjadi authority baru untuk authoring pada fase awal
+- isi `Naskah` bersumber dari artifact tervalidasi sebagai authority authoring
+- `stageData` dipakai sebagai layer koordinasi untuk referensi artifact, bukan sebagai isi dokumen final
+- untuk fase 1, compiler `Naskah` membaca content artifact yang direferensikan oleh `stageData`, bukan membangun authoring baru dari state `Naskah`
+- keputusan ini tidak boleh menciptakan source of truth kedua yang berdiri sendiri di luar artifact
 
 Alasan:
 - lebih konsisten dengan struktur sistem sekarang
@@ -40,6 +44,8 @@ Status: active
 Keputusan:
 - user tetap mengedit konten di artifact
 - `naskah` tidak menjadi tempat edit utama di fase awal
+- perubahan di artifact baru tercermin ke `Naskah` setelah artifact itu tervalidasi ulang lewat penanda `validatedAt`
+- selama belum tervalidasi ulang, `Naskah` tetap memakai versi tervalidasi terakhir
 
 Alasan:
 - menjaga source of truth tetap jelas
@@ -53,6 +59,7 @@ Status: active
 Keputusan:
 - `naskah` hanya dipakai untuk melihat hasil paper utuh
 - edit manual di `naskah` tidak dibuka pada fase awal
+- fase ini belum membuka loop edit balik dari `naskah` ke artifact
 
 Alasan:
 - menghindari divergensi dari artifact
@@ -65,6 +72,9 @@ Status: active
 
 Keputusan:
 - perubahan pada artifact yang relevan harus tercermin ke `naskah`
+- sinkronisasi hanya satu arah dari artifact ke `naskah`
+- `naskah` tidak menjadi sumber perubahan balik ke artifact
+- perubahan yang belum tervalidasi hanya menjadi kandidat update dan belum boleh mengganti isi `Naskah`
 
 Tidak dipilih:
 - `naskah -> artifact`
@@ -84,6 +94,7 @@ Keputusan:
 - `naskah` tidak menjadi panel berdampingan di halaman chat
 - `naskah` diposisikan sebagai halaman tersendiri fullscreen
 - akses ke `naskah` dilakukan lewat tombol `Naskah` di topbar halaman chat
+- route dan entry point tersebut belum ada di codebase saat ini, jadi ini masih target implementasi
 
 Alasan:
 - memberi ruang maksimal untuk preview A4 dan pagination
@@ -95,20 +106,24 @@ Alasan:
 Status: active
 
 Keputusan:
-- `naskah` harus tampil sebagai preview naskah akademik
+- `Naskah` fase 1 harus tampil sebagai preview naskah akademik read-only dengan layout paper, pagination A4, dan urutan section final
 - renderer harus mendukung layout paper, bukan sekadar markdown rendering generik
+- preview web dan export final diperlakukan sebagai dua renderer yang bisa berdekatan tapi tidak identik pada detail pagination
+- fase 1 tidak membuka editing, markdown rendering generik, atau continuous-scroll-only sebagai bentuk utama
 
 Alasan:
 - kebutuhan user adalah preview paper utuh dalam format akademik
 - markdown renderer biasa tidak cukup untuk memenuhi kebutuhan tersebut
 
-### D-007: Naskah Harus Mendukung Estimasi Halaman Dan Export
+### D-007: Pagination Adalah Concern Fase 1; Export Mengikuti Jalur Terpisah
 
 Status: active
 
 Keputusan:
-- `naskah` harus menampilkan pagination atau estimasi jumlah halaman
-- `naskah` harus menjadi basis export PDF/DOCX
+- pagination atau estimasi jumlah halaman adalah concern preview
+- export PDF/DOCX adalah concern terpisah yang memakai compiled content yang sama
+- untuk fase 1, export `Naskah` ditahan sampai jalur export khusus tersedia
+- export existing yang completed-only tidak dipakai sebagai jalan parsial untuk `Naskah`
 
 Alasan:
 - ini inti value produk yang dibahas user sejak awal
@@ -119,8 +134,9 @@ Alasan:
 Status: active
 
 Keputusan:
-- tombol `Naskah` di topbar halaman chat hanya muncul ketika `naskah` sudah tergenerate
-- `naskah` mulai dianggap tergenerate ketika stage `abstrak` sudah tervalidasi
+- tombol `Naskah` di topbar halaman chat hanya muncul ketika `Naskah` sudah dianggap tersedia
+- `Naskah` dianggap tersedia ketika `abstrak` sudah tervalidasi dan compiler dapat membentuk minimal compiled content dari artifact tervalidasi
+- karena route dan topbar khusus belum ada, keputusan ini masih menunggu implementasi shell baru
 
 Alasan:
 - ada ambang yang jelas kapan paper utuh sudah cukup layak untuk mulai dilihat
@@ -136,6 +152,8 @@ Keputusan:
 - sistem menampilkan indikator `update` di halaman `naskah`
 - tombol `Naskah` di topbar halaman chat juga menampilkan notifikasi visual saat ada update naskah yang belum dimuat
 - user harus melakukan aksi klik untuk memuat versi terbaru naskah
+- `update pending` berarti compiled revision terbaru berbeda dengan revision yang terakhir dimuat user
+- `isDirty` yang ada sekarang tidak cukup untuk semantik itu karena `isDirty` hanya menandai perubahan workflow, bukan perbandingan compiled snapshot
 
 Alasan:
 - mencegah isi naskah berubah diam-diam saat user sedang membaca
@@ -151,6 +169,7 @@ Keputusan:
 - section lain yang belum tervalidasi tidak ditampilkan
 - tidak ada placeholder atau kerangka kosong untuk section yang belum tersedia
 - seiring makin banyak section tervalidasi, isi dan halaman `naskah` bertambah secara bertahap
+- eligibilitas section ditentukan oleh dua syarat: stage yang relevan sudah tervalidasi dan compiler berhasil membentuk section yang layak tampil
 
 Alasan:
 - lebih jujur terhadap progres nyata dokumen
@@ -165,6 +184,7 @@ Keputusan:
 - urutan section di `naskah` tetap mengikuti urutan paper akademik final
 - hanya section yang sudah tervalidasi yang ditampilkan
 - section yang belum tervalidasi tidak ditampilkan dan tidak membuat placeholder posisi kosong
+- compiler yang dipakai harus sudah memetakan stage internal ke urutan section final, bukan sekadar mengikuti urutan data mentah
 
 Alasan:
 - menjaga konsistensi mental model paper utuh
@@ -193,6 +213,7 @@ Keputusan:
 - halaman `Naskah` menampilkan daftar section yang sudah masuk ke naskah
 - halaman tidak perlu menampilkan daftar section yang belum masuk
 - daftar ini berfungsi sebagai informasi progres yang ringan, bukan dashboard status penuh
+- daftar ini bergantung pada output compiler yang sudah menghasilkan section final yang benar-benar eligible tampil
 
 Alasan:
 - membantu user memahami isi naskah saat ini
@@ -212,18 +233,19 @@ Alasan:
 - menyatukan fungsi orientasi isi dan navigasi dalam satu elemen UI
 - tetap ringan tanpa harus menambah komponen navigasi terpisah
 
-### D-015: Export Tersedia Sejak Naskah Ada, Dengan Label Parsial
+### D-015: Export Parsial Ditahan Sampai Jalur Khusus Tersedia
 
-Status: active
+Status: deferred
 
 Keputusan:
-- export PDF/DOCX tersedia sejak `naskah` pertama kali tersedia
-- jika `naskah` belum lengkap, UI harus memberi label atau penanda bahwa hasil export masih parsial
+- export PDF/DOCX untuk `naskah` belum dianggap tersedia di codebase sekarang
+- jika keputusan ini diaktifkan, UI harus memberi label atau penanda bahwa hasil export masih parsial
+- aktivasi keputusan ini membutuhkan jalur export `naskah` yang tidak bergantung pada pipeline completed-only saat ini
 
 Alasan:
-- user tetap bisa memanfaatkan hasil awal
-- konsisten dengan model naskah yang bertumbuh secara bertahap
-- tetap jujur terhadap status kelengkapan dokumen
+- secara produk, export parsial tetap masuk akal untuk `Naskah`
+- secara implementasi, status ini ditahan karena backend export existing masih completed-only
+- keputusan ini akan diaktifkan ulang setelah jalur export `Naskah` dan model snapshot tersedia
 
 ### D-016: Revisi Section Menggantikan Versi Naskah Sebelumnya
 
@@ -233,11 +255,17 @@ Keputusan:
 - jika section yang sudah masuk ke `naskah` direvisi lalu tervalidasi ulang, versi section di `naskah` digantikan penuh oleh versi tervalidasi terbaru
 - `naskah` tidak menyimpan riwayat versi section sebagai bagian dari pengalaman fase awal
 - pergantian ini mengikuti mekanisme refresh manual yang sudah dipilih
+- revisi artifact yang belum tervalidasi ulang tidak mengganti isi `Naskah`, tetapi boleh menjadi dasar munculnya `update pending` setelah compiled revision baru tersedia
 
 Alasan:
 - konsisten dengan artifact sebagai source of truth
 - lebih sederhana daripada menambah versioning atau merge flow di level naskah
 - cocok untuk fase awal yang fokus pada preview terkompilasi
+
+## Presentation Decisions
+
+Kelompok keputusan berikut terutama mengatur struktur UI, layout, copy, dan affordance presentasi `Naskah`.
+Keputusan-keputusan ini tidak boleh dibaca sebagai bukti bahwa state backend, route, atau shell pendukungnya sudah tersedia di codebase saat ini.
 
 ### D-017: Status Naskah Bertumbuh Menggunakan Pola Gabungan
 
@@ -261,6 +289,8 @@ Keputusan:
 - jika tombol `Naskah` di topbar menunjukkan ada update pending lalu user mengkliknya, sistem tetap hanya membuka halaman `Naskah`
 - update terbaru tidak otomatis dimuat saat navigasi
 - indikator update ditampilkan di dalam halaman `Naskah`, dan user memutuskan kapan memuatnya
+- keputusan ini menunggu adanya snapshot/version state yang bisa dibandingkan secara eksplisit
+- sebelum model snapshot/revision tersedia, keputusan ini harus dibaca sebagai intent arsitektur, belum sebagai perilaku yang sudah operasional
 
 Alasan:
 - konsisten dengan prinsip refresh manual
@@ -276,6 +306,7 @@ Keputusan:
 - di halaman `Chat`, yang tampil adalah tombol `Naskah`
 - di halaman `Naskah`, yang tampil adalah tombol `Chat`
 - `Naskah` tidak diperlakukan sebagai halaman anak yang kembali lewat tombol back lokal
+- ini mengandaikan route hierarchy antar halaman saudara dengan shared shell behavior di level topbar, bukan relasi parent-child lokal
 
 Alasan:
 - paling konsisten dengan posisi `Naskah` sebagai halaman mandiri
@@ -331,6 +362,7 @@ Keputusan:
 - header memuat status bertumbuh atau parsial
 - header memuat indikator update
 - header memuat aksi export
+- detail copy dan layout status diatur di keputusan turunan berikutnya
 
 Alasan:
 - seluruh informasi dan aksi utama naskah terkumpul di area yang mudah ditemukan
@@ -344,6 +376,7 @@ Status: active
 Keputusan:
 - header halaman menampilkan identitas fitur `Naskah`
 - header juga menampilkan judul paper aktif yang sedang dibuka
+- judul aktif tetap bergantung pada mekanisme title resolution yang ada, bukan state baru yang terpisah
 
 Alasan:
 - menjaga identitas fitur tetap jelas
@@ -412,6 +445,7 @@ Keputusan:
 - indikator update utama di halaman `Naskah` berbentuk banner tipis di area header
 - banner ini memuat aksi utama `Update`
 - fase awal tidak memakai toast persisten atau status bar kecil sebagai bentuk utama indikator update
+- banner ini hanya masuk akal kalau ada compiled revision yang bisa dimuat ulang secara eksplisit
 
 Alasan:
 - paling jelas untuk aksi yang penting
@@ -425,6 +459,7 @@ Status: active
 Keputusan:
 - status bahwa `naskah` masih bertumbuh dan status bahwa export masih parsial diperlakukan sebagai satu status utama yang sama
 - UI tidak perlu memisahkan dua status yang maknanya sangat berdekatan
+- untuk fase 1, penggabungan ini dipakai hanya pada state yang memang sudah punya dasar data
 
 Alasan:
 - lebih ringkas
@@ -439,6 +474,7 @@ Keputusan:
 - notifikasi update pada tombol `Naskah` di halaman `Chat` ditampilkan sebagai titik kecil
 - fase awal tidak memakai badge teks `update`
 - fase awal tidak memakai badge angka jumlah update
+- indikator ini bergantung pada model `update pending` yang belum ada di codebase sekarang
 
 Alasan:
 - paling ringan secara visual
@@ -452,6 +488,7 @@ Status: active
 Keputusan:
 - status utama di header `Naskah` ditampilkan sebagai kombinasi badge kecil dan info text pendek
 - pola ini dipakai untuk menyampaikan bahwa naskah masih bertumbuh atau masih parsial
+- badge dan info text harus dibaca sebagai satu status utama, bukan dua status terpisah
 
 Alasan:
 - paling sesuai dengan keputusan sebelumnya bahwa status perlu singkat sekaligus tetap memberi penjelasan halus
@@ -479,6 +516,7 @@ Status: active
 Keputusan:
 - jumlah halaman `Naskah` ditampilkan di header
 - fase awal tidak perlu menampilkan jumlah halaman sebagai elemen terpisah dekat area preview
+- angka ini harus dikomunikasikan sebagai estimasi, bukan kepastian final
 
 Alasan:
 - jumlah halaman adalah informasi level dokumen
@@ -506,6 +544,7 @@ Keputusan:
 - aksi export di header `Naskah` menggunakan satu tombol `Export`
 - pilihan format seperti `PDF` dan `DOCX` ditampilkan melalui dropdown
 - fase awal tidak memakai dua tombol format terpisah di header
+- penggabungan ini hanya valid setelah jalur export `Naskah` benar-benar tersedia
 
 Alasan:
 - lebih rapi di header yang sudah memuat banyak elemen penting
@@ -526,6 +565,10 @@ Alasan:
 - menjaga dropdown tetap bersih
 - konsisten dengan keputusan bahwa status utama dokumen berada di header
 
+## Compilation Decisions
+
+Kelompok keputusan berikut mengatur bagaimana stage tervalidasi dipetakan menjadi section `Naskah`.
+
 ### D-038: Setiap Section Masuk Ke Naskah Hanya Setelah Tervalidasi
 
 Status: active
@@ -533,6 +576,9 @@ Status: active
 Keputusan:
 - setiap section selain `abstrak` hanya boleh masuk ke `naskah` setelah section tersebut tervalidasi
 - `naskah` tidak mengambil section yang baru dianggap final secara informal tetapi belum tervalidasi
+- section yang tervalidasi tetap bisa ditahan kalau struktur artifact belum cukup rapi untuk kompilasi
+- compiler membaca artifact tervalidasi yang direferensikan oleh `stageData`
+- jika artifact yang semula tervalidasi kemudian invalidated oleh rewind, section terkait keluar lagi dari kandidat `Naskah` sampai ada validasi baru
 
 Alasan:
 - paling konsisten dengan artifact tervalidasi sebagai dasar pertumbuhan naskah
@@ -546,6 +592,7 @@ Status: active
 Keputusan:
 - tidak semua stage internal yang tervalidasi otomatis tampil sebagai section tersendiri di `naskah`
 - kemunculan section di `naskah` ditentukan oleh mapping ke struktur section akademik final
+- mapping ini harus tetap selaras dengan compiler yang dipakai, bukan cuma label UI
 
 Alasan:
 - menjaga `naskah` tetap terasa seperti paper akademik, bukan cerminan mentah workflow internal
@@ -575,11 +622,17 @@ Keputusan:
 - header dokumen `Naskah` boleh memakai `working title` dari stage `topik`
 - saat stage `judul` tervalidasi, judul dokumen diperbarui ke `judul` final/terpilih
 - stage `judul` tidak menjadi section isi tersendiri di `naskah`
+- jika judul final belum tersedia, working title tetap jadi fallback sampai ada keputusan final
 
 Alasan:
 - memberi identitas dokumen lebih awal
 - tetap memungkinkan peralihan ke judul final di tahap akhir
 - lebih selaras dengan pengalaman membaca dokumen utuh daripada membiarkan judul kosong terlalu lama
+
+## Layout Decisions
+
+Kelompok keputusan berikut mengatur bentuk layout dokumen dan outline `Naskah`.
+Seluruhnya harus dibaca sebagai target layout preview web, bukan janji bahwa hasilnya akan identik 100% dengan export final.
 
 ### D-042: Working Title Mulai Dipakai Saat Naskah Pertama Kali Muncul
 
@@ -741,6 +794,38 @@ Alasan:
 - membuat `Halaman Judul` terasa sebagai bagian normal dari struktur naskah
 - menghindari pengecualian UI yang tidak perlu
 
+### D-054: Section Ditahan Jika Artifact Belum Cukup Rapi Untuk Dikompilasi
+
+Status: active
+
+Keputusan:
+- jika artifact yang sudah tervalidasi belum cukup rapi untuk dikompilasi menjadi section `Naskah`, section tersebut ditahan dulu
+- section itu tidak dimasukkan ke `Naskah` sampai memenuhi syarat kompilasi yang layak
+- fase awal tidak menampilkan hasil kompilasi apa adanya jika kualitas strukturnya belum memadai
+- penilaian layak atau tidaknya kompilasi harus deterministik di level compiler guard, bukan judgment manual yang kabur
+- "cukup rapi" berarti section punya content wajib yang sudah tervalidasi, heading valid, dan bisa dirender tanpa placeholder atau structural error yang membuat layout paper pecah
+
+Alasan:
+- menjaga `Naskah` tetap terasa seperti paper yang rapi
+- lebih konsisten dengan positioning `Naskah` sebagai compiled academic view
+- menghindari tampilan section yang secara visual atau struktural masih berantakan
+
+### D-055: Preview Web Ditargetkan Sangat Dekat Dengan Export Final
+
+Status: active
+
+Keputusan:
+- pada fase awal, preview web `Naskah` ditargetkan sangat dekat dengan hasil export final
+- sistem tidak menjanjikan bahwa preview web identik 100% dengan Word/PDF final
+- komunikasi ke user tetap memakai bahasa estimasi untuk pagination
+- preview web dan export final boleh memakai renderer yang berbeda selama hasilnya konsisten pada urutan section, semantics layout, dan copy status
+- target ini adalah target kualitas, bukan kontrak pixel-perfect atau page-perfect
+
+Alasan:
+- menjaga value utama fitur sebagai preview paper yang terasa nyata
+- menghindari janji presisi absolut yang belum realistis
+- tetap memberi target kualitas yang tinggi untuk pengalaman preview
+
 ### D-056: Badge Status Utama Naskah Menggunakan Copy Bertumbuh
 
 Status: active
@@ -792,49 +877,23 @@ Alasan:
 - menjaga hirarki visual antara identitas fitur dan judul dokumen
 - membuat judul paper tetap menjadi fokus utama
 
-### D-054: Section Ditahan Jika Artifact Belum Cukup Rapi Untuk Dikompilasi
-
-Status: active
-
-Keputusan:
-- jika artifact yang sudah tervalidasi belum cukup rapi untuk dikompilasi menjadi section `Naskah`, section tersebut ditahan dulu
-- section itu tidak dimasukkan ke `Naskah` sampai memenuhi syarat kompilasi yang layak
-- fase awal tidak menampilkan hasil kompilasi apa adanya jika kualitas strukturnya belum memadai
-
-Alasan:
-- menjaga `Naskah` tetap terasa seperti paper yang rapi
-- lebih konsisten dengan positioning `Naskah` sebagai compiled academic view
-- menghindari tampilan section yang secara visual atau struktural masih berantakan
-
-### D-055: Preview Web Ditargetkan Sangat Dekat Dengan Export Final
-
-Status: active
-
-Keputusan:
-- pada fase awal, preview web `Naskah` ditargetkan sangat dekat dengan hasil export final
-- sistem tidak menjanjikan bahwa preview web identik 100% dengan Word/PDF final
-- komunikasi ke user tetap memakai bahasa estimasi untuk pagination
-
-Alasan:
-- menjaga value utama fitur sebagai preview paper yang terasa nyata
-- menghindari janji presisi absolut yang belum realistis
-- tetap memberi target kualitas yang tinggi untuk pengalaman preview
-
 ### O-015: Copy Final Untuk Badge Dan Info Text Status Naskah
 
-Status: resolved
+Status: resolved with implementation dependency
 
 Jawaban:
 - copy badge status: `Bertumbuh`
 - copy info text pendek: `Naskah sedang bertumbuh seiring section tervalidasi.`
+- catatan: ini valid sebagai copy, tetapi belum otomatis berarti state update atau snapshot sudah ada di codebase
 
 ### O-017: Label Opsi Format Di Dropdown Export
 
-Status: resolved
+Status: resolved with implementation dependency
 
 Jawaban:
 - opsi format tetap ditulis simpel sebagai `PDF` dan `DOCX`
 - status parsial cukup dikomunikasikan melalui header
+- catatan: label ini hanya aman kalau export `Naskah` sudah benar-benar tersedia
 
 ### O-016: Format Teks Jumlah Halaman Di Header
 
@@ -842,10 +901,11 @@ Status: resolved
 
 Jawaban:
 - jumlah halaman ditampilkan sebagai `Estimasi X halaman`
+- catatan: angka ini tetap estimasi, bukan kepastian final
 
 ### O-012: Bentuk Penyajian Elemen Header Naskah
 
-Status: resolved
+Status: resolved with implementation dependency
 
 Jawaban:
 - header memakai susunan dua baris
@@ -853,6 +913,7 @@ Jawaban:
 - baris kedua memuat badge status, info text, dan estimasi halaman
 - area aksi berada di sisi kanan
 - `Naskah` tampil sebagai label kecil di atas judul paper
+- catatan: ini adalah target layout, bukan bukti bahwa komponen header sudah ada di codebase
 
 ### O-013: Mapping Stage Internal Ke Nama Section Akademik
 
@@ -873,58 +934,66 @@ Jawaban:
 - `daftar_pustaka` menjadi section `Daftar Pustaka`
 - `lampiran` menjadi section `Lampiran` jika tersedia
 - `judul` tidak menjadi section, tetapi memperbarui judul dokumen
+- catatan: mapping ini harus dibaca bersama compiler, bukan hanya sebagai label UI
 
 ### O-014: Apakah Sidebar Perlu Menunjukkan Section Aktif Saat Scroll
 
-Status: resolved
+Status: resolved with implementation dependency
 
 Jawaban:
 - sidebar menyorot section yang sedang aktif di viewport saat user scroll
+- catatan: keputusan ini mengandaikan sidebar outline sudah ada
 
 ### O-006: Bentuk Keterangan Bahwa Naskah Masih Bertumbuh
 
-Status: resolved
+Status: resolved with implementation dependency
 
 Jawaban:
 - keterangan bahwa `Naskah` masih bertumbuh ditampilkan di header
 - bentuknya berupa kombinasi badge status `Bertumbuh` dan info text `Naskah sedang bertumbuh seiring section tervalidasi.`
 - daftar section tetap tampil sebagai navigasi di sidebar kiri, bukan sebagai panel status terpisah
+- catatan: ini valid pada level intent, tetapi belum didukung state update yang eksplisit di codebase
 
 ### O-007: Bentuk Label Export Parsial
 
-Status: resolved
+Status: resolved with implementation dependency
 
 Jawaban:
 - status parsial export digabung dengan status umum bahwa naskah masih bertumbuh
+- catatan: ini menunggu jalur export parsial yang berbeda dari completed-only export sekarang
 
 ### O-008: Bagaimana Mengomunikasikan Perubahan Setelah Refresh
 
-Status: resolved
+Status: resolved with implementation dependency
 
 Jawaban:
 - setelah user memuat update, section yang berubah diberi highlight sementara
+- catatan: ini membutuhkan compiled snapshot yang bisa dibandingkan sebelum dan sesudah refresh
 
 ### O-009: Bentuk UI Status Bertumbuh
 
-Status: resolved
+Status: resolved with implementation dependency
 
 Jawaban:
 - status utama ditampilkan di header sebagai kombinasi badge kecil dan info text pendek
+- catatan: keputusan UI ini bergantung pada state dokumen yang eksplisit
 
 ### O-010: Bentuk UI Indikator Update Di Halaman Naskah
 
-Status: resolved
+Status: resolved with implementation dependency
 
 Jawaban:
 - indikator update berbentuk banner tipis di area header
 - CTA refresh `Update` ditempatkan di indikator yang sama
+- catatan: ini membutuhkan model update pending yang belum ada di codebase sekarang
 
 ### O-011: Bentuk Notifikasi Update Pada Tombol Naskah Di Topbar Chat
 
-Status: resolved
+Status: resolved with implementation dependency
 
 Jawaban:
 - notifikasi update pada tombol `Naskah` ditampilkan sebagai titik kecil
+- catatan: ini bergantung pada topbar/route `Naskah` yang belum ada
 
 ## Deferred Or Rejected Directions
 
@@ -936,6 +1005,7 @@ Tidak dipilih untuk fase awal karena:
 - memicu konflik sinkronisasi
 - memunculkan masalah compliance terhadap artifact
 - membutuhkan model data tambahan untuk hasil edit manual
+- model sinkronisasi `Naskah` ke artifact juga belum ada, jadi risiko divergensinya masih terlalu tinggi
 
 Catatan:
 - arah ini belum ditutup selamanya
@@ -1012,63 +1082,24 @@ Saat memperbarui keputusan:
 - pertahankan ID keputusan
 - ubah status jika perlu
 - tambahkan alasan perubahan di change log
+- jika sebuah keputusan sudah tidak selaras dengan codebase, tandai statusnya secara eksplisit sebagai `deferred`, `blocked by architecture`, atau revisi lain yang setara
 
 ## Change Log
 
 ### 2026-04-09
 
-- Dokumen keputusan awal dibuat dari hasil pemisahan konteks stabil dan keputusan iteratif
-- Keputusan aktif dicatat: artifact sebagai source of truth, naskah read-only pada fase awal, sinkronisasi artifact ke naskah, dan naskah sebagai workspace terpisah
-- Diperbarui: naskah diposisikan sebagai halaman fullscreen terpisah, bukan layout berdampingan
-- Diperbarui: tombol `Naskah` muncul saat `abstrak` sudah tervalidasi dan naskah dianggap mulai tergenerate
-- Diperbarui: naskah memakai indikator update dan refresh manual; topbar `Naskah` juga menampilkan notifikasi update pending
-- Diperbarui: naskah hanya menampilkan section yang sudah tervalidasi tanpa placeholder untuk section yang belum ada
-- Diperbarui: urutan section naskah mengikuti struktur paper final, bukan urutan validasi
-- Diperbarui: naskah tetap dibuka sebagai halaman normal walau belum lengkap, dengan keterangan bahwa naskah masih bertumbuh
-- Diperbarui: halaman naskah menampilkan daftar section yang sudah masuk, tanpa daftar section yang belum masuk
-- Diperbarui: daftar section yang sudah masuk juga dipakai sebagai navigasi cepat di halaman naskah
-- Diperbarui: export tersedia sejak naskah pertama kali ada, dengan penanda bahwa hasil masih parsial jika belum lengkap
-- Diperbarui: section yang direvisi dan tervalidasi ulang menggantikan versi naskah sebelumnya
-- Diperbarui: status naskah bertumbuh memakai pola gabungan antara status singkat dan penjelasan halus
-- Diperbarui: navigasi ke halaman naskah tidak otomatis memuat update pending
-- Diperbarui: perpindahan antara Chat dan Naskah memakai tombol kontekstual di topbar, bukan dua tab yang tampil bersamaan
-- Diperbarui: daftar section naskah ditempatkan di sidebar kiri
-- Diperbarui: preview naskah memakai page break visual yang jelas antar halaman A4
-- Diperbarui: header naskah memuat judul, status bertumbuh/parsial, indikator update, dan aksi export
-- Diperbarui: header naskah menampilkan label fitur `Naskah` dan judul paper aktif
-- Diperbarui: sidebar naskah menggunakan nama section akademik final, bukan nama stage internal
-- Diperbarui: klik section di sidebar membawa user ke awal section tersebut
-- Diperbarui: sidebar naskah menyorot section yang aktif saat user scroll
-- Diperbarui: section yang berubah diberi highlight sementara setelah refresh
-- Diperbarui: indikator update naskah berbentuk banner tipis di area header dengan tombol `Update`
-- Diperbarui: status bertumbuh naskah dan status parsial export digabung menjadi satu status utama
-- Diperbarui: notifikasi update pada tombol `Naskah` di halaman `Chat` menggunakan titik kecil
-- Diperbarui: status utama naskah di header memakai kombinasi badge kecil dan info text pendek
-- Diperbarui: info text status naskah lebih menekankan progres pertumbuhan sambil tetap jujur bahwa dokumen belum lengkap
-- Diperbarui: jumlah halaman naskah ditampilkan di header
-- Diperbarui: jumlah halaman di header menggunakan copy `Estimasi X halaman`
-- Diperbarui: export di header menggunakan satu tombol `Export` dengan dropdown format
-- Diperbarui: dropdown export tetap memakai label format simpel, tanpa mengulang status parsial
-- Diperbarui: setiap section masuk ke naskah hanya setelah tervalidasi
-- Diperbarui: stage internal dipetakan ke struktur section akademik, bukan otomatis semua menjadi section naskah
-- Diperbarui: abstrak awal tetap tampil lalu diganti oleh pembaruan abstrak saat tervalidasi
-- Diperbarui: judul dokumen memakai working title dari topik lalu diganti oleh judul final saat tervalidasi
-- Diperbarui: saat naskah pertama muncul, working title tampil di halaman pertama dan abstrak mulai di halaman kedua
-- Diperbarui: halaman pertama naskah pada fase awal hanya berisi judul dokumen
-- Diperbarui: judul final menggantikan working title sepenuhnya saat tervalidasi
-- Diperbarui: halaman pertama naskah memakai tata letak cover sederhana dengan judul besar dan center
-- Diperbarui: halaman kedua dimulai dengan heading `Abstrak`
-- Diperbarui: section besar berikutnya seperti `Pendahuluan` wajib dimulai di halaman baru
-- Diperbarui: semua section utama naskah wajib mulai di halaman baru
-- Diperbarui: `Daftar Pustaka` diperlakukan sebagai section biasa di sidebar dan dokumen
-- Diperbarui: `Lampiran` diperlakukan sebagai section biasa jika tersedia dan tervalidasi
-- Diperbarui: `gagasan`, `topik`, dan `outline` sama sekali tidak muncul di sidebar atau isi `Naskah`
-- Diperbarui: sidebar `Naskah` dimulai dari item `Halaman Judul`
-- Diperbarui: label item pertama di sidebar ditetapkan sebagai `Halaman Judul`
-- Diperbarui: `Halaman Judul` memakai pola highlight sidebar yang sama seperti section lain
-- Diperbarui: section ditahan jika artifact tervalidasi belum cukup rapi untuk dikompilasi ke `Naskah`
-- Diperbarui: preview web `Naskah` ditargetkan sangat dekat dengan export final, tetapi tidak dijanjikan identik
-- Diperbarui: badge status utama `Naskah` memakai copy `Bertumbuh`
-- Diperbarui: info text status `Naskah` memakai copy `Naskah sedang bertumbuh seiring section tervalidasi.`
-- Diperbarui: header `Naskah` memakai susunan dua baris dengan area aksi di sisi kanan
-- Diperbarui: label `Naskah` tampil kecil di atas judul paper pada baris pertama header
+- Dokumen keputusan awal dibentuk dari pemisahan konteks stabil dan keputusan iteratif untuk fitur `Naskah`.
+- Arah utama yang dicatat pada batch awal: `Naskah` sebagai workspace read-only terpisah, bertumbuh dari section tervalidasi, memakai struktur paper final, dan memiliki presentasi paper-oriented dengan sidebar, header status, dan preview paged.
+- Batch ini juga memuat keputusan awal tentang mapping stage ke section akademik, title page, status bertumbuh, refresh manual, dan arah export parsial sebelum seluruhnya diuji ulang ke codebase.
+
+### 2026-04-10
+
+- Dokumen keputusan direvisi agar selaras dengan audit codebase terbaru
+- Diperjelas: source compile fase 1 `Naskah` dibaca dari artifact tervalidasi yang direferensikan oleh `stageData`, bukan dari `stageData` sebagai isi final
+- Diperjelas: update pending didefinisikan sebagai mismatch compiled revision terbaru vs revision yang terakhir dimuat user
+- Diperjelas: export existing masih completed-only dan belum mendukung export parsial untuk `Naskah`
+- Diperjelas: state khusus `Naskah` seperti availability, compiled snapshot, dan `update pending` belum ada
+- Diperjelas: topbar dan route `Naskah` belum ada di codebase
+- Diperjelas: `validatedAt` adalah fondasi paling nyata untuk pertumbuhan section
+- Diperjelas: compile guard `cukup rapi` harus deterministik dan menolak placeholder atau structural error
+- Diperbarui: beberapa keputusan UI dan export ditandai dengan dependency atau diturunkan menjadi deferred bila belum supported oleh arsitektur sekarang
