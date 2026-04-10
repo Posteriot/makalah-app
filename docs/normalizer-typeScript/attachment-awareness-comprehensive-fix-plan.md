@@ -347,11 +347,19 @@ const attachmentAwarenessInstruction = hasAttachedFiles
 
 **Rationale:** Rename follow-through from A3.
 
-#### A5. Verify no other references to old variable name exist
+#### A5. Verify no stale references remain to old variable names (updated 2026-04-10)
 
-**Action:** `grep -rn attachmentFirstResponseInstruction src/`
+After A3, A4, and A6 are applied, run BOTH grep commands below. Both must return zero matches before considering Change Group A complete.
 
-**Expected result after A3, A4, A6:** Zero matches. If matches exist, update all references.
+**Checklist:**
+
+1. [ ] `grep -rn "attachmentFirstResponseInstruction" src/` → expect zero matches
+   - This variable was renamed to `attachmentAwarenessInstruction` in A3
+2. [ ] `grep -rn "shouldForceAttachmentFirstResponse" src/` → expect zero matches
+   - This variable was removed in A3; its role is now split between `hasAttachedFiles` and `isFirstTurnWithAttachment`
+   - The telemetry field source at `route.ts:635` is updated in A6 to use `isFirstTurnWithAttachment`
+
+If either grep returns any matches, update those references before proceeding. Do not skip this check — A6 exists specifically because the first round of this plan missed the telemetry reference.
 
 #### A6. Update attachment telemetry field reference (added in response to Codex audit 2026-04-10)
 
@@ -442,7 +450,17 @@ if (omittedFileNames.length > 0) {
 - Model can now tell user: "You uploaded N files, I can fully see M of them, the rest (file names) are accessible via tools"
 - `docFileCount` still reflects all doc files correctly — the counter increments before the budget check
 
-**Edge case:** If all files exceed budget (e.g., first file is 500K chars), `fileContext` would only contain the notice. This is acceptable — the model knows files exist and can use tools.
+**Edge case (corrected 2026-04-10 per Codex Round 2):** The per-file limit (`MAX_FILE_CONTEXT_CHARS_PER_FILE = 80000`) applies BEFORE the total-budget check in the loop body. So a first 500K-char file does NOT skip injection entirely — it gets truncated to 80K chars (via A2 logic), receives the truncation marker, and gets injected into `fileContext`. The total-budget check then updates `totalCharsUsed` to 80000. For subsequent files, if `totalCharsUsed + next file size >= 240000`, the next file gets pushed to `omittedFileNames` via the A7 continue path.
+
+Concrete example:
+- File 1: 500K chars → truncated to 80K → injected with truncation marker → `totalCharsUsed = 80000`
+- File 2: 100K chars → truncated to 80K → injected with truncation marker → `totalCharsUsed = 160000`
+- File 3: 100K chars → truncated to 80K → injected with truncation marker → `totalCharsUsed = 240000`
+- File 4: 50K chars → total budget check fires → pushed to `omittedFileNames`, continue
+- File 5: 30K chars → total budget check fires → pushed to `omittedFileNames`, continue
+- After loop: omitted-files notice appended listing File 4 and File 5
+
+Edge case where `fileContext` contains ONLY the notice: never occurs with the current control flow, because the first file is always attempted injection before the budget check can fail. Even a single 10MB file gets its 80K-char slice injected.
 
 **Telemetry semantic note:** `docContextChars` (tracked at `route.ts:589`) only counts the injected file text from `textToAdd`, NOT the length of the truncation marker (A2) or the omitted-files notice (A7). Post-fix, telemetry slightly under-reports total prompt growth from file context. This is intentional — the counter tracks file content volume specifically, not surrounding framing text. If precise prompt-size observability is needed, add a separate `fileContextTotalChars = fileContext.length` measurement alongside `docContextChars`. This is out of scope for the current fix but flagged for future consideration.
 
@@ -676,7 +694,11 @@ Individual skills MAY append one additional sentence to step 2 of the Attachment
 - Model mentions only 4 files
 - `docFileCount` != 5
 
-### T11. Smoke test: New file attached mid-conversation (added 2026-04-10)
+### T11. Observation test (NON-BLOCKING): New file attached mid-conversation (added 2026-04-10, classification updated in response to Codex Round 2)
+
+**Classification:** This is an **observation/monitoring test**, NOT a success criterion. T11 is explicitly excluded from the Definition of Done. Its purpose is to measure behavior against the known limitation documented in Risk 7f — it does not gate execution.
+
+**Rationale for non-blocking classification:** The user mandate is unconditional attachment awareness. If the model fails to adequately acknowledge a mid-conversation upload, that IS a bug against the mandate. However, the code fix in Change Group A does not include "new file detection per turn" state tracking (Risk 7f). Asserting T11 as a success criterion would claim the fix solves a problem it doesn't fully solve. Instead, T11 observes the residual limitation so a follow-up fix can be scoped if needed.
 
 **Setup:** Open new conversation in paper mode, stage=gagasan. Do NOT upload a file yet.
 
@@ -686,22 +708,17 @@ Individual skills MAY append one additional sentence to step 2 of the Attachment
 3. Send message: "Oke, nih gue lampirkan." + upload PDF (turn 2, fresh file)
 4. Receive model response (turn 2 assistant)
 
-**Expected:**
-- Turn 1 response: Generic gagasan dialog, no file mentioned (no file attached yet)
-- Turn 2 response: Since `userMessageCount = 2`, the "first-turn" instruction variant does NOT fire. The "subsequent-turn" instruction variant fires instead, which says: "Always be aware of File Context content and integrate it into your responses when relevant"
-- Model should still acknowledge the newly attached PDF because the subsequent-turn instruction directs it to "integrate file content when relevant"
-- **However, this is a known limitation documented in Risk 7.** The "full summary required" language only fires on turn 1 messages.
-- If the model does not adequately acknowledge the new file in turn 2, the fix is still an improvement over pre-fix behavior (where no directive fired at all), but a follow-up fix tracking "new file detection per turn" may be needed.
+**What T11 measures (observation data only):**
 
-**Fail conditions (immediate):**
-- Turn 2 response does not mention the newly uploaded PDF by name
-- Turn 2 response continues generic brainstorming as if no file exists
+- Does the turn 2 response mention the newly uploaded PDF by name? (yes/no)
+- Does the turn 2 response summarize the PDF content? (yes/no)
+- Does the turn 2 response integrate PDF content into the answer? (yes/no)
 
-**Partial pass:**
-- Turn 2 mentions file but does not summarize (acceptable per Risk 7 limitation)
+**Recording:** Log the results in `docs/normalizer-typeScript/t11-observation-log-YYYY-MM-DD.md` after each test run. This creates an evidence trail for the Risk 7f follow-up decision.
 
-**Full pass:**
-- Turn 2 mentions file AND integrates content relevantly AND summarizes
+**If T11 shows the limitation is severe** (e.g., >50% of test runs show the model ignoring the new file entirely), flag this as a blocker for the user to decide whether to scope a follow-up fix (new file detection per turn) before shipping or ship with the limitation documented in release notes.
+
+**T11 is NOT in Definition of Done.** T2-T10 are the success gate. T11 is reference data only.
 
 ### T8. Regression test: No files attached
 
@@ -946,12 +963,12 @@ Each skill goes through a 3-step lifecycle: draft → published → active. Use 
 
 1. **Locate the snapshot file:** `snapshots/pre-deployment-YYYY-MM-DD-HHMMSS.json` (for dev) or `snapshots/pre-deployment-prod-YYYY-MM-DD-HHMMSS.json` (for prod).
 
-2. **Restore all 14 stage skills from snapshot** — for each entry in `snapshot.stageSkills`:
-   - Call `stageSkills.createOrUpdateDraft({ requestorUserId, stageScope, name, description, contentBody: snapshot.activeContent, changeNote: "Rollback to pre-deployment snapshot [timestamp]", allowedTools })` → returns new draft version number
-   - Call `stageSkills.publishVersion({ requestorUserId, skillId, version })` → publishes the draft
-   - Call `stageSkills.activateVersion({ requestorUserId, skillId, version })` → activates the restored version
-   - Wait for success response before proceeding to next skill
-   - If any step fails, log the failed skill and CONTINUE with remaining skills (best-effort restore; partial rollback is better than none)
+2. **Restore all 14 stage skills from snapshot** — for each `entry` in `snapshot.stageSkills`:
+   - Call `stageSkills.createOrUpdateDraft({ requestorUserId, stageScope: entry.stageScope, name: entry.name, description: entry.description, contentBody: entry.activeContent, changeNote: "Rollback to pre-deployment snapshot [timestamp]", allowedTools: entry.allowedTools })` → returns new draft version number
+   - Call `stageSkills.publishVersion({ requestorUserId, skillId: entry.skillId, version: <new draft version from previous call> })` → publishes the draft
+   - Call `stageSkills.activateVersion({ requestorUserId, skillId: entry.skillId, version: <same version> })` → activates the restored version
+   - Wait for success response before proceeding to next entry
+   - If any step fails for this entry, log the failed `entry.skillId` and CONTINUE with remaining entries (best-effort restore; partial rollback is better than none)
 
 3. **Restore system prompt from snapshot:**
    - Call `systemPrompts.getActiveSystemPrompt()` to get current (broken) active prompt ID
@@ -963,9 +980,10 @@ Each skill goes through a 3-step lifecycle: draft → published → active. Use 
    - Vercel redeploys automatically with reverted code
 
 5. **Verify rollback completeness:**
-   - For each of 14 stages, call `stageSkills.getActiveByStage` and diff `content` against the snapshot's `activeContent` — expect identical
-   - Call `systemPrompts.getActiveSystemPrompt()` and diff against snapshot — expect identical
-   - Run smoke test T2 — should exhibit the original bug (because we reverted the fix), confirming rollback worked
+   - For each `entry` in `snapshot.stageSkills`: call `stageSkills.getActiveByStage({ stageScope: entry.stageScope })` and diff the returned `content` field against `entry.activeContent` — expect byte-identical match per entry
+   - Call `systemPrompts.getActiveSystemPrompt()` and diff the returned `content` field against `snapshot.systemPrompt.content` — expect byte-identical match
+   - Record any entries where diff fails (these are restore failures that need manual remediation)
+   - Run smoke test T2 — should exhibit the original bug (because we reverted the fix), confirming rollback worked end-to-end
 
 6. **Document the rollback:**
    - Create `docs/normalizer-typeScript/rollback-log-YYYY-MM-DD.md`
@@ -995,7 +1013,7 @@ Each skill goes through a 3-step lifecycle: draft → published → active. Use 
 - [ ] Post-outline skills (04 through 14) still contain "living outline" or equivalent references after C1+C2
 - [ ] T10 skill diff verification passes
 
-**Smoke tests:**
+**Smoke tests (success gate):**
 - [ ] T2 passes (paper mode short prompt)
 - [ ] T3 passes (paper mode long prompt)
 - [ ] T4 passes (non-paper mode)
@@ -1003,7 +1021,10 @@ Each skill goes through a 3-step lifecycle: draft → published → active. Use 
 - [ ] T6 passes (large file truncation)
 - [ ] T7 passes (multiple files budget with omitted-files notice)
 - [ ] T8 passes (no attachment regression)
-- [ ] T11 passes (new file attached mid-conversation) — partial pass acceptable per Risk 7f
+
+**Observation tests (not blocking, recorded for Risk 7f follow-up decision):**
+- [ ] T11 executed and results logged to `docs/normalizer-typeScript/t11-observation-log-YYYY-MM-DD.md`
+- [ ] If T11 shows severe limitation (>50% runs ignore new file), flag to user for follow-up scope decision before shipping
 
 **Deployment:**
 - [ ] D1.5 pre-deployment snapshot created and verified (dev)
@@ -1110,7 +1131,8 @@ Each skill goes through a 3-step lifecycle: draft → published → active. Use 
 **Mitigation:**
 - Document deployment progress in a progress file (e.g., `snapshots/deployment-progress-YYYY-MM-DD.json`) tracking which skills have completed draft→publish→activate cycle
 - If deployment interrupts, resume from last successful skill by reading progress file
-- After all 14 complete, run `stageSkills.runPreActivationDryRun` (if available) or manual `getActiveByStage` spot check against expected content
+- After all 14 complete, run `stageSkills.runPreActivationDryRun` (verified available at `convex/stageSkills.ts:988`) — this query iterates all 14 stages and validates latest drafts against whitelist rules, returning pass/fail per stage. Use it as an automated sanity check before declaring D2 complete.
+- Additionally, run manual `getActiveByStage` content diff against local skill files to catch content-level divergence that the validator alone won't catch (e.g., wrong version activated)
 - If mid-deployment interruption cannot be resumed, execute R4 to restore snapshot state
 - Treat the full D2 sequence as "one deployment event" — do not ship to users until all 14 stages are verified
 
@@ -1158,6 +1180,24 @@ Each skill goes through a 3-step lifecycle: draft → published → active. Use 
 - The "subsequent-turn" instruction wording uses "when relevant" as a qualifier, giving the model permission to ignore the file when the user's current question is unrelated
 - Monitor post-deployment user feedback for "model keeps bringing up the old PDF" complaints
 - If this becomes a pattern, add a "topic relevance check" to the subsequent-turn instruction (e.g., "Only reference file content when the current user question or task is related to the file's subject")
+
+### Risk 7g: Rollback-script drift risk (added 2026-04-10 in response to Codex Round 2)
+
+**Description:** R4 now contains pseudo-executable restore steps with concrete field references (e.g., `entry.activeContent`, `entry.stageScope`). If those field paths drift from the actual snapshot JSON structure produced by D1.5 — for example, a typo or a snapshot format update that's not reflected in R4 — then R4 will silently fail or restore wrong content during an actual disaster. This creates false confidence around disaster recovery.
+
+The first round of this plan already caught one such bug: R4 referenced `snapshot.activeContent` instead of `entry.activeContent` during loop iteration. Codex caught it. Future drift is possible.
+
+**Probability:** Low-medium. Happens when snapshot JSON structure changes or rollback step is updated out of sync with D1.5.
+
+**Impact:** In an actual rollback scenario, the restore fails to execute or restores wrong data, leaving the system broken with no clean recovery path.
+
+**This is a plan-executability risk, not a product/runtime risk.** It affects the reliability of the rollback document itself.
+
+**Mitigation:**
+- Before the next Codex audit cycle that includes R4 modifications, verify R4 field references match the D1.5 snapshot JSON structure byte-for-byte
+- During actual execution of D1.5 (snapshot creation), dump the generated JSON to the worktree and visually inspect one entry against R4's expected field paths before proceeding with deployment
+- Consider replacing the pseudo-code in R4 with a runnable script committed alongside the plan (out of scope for this fix, but flagged for future consideration)
+- If R4 pseudo-code fails during an actual rollback, fall back to manual Convex dashboard restoration using the snapshot JSON as the source of truth for content
 
 ### Risk 7f: The `userMessageCount <= 1` branching is imperfect (was Risk 7 before 2026-04-10)
 
@@ -1261,6 +1301,21 @@ Codex returned BLOCK verdict with 1 critical, 5 important, 3 minor findings plus
 | Missing risk: over-anchoring on stale attachments | Missing risk | Added Risk 7e |
 
 All 14 findings addressed in this document revision. Plan is ready for Round 2 audit.
+
+**Codex Audit Round 2 response log (2026-04-10):**
+
+Codex returned APPROVE-WITH-CHANGES — 0 critical, 2 important, 3 minor findings, 1 new risk. All findings verified against the current plan text. Resolutions:
+
+| Round 2 finding | Severity | Resolution |
+|---|---|---|
+| R4 step 2 uses `snapshot.activeContent` inside iteration over `snapshot.stageSkills` — wrong field path | Important | Rewrote R4 step 2 and step 5 to use `entry.activeContent`, `entry.stageScope`, `entry.name`, `entry.description`, `entry.allowedTools`, `entry.skillId` consistently. Added concrete example of per-entry restore loop. |
+| T11 "partial pass acceptable" contradicts user mandate of unconditional awareness and softens success bar | Important | Reclassified T11 as observation/monitoring test, NOT a success criterion. Removed from DoD success gate. Added T11 observation logging requirement to a separate non-blocking DoD section. Added flag-to-user clause if T11 shows severe limitation (>50% runs ignore new file). |
+| A7 edge case description claimed "500K file → only notice" but actual control flow truncates first then checks budget | Minor | Rewrote edge case section with concrete per-file walkthrough showing that per-file limit applies BEFORE budget check, so first file always gets injected (truncated if needed). Added explicit note: "Edge case where fileContext contains ONLY the notice: never occurs with current control flow." |
+| `runPreActivationDryRun` said "(if available)" but it exists at `convex/stageSkills.ts:988` | Minor | Removed "if available" qualifier. Documented explicit recommendation to use `runPreActivationDryRun` as automated sanity check after D2 completes, with manual `getActiveByStage` diff as complementary check for content-level divergence. |
+| A5 heading says "old variable name" singular but checks 2 names | Minor | Rewrote A5 as explicit checklist with 2 grep commands (`attachmentFirstResponseInstruction` and `shouldForceAttachmentFirstResponse`), each with zero-match expectation and rationale. |
+| Rollback-script drift risk (new) | New risk | Added Risk 7g documenting plan-executability risk specific to pseudo-executable R4 steps. Includes mitigation: verify field references before deploy, dump JSON during D1.5 for visual inspection, consider runnable script in future fix. |
+
+All 5 findings + 1 new risk addressed in this revision. Plan ready for Round 3 audit.
 
 ## Appendix D: Stage Scope Mapping and Structural Consistency
 
