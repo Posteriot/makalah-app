@@ -1,6 +1,7 @@
 // src/components/chat/shell/TopBar.tsx
 "use client"
 
+import Link from "next/link"
 import { useTheme } from "next-themes"
 import {
   SunLight,
@@ -26,6 +27,14 @@ interface TopBarProps {
   onToggleSidebar: () => void
   /** Number of artifacts (0 = panel toggle disabled) */
   artifactCount: number
+  /** Current conversation id when inside a conversation-scoped page */
+  conversationId?: string | null
+  /** Whether naskah is available for this session */
+  naskahAvailable?: boolean
+  /** Whether a newer naskah snapshot exists */
+  naskahUpdatePending?: boolean
+  /** Which page context is active inside the chat shell */
+  routeContext?: "chat" | "naskah"
 }
 
 /**
@@ -41,6 +50,10 @@ export function TopBar({
   isSidebarCollapsed,
   onToggleSidebar,
   artifactCount,
+  conversationId,
+  naskahAvailable = false,
+  naskahUpdatePending = false,
+  routeContext = "chat",
 }: TopBarProps) {
   const { resolvedTheme, setTheme } = useTheme()
   const { user, isLoading } = useCurrentUser()
@@ -51,6 +64,9 @@ export function TopBar({
 
   const hasArtifacts = artifactCount > 0
   const compactArtifactCount = artifactCount > 99 ? "99+" : `${artifactCount}`
+  const showNaskahLink =
+    routeContext === "chat" && Boolean(conversationId) && naskahAvailable
+  const showChatLink = routeContext === "naskah" && Boolean(conversationId)
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -89,6 +105,38 @@ export function TopBar({
 
         {/* Right: Controls */}
         <div className="flex items-center gap-2 pt-1">
+          {showNaskahLink && conversationId && (
+            <Link
+              href={`/chat/${conversationId}/naskah`}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-action px-3 py-1.5 text-sm",
+                "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
+                "transition-colors duration-150",
+              )}
+            >
+              <span>Naskah</span>
+              {naskahUpdatePending && (
+                <span
+                  data-testid="naskah-update-dot"
+                  className="inline-flex h-2.5 w-2.5 rounded-full bg-[var(--chat-info)]"
+                />
+              )}
+            </Link>
+          )}
+
+          {showChatLink && conversationId && (
+            <Link
+              href={`/chat/${conversationId}`}
+              className={cn(
+                "inline-flex items-center rounded-action px-3 py-1.5 text-sm",
+                "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
+                "transition-colors duration-150",
+              )}
+            >
+              Chat
+            </Link>
+          )}
+
           {/* Theme Toggle */}
           {!isLoading && user && (
             <button

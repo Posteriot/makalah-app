@@ -6,6 +6,7 @@ import {
   requireAuthUserId,
   verifyAuthUserId,
 } from "./authHelpers";
+import { deriveNaskahUpdatePending } from "../src/lib/naskah/updatePending";
 
 // ────────────────────────────────────────────────────────────────────────────
 // deriveUpdatePending — pure helper.
@@ -25,11 +26,7 @@ export function deriveUpdatePending(args: {
   latestRevision: number | undefined;
   viewedRevision: number | undefined;
 }): boolean {
-  const { latestRevision, viewedRevision } = args;
-  if (latestRevision == null && viewedRevision == null) return false;
-  if (latestRevision == null) return false;
-  if (viewedRevision == null) return true;
-  return latestRevision !== viewedRevision;
+  return deriveNaskahUpdatePending(args);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
