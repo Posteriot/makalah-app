@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState, useCallback } from "react"
 import { Send, Expand, Xmark, Trash } from "iconoir-react"
 import { Pause as PauseSolid } from "iconoir-react/solid"
-import { FileUploadButton } from "./FileUploadButton"
+import { ContextAddMenu } from "./ContextAddMenu"
 import { ChatInputAttachment } from "./ChatInputAttachment"
 import { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
@@ -229,14 +229,11 @@ export function ChatInput({
                         className={itemsContainerClassName}
                     >
                         <div className={cn("flex items-center gap-2", isDesktop && "w-max")}>
-                        <FileUploadButton
-                            conversationId={conversationId}
-                            onFileUploaded={onFileAttached}
-                            onImageDataUrl={onImageDataUrl}
-                            ariaLabel="Upload file tambahan konteks"
-                            tooltipText="Upload file tambahan konteks"
-                            label="+ Konteks"
-                        />
+                            <ContextAddMenu
+                                conversationId={conversationId}
+                                onFileUploaded={onFileAttached}
+                                onImageDataUrl={onImageDataUrl}
+                            />
                             {renderContextFileChips()}
                         </div>
                     </div>
@@ -359,13 +356,10 @@ export function ChatInput({
                         <div data-testid="mobile-chat-input-stacked">
                             <div className="flex items-start gap-2 px-2 pt-2">
                                 <div className="min-w-0 flex-1 flex flex-wrap items-center gap-2">
-                                    <FileUploadButton
+                                    <ContextAddMenu
                                         conversationId={conversationId}
                                         onFileUploaded={onFileAttached}
                                         onImageDataUrl={onImageDataUrl}
-                                        ariaLabel="Upload file tambahan konteks"
-                                        tooltipText="Upload file tambahan konteks"
-                                        label="+ Konteks"
                                     />
                                     {renderContextFileChips()}
                                 </div>
