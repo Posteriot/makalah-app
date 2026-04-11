@@ -198,7 +198,7 @@ export function ContextAddMenu({
                     side="top"
                     align="start"
                     sideOffset={8}
-                    className="w-48 font-mono"
+                    className="w-48 font-sans"
                 >
                     <DropdownMenuLabel className="text-[11px] uppercase tracking-wide text-[var(--chat-muted-foreground)]">
                         Tambah konteks
