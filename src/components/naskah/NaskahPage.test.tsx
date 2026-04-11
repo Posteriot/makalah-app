@@ -2,11 +2,6 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
 import { NaskahPage } from "./NaskahPage"
-import {
-  NASKAH_TITLE_PAGE_ANCHOR_ID,
-  NASKAH_TITLE_PAGE_LABEL,
-  getNaskahSectionAnchorId,
-} from "@/lib/naskah/anchors"
 import type {
   NaskahCompiledSnapshot,
   NaskahSection,
@@ -255,104 +250,6 @@ describe("NaskahPage — header", () => {
 })
 
 // ────────────────────────────────────────────────────────────────────────────
-// GROUP C — Sidebar
-// First item is "Halaman Judul" per D-052. Then sections in canonical
-// academic order. Uses native anchors with href="#section-{key}" so the
-// browser handles scroll-to natively. No JS click handler.
-// ────────────────────────────────────────────────────────────────────────────
-
-describe("NaskahPage — sidebar", () => {
-  it("C1: the first sidebar item is 'Halaman Judul'", () => {
-    render(
-      <NaskahPage
-        snapshot={makeFullSnapshot()}
-        updatePending={false}
-      />,
-    )
-
-    const sidebar = screen.getByTestId("naskah-sidebar")
-    const items = within(sidebar).getAllByRole("link")
-    expect(items[0]).toHaveTextContent(NASKAH_TITLE_PAGE_LABEL)
-  })
-
-  it("C2: sidebar items follow the canonical academic order with academic labels", () => {
-    render(
-      <NaskahPage
-        snapshot={makeFullSnapshot()}
-        updatePending={false}
-      />,
-    )
-
-    const sidebar = screen.getByTestId("naskah-sidebar")
-    const labels = within(sidebar)
-      .getAllByRole("link")
-      .map((el) => el.textContent?.trim())
-
-    expect(labels).toEqual([
-      NASKAH_TITLE_PAGE_LABEL,
-      "Abstrak",
-      "Pendahuluan",
-      "Tinjauan Literatur",
-      "Metodologi",
-      "Hasil",
-      "Diskusi",
-      "Kesimpulan",
-      "Daftar Pustaka",
-      "Lampiran",
-    ])
-  })
-
-  it("C3: sidebar never renders gagasan / topik / outline (D-051)", () => {
-    render(
-      <NaskahPage
-        snapshot={makeFullSnapshot()}
-        updatePending={false}
-      />,
-    )
-
-    const sidebar = screen.getByTestId("naskah-sidebar")
-    const labels = within(sidebar)
-      .getAllByRole("link")
-      .map((el) => el.textContent?.trim() ?? "")
-      .join("|")
-
-    expect(labels).not.toMatch(/gagasan/i)
-    expect(labels).not.toMatch(/topik/i)
-    expect(labels).not.toMatch(/outline/i)
-  })
-
-  it("C4: each sidebar item is an anchor with the conventional href", () => {
-    render(
-      <NaskahPage
-        snapshot={makeFullSnapshot()}
-        updatePending={false}
-      />,
-    )
-
-    const sidebar = screen.getByTestId("naskah-sidebar")
-    const items = within(sidebar).getAllByRole("link")
-
-    expect(items[0]).toHaveAttribute(
-      "href",
-      `#${NASKAH_TITLE_PAGE_ANCHOR_ID}`,
-    )
-    expect(items[1]).toHaveAttribute(
-      "href",
-      `#${getNaskahSectionAnchorId("abstrak")}`,
-    )
-    expect(items[2]).toHaveAttribute(
-      "href",
-      `#${getNaskahSectionAnchorId("pendahuluan")}`,
-    )
-    // Spot-check a non-adjacent one to prove the rest follow the convention
-    expect(items[8]).toHaveAttribute(
-      "href",
-      `#${getNaskahSectionAnchorId("daftar_pustaka")}`,
-    )
-  })
-})
-
-// ────────────────────────────────────────────────────────────────────────────
 // GROUP D — Preview
 // Title page first (D-046, D-052). Each section starts on a new page
 // container per D-047/D-048. Section content renders as plain text — NO
@@ -414,6 +311,26 @@ describe("NaskahPage — preview", () => {
     expect(
       within(titlePage).getByRole("heading", { name: "Judul Aktif" }),
     ).toBeInTheDocument()
+  })
+})
+
+describe("NaskahPage — shell sync", () => {
+  it("melaporkan state sidebar ke shell saat snapshot tersedia", () => {
+    const onSidebarStateChange = vi.fn()
+
+    render(
+      <NaskahPage
+        snapshot={makeFullSnapshot()}
+        updatePending={false}
+        onSidebarStateChange={onSidebarStateChange}
+      />,
+    )
+
+    expect(onSidebarStateChange).toHaveBeenCalled()
+    expect(onSidebarStateChange.mock.calls.at(-1)?.[0]).toMatchObject({
+      isAvailable: true,
+      highlightedSectionKeys: [],
+    })
   })
 })
 

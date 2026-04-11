@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NaskahShell } from "./NaskahShell"
 
@@ -6,9 +6,18 @@ const mockUseQuery = vi.fn()
 const mockUseCurrentUser = vi.fn()
 const mockUsePaperSession = vi.fn()
 const mockUseNaskah = vi.fn()
+const mockPush = vi.fn()
 
 vi.mock("convex/react", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
+}))
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}))
+
+vi.mock("next/image", () => ({
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
 }))
 
 vi.mock("next-themes", () => ({
@@ -32,6 +41,18 @@ vi.mock("@/lib/hooks/useNaskah", () => ({
 
 vi.mock("@/components/layout/header", () => ({
   UserDropdown: () => <div data-testid="user-dropdown" />,
+}))
+
+vi.mock("@/components/layout/header/UserDropdown", () => ({
+  UserDropdown: () => <div data-testid="user-dropdown-sidebar" />,
+}))
+
+vi.mock("@/components/billing/CreditMeter", () => ({
+  CreditMeter: ({ onClick }: { onClick?: () => void }) => (
+    <button type="button" data-testid="credit-meter" onClick={onClick}>
+      credit-meter
+    </button>
+  ),
 }))
 
 vi.mock("@/components/ui/button", () => ({
@@ -65,7 +86,19 @@ vi.mock("@/components/chat/shell/ActivityBar", () => ({
 }))
 
 describe("NaskahShell", () => {
+  const setDesktopViewport = (isDesktop: boolean) => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: isDesktop,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    })
+  }
+
   beforeEach(() => {
+    setDesktopViewport(true)
     mockUseQuery.mockReset()
     mockUseCurrentUser.mockReset()
     mockUsePaperSession.mockReset()
@@ -85,14 +118,28 @@ describe("NaskahShell", () => {
     mockUseQuery.mockReturnValue([])
   })
 
-  it("merender TopBar dengan tombol Percakapan dan body children", () => {
+  it("merender TopBar, rail naskah, sidebar container, dan body children di desktop", () => {
     render(
-      <NaskahShell conversationId="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">
+      <NaskahShell
+        conversationId="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        isSidebarAvailable={true}
+        sidebarSections={[
+          {
+            key: "abstrak",
+            label: "Abstrak",
+            content: "Isi abstrak",
+            sourceStage: "abstrak",
+          },
+        ]}
+      >
         <div>body-content</div>
       </NaskahShell>,
     )
 
     expect(screen.getByRole("link", { name: /percakapan/i })).toBeInTheDocument()
+    expect(screen.getByTestId("naskah-activity-bar")).toBeInTheDocument()
+    expect(screen.getByTestId("naskah-sidebar-container")).toBeInTheDocument()
+    expect(screen.getByTestId("naskah-sidebar")).toBeInTheDocument()
     expect(screen.getByText("body-content")).toBeInTheDocument()
   })
 
@@ -119,6 +166,25 @@ describe("NaskahShell", () => {
     ).not.toBeInTheDocument()
   })
 
+  it("tidak merender tombol expand sidebar di TopBar saat sidebar tidak tersedia", () => {
+    // Fixes v1 inert expand button bug — when shouldShowSidebar is false
+    // (loading / unavailable state), TopBar should NOT render the
+    // expand-sidebar chevron because clicking it does nothing.
+    render(
+      <NaskahShell
+        conversationId="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        isSidebarAvailable={false}
+        sidebarSections={[]}
+      >
+        <div>body</div>
+      </NaskahShell>,
+    )
+
+    expect(
+      screen.queryByRole("button", { name: /expand sidebar/i }),
+    ).not.toBeInTheDocument()
+  })
+
   it("meneruskan availability dan updatePending ke TopBar tanpa crash", () => {
     mockUseNaskah.mockReturnValue({
       availability: { isAvailable: true },
@@ -132,6 +198,34 @@ describe("NaskahShell", () => {
     )
 
     expect(screen.getByRole("link", { name: /percakapan/i })).toBeInTheDocument()
+  })
+
+  it("bisa collapse sidebar di desktop, TopBar kemudian merender tombol expand", () => {
+    render(
+      <NaskahShell
+        conversationId="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        isSidebarAvailable={true}
+        sidebarSections={[
+          {
+            key: "abstrak",
+            label: "Abstrak",
+            content: "Isi abstrak",
+            sourceStage: "abstrak",
+          },
+        ]}
+      >
+        <div>body</div>
+      </NaskahShell>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /collapse sidebar/i }))
+
+    expect(screen.queryByTestId("naskah-sidebar-container")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("naskah-sidebar")).not.toBeInTheDocument()
+    expect(screen.getByTestId("naskah-activity-bar")).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /expand sidebar/i }),
+    ).toBeInTheDocument()
   })
 
   it("memuat jumlah artefak dan mengaktifkan indikator TopBar", () => {
@@ -162,5 +256,31 @@ describe("NaskahShell", () => {
       screen.queryByRole("link", { name: /percakapan/i }),
     ).not.toBeInTheDocument()
     expect(screen.getByText("body")).toBeInTheDocument()
+  })
+
+  it("membuka drawer sidebar di mobile lewat toggle TopBar", async () => {
+    setDesktopViewport(false)
+
+    render(
+      <NaskahShell
+        conversationId="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        isSidebarAvailable={true}
+        sidebarSections={[
+          {
+            key: "abstrak",
+            label: "Abstrak",
+            content: "Isi abstrak",
+            sourceStage: "abstrak",
+          },
+        ]}
+      >
+        <div>body</div>
+      </NaskahShell>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /expand sidebar/i }))
+
+    expect(await screen.findByTestId("naskah-mobile-sidebar-header")).toBeInTheDocument()
+    expect(screen.getByTestId("naskah-sidebar")).toBeInTheDocument()
   })
 })

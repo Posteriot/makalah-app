@@ -139,6 +139,7 @@ describe("NaskahPage manual refresh flow", () => {
 
   it("klik Update memanggil refresh, memuat snapshot terbaru, dan menyorot section yang berubah", async () => {
     const onRefresh = vi.fn().mockResolvedValue(undefined)
+    const onSidebarStateChange = vi.fn()
     const revision3 = makeSnapshot({
       revision: 3,
       title: "Judul Revisi 3",
@@ -162,6 +163,7 @@ describe("NaskahPage manual refresh flow", () => {
         latestSnapshot={revision4}
         updatePending={true}
         onRefresh={onRefresh}
+        onSidebarStateChange={onSidebarStateChange}
       />,
     )
 
@@ -179,19 +181,16 @@ describe("NaskahPage manual refresh flow", () => {
     expect(within(header).getByText("Judul Revisi 4")).toBeInTheDocument()
     expect(screen.getByText("Isi abstrak revisi 4")).toBeInTheDocument()
     expect(screen.queryByText("Isi abstrak revisi 3")).not.toBeInTheDocument()
-
-    const sidebar = screen.getByTestId("naskah-sidebar")
-    const abstrakLink = within(sidebar).getByRole("link", { name: "Abstrak" })
-    const pendahuluanLink = within(sidebar).getByRole("link", {
-      name: "Pendahuluan",
+    expect(onSidebarStateChange.mock.calls.at(-1)?.[0]).toMatchObject({
+      isAvailable: true,
+      sections: revision4.sections,
+      highlightedSectionKeys: ["abstrak"],
     })
-
-    expect(abstrakLink).toHaveAttribute("data-changed", "true")
-    expect(pendahuluanLink).toHaveAttribute("data-changed", "false")
   })
 
   it("highlight changed section hilang sementara setelah timeout selesai", async () => {
     const onRefresh = vi.fn().mockResolvedValue(undefined)
+    const onSidebarStateChange = vi.fn()
     const revision3 = makeSnapshot({
       revision: 3,
       sections: [makeSection("abstrak", "Abstrak", "Isi abstrak revisi 3")],
@@ -207,6 +206,7 @@ describe("NaskahPage manual refresh flow", () => {
         latestSnapshot={revision4}
         updatePending={true}
         onRefresh={onRefresh}
+        onSidebarStateChange={onSidebarStateChange}
       />,
     )
 
@@ -216,14 +216,16 @@ describe("NaskahPage manual refresh flow", () => {
     })
 
     expect(onRefresh).toHaveBeenCalledTimes(1)
-    const sidebar = screen.getByTestId("naskah-sidebar")
-    const abstrakLink = within(sidebar).getByRole("link", { name: "Abstrak" })
-    expect(abstrakLink).toHaveAttribute("data-changed", "true")
+    expect(onSidebarStateChange.mock.calls.at(-1)?.[0]).toMatchObject({
+      highlightedSectionKeys: ["abstrak"],
+    })
 
     await act(async () => {
       vi.advanceTimersByTime(3_000)
     })
 
-    expect(abstrakLink).toHaveAttribute("data-changed", "false")
+    expect(onSidebarStateChange.mock.calls.at(-1)?.[0]).toMatchObject({
+      highlightedSectionKeys: [],
+    })
   })
 })

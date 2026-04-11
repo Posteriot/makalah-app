@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import type { NaskahCompiledSnapshot } from "@/lib/naskah/types"
 import { NaskahHeader } from "./NaskahHeader"
 import { NaskahPreview } from "./NaskahPreview"
-import { NaskahSidebar } from "./NaskahSidebar"
+import type { NaskahSection, NaskahSectionKey } from "@/lib/naskah/types"
 
 const HIGHLIGHT_DURATION_MS = 3_000
 
@@ -27,6 +27,11 @@ interface NaskahPageProps {
   updatePending: boolean
   /** Called when the user clicks the in-page Update button. */
   onRefresh?: () => void
+  onSidebarStateChange?: (state: {
+    isAvailable: boolean
+    sections: NaskahSection[]
+    highlightedSectionKeys: NaskahSectionKey[]
+  }) => void
 }
 
 /**
@@ -35,12 +40,11 @@ interface NaskahPageProps {
  * Always renders the header. Branches the body area on
  * `snapshot.isAvailable`:
  *
- *   - true  → renders the sidebar + paper preview
+ *   - true  → renders the header + paper preview
  *   - false → renders a workspace-oriented "belum ada section"
- *             empty state. Sidebar and preview are NOT rendered at all
- *             in this branch (they are removed from the DOM, not
- *             visually hidden), so the unavailable contract stays
- *             unambiguous to tests and screen readers.
+ *             empty state. Preview is NOT rendered at all in this
+ *             branch. The sidebar lives in NaskahShell and is synced
+ *             through `onSidebarStateChange`.
  *
  * Per D-012 the page opens normally even when growing — the empty
  * state is a workspace placeholder, not an error screen.
@@ -55,6 +59,7 @@ export function NaskahPage({
   latestSnapshot,
   updatePending,
   onRefresh,
+  onSidebarStateChange,
 }: NaskahPageProps) {
   const [visibleSnapshot, setVisibleSnapshot] = useState(snapshot)
   const [highlightedSectionKeys, setHighlightedSectionKeys] = useState<
@@ -116,6 +121,14 @@ export function NaskahPage({
 
   const activeSnapshot = visibleSnapshot
 
+  useEffect(() => {
+    onSidebarStateChange?.({
+      isAvailable: activeSnapshot.isAvailable,
+      sections: activeSnapshot.isAvailable ? activeSnapshot.sections : [],
+      highlightedSectionKeys,
+    })
+  }, [activeSnapshot, highlightedSectionKeys, onSidebarStateChange])
+
   const handleRefresh = async () => {
     // Target = the newest snapshot we have a handle to. Prefer the
     // explicit latestSnapshot prop (route's view of what the user will
@@ -151,14 +164,8 @@ export function NaskahPage({
       />
 
       {activeSnapshot.isAvailable ? (
-        <div className="flex min-h-0 flex-1">
-          <aside className="w-64 shrink-0 border-r border-[color:var(--chat-border)]">
-            <NaskahSidebar
-              sections={activeSnapshot.sections}
-              highlightedSectionKeys={highlightedSectionKeys}
-            />
-          </aside>
-          <main className="min-w-0 flex-1">
+        <div className="min-h-0 flex-1">
+          <main className="h-full min-w-0">
             <NaskahPreview
               title={activeSnapshot.title}
               sections={activeSnapshot.sections}

@@ -1,13 +1,15 @@
 "use client"
 
 import { useParams } from "next/navigation"
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { NaskahPage } from "@/components/naskah/NaskahPage"
 import { NaskahShell } from "@/components/naskah/NaskahShell"
 import { useNaskah } from "@/lib/hooks/useNaskah"
 import { usePaperSession } from "@/lib/hooks/usePaperSession"
 import type {
   NaskahCompiledSnapshot,
+  NaskahSection,
+  NaskahSectionKey,
   NaskahTitleSource,
 } from "@/lib/naskah/types"
 import type { Id } from "@convex/_generated/dataModel"
@@ -23,6 +25,55 @@ function deriveFallbackTitleSource(args: {
     return "working_title"
   }
   return "fallback"
+}
+
+function areSidebarStatesEqual(
+  left: {
+    isAvailable: boolean
+    sections: NaskahSection[]
+    highlightedSectionKeys: NaskahSectionKey[]
+  },
+  right: {
+    isAvailable: boolean
+    sections: NaskahSection[]
+    highlightedSectionKeys: NaskahSectionKey[]
+  },
+) {
+  if (left.isAvailable !== right.isAvailable) {
+    return false
+  }
+
+  if (left.sections.length !== right.sections.length) {
+    return false
+  }
+
+  for (let index = 0; index < left.sections.length; index += 1) {
+    if (left.sections[index]?.key !== right.sections[index]?.key) {
+      return false
+    }
+
+    if (left.sections[index]?.label !== right.sections[index]?.label) {
+      return false
+    }
+  }
+
+  if (
+    left.highlightedSectionKeys.length !== right.highlightedSectionKeys.length
+  ) {
+    return false
+  }
+
+  for (
+    let index = 0;
+    index < left.highlightedSectionKeys.length;
+    index += 1
+  ) {
+    if (left.highlightedSectionKeys[index] !== right.highlightedSectionKeys[index]) {
+      return false
+    }
+  }
+
+  return true
 }
 
 export default function NaskahConversationPage() {
@@ -94,10 +145,53 @@ export default function NaskahConversationPage() {
   // prevents a flash of "update pending" copy for content the user is
   // seeing for the first time — there's nothing to "update" from.
   const effectiveUpdatePending = isFirstVisit ? false : updatePending
+  const [sidebarState, setSidebarState] = useState<{
+    isAvailable: boolean
+    sections: NaskahSection[]
+    highlightedSectionKeys: NaskahSectionKey[]
+  }>(() => ({
+    isAvailable: visibleSnapshot.isAvailable,
+    sections: visibleSnapshot.isAvailable ? visibleSnapshot.sections : [],
+    highlightedSectionKeys: [],
+  }))
+
+  const handleSidebarStateChange = useCallback(
+    (nextState: {
+      isAvailable: boolean
+      sections: NaskahSection[]
+      highlightedSectionKeys: NaskahSectionKey[]
+    }) => {
+      setSidebarState((currentState) =>
+        areSidebarStatesEqual(currentState, nextState)
+          ? currentState
+          : nextState,
+      )
+    },
+    [],
+  )
+
+  useEffect(() => {
+    const nextState = {
+      isAvailable: visibleSnapshot.isAvailable,
+      sections: visibleSnapshot.isAvailable ? visibleSnapshot.sections : [],
+      highlightedSectionKeys: [],
+    }
+
+    setSidebarState((currentState) =>
+      areSidebarStatesEqual(currentState, nextState)
+        ? currentState
+        : nextState,
+    )
+  }, [conversationId, visibleSnapshot])
 
   if (isSessionLoading || isLoading) {
     return (
-      <NaskahShell conversationId={conversationId}>
+      <NaskahShell
+        conversationId={conversationId}
+        isSidebarAvailable={false}
+        sidebarSections={[]}
+        highlightedSectionKeys={[]}
+      >
         <div className="flex h-full items-center justify-center text-sm text-[var(--chat-muted-foreground)]">
           Memuat naskah...
         </div>
@@ -106,12 +200,18 @@ export default function NaskahConversationPage() {
   }
 
   return (
-    <NaskahShell conversationId={conversationId}>
+    <NaskahShell
+      conversationId={conversationId}
+      isSidebarAvailable={sidebarState.isAvailable}
+      sidebarSections={sidebarState.sections}
+      highlightedSectionKeys={sidebarState.highlightedSectionKeys}
+    >
       <NaskahPage
         snapshot={visibleSnapshot}
         latestSnapshot={latestSnapshot ?? undefined}
         updatePending={effectiveUpdatePending}
         onRefresh={markViewed}
+        onSidebarStateChange={handleSidebarStateChange}
       />
     </NaskahShell>
   )
