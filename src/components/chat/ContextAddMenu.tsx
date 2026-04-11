@@ -3,6 +3,7 @@
 import { useRef, useState } from "react"
 import { Plus } from "iconoir-react"
 import { useMutation } from "convex/react"
+import * as Sentry from "@sentry/nextjs"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import {
@@ -22,12 +23,14 @@ import { FileTypeIcon, type FileTypeIconExtension } from "./FileTypeIcon"
  * Context-add trigger: a single "+" icon button that opens an upward
  * dropdown menu listing the supported file types. Selecting a type opens
  * the native file chooser filtered to that extension, and the chosen file
- * is uploaded to Convex storage via the same pipeline the previous
- * FileUploadButton used (upload URL → storage → createFile record →
- * optional image data URL → extraction trigger for documents).
+ * is uploaded to Convex storage via:
+ * `generateUploadUrl` → POST file body → `createFile` record → (image:
+ * read as data URL for multimodal; document: trigger `/api/extract-file`
+ * for text extraction).
  *
  * Intentionally inlines the upload logic (no `useFileUpload` hook extraction)
- * since this is currently the single consumer — YAGNI.
+ * since this is currently the single consumer — YAGNI. When a second consumer
+ * arrives, extract into `@/lib/upload/useFileUpload.ts`.
  */
 
 interface ContextAddMenuProps {
@@ -66,6 +69,16 @@ const ALLOWED_MIME_TYPES = [
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 
+function readFileAsDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = () =>
+            reject(reader.error ?? new Error("FileReader error"))
+        reader.readAsDataURL(file)
+    })
+}
+
 export function ContextAddMenu({
     conversationId,
     onFileUploaded,
@@ -82,7 +95,13 @@ export function ContextAddMenu({
     const handleSelectType = (accept: string) => {
         setMenuOpen(false)
         const input = fileInputRef.current
-        if (!input) return
+        if (!input) {
+            Sentry.captureException(
+                new Error("ContextAddMenu: file input ref missing"),
+                { tags: { subsystem: "chat.upload" } }
+            )
+            return
+        }
         input.accept = accept
         // Defer the click so the dropdown can finish its close transition
         // before the native file chooser takes focus.
@@ -103,6 +122,8 @@ export function ContextAddMenu({
             return
         }
 
+        const isImage = file.type.startsWith("image/")
+
         setIsUploading(true)
         try {
             const postUrl = await generateUploadUrl()
@@ -114,10 +135,19 @@ export function ContextAddMenu({
             })
 
             if (!result.ok) {
-                throw new Error(`Upload failed: ${result.statusText}`)
+                throw new Error(
+                    `Upload POST failed: ${result.status} ${result.statusText}`
+                )
             }
 
-            const { storageId } = await result.json()
+            // Guard the JSON parse + validate shape before passing storageId
+            // downstream to createFile, so malformed storage responses surface
+            // here instead of failing with a confusing Convex validator error.
+            const payload = (await result.json()) as { storageId?: unknown }
+            const storageId = payload?.storageId
+            if (typeof storageId !== "string" || storageId.length === 0) {
+                throw new Error("Upload response missing or invalid storageId")
+            }
 
             const fileId = await createFile({
                 storageId,
@@ -127,23 +157,51 @@ export function ContextAddMenu({
                 conversationId: conversationId as Id<"conversations"> ?? undefined,
             })
 
-            // For images: read as data URL for native multimodal handling
-            if (file.type.startsWith("image/")) {
-                const reader = new FileReader()
-                reader.onload = () => {
-                    onImageDataUrl?.(fileId, reader.result as string)
+            // For images: await the data URL read BEFORE firing onFileUploaded
+            // so the parent never submits a message while the multimodal
+            // payload is still resolving. A read failure is non-fatal — the
+            // file is already in Convex storage, we just lose the inline
+            // preview path and surface a toast.
+            if (isImage && onImageDataUrl) {
+                try {
+                    const dataUrl = await readFileAsDataUrl(file)
+                    onImageDataUrl(fileId, dataUrl)
+                } catch (readError) {
+                    Sentry.captureException(readError, {
+                        tags: { subsystem: "chat.upload.imageRead" },
+                        contexts: {
+                            file: {
+                                name: file.name,
+                                type: file.type,
+                                size: file.size,
+                            },
+                        },
+                    })
+                    toast.error(
+                        "Gagal membaca gambar untuk preview. File tetap terunggah."
+                    )
                 }
-                reader.readAsDataURL(file)
             }
 
-            // Trigger text extraction only for document types (not images)
-            if (!file.type.startsWith("image/")) {
+            // Images skip text extraction — they are passed to the model as a
+            // multimodal data URL instead. Documents trigger a fire-and-forget
+            // extraction POST; failures are logged but do not block upload.
+            if (!isImage) {
                 fetch("/api/extract-file", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ fileId }),
-                }).catch(() => {
-                    // Graceful degradation: extraction failure shouldn't block upload
+                }).catch((extractError) => {
+                    Sentry.captureException(extractError, {
+                        tags: { subsystem: "chat.upload.extract" },
+                        contexts: {
+                            file: {
+                                fileId,
+                                name: file.name,
+                                type: file.type,
+                            },
+                        },
+                    })
                 })
             }
 
@@ -153,7 +211,18 @@ export function ContextAddMenu({
                 size: file.size,
                 type: file.type,
             })
-        } catch {
+        } catch (error) {
+            Sentry.captureException(error, {
+                tags: { subsystem: "chat.upload" },
+                contexts: {
+                    file: {
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        conversationId,
+                    },
+                },
+            })
             toast.error("Upload gagal. Silakan coba lagi.")
         } finally {
             setIsUploading(false)
