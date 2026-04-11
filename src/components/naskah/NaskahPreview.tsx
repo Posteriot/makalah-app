@@ -39,12 +39,6 @@ export function NaskahPreview({ title, sections }: NaskahPreviewProps) {
         testId="naskah-title-page"
         className="flex flex-col items-center justify-center text-center"
       >
-        {/*
-          No explicit color class — the heading inherits the dark
-          paper text color from PageContainer below. Setting
-          text-[var(--chat-foreground)] here would invert to white in
-          dark mode and become invisible against the white page.
-        */}
         <h1 className="text-4xl font-semibold">{title}</h1>
       </PageContainer>
 
@@ -89,8 +83,12 @@ function PageContainer({
         "w-full max-w-[210mm] min-h-[297mm]",
         // Mirror pdf-builder margins: top/bottom 2.5cm, left 3cm, right 2cm
         "pt-[2.5cm] pb-[2.5cm] pl-[3cm] pr-[2cm]",
-        "rounded-sm border border-[color:var(--chat-border)] bg-white shadow-sm",
-        "text-[#1a1a1a]",
+        // Paper surface uses chat-muted per Q4 — matches chat input fill
+        // so the paper feels part of the same visual family as the rest
+        // of the chat scope. Token-based so the fill adapts automatically
+        // between light and dark modes (user requirement #6).
+        "rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-muted)]",
+        "text-[var(--chat-foreground)]",
         className,
       )}
     >

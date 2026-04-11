@@ -32,34 +32,43 @@ export function NaskahSidebar({
     <nav
       data-testid="naskah-sidebar"
       aria-label="Daftar section naskah"
-      className="flex h-full w-full flex-col gap-1 overflow-y-auto bg-[var(--chat-card)] p-4"
+      className="flex h-full w-full min-h-0 flex-col text-[var(--chat-sidebar-foreground)]"
     >
-      <a
-        href={`#${NASKAH_TITLE_PAGE_ANCHOR_ID}`}
-        className={cn(
-          "rounded-action px-3 py-2 text-sm",
-          "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
-          "transition-colors",
-        )}
-      >
-        {NASKAH_TITLE_PAGE_LABEL}
-      </a>
-      {sections.map((section) => (
+      <div className="shrink-0 px-5 pb-3 pt-4">
+        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--chat-muted-foreground)]">
+          Outline
+        </p>
+        <p className="mt-1 text-[15px] font-semibold text-[var(--chat-sidebar-foreground)]">
+          Struktur naskah
+        </p>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
         <a
-          key={section.key}
-          href={`#${getNaskahSectionAnchorId(section.key)}`}
-          data-changed={highlightedSectionKeys.includes(section.key)}
+          href={`#${NASKAH_TITLE_PAGE_ANCHOR_ID}`}
           className={cn(
-            "rounded-action px-3 py-2 text-sm",
-            "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
-            highlightedSectionKeys.includes(section.key) &&
-              "bg-[color:color-mix(in_oklab,var(--chat-info)_14%,transparent)] ring-1 ring-[color:color-mix(in_oklab,var(--chat-info)_55%,transparent)]",
-            "transition-colors",
+            "block rounded-action px-3 py-2 text-sm",
+            "text-[var(--chat-sidebar-foreground)] transition-colors duration-150 hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)]",
           )}
         >
-          {section.label}
+          {NASKAH_TITLE_PAGE_LABEL}
         </a>
-      ))}
+        {sections.map((section) => (
+          <a
+            key={section.key}
+            href={`#${getNaskahSectionAnchorId(section.key)}`}
+            data-changed={highlightedSectionKeys.includes(section.key)}
+            className={cn(
+              "mt-1 block rounded-action px-3 py-2 text-sm",
+              "text-[var(--chat-sidebar-foreground)] transition-colors duration-150 hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)]",
+              highlightedSectionKeys.includes(section.key) &&
+                "bg-[color:color-mix(in_oklab,var(--chat-info)_14%,transparent)] ring-1 ring-[color:color-mix(in_oklab,var(--chat-info)_55%,transparent)]",
+            )}
+          >
+            {section.label}
+          </a>
+        ))}
+      </div>
     </nav>
   )
 }

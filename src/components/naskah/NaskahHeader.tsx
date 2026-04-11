@@ -38,7 +38,7 @@ export function NaskahHeader({
   return (
     <header
       data-testid="naskah-header"
-      className="border-b border-[color:var(--chat-border)] bg-[var(--chat-card)] px-6 py-4"
+      className="bg-[var(--chat-background)] px-6 py-5 md:px-8"
     >
       <div className="mb-3">
         <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--chat-muted-foreground)]">
@@ -73,8 +73,7 @@ export function NaskahHeader({
         <div
           className={cn(
             "mt-3 flex items-center justify-between gap-3 rounded-action px-3 py-2",
-            "border border-[color:var(--chat-border)]",
-            "bg-[color:color-mix(in_oklab,var(--chat-info)_12%,transparent)]",
+            "border border-[color:var(--chat-border)] bg-[var(--chat-card)]",
           )}
         >
           <span className="text-sm text-[var(--chat-foreground)]">
