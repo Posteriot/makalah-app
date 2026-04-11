@@ -53,9 +53,10 @@ export function NaskahHeader({
         {status === "growing" && (
           <span
             className={cn(
-              "inline-flex items-center rounded-full px-2 py-0.5",
-              "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200",
-              "text-xs font-medium",
+              "inline-flex items-center rounded-badge border px-1.5 py-0.5",
+              "border-[color:var(--chat-info)] bg-[var(--chat-info)]",
+              "text-[10px] font-mono font-bold tracking-wide text-[var(--chat-info-foreground)]",
+              "shrink-0",
             )}
           >
             Bertumbuh

@@ -51,7 +51,7 @@ function makeSections(): NaskahSection[] {
 }
 
 describe("NaskahSidebar", () => {
-  it("item pertama selalu Halaman Judul", () => {
+  it("item pertama selalu label Judul", () => {
     render(<NaskahSidebar sections={makeSections()} />)
 
     const items = within(screen.getByTestId("naskah-sidebar")).getAllByRole("link")

@@ -16,7 +16,7 @@ interface NaskahSidebarProps {
 /**
  * Left outline for the Naskah preview.
  *
- * The first item is "Halaman Judul" per D-052. Subsequent items follow
+ * The first item is "Judul" per D-052. Subsequent items follow
  * the canonical academic order of `sections` (which the compiler
  * already orders for us). Navigation uses native anchor links — no JS
  * click handler, no scroll-spy state.
