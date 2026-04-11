@@ -302,7 +302,7 @@ export function ChatInput({
                ═══════════════════════════════════════════════ */}
             <div className="hidden md:block py-4 bg-transparent" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                 <form onSubmit={onSubmit} className="flex">
-                    <div className="flex w-full flex-col rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-card)] px-3 py-2">
+                    <div className="flex w-full flex-col rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-3 py-2">
                         {renderContextTray("desktop", "px-1 pb-1")}
                         <div
                             data-testid="desktop-input-row"
@@ -342,7 +342,7 @@ export function ChatInput({
                     <div
                         data-testid="mobile-chat-input-shell"
                         className={cn(
-                            "w-full rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-card)] transition-colors duration-150",
+                            "w-full rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-muted)] transition-colors duration-150",
                         )}
                     >
                         <div data-testid="mobile-chat-input-stacked">
