@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { splitMarkdownIntoBlocks } from "./split-markdown"
+import {
+  splitMarkdownAtHeadings,
+  splitMarkdownIntoBlocks,
+} from "./split-markdown"
 
 describe("splitMarkdownIntoBlocks", () => {
   it("returns an empty array for empty input", () => {
@@ -88,6 +91,102 @@ describe("splitMarkdownIntoBlocks", () => {
       "## Rumusan Masalah",
       "Berdasarkan latar belakang di atas, rumusan masalah dalam penelitian ini adalah:",
       "1. Bagaimana desain interaksi chatbot?\n2. Apa saja faktor-faktor kunci?",
+    ])
+  })
+})
+
+describe("splitMarkdownAtHeadings", () => {
+  it("returns an empty array for empty input", () => {
+    expect(splitMarkdownAtHeadings("")).toEqual([])
+  })
+
+  it("returns one block when there is no heading at the requested level", () => {
+    const md = "Penelitian ini bertujuan...\n\nLalu paragraf kedua."
+    expect(splitMarkdownAtHeadings(md, 2)).toEqual([
+      "Penelitian ini bertujuan...\n\nLalu paragraf kedua.",
+    ])
+  })
+
+  it("splits at every level-2 heading and keeps heading welded to body", () => {
+    const md = [
+      "## Latar Belakang",
+      "",
+      "Body satu.",
+      "",
+      "## Rumusan Masalah",
+      "",
+      "Body dua.",
+    ].join("\n")
+
+    expect(splitMarkdownAtHeadings(md, 2)).toEqual([
+      "## Latar Belakang\n\nBody satu.",
+      "## Rumusan Masalah\n\nBody dua.",
+    ])
+  })
+
+  it("treats preamble before first heading as its own first block", () => {
+    const md = [
+      "Pengantar tanpa heading.",
+      "",
+      "## Pertama",
+      "",
+      "Isi pertama.",
+    ].join("\n")
+
+    expect(splitMarkdownAtHeadings(md, 2)).toEqual([
+      "Pengantar tanpa heading.",
+      "## Pertama\n\nIsi pertama.",
+    ])
+  })
+
+  it("ignores headings at other levels (e.g., h3) when splitting at h2", () => {
+    const md = [
+      "## Pertama",
+      "",
+      "### Sub",
+      "",
+      "Body sub.",
+      "",
+      "## Kedua",
+      "",
+      "Body kedua.",
+    ].join("\n")
+
+    expect(splitMarkdownAtHeadings(md, 2)).toEqual([
+      "## Pertama\n\n### Sub\n\nBody sub.",
+      "## Kedua\n\nBody kedua.",
+    ])
+  })
+
+  it("handles CRLF line endings", () => {
+    const md = "## Pertama\r\n\r\nIsi.\r\n\r\n## Kedua\r\n\r\nIsi dua."
+    expect(splitMarkdownAtHeadings(md, 2)).toEqual([
+      "## Pertama\n\nIsi.",
+      "## Kedua\n\nIsi dua.",
+    ])
+  })
+
+  it("can split at a different heading level when level=3 is requested", () => {
+    const md = [
+      "### Alpha",
+      "",
+      "Body alpha.",
+      "",
+      "### Beta",
+      "",
+      "Body beta.",
+    ].join("\n")
+
+    expect(splitMarkdownAtHeadings(md, 3)).toEqual([
+      "### Alpha\n\nBody alpha.",
+      "### Beta\n\nBody beta.",
+    ])
+  })
+
+  it("does not split a heading prefix that appears mid-line (e.g., '##' inside text)", () => {
+    const md = "Inline mention of ##notation should not split.\n\nBody."
+    expect(splitMarkdownAtHeadings(md, 2)).toEqual([
+      "Inline mention of ##notation should not split.\n\nBody.",
     ])
   })
 })

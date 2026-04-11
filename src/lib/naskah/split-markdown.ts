@@ -40,3 +40,60 @@ export function splitMarkdownIntoBlocks(markdown: string): string[] {
   }
   return blocks
 }
+
+/**
+ * Split a markdown document into "subsection" blocks: chunks that each
+ * begin with a heading at the requested level (default `##` h2) and
+ * include everything up to (but not including) the next heading at that
+ * same level.
+ *
+ * Use this when you want each subsection to stay atomic — heading + body
+ * + lists + paragraphs in one chunk — so that downstream layout
+ * (e.g., line-level pagination with subsection-aware spacing) can keep
+ * a heading tight to the body that follows it without splitting them
+ * apart at every blank line.
+ *
+ * **Behavior:**
+ * - The very first chunk may NOT start with a heading at the requested
+ *   level. That's fine: any "preamble" content before the first heading
+ *   is returned as the first block. (For naskah this is the case for
+ *   sections like Abstrak that have no internal subsections.)
+ * - If the document has no headings at the requested level at all, the
+ *   entire input is returned as a single block.
+ * - Headings at lower levels (e.g., h3 inside an h2 subsection) are
+ *   left in their parent block.
+ * - Trims leading/trailing whitespace per block. Skips empty blocks.
+ * - CRLF safe.
+ *
+ * **Why not just split on `\n## `?**
+ * That would lose the heading text from each block (the `##` would
+ * be on the wrong side of the split). The implementation walks lines
+ * one by one so the heading line stays at the top of its block.
+ */
+export function splitMarkdownAtHeadings(
+  markdown: string,
+  level: 1 | 2 | 3 | 4 | 5 | 6 = 2,
+): string[] {
+  if (!markdown) return []
+
+  const headingPrefix = `${"#".repeat(level)} `
+  const lines = markdown.split(/\r?\n/)
+  const blocks: string[] = []
+  let current: string[] = []
+
+  for (const line of lines) {
+    const isHeading = line.trimStart().startsWith(headingPrefix)
+    if (isHeading && current.length > 0) {
+      const finished = current.join("\n").trim()
+      if (finished.length > 0) blocks.push(finished)
+      current = [line]
+    } else {
+      current.push(line)
+    }
+  }
+  if (current.length > 0) {
+    const finished = current.join("\n").trim()
+    if (finished.length > 0) blocks.push(finished)
+  }
+  return blocks
+}

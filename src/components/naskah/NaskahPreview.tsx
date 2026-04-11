@@ -6,10 +6,10 @@ import {
   NASKAH_TITLE_PAGE_ANCHOR_ID,
   getNaskahSectionAnchorId,
 } from "@/lib/naskah/anchors"
-import { splitMarkdownIntoBlocks } from "@/lib/naskah/split-markdown"
+import { splitMarkdownAtHeadings } from "@/lib/naskah/split-markdown"
 import type { NaskahSection } from "@/lib/naskah/types"
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer"
-import { usePaginatedBlocks } from "./usePaginatedBlocks"
+import { useLineLevelPagination } from "./useLineLevelPagination"
 
 interface NaskahPreviewProps {
   title: string
@@ -122,16 +122,18 @@ function useContentAreaHeightPx(): {
  * The first page container is the title page (D-043, D-045) — a cover-
  * style layout that contains only the resolved paper title.
  *
- * Each section is handled by `PaginatedSection`, which splits the
- * section's markdown into block chunks, measures each chunk in a hidden
- * scratch container, and distributes chunks across as many A4
- * `PageContainer` instances as needed. Page 1 of each section shows the
- * section label; pages 2+ continue with content only (Word-style).
+ * Each section is handled by `PaginatedSection`, which renders the
+ * section's full markdown content as a single flowing tree, measures
+ * line-level snap points via `useLineLevelPagination`, and renders the
+ * SAME flowing tree across N visible `PageContainer`s by clipping each
+ * page to its `[startY, endY)` slice. Page breaks land on complete
+ * line bottoms (Word/Google Docs style), so the bottom of any given
+ * page has at most one line of whitespace rather than a whole orphaned
+ * paragraph.
  *
- * Phase-1 edge case: a single markdown block taller than one page
- * content area overflows its page visually (rather than splitting at
- * line level). This is documented in `usePaginatedBlocks` and is rare in
- * typical naskah content.
+ * Phase-1 edge case: a single un-snappable element taller than one
+ * page content area (e.g., a giant table) overflows visually inside
+ * its page. Naskah content rarely contains such elements.
  *
  * Inline padding mirrors the export PDF margins from
  * `src/lib/export/pdf-builder.ts` (top/bottom 2.5cm, left 3cm, right
@@ -195,16 +197,40 @@ interface PaginatedSectionProps {
 }
 
 /**
- * One section, possibly split across multiple A4 pages.
+ * One section, possibly split across multiple A4 pages, with
+ * line-level page breaks (Word/Google Docs style).
  *
  * Pipeline:
- *   content → stripLeadingDuplicateHeading → splitMarkdownIntoBlocks
- *   → render blocks in hidden scratch container → measure heights
- *   → usePaginatedBlocks distributes into pages → render visible
- *     PageContainers.
+ *   content
+ *     → stripLeadingDuplicateHeading
+ *     → splitMarkdownAtHeadings (atomic subsection blocks)
+ *     → render full flowing tree once into hidden measurement container
+ *     → useLineLevelPagination walks Range.getClientRects() + block
+ *       bottoms to find snap points and computes page slices
+ *     → render N visible PageContainers, each clipping the SAME flowing
+ *       tree to its `[startY, endY)` slice via overflow:hidden +
+ *       negative marginTop.
+ *
+ * **Why subsection-atomic blocks (`splitMarkdownAtHeadings`)?**
+ * The previous block-level pagination split on every blank line, which
+ * meant each `## Heading` became its own block separate from its body.
+ * That allowed page breaks to fall between a heading and its first
+ * paragraph (orphan headings). Splitting at headings keeps each
+ * subsection's heading + body welded into a single wrapper element,
+ * which gives the line-level snap algorithm a natural "atom" to honor:
+ * the wrapper's bottom is a snap point, and as long as a wrapper fits
+ * inside one page budget the heading and its body stay together.
+ *
+ * **Why mt-12 between block wrappers?**
+ * Word convention: "two blank line spaces" between subsections. With
+ * a 24px line-height, 48px (`mt-12`) ≈ two empty lines. The mt-12 lives
+ * on the wrapper, not inside the markdown, so the snap algorithm can
+ * page-break inside the gap if needed without producing weird
+ * mid-margin breaks.
  *
  * Re-runs pagination whenever `contentAreaHeightPx` changes (window
- * resize) or the stripped markdown changes (new section content).
+ * resize, font load) or the stripped markdown changes (new section
+ * content from a refresh).
  */
 function PaginatedSection({
   section,
@@ -215,59 +241,75 @@ function PaginatedSection({
     [section.content, section.label],
   )
 
+  // Subsection-atomic split — each chunk starts with a `## Heading`
+  // and contains everything up to the next `##`. Sections with no `##`
+  // (e.g., Abstrak) come back as a single chunk.
   const blocks = useMemo(
-    () => splitMarkdownIntoBlocks(strippedMarkdown),
+    () => splitMarkdownAtHeadings(strippedMarkdown, 2),
     [strippedMarkdown],
   )
 
-  // A monotonically-incrementing trigger tied to the current block
-  // content. The hook re-runs measurement when this bumps. We use a
-  // ref-counted bump rather than a content hash to guarantee that ANY
-  // change to the strippedMarkdown identity triggers re-measurement —
-  // including same-length edits (typo fixes, character swaps) where
-  // the block count and total character count are unchanged but
-  // individual block heights may differ due to glyph metrics or line
-  // wrapping. The previous string-length heuristic missed those cases.
-  const triggerCounterRef = useRef(0)
-  const lastTrackedMarkdownRef = useRef<string | null>(null)
-  if (lastTrackedMarkdownRef.current !== strippedMarkdown) {
-    lastTrackedMarkdownRef.current = strippedMarkdown
-    triggerCounterRef.current += 1
-  }
-  const measureTrigger = triggerCounterRef.current
-
-  const { pages, measurementRef } = usePaginatedBlocks({
-    blockCount: blocks.length,
+  // Pass `strippedMarkdown` directly as the measurement trigger. The
+  // hook treats it as an opaque dep — it never reads the value, only
+  // uses identity changes to schedule a re-measurement. Because
+  // `strippedMarkdown` is itself a `useMemo` keyed on
+  // `[section.content, section.label]`, its identity changes whenever
+  // the underlying content string changes — including same-length
+  // edits like "abc" → "abx" where the character count is unchanged
+  // but glyph metrics differ. (The previous string-length heuristic
+  // missed those cases — caught by Codex audit M1.)
+  const { pages, measurementRef } = useLineLevelPagination({
     contentAreaHeightPx,
-    measureTrigger,
+    measureTrigger: strippedMarkdown,
   })
 
   // Section label always anchors page 1. Tests rely on the DOM anchor
   // id being on the first page element.
   const anchorId = getNaskahSectionAnchorId(section.key)
 
-  // Stable className passed to every MarkdownRenderer instance. The
-  // arbitrary selector overrides neutralize chat-specific h2 styling —
-  // see NaskahPreview doc comment above.
+  // h2 styling override for markdown-rendered subsection headings.
+  // The chat MarkdownRenderer ships h2 with `mt-10 pt-6 border-t` — a
+  // section-divider style that's wrong for naskah where each subsection
+  // is a clean heading + body. We zero those out and let the wrapper's
+  // mt-12 handle inter-block spacing instead.
   const markdownClassName = cn(
     "text-base leading-relaxed",
-    "[&_h2]:border-t-0 [&_h2]:pt-0 [&_h2]:mt-8",
+    "[&_h2]:border-t-0 [&_h2]:pt-0 [&_h2]:mt-0",
   )
 
-  // Sentinel: when there are zero blocks (e.g., a section whose
-  // content is empty after duplicate-heading stripping) we still want
-  // to render one PageContainer so the section label appears in the
-  // paper. `[[]]` is one page with no block indices.
-  const visiblePages = pages.length === 0 ? [[]] : pages
+  // The flowing content tree, rendered identically into the hidden
+  // measurement container AND into every visible page (clipped). This
+  // is the key invariant for line-level pagination: measurement and
+  // visible rendering must produce IDENTICAL DOM/style trees so the
+  // snap-point Y coordinates are valid for the visible clip windows.
+  const flowingContent = (
+    <div className="text-base leading-relaxed">
+      <h2 className="mb-6 text-2xl font-semibold">{section.label}</h2>
+      {blocks.map((block, idx) => (
+        <div key={idx} className={cn(idx > 0 && "mt-12")}>
+          <MarkdownRenderer
+            markdown={block}
+            context="artifact"
+            className={markdownClassName}
+          />
+        </div>
+      ))}
+    </div>
+  )
+
+  // Sentinel: when pagination hasn't computed pages yet (initial render
+  // before useLayoutEffect) OR there are no pages (empty content), fall
+  // back to one un-clipped page so the section label still appears.
+  const visiblePages: LineLevelPageOrFallback[] =
+    pages.length === 0 ? [{ startY: 0, endY: null }] : pages
 
   return (
     <>
       {/*
-        Hidden scratch container. Renders every block individually so
-        `usePaginatedBlocks` can query them by data-block-idx and read
-        offsetHeight. Marked aria-hidden so assistive tech ignores the
-        duplicate content; visibility:hidden + pointer-events:none keeps
-        it off-screen and non-interactive.
+        Hidden measurement container. Renders the FULL flowing tree
+        once. The pagination hook walks this DOM via Range API +
+        block-bottom rects to find snap points. aria-hidden + fixed
+        off-screen positioning keeps it invisible and non-interactive.
       */}
       <div
         ref={measurementRef}
@@ -282,22 +324,15 @@ function PaginatedSection({
         className={cn(
           // Same width as a real page content area so wrapping matches.
           "w-[calc(210mm_-_3cm_-_2cm)]",
-          "text-base leading-relaxed",
         )}
       >
-        {blocks.map((block, idx) => (
-          <div key={idx} data-block-idx={idx}>
-            <MarkdownRenderer
-              markdown={block}
-              context="artifact"
-              className={markdownClassName}
-            />
-          </div>
-        ))}
+        {flowingContent}
       </div>
 
-      {visiblePages.map((pageBlockIndices, pageIdx) => {
+      {visiblePages.map((page, pageIdx) => {
         const isFirstPage = pageIdx === 0
+        const sliceHeight =
+          page.endY != null ? page.endY - page.startY : null
         return (
           <PageContainer
             key={pageIdx}
@@ -306,23 +341,33 @@ function PaginatedSection({
             data-section-key={section.key}
             data-page-index={pageIdx}
           >
-            {isFirstPage && (
-              <h2 className="mb-6 text-2xl font-semibold">{section.label}</h2>
-            )}
-            {pageBlockIndices.map((blockIdx) => (
-              <MarkdownRenderer
-                key={blockIdx}
-                markdown={blocks[blockIdx]}
-                context="artifact"
-                className={markdownClassName}
-              />
-            ))}
+            <div
+              style={{
+                height:
+                  sliceHeight != null ? `${sliceHeight}px` : "100%",
+                overflow: "hidden",
+              }}
+            >
+              <div style={{ marginTop: `${-page.startY}px` }}>
+                {flowingContent}
+              </div>
+            </div>
           </PageContainer>
         )
       })}
     </>
   )
 }
+
+/**
+ * Local union for visible page rendering. Pagination returns
+ * `{startY, endY}` once measured. Before measurement (initial paint or
+ * empty content) we use a fallback shape with `endY: null` that
+ * triggers `height: 100%` instead of an explicit pixel value, so the
+ * fallback page renders the full unclipped content while the hook
+ * settles.
+ */
+type LineLevelPageOrFallback = { startY: number; endY: number | null }
 
 interface PageContainerProps {
   id?: string
