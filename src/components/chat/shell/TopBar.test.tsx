@@ -80,7 +80,7 @@ describe("TopBar naskah entry point", () => {
     )
 
     const link = screen.getByRole("link", { name: /pratinjau/i })
-    expect(link).toHaveAttribute("href", "/chat/conversation_1/naskah")
+    expect(link).toHaveAttribute("href", "/naskah/conversation_1")
   })
 
   it("menampilkan tombol Percakapan saat berada di route naskah", () => {

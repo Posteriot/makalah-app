@@ -147,7 +147,7 @@ describe("TopBar naskah integration", () => {
     const naskahLink = screen.getByRole("link", { name: /pratinjau/i })
     expect(naskahLink).toHaveAttribute(
       "href",
-      "/chat/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/naskah",
+      "/naskah/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     )
     expect(screen.getByTestId("naskah-update-dot")).toBeInTheDocument()
   })

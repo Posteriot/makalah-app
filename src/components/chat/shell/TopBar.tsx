@@ -107,7 +107,7 @@ export function TopBar({
         <div className="flex items-center gap-2 pt-1">
           {showNaskahLink && conversationId && (
             <Link
-              href={`/chat/${conversationId}/naskah`}
+              href={`/naskah/${conversationId}`}
               className={cn(
                 "inline-flex items-center gap-2 rounded-action px-3 py-1.5 text-sm",
                 "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
