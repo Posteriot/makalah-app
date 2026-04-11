@@ -2,6 +2,14 @@ import { act, render, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it, vi, afterEach } from "vitest"
 import { ChatInput } from "./ChatInput"
 
+// `ContextAddMenu` is mocked to a trivial `<button>` stub so that these
+// tests stay focused on the ChatInput mobile composer layout: row
+// wrapping, textarea focus retention across re-renders, stable-collapse
+// anti-flicker, and the two-row vs compact variant gate. The dropdown
+// mechanics, Convex upload pipeline, and file-type filtering of the real
+// `ContextAddMenu` component have their own coverage in
+// `ContextAddMenu.test.tsx` — nothing in this file exercises that
+// behaviour, so the mock intentionally drops it.
 vi.mock("./ContextAddMenu", () => ({
   ContextAddMenu: () => (
     <button type="button" aria-label="Tambah konteks">+</button>
