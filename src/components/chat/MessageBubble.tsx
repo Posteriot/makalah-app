@@ -1075,7 +1075,17 @@ export function MessageBubble({
                 <div className={cn(
                     isUser ? "px-4 py-3" : "py-1"
                 )}>
-                    {/* File attachments — unified thumbnail cards (non-image chips + native SDK image parts) */}
+                    {/*
+                      * File attachments — unified thumbnail cards.
+                      * Two iteration sources (non-image chips from fileIds
+                      * metadata + native SDK image parts from message.parts)
+                      * render into a single vertical stack. The `mt-0.5` on
+                      * the wrapper below compensates for the glyph
+                      * half-leading inside the first markdown paragraph,
+                      * mirroring the `[&>*:first-child]:mt-0` reset in
+                      * `MarkdownRenderer.tsx`; keep them in sync when either
+                      * changes.
+                      */}
                     {(() => {
                         const nonImageChips = shouldRenderAttachmentChips
                             ? fileIds

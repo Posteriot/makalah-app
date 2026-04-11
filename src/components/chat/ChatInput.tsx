@@ -321,7 +321,6 @@ export function ChatInput({
                                 onChange={handleBoundedInputChange}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Kirim percakapan..."
-                                disabled={isLoading && false}
                                 rows={1}
                                 aria-label="Message input"
                             />

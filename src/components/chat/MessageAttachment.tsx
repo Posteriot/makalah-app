@@ -75,7 +75,6 @@ export function MessageAttachment({
             )}
             title={name}
         >
-            {/* Preview square */}
             <div className="size-12 shrink-0 overflow-hidden rounded-action">
                 {isImage && imageUrl ? (
                     <Image
@@ -91,7 +90,6 @@ export function MessageAttachment({
                 ) : null}
             </div>
 
-            {/* Info column */}
             <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-[var(--chat-foreground)]">
                     {name}
@@ -103,7 +101,6 @@ export function MessageAttachment({
                 )}
             </div>
 
-            {/* Remove button (only when onRemove provided) */}
             {onRemove && (
                 <button
                     type="button"

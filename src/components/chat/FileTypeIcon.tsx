@@ -12,11 +12,11 @@ import { cn } from "@/lib/utils"
  * — matching the `currentColor`-based pattern already used by iconoir-react
  * throughout the chat UI.
  *
- * Why custom vs a library (file-icon-vectors, untitledui, etc.):
- * - All available file-icon libraries ship hardcoded fill colors.
- * - We want a single gray/slate family that adapts to dark/light mode without
- *   CSS overrides or variant swaps.
- * - Tiny bundle: one component, six string labels, zero dependencies.
+ * Why custom vs a file-icon library: the libraries we evaluated (e.g.
+ * file-icon-vectors, untitled-ui) ship with hardcoded fills, which would
+ * fight our `currentColor`-based theming and force per-variant CSS overrides.
+ * A custom one-component render keeps the bundle negligible and gives us
+ * native dark/light adaptivity.
  */
 
 export type FileTypeIconExtension = "pdf" | "doc" | "xls" | "ppt" | "txt" | "img"
@@ -47,15 +47,17 @@ export function FileTypeIcon({
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-            // NOTE: className must use `size-*` (not `h-* w-*`), otherwise the
-            // shadcn DropdownMenuItem wrapper auto-forces `size-4` via the
-            // selector `[&_svg:not([class*='size-'])]:size-4`.
+            // NOTE: the default size class must follow the `size-*` pattern
+            // (not `h-* w-*`). The shadcn DropdownMenuItem wrapper in
+            // `src/components/ui/dropdown-menu.tsx` has a default-size
+            // selector that clamps any child SVG without a `size-*` class
+            // to 16px, which would silently shrink the icon below
+            // readability inside menu items.
             className={cn("size-5", className)}
             role={ariaLabel ? "img" : undefined}
             aria-label={ariaLabel}
             aria-hidden={ariaLabel ? undefined : true}
         >
-            {/* File body outline with folded top-right corner */}
             <path
                 d="M5 3a1 1 0 0 1 1-1h8.5L19 6.5V21a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3z M14.5 2v5H19"
                 stroke="currentColor"
@@ -63,7 +65,6 @@ export function FileTypeIcon({
                 strokeLinejoin="round"
                 strokeLinecap="round"
             />
-            {/* Extension label inside the body */}
             <text
                 x="12"
                 y="17"

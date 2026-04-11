@@ -7,10 +7,9 @@ import { resolveExtensionStyle } from "./attachmentExtensionStyles"
 
 /**
  * Upload-preview attachment card used above the chat input (inline next to
- * the "+ Konteks" trigger).
+ * the ContextAddMenu trigger).
  *
- * Visual style matches the Claude.ai attachment card reference (see research
- * screenshot `18.04.19.png`):
+ * Layout:
  * - Colored rounded square on the left containing a document / image icon,
  *   using the extension color palette shared with MessageAttachment.
  * - Two-line info column: filename (bold, truncated) above a short file-type
@@ -65,7 +64,6 @@ export function ChatInputAttachment({
             )}
             title={name}
         >
-            {/* Colored square with document icon */}
             <div
                 className={cn(
                     "flex size-9 shrink-0 items-center justify-center rounded-action",
@@ -79,7 +77,6 @@ export function ChatInputAttachment({
                 />
             </div>
 
-            {/* Filename + type label */}
             <div className="flex min-w-0 flex-col">
                 <div className="truncate text-[13px] font-medium text-[var(--chat-foreground)]">
                     {name}
@@ -89,7 +86,6 @@ export function ChatInputAttachment({
                 </div>
             </div>
 
-            {/* Floating remove button */}
             <button
                 type="button"
                 onClick={(e) => {
