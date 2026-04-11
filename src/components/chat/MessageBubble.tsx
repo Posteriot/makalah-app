@@ -1085,12 +1085,15 @@ export function MessageBubble({
                                       const fileType = fileTypes[idx] || fileMeta?.type || ""
                                       const isImage = (fileType ? isImageType(fileType) : false) || /\.(jpg|jpeg|png|gif|webp)$/i.test(name)
                                       if (isImage) return null
-                                      const size = typeof fileSizes[idx] === "number" && fileSizes[idx] > 0
-                                          ? fileSizes[idx]
-                                          : (typeof fileMeta?.size === "number" && fileMeta.size > 0 ? fileMeta.size : null)
-                                      return { key: fid, name, size, mimeType: fileType }
+                                      const rawSize =
+                                          typeof fileSizes[idx] === "number" && fileSizes[idx] > 0
+                                              ? fileSizes[idx]
+                                              : typeof fileMeta?.size === "number" && fileMeta.size > 0
+                                                  ? fileMeta.size
+                                                  : undefined
+                                      return { key: fid, name, size: rawSize, mimeType: fileType }
                                   })
-                                  .filter((x): x is { key: string; name: string; size: number | null; mimeType: string } => x !== null)
+                                  .filter((x): x is { key: string; name: string; size: number | undefined; mimeType: string } => x !== null)
                             : []
 
                         const imageParts = isUser
@@ -1106,14 +1109,13 @@ export function MessageBubble({
                                           return {
                                               key: `img-${i}`,
                                               name: (filePart.filename as string) ?? "attachment",
-                                              size: null as number | null,
                                               mimeType: (filePart.mediaType as string) ?? "",
                                               imageUrl: filePart.url as string,
                                           }
                                       }
                                       return null
                                   })
-                                  .filter((x): x is { key: string; name: string; size: number | null; mimeType: string; imageUrl: string } => x !== null)
+                                  .filter((x): x is { key: string; name: string; mimeType: string; imageUrl: string } => x !== null)
                             : []
 
                         const totalAttachments = nonImageChips.length + imageParts.length
@@ -1133,7 +1135,6 @@ export function MessageBubble({
                                     <MessageAttachment
                                         key={item.key}
                                         name={item.name}
-                                        size={item.size}
                                         mimeType={item.mimeType}
                                         imageUrl={item.imageUrl}
                                     />

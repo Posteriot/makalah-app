@@ -17,9 +17,19 @@ import { resolveExtensionStyle, type ExtensionStyle } from "./attachmentExtensio
  */
 export interface MessageAttachmentProps {
     name: string
-    size: number | null
+    /**
+     * File size in bytes. Must be non-negative when present. Omit when the
+     * size is unknown (e.g. attachments synthesized from annotation-only
+     * metadata that never recorded a byte count).
+     */
+    size?: number
     mimeType: string
     imageUrl?: string
+    /**
+     * Optional remove callback. Only set in mutable contexts (drafts, edit
+     * mode, upload previews). Leave undefined for sent message bubbles where
+     * attachments cannot be removed after submission.
+     */
     onRemove?: () => void
     className?: string
 }
@@ -53,7 +63,8 @@ export function MessageAttachment({
 }: MessageAttachmentProps) {
     const isImage = !!imageUrl
     const extStyle = isImage ? null : resolveExtensionStyle(name)
-    const sizeLabel = size !== null && size >= 0 ? formatFileSize(size) : null
+    const sizeLabel =
+        typeof size === "number" && size >= 0 ? formatFileSize(size) : null
     const subtitle = [mimeType || null, sizeLabel].filter(Boolean).join(" · ")
 
     return (

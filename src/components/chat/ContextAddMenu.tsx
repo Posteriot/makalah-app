@@ -149,12 +149,21 @@ export function ContextAddMenu({
                 throw new Error("Upload response missing or invalid storageId")
             }
 
+            // Treat both null and empty string as "no conversation" before
+            // handing the id to Convex — the `as` cast alone lets an empty
+            // string leak through the nullish coalescing and reach the
+            // mutation validator.
+            const resolvedConversationId: Id<"conversations"> | undefined =
+                conversationId && conversationId.length > 0
+                    ? (conversationId as Id<"conversations">)
+                    : undefined
+
             const fileId = await createFile({
                 storageId,
                 name: file.name,
                 type: file.type,
                 size: file.size,
-                conversationId: conversationId as Id<"conversations"> ?? undefined,
+                conversationId: resolvedConversationId,
             })
 
             // For images: await the data URL read BEFORE firing onFileUploaded

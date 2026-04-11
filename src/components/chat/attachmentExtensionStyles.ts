@@ -11,13 +11,34 @@ import { splitFileName } from "@/lib/types/attached-file"
  *   uses `label` as the text subtitle below the filename.
  */
 
+/**
+ * Raw lowercased file extensions we render a colored palette for.
+ *
+ * Distinct from `FileTypeIconExtension` in `FileTypeIcon.tsx`:
+ * `FileTypeIconExtension` is keyed on icon-label slugs (one entry per
+ * visual family — "doc" covers both .doc and .docx), while
+ * `RawFileExtension` is keyed on actual filename extensions as parsed
+ * from a user-supplied filename. A single icon family can map to
+ * several raw extensions (e.g. `doc` + `docx` both resolve to the
+ * "DOC" palette).
+ */
+export type RawFileExtension =
+    | "pdf"
+    | "doc"
+    | "docx"
+    | "xls"
+    | "xlsx"
+    | "ppt"
+    | "pptx"
+    | "txt"
+
 export interface ExtensionStyle {
     bg: string
     text: string
     label: string
 }
 
-export const EXTENSION_STYLES: Record<string, ExtensionStyle> = {
+export const EXTENSION_STYLES: Record<RawFileExtension, ExtensionStyle> = {
     pdf: { bg: "bg-red-500/15", text: "text-red-400", label: "PDF" },
     doc: { bg: "bg-blue-500/15", text: "text-blue-400", label: "DOC" },
     docx: { bg: "bg-blue-500/15", text: "text-blue-400", label: "DOC" },
@@ -34,10 +55,14 @@ const FALLBACK_STYLE: ExtensionStyle = {
     label: "FILE",
 }
 
-export function resolveExtensionStyle(name: string): ExtensionStyle {
-    const { extension } = splitFileName(name)
+function isRawFileExtension(key: string): key is RawFileExtension {
+    return key in EXTENSION_STYLES
+}
+
+export function resolveExtensionStyle(fileName: string): ExtensionStyle {
+    const { extension } = splitFileName(fileName)
     const key = extension.replace(/^\./, "").toLowerCase()
-    if (key && EXTENSION_STYLES[key]) return EXTENSION_STYLES[key]
+    if (isRawFileExtension(key)) return EXTENSION_STYLES[key]
 
     // Generic fallback — show uppercase extension (max 4 chars) or "FILE"
     const fallbackLabel = key ? key.toUpperCase().slice(0, 4) : "FILE"

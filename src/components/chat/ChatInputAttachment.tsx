@@ -84,7 +84,7 @@ export function ChatInputAttachment({
                 <div className="truncate text-[13px] font-medium text-[var(--chat-foreground)]">
                     {name}
                 </div>
-                <div className="truncate font-mono text-[10px] text-[var(--chat-muted-foreground)]">
+                <div className="truncate text-[11px] text-[var(--chat-muted-foreground)]">
                     {typeLabel}
                 </div>
             </div>
