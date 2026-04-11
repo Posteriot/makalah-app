@@ -3039,7 +3039,6 @@ Aturan:
                 tools,
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
                 toolChoice: forcedToolChoice,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 prepareStep: ((() => {
                     const forceInspect = primaryExactSourceRoutePlan.prepareStep
                     // When force-inspect prepareStep exists, it takes priority over
@@ -3050,6 +3049,7 @@ Aturan:
                             forceInspect(params) ?? revisionChainEnforcer(params)
                     }
                     return revisionChainEnforcer ?? forceInspect ?? deterministicSyncPrepareStep
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 })()) as any,
                 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
@@ -3798,7 +3798,6 @@ Aturan:
                     tools,
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     prepareStep: ((() => {
                         const forceInspect = fallbackExactSourceRoutePlan.prepareStep
                         if (forceInspect && revisionChainEnforcer) {
@@ -3806,6 +3805,7 @@ Aturan:
                                 forceInspect(params) ?? revisionChainEnforcer(params)
                         }
                         return revisionChainEnforcer ?? forceInspect ?? fallbackDeterministicSyncPrepareStep
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     })()) as any,
                     stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
                     ...samplingOptions,

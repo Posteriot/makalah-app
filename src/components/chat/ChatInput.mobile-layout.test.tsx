@@ -2,9 +2,17 @@ import { act, render, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it, vi, afterEach } from "vitest"
 import { ChatInput } from "./ChatInput"
 
-vi.mock("./FileUploadButton", () => ({
-  FileUploadButton: ({ label }: { label: string }) => (
-    <button type="button">{label}</button>
+// `ContextAddMenu` is mocked to a trivial `<button>` stub so that these
+// tests stay focused on the ChatInput mobile composer layout: row
+// wrapping, textarea focus retention across re-renders, stable-collapse
+// anti-flicker, and the two-row vs compact variant gate. The dropdown
+// mechanics, Convex upload pipeline, and file-type filtering of the real
+// `ContextAddMenu` component have their own coverage in
+// `ContextAddMenu.test.tsx` — nothing in this file exercises that
+// behaviour, so the mock intentionally drops it.
+vi.mock("./ContextAddMenu", () => ({
+  ContextAddMenu: () => (
+    <button type="button" aria-label="Tambah konteks">+</button>
   ),
 }))
 
@@ -43,7 +51,7 @@ describe("ChatInput mobile layout", () => {
     const mobileShell = screen.getByTestId("mobile-chat-input-shell")
     expect(within(mobileShell).getByTestId("mobile-chat-input-stacked")).toBeInTheDocument()
     expect(within(mobileShell).queryByTestId("mobile-chat-input-compact")).not.toBeInTheDocument()
-    expect(within(mobileShell).getByRole("button", { name: /\+ konteks/i })).toBeInTheDocument()
+    expect(within(mobileShell).getByRole("button", { name: /tambah konteks/i })).toBeInTheDocument()
   })
 
   it("beralih ke layout dua baris saat konteks aktif dan menampilkan tombol hapus", () => {

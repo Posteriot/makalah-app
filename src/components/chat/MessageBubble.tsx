@@ -1,14 +1,14 @@
 "use client"
 
 import { UIMessage } from "ai"
-import { EditPencil, Xmark, Send, CheckCircle, Page, MediaImage, Copy, Check } from "iconoir-react"
+import { EditPencil, Xmark, Send, CheckCircle, Copy, Check } from "iconoir-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { useState, useRef, useMemo, useEffect } from "react"
-import Image from "next/image"
 import { Id } from "../../../convex/_generated/dataModel"
 import { MarkdownRenderer } from "./MarkdownRenderer"
+import { MessageAttachment } from "./MessageAttachment"
 import { isEditAllowed, getMessageStage } from "@/lib/utils/paperPermissions"
 import { UnifiedProcessCard, type ProcessTool, type SearchStatusData } from "./UnifiedProcessCard"
 import { deriveTaskList } from "@/lib/paper/task-derivation"
@@ -19,7 +19,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { formatFileSize, isImageType, splitFileName } from "@/lib/types/attached-file"
+import { isImageType } from "@/lib/types/attached-file"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { extractLegacySourcesFromText } from "@/lib/citations/legacy-source-extractor"
 import { splitInternalThought } from "@/lib/ai/internal-thought-separator"
@@ -1075,62 +1075,83 @@ export function MessageBubble({
                 <div className={cn(
                     isUser ? "px-4 py-3" : "py-1"
                 )}>
-                    {/* File Attachments Badge */}
-                    {shouldRenderAttachmentChips && (
-                        <div className="mb-3 flex flex-wrap gap-1.5">
-                            {fileIds.map((fid: string, idx: number) => {
-                                const fileMeta = fileMetaMap?.get(fid)
-                                const name = fileNames[idx] || fileMeta?.name || fileNameMap?.get(fid) || "file"
-                                const size = typeof fileSizes[idx] === "number" && fileSizes[idx] > 0
-                                    ? fileSizes[idx]
-                                    : (typeof fileMeta?.size === "number" && fileMeta.size > 0 ? fileMeta.size : null)
-                                const fileType = fileTypes[idx] || fileMeta?.type || ""
-                                const isImage = (fileType ? isImageType(fileType) : false) || /\.(jpg|jpeg|png|gif|webp)$/i.test(name)
-                                const { baseName, extension } = splitFileName(name)
-                                return (
-                                    <span
-                                        key={fid}
-                                        className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-badge border border-[color:var(--chat-info)] bg-[var(--chat-accent)] py-1 pl-2.5 pr-1.5 text-xs font-mono text-[var(--chat-info)]"
-                                        title={name}
-                                    >
-                                        {isImage ? <MediaImage className="h-3 w-3 shrink-0" /> : <Page className="h-3 w-3 shrink-0" />}
-                                        <span className="inline-flex min-w-0 items-baseline">
-                                            <span className="max-w-[180px] truncate">{baseName}</span>
-                                            {extension && <span className="shrink-0">{extension}</span>}
-                                        </span>
-                                        {size !== null && (
-                                            <span className="shrink-0 text-[10px] opacity-60">{formatFileSize(size)}</span>
-                                        )}
-                                    </span>
-                                )
-                            })}
-                        </div>
-                    )}
+                    {/*
+                      * File attachments — unified thumbnail cards.
+                      * Two iteration sources (non-image chips from fileIds
+                      * metadata + native SDK image parts from message.parts)
+                      * render into a single vertical stack. The `mt-0.5` on
+                      * the wrapper below compensates for the glyph
+                      * half-leading inside the first markdown paragraph,
+                      * mirroring the `[&>*:first-child]:mt-0` reset in
+                      * `MarkdownRenderer.tsx`; keep them in sync when either
+                      * changes.
+                      */}
+                    {(() => {
+                        const nonImageChips = shouldRenderAttachmentChips
+                            ? fileIds
+                                  .map((fid: string, idx: number) => {
+                                      const fileMeta = fileMetaMap?.get(fid)
+                                      const name = fileNames[idx] || fileMeta?.name || fileNameMap?.get(fid) || "file"
+                                      const fileType = fileTypes[idx] || fileMeta?.type || ""
+                                      const isImage = (fileType ? isImageType(fileType) : false) || /\.(jpg|jpeg|png|gif|webp)$/i.test(name)
+                                      if (isImage) return null
+                                      const rawSize =
+                                          typeof fileSizes[idx] === "number" && fileSizes[idx] > 0
+                                              ? fileSizes[idx]
+                                              : typeof fileMeta?.size === "number" && fileMeta.size > 0
+                                                  ? fileMeta.size
+                                                  : undefined
+                                      return { key: fid, name, size: rawSize, mimeType: fileType }
+                                  })
+                                  .filter((x): x is { key: string; name: string; size: number | undefined; mimeType: string } => x !== null)
+                            : []
 
-                    {/* Inline image attachments from native SDK */}
-                    {isUser && message.parts?.map((part, i) => {
-                        if (
-                            part.type === "file" &&
-                            "mediaType" in part &&
-                            typeof (part as Record<string, unknown>).mediaType === "string" &&
-                            ((part as Record<string, unknown>).mediaType as string).startsWith("image/")
-                        ) {
-                            const filePart = part as Record<string, unknown>
-                            return (
-                                <div key={`img-${i}`} className="mb-3">
-                                    <Image
-                                        src={filePart.url as string}
-                                        alt={(filePart.filename as string) ?? "attachment"}
-                                        width={320}
-                                        height={256}
-                                        className="max-w-xs max-h-64 rounded-action border border-[color:var(--chat-border)] object-contain"
-                                        unoptimized
+                        const imageParts = isUser
+                            ? (message.parts ?? [])
+                                  .map((part, i) => {
+                                      if (
+                                          part.type === "file" &&
+                                          "mediaType" in part &&
+                                          typeof (part as Record<string, unknown>).mediaType === "string" &&
+                                          ((part as Record<string, unknown>).mediaType as string).startsWith("image/")
+                                      ) {
+                                          const filePart = part as Record<string, unknown>
+                                          return {
+                                              key: `img-${i}`,
+                                              name: (filePart.filename as string) ?? "attachment",
+                                              mimeType: (filePart.mediaType as string) ?? "",
+                                              imageUrl: filePart.url as string,
+                                          }
+                                      }
+                                      return null
+                                  })
+                                  .filter((x): x is { key: string; name: string; mimeType: string; imageUrl: string } => x !== null)
+                            : []
+
+                        const totalAttachments = nonImageChips.length + imageParts.length
+                        if (totalAttachments === 0) return null
+
+                        return (
+                            <div className="mt-0.5 mb-3 flex flex-col gap-2">
+                                {nonImageChips.map((item) => (
+                                    <MessageAttachment
+                                        key={item.key}
+                                        name={item.name}
+                                        size={item.size}
+                                        mimeType={item.mimeType}
                                     />
-                                </div>
-                            )
-                        }
-                        return null
-                    })}
+                                ))}
+                                {imageParts.map((item) => (
+                                    <MessageAttachment
+                                        key={item.key}
+                                        name={item.name}
+                                        mimeType={item.mimeType}
+                                        imageUrl={item.imageUrl}
+                                    />
+                                ))}
+                            </div>
+                        )
+                    })()}
 
                     {showUnifiedCard && (
                         <div className="mb-4">
