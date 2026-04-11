@@ -313,17 +313,23 @@ describe("rebuildNaskahSnapshot — re-rebuild idempotency", () => {
 });
 
 // ────────────────────────────────────────────────────────────────────────────
-// GROUP C — provenance change without rendered-content change
-// (the v2 contract: hash includes sourceArtifactRefs / section provenance)
+// GROUP C — provenance-only changes must NOT trigger new revisions
+//
+// Per implementation plan Task 3 Step 3, dedupe compares title + sections
+// only. A pure provenance change (revisionCount bump with identical rendered
+// bytes) must stay a no-op — otherwise the user sees `update pending` for
+// something invisible, violating D-018's manual refresh semantics. A change
+// that flips a section's rendered source (artifact -> inline) still triggers
+// a new row because `section.sourceArtifactId` is part of the section hash.
 // ────────────────────────────────────────────────────────────────────────────
 
-describe("rebuildNaskahSnapshot — provenance triggers new revision", () => {
-  it("C1: revisionCount bump on a winning ref triggers a new row even when sections are byte-identical", async () => {
+describe("rebuildNaskahSnapshot — provenance-only dedupe", () => {
+  it("C1: revisionCount bump on a winning ref does NOT trigger a new row when sections are byte-identical", async () => {
     // Pure provenance test: nothing in `sections` changes, only the
-    // sourceArtifactRefs[abstrak].revisionCount field. The compiler reads
-    // revisionCount from stageData[stage].revisionCount and stores it on
-    // the ref but NOT on the section. This proves the hash includes
-    // sourceArtifactRefs, not just title + sections.
+    // sourceArtifactRefs[abstrak].revisionCount field. Section hash covers
+    // key, label, content, sourceStage, and sourceArtifactId — not the ref's
+    // revisionCount. Writing a new row here would surface as a false
+    // `update pending` in the UI.
 
     const sessionPrev = makeSession({
       stageData: {
@@ -363,27 +369,23 @@ describe("rebuildNaskahSnapshot — provenance triggers new revision", () => {
       "paperSessions_1" as never,
     );
 
-    expect(result.written).toBe(true);
-    expect(result.revision).toBe(2);
-    expect(inserts).toHaveLength(1);
-
-    // The new row's abstrak ref has revisionCount=2; the previous had 1.
-    const refs = inserts[0].doc.sourceArtifactRefs as Array<
-      Record<string, unknown>
-    >;
-    const abstrakRef = refs.find((r) => r.stage === "abstrak");
-    expect(abstrakRef?.revisionCount).toBe(2);
+    expect(result.written).toBe(false);
+    expect(result.revision).toBe(1);
+    expect(inserts).toHaveLength(0);
   });
 
-  it("C2: artifact invalidated with inline fallback (resolution flips) triggers new row", async () => {
+  it("C2: artifact invalidated with inline fallback (sourceArtifactId flips) triggers new row", async () => {
     // Initial state: validated abstrak with a fresh artifact body
     // New state: same validated abstrak, same body string in the inline
     // ringkasanPenelitian field, but the artifact is invalidated.
     // The rendered content stays "Body" but section.sourceArtifactId
-    // flips from "art_a" -> undefined and the ref resolution flips
-    // "artifact" -> "inline". Both the section hash AND the refs hash
-    // change — either is sufficient to bump revision; we assert both
-    // semantics here.
+    // flips from "art_a" -> undefined (because the compiler only records
+    // sourceArtifactId when via === "artifact"). That flip is captured in
+    // the section hash (key, label, content, sourceStage, sourceArtifactId),
+    // so a new row IS written even though the content string is identical.
+    // This is the correct boundary: the user now sees content sourced from
+    // a DIFFERENT place, which is a real provenance change visible to the
+    // compiler's guarantees — not pure metadata drift like revisionCount.
 
     const session = makeSession({
       stageData: {

@@ -9,7 +9,6 @@ import type {
   NaskahArtifactRecord,
   NaskahCompiledSnapshot,
   NaskahSection,
-  NaskahSourceArtifactRef,
 } from "../src/lib/naskah/types";
 
 /**
@@ -98,8 +97,6 @@ export async function rebuildNaskahSnapshot(
     const latestHash = hashCompiledSnapshot({
       title: latest.title,
       sections: latest.sections as NaskahSection[],
-      sourceArtifactRefs:
-        latest.sourceArtifactRefs as NaskahSourceArtifactRef[],
     });
     if (latestHash === newHash) {
       return { written: false, revision: latest.revision };
@@ -136,15 +133,15 @@ export async function rebuildNaskahSnapshot(
 // Hash function — FNV-1a over a canonical JSON serialization of the
 // snapshot fields that participate in dedupe.
 //
-// Includes title + sections + sourceArtifactRefs per the v2 contract:
-// a provenance change without a rendered-content change still produces a
-// new revision (e.g., revisionCount bump on a winning ref).
+// Per implementation plan Task 3 Step 3, dedupe is based on `title + sections`
+// only. `sourceArtifactRefs` provenance data is persisted on every snapshot
+// row for traceability but MUST NOT participate in hash comparison — otherwise
+// a pure provenance change (e.g., revisionCount bump on a winning ref with
+// byte-identical content) would create a new revision and surface as a user-
+// visible `update pending` notification for something the user cannot see.
 // ────────────────────────────────────────────────────────────────────────────
 
-type HashableSnapshot = Pick<
-  NaskahCompiledSnapshot,
-  "title" | "sections" | "sourceArtifactRefs"
->;
+type HashableSnapshot = Pick<NaskahCompiledSnapshot, "title" | "sections">;
 
 function hashCompiledSnapshot(snapshot: HashableSnapshot): string {
   const canonical = JSON.stringify({
@@ -155,13 +152,6 @@ function hashCompiledSnapshot(snapshot: HashableSnapshot): string {
       content: section.content,
       sourceStage: section.sourceStage,
       sourceArtifactId: section.sourceArtifactId ?? null,
-    })),
-    sourceArtifactRefs: snapshot.sourceArtifactRefs.map((ref) => ({
-      stage: ref.stage,
-      artifactId: ref.artifactId ?? null,
-      revisionCount: ref.revisionCount ?? null,
-      usedForRender: ref.usedForRender,
-      resolution: ref.resolution,
     })),
   });
 

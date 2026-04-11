@@ -9,16 +9,24 @@ import { NaskahSidebar } from "./NaskahSidebar"
 const HIGHLIGHT_DURATION_MS = 3_000
 
 interface NaskahPageProps {
-  snapshot: NaskahCompiledSnapshot
-  updatePending: boolean
-  /** Optional refresh callback. Wired in Task 4. */
-  onRefresh?: () => void
   /**
-   * Optional viewed-revision callback. Wired in Task 6 for the
-   * pending-state acknowledgement flow. Phase 5 implementation does
-   * not invoke it.
+   * The snapshot the user is currently viewing. Per D-018, this MUST be
+   * the revision the user last acknowledged (viewedSnapshot from the
+   * route), not the latest available. The only exception is first visit,
+   * where the route falls back to the latest since there is no prior
+   * viewed revision.
    */
-  onMarkViewed?: () => void
+  snapshot: NaskahCompiledSnapshot
+  /**
+   * The newest compiled snapshot available for this session, if it
+   * differs from `snapshot`. When `updatePending` is true, `handleRefresh`
+   * swaps visible to this value and computes the section diff against
+   * the previous visible snapshot for the post-refresh highlight.
+   */
+  latestSnapshot?: NaskahCompiledSnapshot
+  updatePending: boolean
+  /** Called when the user clicks the in-page Update button. */
+  onRefresh?: () => void
 }
 
 /**
@@ -36,15 +44,19 @@ interface NaskahPageProps {
  *
  * Per D-012 the page opens normally even when growing — the empty
  * state is a workspace placeholder, not an error screen.
+ *
+ * Per D-018 manual refresh contract, the component MUST NOT swap
+ * visibleSnapshot just because a newer snapshot prop arrives. The swap
+ * happens only when the user clicks Update, at which point the diff is
+ * computed and the highlight is applied.
  */
 export function NaskahPage({
   snapshot,
+  latestSnapshot,
   updatePending,
   onRefresh,
 }: NaskahPageProps) {
   const [visibleSnapshot, setVisibleSnapshot] = useState(snapshot)
-  const [pendingSnapshot, setPendingSnapshot] =
-    useState<NaskahCompiledSnapshot | null>(null)
   const [highlightedSectionKeys, setHighlightedSectionKeys] = useState<
     NaskahCompiledSnapshot["sections"][number]["key"][]
   >([])
@@ -57,24 +69,36 @@ export function NaskahPage({
     const nextRevision = getSnapshotRevision(snapshot)
     const visibleRevision = visibleRevisionRef.current
 
+    // First mount: accept whatever the route gave us.
     if (visibleRevision == null) {
       setVisibleSnapshot(snapshot)
       visibleRevisionRef.current = nextRevision
       return
     }
 
+    // Same-revision prop update (e.g., subscription refetch returning
+    // the same row shape): pick up field corrections without treating it
+    // as a transition.
     if (nextRevision === visibleRevision) {
       setVisibleSnapshot(snapshot)
       return
     }
 
+    // Revision changed while updatePending is active: per D-018 do NOT
+    // auto-consume pending state. Hold the visible snapshot until the
+    // user clicks Update. In the new route flow this branch should not
+    // fire — the route passes a stable viewedSnapshot prop — but the
+    // defensive guard covers any upstream race (e.g., reactive refetch
+    // ordering) so the component contract stays honest.
     if (updatePending) {
-      setPendingSnapshot(snapshot)
       return
     }
 
+    // Revision changed and not pending: this is a legitimate server
+    // cascade after markViewed committed (or a route-level swap for
+    // another reason). Swap without highlight; handleRefresh already
+    // applied the highlight if the transition was user-initiated.
     setVisibleSnapshot(snapshot)
-    setPendingSnapshot(null)
     visibleRevisionRef.current = nextRevision
   }, [snapshot, updatePending])
 
@@ -93,15 +117,21 @@ export function NaskahPage({
   const activeSnapshot = visibleSnapshot
 
   const handleRefresh = async () => {
-    const nextSnapshot = pendingSnapshot ?? snapshot
-    const changedKeys = getChangedSectionKeys(visibleSnapshot, nextSnapshot)
+    // Target = the newest snapshot we have a handle to. Prefer the
+    // explicit latestSnapshot prop (route's view of what the user will
+    // see post-refresh); fall back to the current snapshot prop if the
+    // route did not pass one (should not happen in production).
+    const target = latestSnapshot ?? snapshot
+    const changedKeys = getChangedSectionKeys(visibleSnapshot, target)
 
     setIsRefreshing(true)
     try {
       await onRefresh?.()
-      setVisibleSnapshot(nextSnapshot)
-      setPendingSnapshot(null)
-      visibleRevisionRef.current = getSnapshotRevision(nextSnapshot)
+      // Optimistically swap the visible snapshot. The server cascade
+      // will rerender with a matching `snapshot` prop, which the
+      // useEffect above will handle as a same-revision no-op.
+      setVisibleSnapshot(target)
+      visibleRevisionRef.current = getSnapshotRevision(target)
       setHighlightedSectionKeys(changedKeys)
     } finally {
       setIsRefreshing(false)

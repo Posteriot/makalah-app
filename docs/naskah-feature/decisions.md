@@ -872,6 +872,27 @@ Alasan:
 - menjaga hirarki visual antara identitas fitur dan judul dokumen
 - membuat judul paper tetap menjadi fokus utama
 
+### D-060: Skema Convex Naskah Memakai Validator Objek Eksplisit, Bukan `v.any()`
+
+Status: active
+
+Keputusan:
+- tabel `naskahSnapshots.sections` memakai `v.array(v.object({...}))` dengan shape eksplisit (key literal union, label, content, sourceStage, sourceArtifactId opsional), bukan `v.array(v.any())` seperti yang disebut draft implementation plan
+- tabel `naskahSnapshots.sourceArtifactRefs` juga memakai object validator eksplisit dengan shape lengkap (stage, artifactId opsional, revisionCount opsional, usedForRender, resolution literal union)
+- tabel `naskahSnapshots.titleSource` dan `reasonIfUnavailable` memakai literal union, bukan string bebas
+- implementasi fase 1 menutup relaksasi validator di plan dengan schema yang lebih ketat
+
+Alasan:
+- fail-fast pada write kalau compiler menghasilkan bentuk section yang rusak
+- mencegah data corruption senyap yang baru ketahuan saat read jauh di belakang mutation
+- menjaga kontrak antara compiler pure (`src/lib/naskah/compiler.ts`) dan storage supaya berubah bareng atau ga sama sekali
+- cost minimal: sekitar 40 baris validator, tanpa runtime overhead
+- relaksasi `v.any()` di plan ditulis sebagai shortcut penyusunan, bukan sebagai keputusan presentasi atau desain
+
+Implikasi:
+- tiap kali shape section di `src/lib/naskah/types.ts::NaskahSection` bertambah field, schema `naskahSnapshots.sections` harus dinaikkan bareng
+- implementation plan Task 2 langkah 3 dibaca sebagai floor, bukan cap
+
 ### O-015: Copy Final Untuk Badge Dan Info Text Status Naskah
 
 Status: resolved with implementation dependency

@@ -4,6 +4,7 @@ import {
   deriveUpdatePending,
   getAvailability,
   getLatestSnapshot,
+  getSnapshotByRevision,
   getViewState,
   markViewed,
 } from "./naskah";
@@ -19,11 +20,13 @@ vi.mock("./authHelpers", () => ({
 // Pull the mocks back so we can reconfigure per test.
 import {
   getAuthUser,
+  requireAuthUser,
   requireAuthUserId,
   verifyAuthUserId,
 } from "./authHelpers";
 
 const mockedGetAuthUser = vi.mocked(getAuthUser);
+const mockedRequireAuthUser = vi.mocked(requireAuthUser);
 const mockedRequireAuthUserId = vi.mocked(requireAuthUserId);
 const mockedVerifyAuthUserId = vi.mocked(verifyAuthUserId);
 
@@ -34,6 +37,7 @@ interface AuthUserShape {
 function configureAuth(authUser: AuthUserShape | null) {
   if (authUser) {
     mockedGetAuthUser.mockResolvedValue(authUser as never);
+    mockedRequireAuthUser.mockResolvedValue(authUser as never);
     mockedVerifyAuthUserId.mockImplementation(
       (async (_ctx: unknown, userId: string) => {
         return authUser._id === userId ? (authUser as never) : null;
@@ -47,6 +51,11 @@ function configureAuth(authUser: AuthUserShape | null) {
     );
   } else {
     mockedGetAuthUser.mockResolvedValue(null);
+    mockedRequireAuthUser.mockImplementation(
+      (async () => {
+        throw new Error("Unauthorized");
+      }) as never,
+    );
     mockedVerifyAuthUserId.mockResolvedValue(null);
     mockedRequireAuthUserId.mockImplementation(
       (async () => {
@@ -334,6 +343,103 @@ describe("getLatestSnapshot", () => {
 });
 
 // ────────────────────────────────────────────────────────────────────────────
+// GROUP B-rev — getSnapshotByRevision query
+// Powers D-018: useNaskah loads the user's last-viewed snapshot so the
+// route can render it on entry without auto-consuming pending state.
+// ────────────────────────────────────────────────────────────────────────────
+
+describe("getSnapshotByRevision", () => {
+  it("BR1: returns null when no snapshot row exists at the requested revision", async () => {
+    const { ctx } = makeMockCtx({ rows: { naskahSnapshots: [] } });
+
+    const result = await callQuery(
+      getSnapshotByRevision,
+      ctx,
+      { sessionId: "paperSessions_1", revision: 3 },
+    );
+
+    expect(result).toBeNull();
+  });
+
+  it("BR2: returns the snapshot row when the fixture supplies one", async () => {
+    const row = makeSnapshotRow({
+      revision: 3,
+      title: "Judul Revisi 3",
+      isAvailable: true,
+      reasonIfUnavailable: undefined,
+    });
+    const { ctx } = makeMockCtx({ rows: { naskahSnapshots: [row] } });
+
+    const result = await callQuery(
+      getSnapshotByRevision,
+      ctx,
+      { sessionId: "paperSessions_1", revision: 3 },
+    );
+
+    expect(result).toMatchObject({
+      _id: "naskahSnapshots_1",
+      revision: 3,
+      title: "Judul Revisi 3",
+    });
+  });
+
+  it("BR3: queries naskahSnapshots by_session index with sessionId+revision eqs and unique()", async () => {
+    const { ctx, queryRecords } = makeMockCtx({
+      rows: { naskahSnapshots: [makeSnapshotRow({ revision: 3 })] },
+    });
+
+    await callQuery(
+      getSnapshotByRevision,
+      ctx,
+      { sessionId: "paperSessions_1", revision: 3 },
+    );
+
+    expect(queryRecords).toHaveLength(1);
+    expect(queryRecords[0]).toMatchObject({
+      table: "naskahSnapshots",
+      indexName: "by_session",
+      eqs: [
+        { field: "sessionId", value: "paperSessions_1" },
+        { field: "revision", value: 3 },
+      ],
+      // unique() because (sessionId, revision) is a logical single-row
+      // contract per the by_session index. Duplicates must explode loudly.
+      terminator: "unique",
+    });
+  });
+
+  it("BR4: returns null when caller is not authenticated", async () => {
+    configureAuth(null);
+    const { ctx } = makeMockCtx({
+      rows: { naskahSnapshots: [makeSnapshotRow({ revision: 3 })] },
+    });
+
+    const result = await callQuery(
+      getSnapshotByRevision,
+      ctx,
+      { sessionId: "paperSessions_1", revision: 3 },
+    );
+
+    expect(result).toBeNull();
+  });
+
+  it("BR5: returns null when session is owned by a different user", async () => {
+    const { ctx } = makeMockCtx({
+      rows: { naskahSnapshots: [makeSnapshotRow({ revision: 3 })] },
+      session: { _id: "paperSessions_1", userId: "users_other" },
+    });
+
+    const result = await callQuery(
+      getSnapshotByRevision,
+      ctx,
+      { sessionId: "paperSessions_1", revision: 3 },
+    );
+
+    expect(result).toBeNull();
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
 // GROUP C — getAvailability query
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -400,13 +506,13 @@ describe("getAvailability", () => {
 // ────────────────────────────────────────────────────────────────────────────
 
 describe("getViewState", () => {
-  it("D1: returns null when no view state exists for (sessionId, userId)", async () => {
+  it("D1: returns null when no view state exists for the current user's session", async () => {
     const { ctx } = makeMockCtx({ rows: { naskahViews: [] } });
 
     const result = await callQuery(
       getViewState,
       ctx,
-      { sessionId: "paperSessions_1", userId: "users_1" },
+      { sessionId: "paperSessions_1" },
     );
 
     expect(result).toBeNull();
@@ -419,7 +525,7 @@ describe("getViewState", () => {
     const result = await callQuery(
       getViewState,
       ctx,
-      { sessionId: "paperSessions_1", userId: "users_1" },
+      { sessionId: "paperSessions_1" },
     );
 
     expect(result).toMatchObject({
@@ -428,7 +534,7 @@ describe("getViewState", () => {
     });
   });
 
-  it("D3: queries naskahViews by_session_user index with sessionId+userId eqs and unique()", async () => {
+  it("D3: queries naskahViews by_session_user index with server-resolved userId and unique()", async () => {
     const { ctx, queryRecords } = makeMockCtx({
       rows: { naskahViews: [makeViewRow()] },
     });
@@ -436,13 +542,16 @@ describe("getViewState", () => {
     await callQuery(
       getViewState,
       ctx,
-      { sessionId: "paperSessions_1", userId: "users_1" },
+      { sessionId: "paperSessions_1" },
     );
 
     expect(queryRecords).toHaveLength(1);
     expect(queryRecords[0]).toMatchObject({
       table: "naskahViews",
       indexName: "by_session_user",
+      // userId is resolved server-side from the authenticated user
+      // (mocked configureAuth default = users_1), never passed by the
+      // client. This prevents userId spoofing at the API surface.
       eqs: [
         { field: "sessionId", value: "paperSessions_1" },
         { field: "userId", value: "users_1" },
@@ -470,7 +579,6 @@ describe("markViewed", () => {
       ctx,
       {
         sessionId: "paperSessions_1",
-        userId: "users_1",
         revision: 5,
       },
     );
@@ -479,6 +587,9 @@ describe("markViewed", () => {
     expect(queryRecords[0]).toMatchObject({
       table: "naskahViews",
       indexName: "by_session_user",
+      // userId resolved server-side from authUser (users_1 via default
+      // configureAuth). Client cannot spoof another user at the args
+      // surface because the arg does not exist.
       eqs: [
         { field: "sessionId", value: "paperSessions_1" },
         { field: "userId", value: "users_1" },
@@ -516,7 +627,6 @@ describe("markViewed", () => {
       ctx,
       {
         sessionId: "paperSessions_1",
-        userId: "users_1",
         revision: 5,
       },
     );
@@ -554,7 +664,6 @@ describe("markViewed", () => {
       ctx,
       {
         sessionId: "paperSessions_1",
-        userId: "users_1",
         revision: 5,
       },
     );
@@ -690,16 +799,16 @@ describe("naskah handlers — auth & ownership", () => {
   });
 
   describe("getViewState", () => {
-    it("F6: returns null when userId arg does not match auth user", async () => {
-      // auth user is users_1 (default), but the caller asks for users_other
+    it("F6: returns null when caller is not authenticated", async () => {
+      configureAuth(null);
       const { ctx } = makeMockCtx({
-        rows: { naskahViews: [makeViewRow({ userId: "users_other" })] },
+        rows: { naskahViews: [makeViewRow()] },
       });
 
       const result = await callQuery(
         getViewState,
         ctx,
-        { sessionId: "paperSessions_1", userId: "users_other" },
+        { sessionId: "paperSessions_1" },
       );
 
       expect(result).toBeNull();
@@ -714,7 +823,7 @@ describe("naskah handlers — auth & ownership", () => {
       const result = await callQuery(
         getViewState,
         ctx,
-        { sessionId: "paperSessions_1", userId: "users_1" },
+        { sessionId: "paperSessions_1" },
       );
 
       expect(result).toBeNull();
@@ -722,7 +831,8 @@ describe("naskah handlers — auth & ownership", () => {
   });
 
   describe("markViewed", () => {
-    it("F8: throws Unauthorized when userId arg does not match auth user", async () => {
+    it("F8: throws Unauthorized when caller is not authenticated", async () => {
+      configureAuth(null);
       const { ctx, inserts, patches } = makeMockCtx({
         rows: { naskahViews: [] },
       });
@@ -733,7 +843,6 @@ describe("naskah handlers — auth & ownership", () => {
           ctx,
           {
             sessionId: "paperSessions_1",
-            userId: "users_other",
             revision: 5,
           },
         ),
@@ -755,7 +864,6 @@ describe("naskah handlers — auth & ownership", () => {
           ctx,
           {
             sessionId: "paperSessions_1",
-            userId: "users_1",
             revision: 5,
           },
         ),
@@ -777,7 +885,6 @@ describe("naskah handlers — auth & ownership", () => {
           ctx,
           {
             sessionId: "paperSessions_1",
-            userId: "users_1",
             revision: 5,
           },
         ),

@@ -65,7 +65,45 @@ describe("NaskahPage manual refresh flow", () => {
     ).toBeInTheDocument()
   })
 
-  it("masuk dari Chat tidak otomatis mengonsumsi pending state", () => {
+  it("masuk dari Chat tidak otomatis mengonsumsi pending state (visible tetap di viewed revision)", () => {
+    // D-018 contract: route passes snapshot=viewedSnapshot (rev3) and
+    // latestSnapshot=rev4 when updatePending is true. NaskahPage must
+    // render the viewed revision, not the latest.
+    const revision3 = makeSnapshot({
+      revision: 3,
+      title: "Judul Revisi 3",
+      sections: [makeSection("abstrak", "Abstrak", "Isi abstrak revisi 3")],
+    })
+    const revision4 = makeSnapshot({
+      revision: 4,
+      title: "Judul Revisi 4",
+      sections: [makeSection("abstrak", "Abstrak", "Isi abstrak revisi 4")],
+    })
+
+    render(
+      <NaskahPage
+        snapshot={revision3}
+        latestSnapshot={revision4}
+        updatePending={true}
+        onRefresh={vi.fn()}
+      />,
+    )
+
+    const header = screen.getByTestId("naskah-header")
+    expect(within(header).getByText("Judul Revisi 3")).toBeInTheDocument()
+    expect(screen.getByText("Isi abstrak revisi 3")).toBeInTheDocument()
+    expect(within(header).queryByText("Judul Revisi 4")).not.toBeInTheDocument()
+    expect(screen.queryByText("Isi abstrak revisi 4")).not.toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /update/i }),
+    ).toBeInTheDocument()
+  })
+
+  it("defensive: prop swap ke revision baru saat updatePending=true tetap ditahan", () => {
+    // Regression: if upstream race ever passes a newer snapshot prop
+    // while updatePending is still true, the component must NOT swap
+    // visible. This covers the scenario where the route gets out of
+    // sync with the hook for one render cycle.
     const revision3 = makeSnapshot({
       revision: 3,
       title: "Judul Revisi 3",
@@ -97,9 +135,6 @@ describe("NaskahPage manual refresh flow", () => {
     expect(within(header).getByText("Judul Revisi 3")).toBeInTheDocument()
     expect(screen.getByText("Isi abstrak revisi 3")).toBeInTheDocument()
     expect(within(header).queryByText("Judul Revisi 4")).not.toBeInTheDocument()
-    expect(
-      screen.getByRole("button", { name: /update/i }),
-    ).toBeInTheDocument()
   })
 
   it("klik Update memanggil refresh, memuat snapshot terbaru, dan menyorot section yang berubah", async () => {
@@ -121,21 +156,18 @@ describe("NaskahPage manual refresh flow", () => {
       ],
     })
 
-    const { rerender } = render(
+    render(
       <NaskahPage
         snapshot={revision3}
-        updatePending={false}
-        onRefresh={onRefresh}
-      />,
-    )
-
-    rerender(
-      <NaskahPage
-        snapshot={revision4}
+        latestSnapshot={revision4}
         updatePending={true}
         onRefresh={onRefresh}
       />,
     )
+
+    // Sanity: still showing revision 3 before click.
+    const headerBefore = screen.getByTestId("naskah-header")
+    expect(within(headerBefore).getByText("Judul Revisi 3")).toBeInTheDocument()
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /update/i }))
@@ -169,17 +201,10 @@ describe("NaskahPage manual refresh flow", () => {
       sections: [makeSection("abstrak", "Abstrak", "Isi abstrak revisi 4")],
     })
 
-    const { rerender } = render(
+    render(
       <NaskahPage
         snapshot={revision3}
-        updatePending={false}
-        onRefresh={onRefresh}
-      />,
-    )
-
-    rerender(
-      <NaskahPage
-        snapshot={revision4}
+        latestSnapshot={revision4}
         updatePending={true}
         onRefresh={onRefresh}
       />,

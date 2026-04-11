@@ -1,11 +1,7 @@
 import { v } from "convex/values";
 
 import { mutation, query } from "./_generated/server";
-import {
-  getAuthUser,
-  requireAuthUserId,
-  verifyAuthUserId,
-} from "./authHelpers";
+import { getAuthUser, requireAuthUser } from "./authHelpers";
 import { deriveNaskahUpdatePending } from "../src/lib/naskah/updatePending";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -62,6 +58,47 @@ export const getLatestSnapshot = query({
 });
 
 // ────────────────────────────────────────────────────────────────────────────
+// getSnapshotByRevision — defensive read of a specific snapshot row by its
+// (sessionId, revision) pair. Used by useNaskah to load the user's LAST
+// VIEWED snapshot so the UI can render that revision on route entry even
+// when a newer `latestSnapshot` exists. This is the backbone of D-018's
+// manual refresh contract: entering Naskah must NOT auto-consume the
+// pending state, so we need to render the user's known-viewed revision,
+// not blindly jump to latest.
+//
+// Returns null for all of:
+//   - unauthenticated caller
+//   - session not owned by auth user
+//   - session not found
+//   - no snapshot row at this revision for this session
+//
+// All cases collapse to null so callers cannot distinguish missing-row
+// from unauthorized-access (no enumeration leak).
+// ────────────────────────────────────────────────────────────────────────────
+
+export const getSnapshotByRevision = query({
+  args: {
+    sessionId: v.id("paperSessions"),
+    revision: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const authUser = await getAuthUser(ctx);
+    if (!authUser) return null;
+
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) return null;
+    if (session.userId !== authUser._id) return null;
+
+    return await ctx.db
+      .query("naskahSnapshots")
+      .withIndex("by_session", (q) =>
+        q.eq("sessionId", args.sessionId).eq("revision", args.revision),
+      )
+      .unique();
+  },
+});
+
+// ────────────────────────────────────────────────────────────────────────────
 // getAvailability — defensive read of the latest snapshot's availability
 // fields. Falls back to {isAvailable: false, reasonIfUnavailable:
 // "empty_session"} for ALL of:
@@ -111,9 +148,13 @@ export const getAvailability = query({
 });
 
 // ────────────────────────────────────────────────────────────────────────────
-// getViewState — defensive read of the user's view state row for this
-// session. Returns null when:
-//   - the auth user does not match the userId arg
+// getViewState — defensive read of the CURRENT user's view state row for
+// this session. The current user is resolved server-side via the auth
+// identity; the client does NOT pass a userId arg (per D-018 and the
+// implementation plan's "single currentUser" contract).
+//
+// Returns null when:
+//   - the caller is not authenticated
 //   - the auth user does not own the requested session
 //   - the session does not exist
 //   - no view state row exists
@@ -125,10 +166,9 @@ export const getAvailability = query({
 export const getViewState = query({
   args: {
     sessionId: v.id("paperSessions"),
-    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const authUser = await verifyAuthUserId(ctx, args.userId);
+    const authUser = await getAuthUser(ctx);
     if (!authUser) return null;
 
     const session = await ctx.db.get(args.sessionId);
@@ -138,18 +178,19 @@ export const getViewState = query({
     return await ctx.db
       .query("naskahViews")
       .withIndex("by_session_user", (q) =>
-        q.eq("sessionId", args.sessionId).eq("userId", args.userId),
+        q.eq("sessionId", args.sessionId).eq("userId", authUser._id),
       )
       .unique();
   },
 });
 
 // ────────────────────────────────────────────────────────────────────────────
-// markViewed — strict-auth upsert of the user's view state for a session.
+// markViewed — strict-auth upsert of the CURRENT user's view state for a
+// session. The current user is resolved server-side via auth identity;
+// the client does NOT pass a userId arg.
 //
 // Throws "Unauthorized" when:
 //   - the caller is not authenticated
-//   - the auth user does not match the userId arg
 //   - the auth user does not own the requested session
 // Throws "Session not found" when the session id does not exist.
 //
@@ -163,22 +204,21 @@ export const getViewState = query({
 export const markViewed = mutation({
   args: {
     sessionId: v.id("paperSessions"),
-    userId: v.id("users"),
     revision: v.number(),
   },
   handler: async (ctx, args) => {
-    await requireAuthUserId(ctx, args.userId);
+    const authUser = await requireAuthUser(ctx);
 
     const session = await ctx.db.get(args.sessionId);
     if (!session) throw new Error("Session not found");
-    if (session.userId !== args.userId) throw new Error("Unauthorized");
+    if (session.userId !== authUser._id) throw new Error("Unauthorized");
 
     const now = Date.now();
 
     const existing = await ctx.db
       .query("naskahViews")
       .withIndex("by_session_user", (q) =>
-        q.eq("sessionId", args.sessionId).eq("userId", args.userId),
+        q.eq("sessionId", args.sessionId).eq("userId", authUser._id),
       )
       .unique();
 
@@ -192,7 +232,7 @@ export const markViewed = mutation({
 
     await ctx.db.insert("naskahViews", {
       sessionId: args.sessionId,
-      userId: args.userId,
+      userId: authUser._id,
       lastViewedRevision: args.revision,
       viewedAt: now,
     });
