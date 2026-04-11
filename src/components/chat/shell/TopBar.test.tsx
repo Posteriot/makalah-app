@@ -50,7 +50,7 @@ describe("TopBar naskah entry point", () => {
     mockSetTheme.mockReset()
   })
 
-  it("menampilkan tombol Naskah hanya saat availability true di route chat", () => {
+  it("menampilkan tombol Pratinjau hanya saat availability true di route chat", () => {
     const { rerender } = render(
       <TopBar
         isSidebarCollapsed={false}
@@ -64,7 +64,7 @@ describe("TopBar naskah entry point", () => {
     )
 
     expect(
-      screen.queryByRole("link", { name: /naskah/i }),
+      screen.queryByRole("link", { name: /pratinjau/i }),
     ).not.toBeInTheDocument()
 
     rerender(
@@ -79,11 +79,11 @@ describe("TopBar naskah entry point", () => {
       />,
     )
 
-    const link = screen.getByRole("link", { name: /naskah/i })
+    const link = screen.getByRole("link", { name: /pratinjau/i })
     expect(link).toHaveAttribute("href", "/chat/conversation_1/naskah")
   })
 
-  it("menampilkan tombol Chat saat berada di route naskah", () => {
+  it("menampilkan tombol Percakapan saat berada di route naskah", () => {
     render(
       <TopBar
         isSidebarCollapsed={false}
@@ -96,11 +96,11 @@ describe("TopBar naskah entry point", () => {
       />,
     )
 
-    const link = screen.getByRole("link", { name: /chat/i })
+    const link = screen.getByRole("link", { name: /percakapan/i })
     expect(link).toHaveAttribute("href", "/chat/conversation_1")
   })
 
-  it("menampilkan titik update hanya saat updatePending true pada tombol Naskah", () => {
+  it("menampilkan titik update hanya saat updatePending true pada tombol Pratinjau", () => {
     const { rerender } = render(
       <TopBar
         isSidebarCollapsed={false}
@@ -113,7 +113,7 @@ describe("TopBar naskah entry point", () => {
       />,
     )
 
-    let link = screen.getByRole("link", { name: /naskah/i })
+    let link = screen.getByRole("link", { name: /pratinjau/i })
     expect(
       within(link).queryByTestId("naskah-update-dot"),
     ).not.toBeInTheDocument()
@@ -130,7 +130,7 @@ describe("TopBar naskah entry point", () => {
       />,
     )
 
-    link = screen.getByRole("link", { name: /naskah/i })
+    link = screen.getByRole("link", { name: /pratinjau/i })
     expect(within(link).getByTestId("naskah-update-dot")).toBeInTheDocument()
   })
 })

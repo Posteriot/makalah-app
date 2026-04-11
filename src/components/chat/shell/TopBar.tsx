@@ -114,7 +114,7 @@ export function TopBar({
                 "transition-colors duration-150",
               )}
             >
-              <span>Naskah</span>
+              <span>Pratinjau</span>
               {naskahUpdatePending && (
                 <span
                   data-testid="naskah-update-dot"
@@ -133,7 +133,7 @@ export function TopBar({
                 "transition-colors duration-150",
               )}
             >
-              Chat
+              Percakapan
             </Link>
           )}
 

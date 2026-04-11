@@ -120,7 +120,7 @@ describe("TopBar naskah integration", () => {
     })
   })
 
-  it("tidak menampilkan entry point Naskah saat session belum available", () => {
+  it("tidak menampilkan entry point Pratinjau saat session belum available", () => {
     render(
       <ChatLayout conversationId="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">
         <div>chat-body</div>
@@ -128,11 +128,11 @@ describe("TopBar naskah integration", () => {
     )
 
     expect(
-      screen.queryByRole("link", { name: /naskah/i }),
+      screen.queryByRole("link", { name: /pratinjau/i }),
     ).not.toBeInTheDocument()
   })
 
-  it("menampilkan entry point Naskah dan titik update saat session available dan pending", () => {
+  it("menampilkan entry point Pratinjau dan titik update saat session available dan pending", () => {
     mockUseNaskah.mockReturnValue({
       availability: { isAvailable: true },
       updatePending: true,
@@ -144,7 +144,7 @@ describe("TopBar naskah integration", () => {
       </ChatLayout>,
     )
 
-    const naskahLink = screen.getByRole("link", { name: /naskah/i })
+    const naskahLink = screen.getByRole("link", { name: /pratinjau/i })
     expect(naskahLink).toHaveAttribute(
       "href",
       "/chat/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/naskah",
