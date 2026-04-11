@@ -1,12 +1,13 @@
 "use client"
 
 import { useRef, useEffect, useState, useCallback } from "react"
-import { Send, Page, Expand, Xmark, MediaImage, Trash } from "iconoir-react"
+import { Send, Expand, Xmark, Trash } from "iconoir-react"
 import { Pause as PauseSolid } from "iconoir-react/solid"
 import { FileUploadButton } from "./FileUploadButton"
+import { ChatInputAttachment } from "./ChatInputAttachment"
 import { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
-import { AttachedFileMeta, formatFileSize, isImageType, splitFileName } from "@/lib/types/attached-file"
+import { AttachedFileMeta } from "@/lib/types/attached-file"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface ChatInputProps {
@@ -149,42 +150,20 @@ export function ChatInput({
     const renderContextFileChips = () => {
         if (!hasContextFiles) return null
 
-        return displayedContextFiles.map((file) => {
-            const { baseName, extension } = splitFileName(file.name)
-
-            return (
-                <div
-                    key={file.fileId}
-                    className="inline-flex min-w-0 max-w-full items-center gap-1.5 whitespace-nowrap rounded-badge border border-[color:var(--chat-info)] bg-[var(--chat-accent)] py-1 pl-2.5 pr-1.5 text-xs font-mono text-[var(--chat-info)]"
-                    title={file.name}
-                >
-                    {isImageType(file.type) ? (
-                        <MediaImage className="h-3 w-3 shrink-0" />
-                    ) : (
-                        <Page className="h-3 w-3 shrink-0" />
-                    )}
-                    <span className="inline-flex min-w-0 items-baseline">
-                        <span className="max-w-[120px] truncate">{baseName}</span>
-                        {extension && <span className="shrink-0">{extension}</span>}
-                    </span>
-                    <span className="shrink-0 text-[10px] opacity-60">{formatFileSize(file.size)}</span>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (onContextFileRemoved) {
-                                onContextFileRemoved(file.fileId)
-                                return
-                            }
-                            onFileRemoved(file.fileId)
-                        }}
-                        className="ml-0.5 rounded p-0.5 transition-colors hover:bg-[color:var(--chat-info)]/15"
-                        aria-label={`Hapus file konteks ${file.name}`}
-                    >
-                        <Xmark className="h-3 w-3" />
-                    </button>
-                </div>
-            )
-        })
+        return displayedContextFiles.map((file) => (
+            <ChatInputAttachment
+                key={file.fileId}
+                name={file.name}
+                mimeType={file.type}
+                onRemove={() => {
+                    if (onContextFileRemoved) {
+                        onContextFileRemoved(file.fileId)
+                        return
+                    }
+                    onFileRemoved(file.fileId)
+                }}
+            />
+        ))
     }
 
     const renderClearContextButton = ({

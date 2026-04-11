@@ -3,7 +3,8 @@
 import Image from "next/image"
 import { Xmark } from "iconoir-react"
 import { cn } from "@/lib/utils"
-import { formatFileSize, splitFileName } from "@/lib/types/attached-file"
+import { formatFileSize } from "@/lib/types/attached-file"
+import { resolveExtensionStyle, type ExtensionStyle } from "./attachmentExtensionStyles"
 
 /**
  * Thumbnail-card attachment component used in chat bubbles and upload previews.
@@ -21,37 +22,6 @@ export interface MessageAttachmentProps {
     imageUrl?: string
     onRemove?: () => void
     className?: string
-}
-
-interface ExtensionStyle {
-    bg: string
-    text: string
-    label: string
-}
-
-const EXTENSION_STYLES: Record<string, ExtensionStyle> = {
-    pdf: { bg: "bg-red-500/15", text: "text-red-400", label: "PDF" },
-    doc: { bg: "bg-blue-500/15", text: "text-blue-400", label: "DOC" },
-    docx: { bg: "bg-blue-500/15", text: "text-blue-400", label: "DOC" },
-    xls: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "XLS" },
-    xlsx: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "XLS" },
-    ppt: { bg: "bg-orange-500/15", text: "text-orange-400", label: "PPT" },
-    pptx: { bg: "bg-orange-500/15", text: "text-orange-400", label: "PPT" },
-    txt: { bg: "bg-zinc-500/15", text: "text-zinc-400", label: "TXT" },
-}
-
-function resolveExtensionStyle(name: string): ExtensionStyle {
-    const { extension } = splitFileName(name)
-    const key = extension.replace(/^\./, "").toLowerCase()
-    if (key && EXTENSION_STYLES[key]) return EXTENSION_STYLES[key]
-
-    // Generic fallback — show uppercase extension (max 4 chars) or "FILE"
-    const fallbackLabel = key ? key.toUpperCase().slice(0, 4) : "FILE"
-    return {
-        bg: "bg-[color:var(--chat-muted)]",
-        text: "text-[color:var(--chat-muted-foreground)]",
-        label: fallbackLabel,
-    }
 }
 
 interface ExtensionLabelProps {
