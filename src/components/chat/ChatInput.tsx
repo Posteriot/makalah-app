@@ -186,14 +186,14 @@ export function ChatInput({
                             }}
                             aria-disabled={!canClearContext}
                             className={cn(
-                                "inline-flex h-8 w-8 items-center justify-center rounded-action border border-[color:var(--chat-border)] text-[var(--chat-muted-foreground)] transition-colors",
+                                "flex h-9 w-9 items-center justify-center rounded-full text-[var(--chat-muted-foreground)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]",
                                 canClearContext
                                     ? "hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)]"
                                     : "opacity-40 cursor-not-allowed"
                             )}
                             aria-label="Hapus semua"
                         >
-                            <Trash className="h-4 w-4" />
+                            <Trash className="h-5 w-5" strokeWidth={2} />
                         </button>
                     </span>
                 </TooltipTrigger>
@@ -239,14 +239,6 @@ export function ChatInput({
                     </div>
                     {renderClearContextButton()}
                 </div>
-                <div
-                    data-testid={isDesktop ? "desktop-context-separator" : undefined}
-                    className={cn(
-                        "h-px w-full bg-[color:var(--chat-border)]/80",
-                        isDesktop && "mt-1.5"
-                    )}
-                    aria-hidden="true"
-                />
             </div>
         )
     }
@@ -364,9 +356,6 @@ export function ChatInput({
                                     {renderContextFileChips()}
                                 </div>
                                 {renderClearContextButton({ hideWhenDisabled: true })}
-                            </div>
-                            <div className="px-2 pt-2">
-                                <div className="h-px w-full bg-[color:var(--chat-border)]/80" aria-hidden="true" />
                             </div>
                             <div
                                 data-testid="mobile-chat-input-row"
