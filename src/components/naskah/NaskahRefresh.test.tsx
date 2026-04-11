@@ -1,5 +1,11 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import type {
+  NaskahCompiledSnapshot,
+  NaskahSection,
+  NaskahSectionKey,
+} from "@/lib/naskah/types"
+import { NaskahPage } from "./NaskahPage"
 
 /**
  * Scope helper for pagination-aware content assertions.
@@ -21,12 +27,6 @@ function getVisibleSectionPage(sectionKey: string): HTMLElement {
   }
   return el
 }
-import type {
-  NaskahCompiledSnapshot,
-  NaskahSection,
-  NaskahSectionKey,
-} from "@/lib/naskah/types"
-import { NaskahPage } from "./NaskahPage"
 
 function makeSection(
   key: NaskahSectionKey,

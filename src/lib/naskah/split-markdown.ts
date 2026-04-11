@@ -33,7 +33,7 @@ export function splitMarkdownIntoBlocks(markdown: string): string[] {
 
   const blocks: string[] = []
   for (const chunk of raw) {
-    const trimmed = chunk.replace(/^\s+|\s+$/g, "")
+    const trimmed = chunk.trim()
     if (trimmed.length > 0) {
       blocks.push(trimmed)
     }

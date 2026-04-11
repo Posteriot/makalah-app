@@ -91,7 +91,12 @@ function useContentAreaHeightPx(): {
       const paddingTop = parseFloat(style.paddingTop) || 0
       const paddingBottom = parseFloat(style.paddingBottom) || 0
       const content = el.clientHeight - paddingTop - paddingBottom
-      if (content > 0) setHeightPx(content)
+      // Reset to null on a transient zero-height measurement so the
+      // hook surface reflects "not ready" rather than carrying a stale
+      // valid value. Today the clone is pinned to `h-[297mm]` so this
+      // should never fire, but it makes the contract robust against
+      // future style changes that might shrink or detach the clone.
+      setHeightPx(content > 0 ? content : null)
     }
     measure()
 
@@ -215,11 +220,21 @@ function PaginatedSection({
     [strippedMarkdown],
   )
 
-  // A monotonically-increasing trigger tied to the current block
-  // content. The hook re-runs measurement when this bumps. We bump on
-  // any change to the blocks array identity since new content requires
-  // fresh measurement.
-  const measureTrigger = useMemo(() => blocks.join("\n\n").length, [blocks])
+  // A monotonically-incrementing trigger tied to the current block
+  // content. The hook re-runs measurement when this bumps. We use a
+  // ref-counted bump rather than a content hash to guarantee that ANY
+  // change to the strippedMarkdown identity triggers re-measurement —
+  // including same-length edits (typo fixes, character swaps) where
+  // the block count and total character count are unchanged but
+  // individual block heights may differ due to glyph metrics or line
+  // wrapping. The previous string-length heuristic missed those cases.
+  const triggerCounterRef = useRef(0)
+  const lastTrackedMarkdownRef = useRef<string | null>(null)
+  if (lastTrackedMarkdownRef.current !== strippedMarkdown) {
+    lastTrackedMarkdownRef.current = strippedMarkdown
+    triggerCounterRef.current += 1
+  }
+  const measureTrigger = triggerCounterRef.current
 
   const { pages, measurementRef } = usePaginatedBlocks({
     blockCount: blocks.length,
@@ -239,6 +254,10 @@ function PaginatedSection({
     "[&_h2]:border-t-0 [&_h2]:pt-0 [&_h2]:mt-8",
   )
 
+  // Sentinel: when there are zero blocks (e.g., a section whose
+  // content is empty after duplicate-heading stripping) we still want
+  // to render one PageContainer so the section label appears in the
+  // paper. `[[]]` is one page with no block indices.
   const visiblePages = pages.length === 0 ? [[]] : pages
 
   return (
