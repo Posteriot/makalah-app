@@ -1,12 +1,15 @@
 "use client"
 
+import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import {
   NASKAH_TITLE_PAGE_ANCHOR_ID,
   getNaskahSectionAnchorId,
 } from "@/lib/naskah/anchors"
+import { splitMarkdownIntoBlocks } from "@/lib/naskah/split-markdown"
 import type { NaskahSection } from "@/lib/naskah/types"
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer"
+import { usePaginatedBlocks } from "./usePaginatedBlocks"
 
 interface NaskahPreviewProps {
   title: string
@@ -62,29 +65,68 @@ function stripLeadingDuplicateHeading(
 }
 
 /**
+ * Read the actual content-area height (in CSS pixels) of a
+ * `PageContainer`-shaped element. Runs once on mount plus on window
+ * resize. Falls back to an approximation based on 96dpi (A4 content
+ * area = 297mm − 5cm margins ≈ 934px).
+ *
+ * The measured element is a hidden `<PageContainer>` rendered at
+ * `position: fixed; visibility: hidden` so it takes up zero visual
+ * space. The measurement reads `clientHeight - paddingTop -
+ * paddingBottom` for correctness across font-size and user-zoom
+ * variations.
+ */
+function useContentAreaHeightPx(): {
+  ref: React.RefObject<HTMLDivElement | null>
+  heightPx: number | null
+} {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [heightPx, setHeightPx] = useState<number | null>(null)
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = ref.current
+      if (!el) return
+      const style = getComputedStyle(el)
+      const paddingTop = parseFloat(style.paddingTop) || 0
+      const paddingBottom = parseFloat(style.paddingBottom) || 0
+      const content = el.clientHeight - paddingTop - paddingBottom
+      if (content > 0) setHeightPx(content)
+    }
+    measure()
+
+    if (typeof window === "undefined") return
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    const onResize = () => {
+      if (timeoutId != null) clearTimeout(timeoutId)
+      timeoutId = setTimeout(measure, 120)
+    }
+    window.addEventListener("resize", onResize)
+    return () => {
+      window.removeEventListener("resize", onResize)
+      if (timeoutId != null) clearTimeout(timeoutId)
+    }
+  }, [])
+
+  return { ref, heightPx }
+}
+
+/**
  * Centered A4-style paper preview.
  *
  * The first page container is the title page (D-043, D-045) — a cover-
- * style layout that contains only the resolved paper title. Each
- * subsequent section starts on its own page container (D-047, D-048)
- * with `id="section-{key}"` so sidebar anchor links scroll directly to
- * the section start.
+ * style layout that contains only the resolved paper title.
  *
- * Section content is parsed as markdown via the existing chat
- * `MarkdownRenderer`, producing proper headings, paragraphs, bold,
- * italic, ordered/unordered lists, tables, code blocks, and blockquotes.
- * The renderer uses chat-* tokens so the rendered typography adapts to
- * the paper's `bg-[var(--chat-muted)]` surface automatically in both
- * light and dark modes.
+ * Each section is handled by `PaginatedSection`, which splits the
+ * section's markdown into block chunks, measures each chunk in a hidden
+ * scratch container, and distributes chunks across as many A4
+ * `PageContainer` instances as needed. Page 1 of each section shows the
+ * section label; pages 2+ continue with content only (Word-style).
  *
- * Two chat-specific styles are neutralized for paper context via
- * arbitrary-selector overrides on the wrapper:
- *   - `h2` border-t divider: removed. In chat messages the border helps
- *     separate artifact sections; in a paper the section label above
- *     already provides that visual anchor, and a mid-body horizontal
- *     rule reads as out of place.
- *   - `h2` top padding compensating for the removed border: also removed,
- *     replaced with a plain `mt-8` for consistent section spacing.
+ * Phase-1 edge case: a single markdown block taller than one page
+ * content area overflows its page visually (rather than splitting at
+ * line level). This is documented in `usePaginatedBlocks` and is rare in
+ * typical naskah content.
  *
  * Inline padding mirrors the export PDF margins from
  * `src/lib/export/pdf-builder.ts` (top/bottom 2.5cm, left 3cm, right
@@ -92,8 +134,37 @@ function stripLeadingDuplicateHeading(
  * per D-055.
  */
 export function NaskahPreview({ title, sections }: NaskahPreviewProps) {
+  const { ref: pageMeasurementRef, heightPx: contentAreaHeightPx } =
+    useContentAreaHeightPx()
+
   return (
     <div className="flex h-full flex-col items-center gap-8 overflow-y-auto bg-[var(--chat-background)] py-10">
+      {/*
+        Hidden PageContainer clone used as a height reference. Not visible
+        but takes the same CSS box so padding / font metrics / dpi
+        zooming all match the real visible pages.
+      */}
+      <div
+        ref={pageMeasurementRef}
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          left: "-9999px",
+          top: "-9999px",
+          visibility: "hidden",
+          pointerEvents: "none",
+        }}
+        // Mirror the visible PageContainer box: same width, same height,
+        // same padding, and the same `shrink-0` so the fixed-positioned
+        // measurement element's computed height is not mutated by any
+        // parent flex algorithm — required for accurate content area
+        // calculation below.
+        className={cn(
+          "w-full max-w-[210mm] h-[297mm] shrink-0",
+          "pt-[2.5cm] pb-[2.5cm] pl-[3cm] pr-[2cm]",
+        )}
+      />
+
       <PageContainer
         id={NASKAH_TITLE_PAGE_ANCHOR_ID}
         testId="naskah-title-page"
@@ -102,64 +173,192 @@ export function NaskahPreview({ title, sections }: NaskahPreviewProps) {
         <h1 className="text-4xl font-semibold">{title}</h1>
       </PageContainer>
 
-      {sections.map((section) => {
-        const markdown = stripLeadingDuplicateHeading(
-          section.content,
-          section.label,
-        )
-        return (
-          <PageContainer
-            key={section.key}
-            id={getNaskahSectionAnchorId(section.key)}
-          >
-            <h2 className="mb-6 text-2xl font-semibold">{section.label}</h2>
-            <MarkdownRenderer
-              markdown={markdown}
-              context="artifact"
-              className={cn(
-                "text-base leading-relaxed",
-                // Neutralize chat-specific h2 styling: drop the top border
-                // and the compensating padding, use plain top margin.
-                "[&_h2]:border-t-0 [&_h2]:pt-0 [&_h2]:mt-8",
-              )}
-            />
-          </PageContainer>
-        )
-      })}
+      {sections.map((section) => (
+        <PaginatedSection
+          key={section.key}
+          section={section}
+          contentAreaHeightPx={contentAreaHeightPx}
+        />
+      ))}
     </div>
   )
 }
 
+interface PaginatedSectionProps {
+  section: NaskahSection
+  contentAreaHeightPx: number | null
+}
+
+/**
+ * One section, possibly split across multiple A4 pages.
+ *
+ * Pipeline:
+ *   content → stripLeadingDuplicateHeading → splitMarkdownIntoBlocks
+ *   → render blocks in hidden scratch container → measure heights
+ *   → usePaginatedBlocks distributes into pages → render visible
+ *     PageContainers.
+ *
+ * Re-runs pagination whenever `contentAreaHeightPx` changes (window
+ * resize) or the stripped markdown changes (new section content).
+ */
+function PaginatedSection({
+  section,
+  contentAreaHeightPx,
+}: PaginatedSectionProps) {
+  const strippedMarkdown = useMemo(
+    () => stripLeadingDuplicateHeading(section.content, section.label),
+    [section.content, section.label],
+  )
+
+  const blocks = useMemo(
+    () => splitMarkdownIntoBlocks(strippedMarkdown),
+    [strippedMarkdown],
+  )
+
+  // A monotonically-increasing trigger tied to the current block
+  // content. The hook re-runs measurement when this bumps. We bump on
+  // any change to the blocks array identity since new content requires
+  // fresh measurement.
+  const measureTrigger = useMemo(() => blocks.join("\n\n").length, [blocks])
+
+  const { pages, measurementRef } = usePaginatedBlocks({
+    blockCount: blocks.length,
+    contentAreaHeightPx,
+    measureTrigger,
+  })
+
+  // Section label always anchors page 1. Tests rely on the DOM anchor
+  // id being on the first page element.
+  const anchorId = getNaskahSectionAnchorId(section.key)
+
+  // Stable className passed to every MarkdownRenderer instance. The
+  // arbitrary selector overrides neutralize chat-specific h2 styling —
+  // see NaskahPreview doc comment above.
+  const markdownClassName = cn(
+    "text-base leading-relaxed",
+    "[&_h2]:border-t-0 [&_h2]:pt-0 [&_h2]:mt-8",
+  )
+
+  const visiblePages = pages.length === 0 ? [[]] : pages
+
+  return (
+    <>
+      {/*
+        Hidden scratch container. Renders every block individually so
+        `usePaginatedBlocks` can query them by data-block-idx and read
+        offsetHeight. Marked aria-hidden so assistive tech ignores the
+        duplicate content; visibility:hidden + pointer-events:none keeps
+        it off-screen and non-interactive.
+      */}
+      <div
+        ref={measurementRef}
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          left: "-9999px",
+          top: "-9999px",
+          visibility: "hidden",
+          pointerEvents: "none",
+        }}
+        className={cn(
+          // Same width as a real page content area so wrapping matches.
+          "w-[calc(210mm_-_3cm_-_2cm)]",
+          "text-base leading-relaxed",
+        )}
+      >
+        {blocks.map((block, idx) => (
+          <div key={idx} data-block-idx={idx}>
+            <MarkdownRenderer
+              markdown={block}
+              context="artifact"
+              className={markdownClassName}
+            />
+          </div>
+        ))}
+      </div>
+
+      {visiblePages.map((pageBlockIndices, pageIdx) => {
+        const isFirstPage = pageIdx === 0
+        return (
+          <PageContainer
+            key={pageIdx}
+            id={isFirstPage ? anchorId : undefined}
+            testId={isFirstPage ? `naskah-section-${section.key}` : undefined}
+            data-section-key={section.key}
+            data-page-index={pageIdx}
+          >
+            {isFirstPage && (
+              <h2 className="mb-6 text-2xl font-semibold">{section.label}</h2>
+            )}
+            {pageBlockIndices.map((blockIdx) => (
+              <MarkdownRenderer
+                key={blockIdx}
+                markdown={blocks[blockIdx]}
+                context="artifact"
+                className={markdownClassName}
+              />
+            ))}
+          </PageContainer>
+        )
+      })}
+    </>
+  )
+}
+
 interface PageContainerProps {
-  id: string
+  id?: string
   testId?: string
   className?: string
   children: React.ReactNode
+  "data-section-key"?: string
+  "data-page-index"?: number
 }
 
 /**
  * Single A4-style page container. Approximates A4 proportions and
  * mirrors the PDF builder's margin convention.
+ *
+ * Uses `h-[297mm]` (fixed, not min-height) so every page container is
+ * exactly one A4 page tall. Combined with the `PaginatedSection` logic
+ * above, sections that span multiple pages render as a sequence of
+ * fixed-height containers stacked vertically with the parent's `gap-8`
+ * separating them visually.
  */
 function PageContainer({
   id,
   testId,
   className,
   children,
+  "data-section-key": dataSectionKey,
+  "data-page-index": dataPageIndex,
 }: PageContainerProps) {
   return (
     <section
       id={id}
       data-testid={testId}
+      data-section-key={dataSectionKey}
+      data-page-index={dataPageIndex}
       className={cn(
-        // A4 ~210mm × 297mm; cap to a max width for desktop preview
-        "w-full max-w-[210mm] min-h-[297mm]",
+        // A4 ~210mm × 297mm; cap to a max width for desktop preview.
+        // Fixed height (not min-height) so every page container is a
+        // true one-page frame. Oversized content inside overflows the
+        // bottom border visually per the phase-1 edge case documented
+        // in NaskahPreview.
+        //
+        // `shrink-0` is load-bearing: the parent is a `flex flex-col`
+        // with `overflow-y-auto`, which by default shrinks flex items
+        // to fit the container. Without `shrink-0`, `h-[297mm]` gets
+        // silently reduced to whatever the viewport allows, and
+        // pagination's content-area budget no longer matches the
+        // visible page height — content for page 1 bleeds past the
+        // bottom margin into page 2's physical space.
+        "w-full max-w-[210mm] h-[297mm] shrink-0",
         // Mirror pdf-builder margins: top/bottom 2.5cm, left 3cm, right 2cm
         "pt-[2.5cm] pb-[2.5cm] pl-[3cm] pr-[2cm]",
-        // Paper surface uses chat-muted per Q4 — matches chat input fill
-        // so the paper feels part of the same visual family as the rest
-        // of the chat scope. Token-based so the fill adapts automatically
-        // between light and dark modes (user requirement #6).
+        // Paper surface uses chat-muted — matches chat input fill so the
+        // paper feels part of the same visual family as the rest of the
+        // chat scope. Token-based so the fill adapts between light and
+        // dark modes.
         "rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-muted)]",
         "text-[var(--chat-foreground)]",
         className,

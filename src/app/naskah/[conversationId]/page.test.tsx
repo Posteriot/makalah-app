@@ -1,6 +1,27 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import NaskahConversationPage from "./page"
+
+/**
+ * Scope helper for pagination-aware content assertions.
+ *
+ * `PaginatedSection` renders each block twice — once in a hidden
+ * measurement scratch container and once in a visible `PageContainer`.
+ * Unscoped `screen.getByText(...)` on body text would match both copies
+ * and throw "multiple elements found." This helper returns the visible
+ * first-page element for a section so queries can be scoped.
+ */
+function getVisibleSectionPage(sectionKey: string): HTMLElement {
+  const el = document.querySelector<HTMLElement>(
+    `[data-testid="naskah-section-${sectionKey}"]`,
+  )
+  if (!el) {
+    throw new Error(
+      `No visible first page found for section "${sectionKey}".`,
+    )
+  }
+  return el
+}
 
 const mockUseQuery = vi.fn()
 const mockUseCurrentUser = vi.fn()
@@ -114,7 +135,11 @@ describe("naskah conversation page", () => {
     expect(
       screen.getByRole("heading", { name: "Judul Final Paper" }),
     ).toBeInTheDocument()
-    expect(screen.getByText("Isi abstrak revisi 4")).toBeInTheDocument()
+    expect(
+      within(getVisibleSectionPage("abstrak")).getByText(
+        "Isi abstrak revisi 4",
+      ),
+    ).toBeInTheDocument()
   })
 
   it("D-018: masuk dari Chat dengan pending update menampilkan viewed revision, bukan latest", () => {
@@ -145,12 +170,17 @@ describe("naskah conversation page", () => {
     expect(
       screen.getByRole("heading", { name: "Judul Revisi 3" }),
     ).toBeInTheDocument()
-    expect(screen.getByText("Isi abstrak revisi 3")).toBeInTheDocument()
+    const visiblePage = getVisibleSectionPage("abstrak")
+    expect(
+      within(visiblePage).getByText("Isi abstrak revisi 3"),
+    ).toBeInTheDocument()
 
     expect(
       screen.queryByRole("heading", { name: "Judul Revisi 4" }),
     ).not.toBeInTheDocument()
-    expect(screen.queryByText("Isi abstrak revisi 4")).not.toBeInTheDocument()
+    expect(
+      within(visiblePage).queryByText("Isi abstrak revisi 4"),
+    ).not.toBeInTheDocument()
 
     expect(
       screen.getByRole("button", { name: /update/i }),
@@ -178,7 +208,9 @@ describe("naskah conversation page", () => {
     expect(
       screen.getByRole("heading", { name: "Judul Awal" }),
     ).toBeInTheDocument()
-    expect(screen.getByText("Isi abstrak awal")).toBeInTheDocument()
+    expect(
+      within(getVisibleSectionPage("abstrak")).getByText("Isi abstrak awal"),
+    ).toBeInTheDocument()
     expect(
       screen.queryByRole("button", { name: /update/i }),
     ).not.toBeInTheDocument()

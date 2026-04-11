@@ -78,6 +78,37 @@ describe("stripLeadingDuplicateHeading", () => {
 //   - duplicate leading heading is stripped
 // ────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Scope selector for the VISIBLE section content, excluding the hidden
+ * measurement scratch containers that `PaginatedSection` mounts for
+ * block-height measurement.
+ *
+ * The pagination hook needs its own copy of each block rendered
+ * off-screen so it can read `offsetHeight`. That means every block of
+ * text appears twice in the DOM: once in a hidden scratch container
+ * (position: fixed; visibility: hidden) and once inside a visible
+ * `PageContainer`. Assertions that use unscoped `screen.getByText` /
+ * `screen.getByRole` would match both copies and throw
+ * "multiple elements found."
+ *
+ * Scoping queries to the `[data-testid="naskah-section-<key>"]` first
+ * page of a section limits the search to the visible copy. Any
+ * subsequent page of a multi-page section can be reached via
+ * `[data-page-index]` selectors on the container level.
+ */
+function getSectionFirstPage(sectionKey: string): HTMLElement {
+  const el = document.querySelector<HTMLElement>(
+    `[data-testid="naskah-section-${sectionKey}"]`,
+  )
+  if (!el) {
+    throw new Error(
+      `No visible first page found for section "${sectionKey}". ` +
+        `PaginatedSection may not have rendered any pages yet.`,
+    )
+  }
+  return el
+}
+
 describe("NaskahPreview — markdown rendering", () => {
   it("renders inline bold and italic from markdown", () => {
     render(
@@ -94,12 +125,14 @@ describe("NaskahPreview — markdown rendering", () => {
       />,
     )
 
+    const page = getSectionFirstPage("abstrak")
+
     // Italic *chatbot* → <em>
-    const emEl = screen.getByText("chatbot")
+    const emEl = within(page).getByText("chatbot")
     expect(emEl.tagName).toBe("EM")
 
     // Bold **Kata Kunci** → <strong>
-    const strongEl = screen.getByText("Kata Kunci")
+    const strongEl = within(page).getByText("Kata Kunci")
     expect(strongEl.tagName).toBe("STRONG")
   })
 
@@ -117,11 +150,13 @@ describe("NaskahPreview — markdown rendering", () => {
       />,
     )
 
+    const page = getSectionFirstPage("pendahuluan")
+
     // The `## Latar Belakang` raw syntax must NOT appear in the DOM text
-    expect(screen.queryByText(/^## Latar Belakang$/)).not.toBeInTheDocument()
+    expect(within(page).queryByText(/^## Latar Belakang$/)).not.toBeInTheDocument()
 
     // And a real <h2> with that name must exist
-    const heading = screen.getByRole("heading", { name: "Latar Belakang" })
+    const heading = within(page).getByRole("heading", { name: "Latar Belakang" })
     expect(heading.tagName).toBe("H2")
   })
 
@@ -140,7 +175,8 @@ describe("NaskahPreview — markdown rendering", () => {
       />,
     )
 
-    const list = screen.getByRole("list")
+    const page = getSectionFirstPage("pendahuluan")
+    const list = within(page).getByRole("list")
     expect(list.tagName).toBe("OL")
     const items = within(list).getAllByRole("listitem")
     expect(items).toHaveLength(2)
@@ -163,10 +199,13 @@ describe("NaskahPreview — markdown rendering", () => {
       />,
     )
 
-    // Only one heading named "Pendahuluan" should exist: the section
-    // label rendered by NaskahPreview's own <h2>. The markdown's redundant
-    // `# Pendahuluan` must have been stripped before render.
-    const pendahuluanHeadings = screen.getAllByRole("heading", {
+    const page = getSectionFirstPage("pendahuluan")
+
+    // Only one heading named "Pendahuluan" should exist in the visible
+    // first page: the section label rendered by PaginatedSection's own
+    // <h2>. The markdown's redundant `# Pendahuluan` must have been
+    // stripped before render.
+    const pendahuluanHeadings = within(page).getAllByRole("heading", {
       name: "Pendahuluan",
     })
     expect(pendahuluanHeadings).toHaveLength(1)
@@ -187,8 +226,9 @@ describe("NaskahPreview — markdown rendering", () => {
       />,
     )
 
+    const page = getSectionFirstPage("abstrak")
     expect(
-      screen.getByText("Penelitian ini bertujuan untuk mengeksplorasi."),
+      within(page).getByText("Penelitian ini bertujuan untuk mengeksplorasi."),
     ).toBeInTheDocument()
   })
 })

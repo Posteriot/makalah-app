@@ -1,5 +1,26 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+/**
+ * Scope helper for pagination-aware content assertions.
+ *
+ * `PaginatedSection` renders each block twice: once in a hidden
+ * measurement scratch container and once in a visible `PageContainer`.
+ * Unscoped `screen.getByText(...)` assertions would match both copies
+ * and throw. This helper returns the visible first-page element for a
+ * section so queries can be scoped to the on-screen copy.
+ */
+function getVisibleSectionPage(sectionKey: string): HTMLElement {
+  const el = document.querySelector<HTMLElement>(
+    `[data-testid="naskah-section-${sectionKey}"]`,
+  )
+  if (!el) {
+    throw new Error(
+      `No visible first page found for section "${sectionKey}".`,
+    )
+  }
+  return el
+}
 import type {
   NaskahCompiledSnapshot,
   NaskahSection,
@@ -91,9 +112,14 @@ describe("NaskahPage manual refresh flow", () => {
 
     const header = screen.getByTestId("naskah-header")
     expect(within(header).getByText("Judul Revisi 3")).toBeInTheDocument()
-    expect(screen.getByText("Isi abstrak revisi 3")).toBeInTheDocument()
+    const visiblePage = getVisibleSectionPage("abstrak")
+    expect(
+      within(visiblePage).getByText("Isi abstrak revisi 3"),
+    ).toBeInTheDocument()
     expect(within(header).queryByText("Judul Revisi 4")).not.toBeInTheDocument()
-    expect(screen.queryByText("Isi abstrak revisi 4")).not.toBeInTheDocument()
+    expect(
+      within(visiblePage).queryByText("Isi abstrak revisi 4"),
+    ).not.toBeInTheDocument()
     expect(
       screen.getByRole("button", { name: /update/i }),
     ).toBeInTheDocument()
@@ -133,7 +159,10 @@ describe("NaskahPage manual refresh flow", () => {
 
     const header = screen.getByTestId("naskah-header")
     expect(within(header).getByText("Judul Revisi 3")).toBeInTheDocument()
-    expect(screen.getByText("Isi abstrak revisi 3")).toBeInTheDocument()
+    const visiblePage = getVisibleSectionPage("abstrak")
+    expect(
+      within(visiblePage).getByText("Isi abstrak revisi 3"),
+    ).toBeInTheDocument()
     expect(within(header).queryByText("Judul Revisi 4")).not.toBeInTheDocument()
   })
 
@@ -179,8 +208,13 @@ describe("NaskahPage manual refresh flow", () => {
     expect(onRefresh).toHaveBeenCalledTimes(1)
     const header = screen.getByTestId("naskah-header")
     expect(within(header).getByText("Judul Revisi 4")).toBeInTheDocument()
-    expect(screen.getByText("Isi abstrak revisi 4")).toBeInTheDocument()
-    expect(screen.queryByText("Isi abstrak revisi 3")).not.toBeInTheDocument()
+    const visiblePage = getVisibleSectionPage("abstrak")
+    expect(
+      within(visiblePage).getByText("Isi abstrak revisi 4"),
+    ).toBeInTheDocument()
+    expect(
+      within(visiblePage).queryByText("Isi abstrak revisi 3"),
+    ).not.toBeInTheDocument()
     expect(onSidebarStateChange.mock.calls.at(-1)?.[0]).toMatchObject({
       isAvailable: true,
       sections: revision4.sections,
