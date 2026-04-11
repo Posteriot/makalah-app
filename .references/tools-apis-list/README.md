@@ -589,7 +589,7 @@ interface RefrasaIssue {
 | Function | Purpose | Parameters |
 |----------|---------|------------|
 | `promoteToAdmin` | Promote user to admin (superadmin only) | `targetUserId: Id<"users">` |
-| `demoteToUser` | Demote admin to user (superadmin only) | `targetUserId: Id<"users">` |
+| `demoteFromAdmin` | Demote admin to user with target tier (superadmin only) | `targetUserId: Id<"users">`, `targetTier: "free" \| "bpp" \| "pro"` |
 
 ---
 

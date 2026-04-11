@@ -33,10 +33,11 @@ export const EXACT_SOURCE_NARRATIVE_BANNED_PHRASES = [
 ]
 
 export const EXACT_SOURCE_INSPECTION_RULES = `EXACT SOURCE INSPECTION RULES:
-- For any request asking for an exact title, author, published date, paragraph number, or verbatim quote from a previously stored source, call inspectSourceDocument before answering.
+- For any request asking for an exact title, author, published date, site name, paragraph number, or verbatim quote from a previously stored source, call inspectSourceDocument before answering.
 - Use quoteFromSource and searchAcrossSources only for semantic retrieval, not for exact paragraph positions or exact metadata verification.
 - If the requested exact detail is unavailable, say it cannot be verified exactly from the verified source data.
-- Do not infer article titles from URLs, slugs, or citation labels.
+- Do not infer any exact metadata field (title, author, published date, site name) from URLs, slugs, domain names, hostnames, citation labels, or prior prose. Only present metadata values returned by inspectSourceDocument.
+- When ANY exact metadata field is unavailable from the tool result, write ONLY "Tidak disebutkan di referensi/dokumen" and NOTHING else on that line — no URL, no inline citation, no markdown link, no reference number. When the source URL is known, add "Sumber URL: {domain}" as its OWN separate bullet point AFTER all metadata fields.
 - Never mention internal tools, RAG, retrieval, fetch pipelines, or available web sources to the user.
 - Do not say phrases like: ${EXACT_SOURCE_NARRATIVE_BANNED_PHRASES.join(", ")}.
 - Respond in natural narrative language.`
@@ -148,7 +149,12 @@ Selected source site: ${source.siteName ?? "(site unavailable)"}
 Selected source original URL: ${source.originalUrl}
 Selected source resolved URL: ${source.resolvedUrl}
 Do not answer from memory, prior assistant wording, semantic matches, or conversation context before the tool result returns.
-After the tool result returns, answer naturally without exposing internal mechanics.`
+After the tool result returns, answer naturally without exposing internal mechanics.
+STRICT METADATA OUTPUT: This is an exact metadata inspection result. The source is already identified by the tool call — do NOT use inline citation numbers [1], [2] etc. ANYWHERE in this metadata list. No field needs a citation number. Follow this exact format:
+- Author: {value}
+- Site Name: Tidak disebutkan di referensi/dokumen
+- Kapan Terbitnya: {value}
+- Sumber URL: journal.example.ac.id`
 }
 
 export function buildDeterministicExactSourceClarifyNote() {

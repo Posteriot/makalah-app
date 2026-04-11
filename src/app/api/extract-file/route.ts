@@ -16,6 +16,7 @@ import { isAuthenticated, getToken } from "@/lib/auth-server"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
+import { cleanForIngestion } from "@/lib/ingestion/clean-for-ingestion"
 
 /**
  * Retry helper untuk network/API calls yang bisa transient error
@@ -262,7 +263,7 @@ export async function POST(request: NextRequest) {
           conversationId: file.conversationId,
           sourceType: "upload",
           sourceId: fileId,
-          content: extractedText,
+          content: cleanForIngestion(extractedText, "upload"),
           metadata: { title: file.name },
           convexToken: convexToken ?? undefined,
         }).catch((err) => {

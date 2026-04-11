@@ -180,4 +180,223 @@ describe("resolveExactSourceFollowup", () => {
     expect(result.mode).toBe("none")
     expect(result.reason).toBe("empty-user-message")
   })
+
+  it("disambiguates by URL specificity when galley URL matches both portal root and article source", async () => {
+    const ojsSources: ExactSourceSummary[] = [
+      {
+        sourceId: "https://journal.unpas.ac.id/",
+        originalUrl: "https://journal.unpas.ac.id/",
+        resolvedUrl: "https://journal.unpas.ac.id/",
+        title: "Portal Jurnal UNPAS",
+      },
+      {
+        sourceId: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        originalUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        resolvedUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        title: "Penggunaan AI dalam Pendidikan",
+      },
+    ]
+
+    await mockClassifier({
+      mode: "force_inspect", sourceIntent: "exact_detail",
+      mentionedSourceHint: null,
+      needsClarification: false, confidence: 0.9, reason: "URL match",
+    })
+
+    const result = await resolveExactSourceFollowup({
+      lastUserMessage: "Siapa penulis artikel https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455?",
+      recentMessages: [], availableExactSources: ojsSources, model: mockModel,
+    })
+
+    expect(result.mode).toBe("force-inspect")
+    if (result.mode === "force-inspect") {
+      expect(result.matchedSource.sourceId).toBe(
+        "https://journal.unpas.ac.id/index.php/pendas/article/view/32777"
+      )
+    }
+  })
+
+  it("canonical metadata resolution: prefers metadata-bearing prefix source over exact galley match", async () => {
+    // Galley source was fetched but has no metadata.
+    // Article source (URL prefix) was fetched from search and has metadata.
+    // Contract: use the article source as canonical metadata authority.
+    const ojsSources: ExactSourceSummary[] = [
+      {
+        sourceId: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        originalUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        resolvedUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        title: "Penggunaan AI dalam Pendidikan",
+        author: "Siti Nurhaliza",
+        publishedAt: "2025-06-15",
+        siteName: "Jurnal Pendas UNPAS",
+      },
+      {
+        sourceId: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455",
+        originalUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455",
+        resolvedUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455",
+        title: "Penggunaan AI dalam Pendidikan",
+        // no author, publishedAt, or siteName — galley page has no metadata
+      },
+    ]
+
+    await mockClassifier({
+      mode: "force_inspect", sourceIntent: "exact_detail",
+      mentionedSourceHint: null,
+      needsClarification: false, confidence: 0.9, reason: "URL match",
+    })
+
+    const result = await resolveExactSourceFollowup({
+      lastUserMessage: "Siapa penulis artikel https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455?",
+      recentMessages: [], availableExactSources: ojsSources, model: mockModel,
+    })
+
+    expect(result.mode).toBe("force-inspect")
+    if (result.mode === "force-inspect") {
+      // Should resolve to the article source (with metadata), not the galley source
+      expect(result.matchedSource.sourceId).toBe(
+        "https://journal.unpas.ac.id/index.php/pendas/article/view/32777"
+      )
+      expect(result.matchedSource.author).toBe("Siti Nurhaliza")
+    }
+  })
+
+  it("keeps exact galley match when it has metadata", async () => {
+    // Both sources have metadata — keep the more specific (galley) match.
+    const ojsSources: ExactSourceSummary[] = [
+      {
+        sourceId: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        originalUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        resolvedUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        title: "Penggunaan AI dalam Pendidikan",
+        author: "Author A",
+      },
+      {
+        sourceId: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455",
+        originalUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455",
+        resolvedUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455",
+        title: "Penggunaan AI dalam Pendidikan",
+        author: "Author B",
+      },
+    ]
+
+    await mockClassifier({
+      mode: "force_inspect", sourceIntent: "exact_detail",
+      mentionedSourceHint: null,
+      needsClarification: false, confidence: 0.9, reason: "URL match",
+    })
+
+    const result = await resolveExactSourceFollowup({
+      lastUserMessage: "Siapa penulis artikel https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455?",
+      recentMessages: [], availableExactSources: ojsSources, model: mockModel,
+    })
+
+    expect(result.mode).toBe("force-inspect")
+    if (result.mode === "force-inspect") {
+      // Galley source has metadata — keep it (no canonicalization)
+      expect(result.matchedSource.sourceId).toBe(
+        "https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455"
+      )
+      expect(result.matchedSource.author).toBe("Author B")
+    }
+  })
+
+  it("does NOT canonicalize to portal root with siteName only", async () => {
+    // Dangerous case: galley has no metadata, article has no metadata,
+    // portal root has siteName only. Must NOT canonicalize to portal root.
+    const ojsSources: ExactSourceSummary[] = [
+      {
+        sourceId: "https://journal.unpas.ac.id/",
+        originalUrl: "https://journal.unpas.ac.id/",
+        resolvedUrl: "https://journal.unpas.ac.id/",
+        title: "Portal Jurnal UNPAS",
+        siteName: "UNPAS Journals",
+        // no author, no publishedAt — not article-level authority
+      },
+      {
+        sourceId: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        originalUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        resolvedUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        title: "Penggunaan AI dalam Pendidikan",
+        // no author, no publishedAt, no siteName
+      },
+      {
+        sourceId: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455",
+        originalUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455",
+        resolvedUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455",
+        title: "Penggunaan AI dalam Pendidikan",
+        // no metadata at all
+      },
+    ]
+
+    await mockClassifier({
+      mode: "force_inspect", sourceIntent: "exact_detail",
+      mentionedSourceHint: null,
+      needsClarification: false, confidence: 0.9, reason: "URL match",
+    })
+
+    const result = await resolveExactSourceFollowup({
+      lastUserMessage: "Siapa penulis artikel https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455?",
+      recentMessages: [], availableExactSources: ojsSources, model: mockModel,
+    })
+
+    expect(result.mode).toBe("force-inspect")
+    if (result.mode === "force-inspect") {
+      // Must use the galley source as-is — no canonicalization to portal root
+      expect(result.matchedSource.sourceId).toBe(
+        "https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455"
+      )
+    }
+  })
+
+  it("canonicalizes to article with author/date, not to portal root with siteName only", async () => {
+    // Both article and portal root have some metadata.
+    // Article has author/date (article-level). Portal has siteName only.
+    // Must canonicalize to article, not portal root.
+    const ojsSources: ExactSourceSummary[] = [
+      {
+        sourceId: "https://journal.unpas.ac.id/",
+        originalUrl: "https://journal.unpas.ac.id/",
+        resolvedUrl: "https://journal.unpas.ac.id/",
+        title: "Portal Jurnal UNPAS",
+        siteName: "UNPAS Journals",
+        // siteName only — not article-level authority
+      },
+      {
+        sourceId: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        originalUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        resolvedUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777",
+        title: "Penggunaan AI dalam Pendidikan",
+        author: "Siti Nurhaliza",
+        publishedAt: "2025-06-15",
+        // article-level authority
+      },
+      {
+        sourceId: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455",
+        originalUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455",
+        resolvedUrl: "https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455",
+        title: "Penggunaan AI dalam Pendidikan",
+        // no metadata
+      },
+    ]
+
+    await mockClassifier({
+      mode: "force_inspect", sourceIntent: "exact_detail",
+      mentionedSourceHint: null,
+      needsClarification: false, confidence: 0.9, reason: "URL match",
+    })
+
+    const result = await resolveExactSourceFollowup({
+      lastUserMessage: "Siapa penulis artikel https://journal.unpas.ac.id/index.php/pendas/article/view/32777/16455?",
+      recentMessages: [], availableExactSources: ojsSources, model: mockModel,
+    })
+
+    expect(result.mode).toBe("force-inspect")
+    if (result.mode === "force-inspect") {
+      // Must canonicalize to article source (author/date), NOT portal root (siteName only)
+      expect(result.matchedSource.sourceId).toBe(
+        "https://journal.unpas.ac.id/index.php/pendas/article/view/32777"
+      )
+      expect(result.matchedSource.author).toBe("Siti Nurhaliza")
+    }
+  })
 })

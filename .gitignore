@@ -49,9 +49,6 @@ next-env.d.ts
 installation-plan.txt
 stack-requirements.txt
 
-# Screenshots (testing artifacts)
-screenshots/
-
 # Superpowers brainstorm sessions
 .superpowers/
 
@@ -67,8 +64,7 @@ convex-export-*
 # Temporary files
 .tmp/
 .playwright-mcp/
+# Screenshots (testing artifacts)
 screenshots/
 .development/knowledge-base/github-pat-setup.md
 .development/stack-requirements.txt
-screesnshots/
-screenshots

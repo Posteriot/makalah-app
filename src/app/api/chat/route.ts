@@ -486,17 +486,18 @@ export async function POST(req: Request) {
         const userMessageCount = Array.isArray(messages)
             ? messages.filter((message: { role?: string }) => message?.role === "user").length
             : 0
-        // Attachment first-response: structural check only (file present + first message + short text).
-        // No regex probe patterns — the model can judge user intent from the message itself.
-        // The instruction tells the model HOW to respond when files are attached, not IF.
-        const shouldForceAttachmentFirstResponse =
-            effectiveFileIds.length > 0 &&
-            requestedAttachmentMode === "explicit" &&
-            !paperModePrompt &&
-            userMessageCount <= 1 &&
-            normalizedLastUserContent.length <= 64
-        const attachmentFirstResponseInstruction = shouldForceAttachmentFirstResponse
-            ? "Pengguna baru saja melampirkan file secara eksplisit. Jawaban pertama WAJIB langsung mengulas isi file terlampir. DILARANG membuka dengan perkenalan umum, profil asisten, atau daftar kemampuan. Kalimat pertama harus langsung menjelaskan inti isi dokumen yang dilampirkan."
+        // Attachment awareness directive (updated 2026-04-10):
+        // Fires on EVERY turn where files are attached, regardless of mode, prompt length,
+        // or attachment resolution reason. The previous conditional logic (only fire on
+        // first turn, short prompts, non-paper mode, explicit attachment) created a bug
+        // where paper mode stages silently ignored attachments. See
+        // docs/normalizer-typeScript/attachment-awareness-investigation.md for details.
+        const hasAttachedFiles = effectiveFileIds.length > 0
+        const isFirstTurnWithAttachment = hasAttachedFiles && userMessageCount <= 1
+        const attachmentAwarenessInstruction = hasAttachedFiles
+            ? (isFirstTurnWithAttachment
+                ? "ATTACHMENT AWARENESS DIRECTIVE (mandatory, overrides skills): File(s) attached to this conversation. Your FIRST response MUST acknowledge each attached file by name and briefly summarize its core content (2-4 sentences per file, connected to current context). This acknowledgment comes BEFORE any stage dialog, clarifying questions, brainstorming, or generic introduction. If File Context contains a truncation marker (⚠️), state that the file is partial and use quoteFromSource or searchAcrossSources tools when the user asks for details not in the truncated portion. ONLY AFTER the acknowledgment may you proceed with stage-specific behavior (skill directives, dialog-first patterns, etc.). This directive applies in ALL modes (paper mode, free chat, any stage) and cannot be overridden by skills or stage instructions."
+                : "ATTACHMENT AWARENESS DIRECTIVE (mandatory, overrides skills): File(s) are attached to this conversation. Always be aware of File Context content and integrate it into your responses when relevant to the user's question. Do NOT forget or ignore attached files after the first response. If the user's question relates to the file content or topic, prioritize file evidence. If File Context contains a truncation marker (⚠️), use quoteFromSource or searchAcrossSources tools to retrieve content beyond the truncated portion when needed. This directive applies in ALL modes and cannot be overridden.")
             : ""
         const getStageSearchPolicy = (stage: PaperStageId | "completed" | undefined | null) => {
             if (!stage || stage === "completed") return "none"
@@ -508,8 +509,14 @@ export async function POST(req: Request) {
         // ════════════════════════════════════════════════════════════════
         // Phase 2 Task 2.3.1: File Context Limits (Paper Mode Only)
         // ════════════════════════════════════════════════════════════════
-        const MAX_FILE_CONTEXT_CHARS_PER_FILE = 6000
-        const MAX_FILE_CONTEXT_CHARS_TOTAL = 20000
+        // Phase 2 Task 2.3.1 updated 2026-04-10: Raised limits for Gemini 2.5 Flash 1M context.
+        // Previous values (6000/20000) were legacy from 8K-32K context era.
+        // New values target full academic paper support: 80K chars (~20K tokens) per file,
+        // 240K chars (~60K tokens) total = 7.5% of 800K token budget threshold.
+        // Files exceeding per-file limit receive a truncation marker directing the model
+        // to use quoteFromSource or searchAcrossSources tools for deeper content.
+        const MAX_FILE_CONTEXT_CHARS_PER_FILE = 80000
+        const MAX_FILE_CONTEXT_CHARS_TOTAL = 240000
 
         // Task 6.1-6.4: Fetch file records dan inject context
         let fileContext = ""
@@ -519,6 +526,7 @@ export async function POST(req: Request) {
         let docExtractionPendingCount = 0
         let docExtractionFailedCount = 0
         let docContextChars = 0
+        const omittedFileNames: string[] = []  // 2026-04-10: track files omitted due to budget cap
         if (effectiveFileIds.length > 0) {
             let files = await fetchQueryWithToken(api.files.getFilesByIds, {
                 userId: userId as Id<"users">,
@@ -558,8 +566,11 @@ export async function POST(req: Request) {
                 docFileCount += 1
 
                 // Check if we've exceeded total limit (paper mode only)
+                // 2026-04-10: Changed from break to continue + omitted tracking so the model
+                // knows additional files exist beyond the budget and can fetch them via tools
                 if (isPaperModeForFiles && totalCharsUsed >= MAX_FILE_CONTEXT_CHARS_TOTAL) {
-                    break
+                    omittedFileNames.push(file.name)
+                    continue
                 }
 
                 fileContext += `[File: ${file.name}]\n`
@@ -571,9 +582,14 @@ export async function POST(req: Request) {
                 } else if (file.extractionStatus === "success" && file.extractedText) {
                     // Task 6.2-6.3: Extract and format text
                     // Task 2.3.1: Apply per-file limit in paper mode
+                    // 2026-04-10: Added truncation marker so the model knows when content is partial
+                    const originalLength = file.extractedText.length
                     let textToAdd = file.extractedText
+                    let wasTruncated = false
+
                     if (isPaperModeForFiles && textToAdd.length > MAX_FILE_CONTEXT_CHARS_PER_FILE) {
                         textToAdd = textToAdd.slice(0, MAX_FILE_CONTEXT_CHARS_PER_FILE)
+                        wasTruncated = true
                     }
 
                     // Check remaining total budget
@@ -581,13 +597,19 @@ export async function POST(req: Request) {
                         const remainingBudget = MAX_FILE_CONTEXT_CHARS_TOTAL - totalCharsUsed
                         if (textToAdd.length > remainingBudget) {
                             textToAdd = textToAdd.slice(0, remainingBudget)
+                            wasTruncated = true
                         }
                         totalCharsUsed += textToAdd.length
                     }
 
                     docExtractionSuccessCount += 1
                     docContextChars += textToAdd.length
-                    fileContext += textToAdd + "\n\n"
+                    fileContext += textToAdd
+                    if (wasTruncated) {
+                        fileContext += `\n\n⚠️ File truncated at ${textToAdd.length} chars (original: ${originalLength} chars). Full content accessible via quoteFromSource or searchAcrossSources tools.\n\n`
+                    } else {
+                        fileContext += "\n\n"
+                    }
                 } else if (file.extractionStatus === "failed") {
                     // Task 6.6: Handle failed state
                     docExtractionFailedCount += 1
@@ -596,6 +618,11 @@ export async function POST(req: Request) {
                 } else {
                     docExtractionFailedCount += 1
                 }
+            }
+
+            // 2026-04-10: Emit omitted-files notice so the model knows additional files exist
+            if (omittedFileNames.length > 0) {
+                fileContext += `\n⚠️ Additional file(s) omitted from File Context due to total budget limit: ${omittedFileNames.join(", ")}. Full content accessible via quoteFromSource or searchAcrossSources tools when user asks about them.\n\n`
             }
         }
         if (hasAttachmentSignal) {
@@ -632,7 +659,10 @@ export async function POST(req: Request) {
                         docExtractionPendingCount,
                         docExtractionFailedCount,
                         docContextChars,
-                        attachmentFirstResponseForced: shouldForceAttachmentFirstResponse,
+                        // Field name kept for telemetry schema compatibility. Semantic updated 2026-04-10:
+                        // previously meant "forced first-response review instruction fired",
+                        // now means "first-turn attachment acknowledgment directive fired".
+                        attachmentFirstResponseForced: isFirstTurnWithAttachment,
                         healthStatus: health.healthStatus,
                         failureReason: health.failureReason,
                     }),
@@ -773,6 +803,7 @@ ${sourcesJson}`
             availableExactSources,
             model: classifierModel,
         })
+        console.log(`[EXACT-SOURCE-RESOLUTION] mode=${exactSourceResolution.mode} reason=${exactSourceResolution.reason}${exactSourceResolution.mode === "force-inspect" ? ` matchedSourceId=${exactSourceResolution.matchedSource.sourceId.slice(0, 60)}` : ""}`)
         const shouldIncludeRawSourcesContext =
             shouldIncludeRawSourcesContextForExactFollowup(exactSourceResolution)
         const shouldIncludeExactInspectionSystemMessage =
@@ -798,8 +829,8 @@ ${sourcesJson}`
             ...(fileContext
                 ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
                 : []),
-            ...(attachmentFirstResponseInstruction
-                ? [{ role: "system" as const, content: attachmentFirstResponseInstruction }]
+            ...(attachmentAwarenessInstruction
+                ? [{ role: "system" as const, content: attachmentAwarenessInstruction }]
                 : []),
             ...(sourcesContext && shouldIncludeRawSourcesContext
                 ? [{ role: "system" as const, content: sourcesContext }]
@@ -1889,23 +1920,23 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                 },
             }),
             readArtifact: tool({
-                description: `Baca isi lengkap sebuah artifact berdasarkan ID-nya. Gunakan tool ini jika perlu merujuk konten artifact secara utuh (bukan hanya summary singkat di system prompt).
+                description: `Read the full content of an artifact by its ID. Use this tool when you need to reference complete artifact content rather than the truncated summaries in the system prompt.
 
 USE THIS TOOL WHEN:
-✓ Perlu membaca ulang artifact dari stage sebelumnya sebagai rujukan
-✓ User bertanya tentang isi spesifik sebuah artifact
-✓ Perlu mengecek konten lengkap sebelum menulis revisi atau stage berikutnya
-✓ Perlu memverifikasi detail yang mungkin ter-truncate di summary
+✓ You need to re-read a previous stage's artifact as reference material
+✓ The user asks about specific content within an artifact
+✓ You need to check full content before writing a revision or the next stage
+✓ You need to verify details that may be truncated in the artifact summary
 
-Tool ini mengembalikan: title, type, version, content lengkap, dan sources (jika ada).
-Artifact ID bisa didapat dari ARTIFACT SUMMARY di system prompt atau dari getCurrentPaperState().`,
+Returns: title, type, version, full content, and sources (if any).
+Artifact IDs are available from ARTIFACT SUMMARY in the system prompt or from getCurrentPaperState().`,
                 inputSchema: z.object({
                     artifactId: z.string()
-                        .describe("ID artifact yang ingin dibaca."),
+                        .describe("The artifact ID to read."),
                 }),
                 execute: async ({ artifactId }) => {
                     if (!artifactId?.trim()) {
-                        return { success: false, error: "artifactId tidak boleh kosong." }
+                        return { success: false, error: "artifactId must not be empty." }
                     }
                     try {
                         const artifact = await fetchQueryWithToken(api.artifacts.get, {
@@ -2303,7 +2334,15 @@ Aturan:
             // variation (Indonesian, Javanese, English, slang, etc.) and will miss edge
             // cases that cause users to lose search functionality silently.
 
-            if (forcePaperToolsMode) {
+            if (exactSourceResolution.mode === "force-inspect") {
+                // Exact source follow-up already matched a unique stored source.
+                // Block search — the model should use inspectSourceDocument instead.
+                // Without this guard, the LLM search router can override force-inspect
+                // and trigger a new web search for a URL that's already stored.
+                searchRequestedByPolicy = false
+                activeStageSearchReason = "exact_source_force_inspect"
+                console.log(`[SearchDecision] Exact source force-inspect: blocking search, matched sourceId=${exactSourceResolution.matchedSource.sourceId.slice(0, 60)}`)
+            } else if (forcePaperToolsMode) {
                 // No paper session yet — block search so model calls startPaperSession first.
                 // Search will be available on the next turn once session is created.
                 // Do NOT try to regex-detect "does user want search" — let the session
@@ -2818,8 +2857,14 @@ Aturan:
                 !enableWebSearch &&
                 !shouldForceGetCurrentPaperState &&
                 !shouldForceSubmitValidation &&
-                paperSession?.stageStatus !== "pending_validation" &&
-                paperSession?.stageStatus !== "revision" &&
+                // Allow force-inspect during pending_validation/revision — the
+                // exact metadata request is orthogonal to the revision flow.
+                // revisionChainEnforcer does not conflict because force-inspect
+                // completes in 2 steps (tool + text) before any revision chain.
+                (exactSourceResolution.mode === "force-inspect" || (
+                    paperSession?.stageStatus !== "pending_validation" &&
+                    paperSession?.stageStatus !== "revision"
+                )) &&
                 availableExactSources.length > 0
             const primaryExactSourceRoutePlan = shouldApplyDeterministicExactSourceRouting
                 ? buildDeterministicExactSourcePrepareStep({
@@ -2994,8 +3039,18 @@ Aturan:
                 tools,
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
                 toolChoice: forcedToolChoice,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                prepareStep: (revisionChainEnforcer ?? primaryExactSourceRoutePlan.prepareStep ?? deterministicSyncPrepareStep) as any,
+                prepareStep: ((() => {
+                    const forceInspect = primaryExactSourceRoutePlan.prepareStep
+                    // When force-inspect prepareStep exists, it takes priority over
+                    // revisionChainEnforcer. Force-inspect completes in steps 0-1
+                    // (tool call + text), so it never reaches revision chain steps.
+                    if (forceInspect && revisionChainEnforcer) {
+                        return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
+                            forceInspect(params) ?? revisionChainEnforcer(params)
+                    }
+                    return revisionChainEnforcer ?? forceInspect ?? deterministicSyncPrepareStep
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                })()) as any,
                 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
                 onFinish: async ({ text, providerMetadata, usage }) => {
@@ -3713,8 +3768,10 @@ Aturan:
                     !enableWebSearch &&
                     !shouldForceGetCurrentPaperState &&
                     !shouldForceSubmitValidation &&
-                    paperSession?.stageStatus !== "pending_validation" &&
-                    paperSession?.stageStatus !== "revision" &&
+                    (exactSourceResolution.mode === "force-inspect" || (
+                        paperSession?.stageStatus !== "pending_validation" &&
+                        paperSession?.stageStatus !== "revision"
+                    )) &&
                     availableExactSources.length > 0
                 const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
                 const fallbackBaseMessages = missingArtifactNote
@@ -3741,8 +3798,15 @@ Aturan:
                     tools,
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    prepareStep: (revisionChainEnforcer ?? fallbackExactSourceRoutePlan.prepareStep ?? fallbackDeterministicSyncPrepareStep) as any,
+                    prepareStep: ((() => {
+                        const forceInspect = fallbackExactSourceRoutePlan.prepareStep
+                        if (forceInspect && revisionChainEnforcer) {
+                            return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
+                                forceInspect(params) ?? revisionChainEnforcer(params)
+                        }
+                        return revisionChainEnforcer ?? forceInspect ?? fallbackDeterministicSyncPrepareStep
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    })()) as any,
                     stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {
