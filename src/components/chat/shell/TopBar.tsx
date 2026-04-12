@@ -1,6 +1,7 @@
 // src/components/chat/shell/TopBar.tsx
 "use client"
 
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useTheme } from "next-themes"
 import {
@@ -68,6 +69,26 @@ export function TopBar({
     routeContext === "chat" && Boolean(conversationId)
   const showChatLink = routeContext === "naskah" && Boolean(conversationId)
 
+  // Auto-show tooltip when naskahAvailable transitions false → true.
+  // Fires once per transition, auto-closes after 5 seconds.
+  const prevAvailableRef = useRef(naskahAvailable)
+  const [showNaskahTooltip, setShowNaskahTooltip] = useState(false)
+
+  useEffect(() => {
+    const wasAvailable = prevAvailableRef.current
+    prevAvailableRef.current = naskahAvailable
+
+    if (!wasAvailable && naskahAvailable) {
+      // Sync external state change (prop transition) into local UI
+      // state — the canonical exception to the "no setState in effect"
+      // rule. The tooltip is a transient UI reaction to a prop event.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowNaskahTooltip(true)
+      const timer = setTimeout(() => setShowNaskahTooltip(false), 5_000)
+      return () => clearTimeout(timer)
+    }
+  }, [naskahAvailable])
+
   return (
     <TooltipProvider delayDuration={300}>
       <div
@@ -107,22 +128,36 @@ export function TopBar({
         <div className="flex items-center gap-2 pt-1">
           {showNaskahLink && conversationId && (
             naskahAvailable ? (
-              <Link
-                href={`/naskah/${conversationId}`}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-action px-3 py-1.5 text-sm",
-                  "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
-                  "transition-colors duration-150",
-                )}
+              <Tooltip
+                open={showNaskahTooltip}
+                onOpenChange={setShowNaskahTooltip}
               >
-                <span>Pratinjau</span>
-                {naskahUpdatePending && (
-                  <span
-                    data-testid="naskah-update-dot"
-                    className="inline-flex h-2.5 w-2.5 rounded-full bg-[var(--chat-info)]"
-                  />
-                )}
-              </Link>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={`/naskah/${conversationId}`}
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-action px-3 py-1.5 text-sm",
+                      "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
+                      "transition-colors duration-150",
+                    )}
+                  >
+                    <span>Pratinjau</span>
+                    {naskahUpdatePending && (
+                      <span
+                        data-testid="naskah-update-dot"
+                        className="inline-flex h-2.5 w-2.5 rounded-full bg-[var(--chat-info)]"
+                      />
+                    )}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  data-testid="naskah-available-tooltip"
+                  className="font-mono text-xs"
+                >
+                  Pratinjau naskah tersedia
+                </TooltipContent>
+              </Tooltip>
             ) : (
               <span
                 aria-disabled="true"
