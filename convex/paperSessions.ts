@@ -162,6 +162,27 @@ interface ReferensiItem {
     authors?: string;
     url?: string;
     year?: number;
+    publishedAt?: number;
+}
+
+function normalizeReferensiObject(item: Record<string, unknown>): ReferensiItem {
+    const rawTitle = typeof item.title === "string" ? item.title.trim() : "";
+    const rawUrl = typeof item.url === "string" ? item.url.trim() : "";
+    const rawAuthors = typeof item.authors === "string" ? item.authors.trim() : "";
+    const rawYear = typeof item.year === "number" && Number.isFinite(item.year)
+        ? item.year
+        : undefined;
+    const rawPublishedAt = typeof item.publishedAt === "number" && Number.isFinite(item.publishedAt)
+        ? item.publishedAt
+        : undefined;
+
+    return {
+        title: rawTitle || rawUrl || "Unknown Reference",
+        ...(rawAuthors ? { authors: rawAuthors } : {}),
+        ...(rawUrl ? { url: rawUrl } : {}),
+        ...(rawYear !== undefined ? { year: rawYear } : {}),
+        ...(rawPublishedAt !== undefined ? { publishedAt: rawPublishedAt } : {}),
+    };
 }
 
 /**
@@ -239,7 +260,10 @@ function normalizeReferensiData(data: Record<string, unknown>): Record<string, u
                     // Convert string citation to object
                     return parseCitationString(item);
                 }
-                // Already an object, return as-is
+                if (item && typeof item === "object" && !Array.isArray(item)) {
+                    return normalizeReferensiObject(item as Record<string, unknown>);
+                }
+                // Already an unsupported item, return as-is and let schema validation fail loudly
                 return item;
             });
         }

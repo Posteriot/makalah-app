@@ -377,6 +377,23 @@ export async function executeWebSearch(
       // Treat 0 citations as a failure — model didn't call search tool.
       // Fall through to next retriever in chain.
       if (sources.length === 0) {
+        const providerMetadataSnapshot = await Promise.resolve(searchResult.providerMetadata)
+          .then((value) => {
+            if (!value || typeof value !== "object") return []
+            return Object.keys(value)
+          })
+          .catch(() => [])
+        const sdkSourcesCount = await Promise.resolve(searchResult.sources)
+          .then((value) => Array.isArray(value) ? value.length : 0)
+          .catch(() => -1)
+        console.warn(`[Orchestrator][${reqId}] zero-citation failure`, {
+          retriever: retriever.name,
+          textChars: searchText.length,
+          rawCitationCount: rawCitations.length,
+          finalCitationCount: sources.length,
+          sdkSourcesCount,
+          providerMetadataKeys: providerMetadataSnapshot,
+        })
         console.warn(`[Orchestrator][${reqId}] Retriever "${retriever.name}" returned 0 citations — treating as failure, trying next`)
         continue
       }

@@ -372,6 +372,26 @@ export async function POST(req: Request) {
         const isDraftingStage = !!paperStageScope && paperSession?.stageStatus === "drafting"
         const isHasilPostChoice = choiceInteractionEvent?.stage === "hasil"
         const paperToolTracker = createPaperToolTracker()
+        const paperRecoveryLeakagePattern = /kesalahan teknis|kendala teknis|masalah teknis|maafkan aku|saya akan coba|memperbaiki|perbaiki|mohon tunggu|coba lagi|ada kendala|akan mencoba/i
+        const paperTurnObservability: {
+            firstLeakageMatch: string | null
+            firstLeakageSnippet: string | null
+            firstLeakageAtMs: number | null
+            createArtifactAtMs: number | null
+            updateArtifactAtMs: number | null
+        } = {
+            firstLeakageMatch: null,
+            firstLeakageSnippet: null,
+            firstLeakageAtMs: null,
+            createArtifactAtMs: null,
+            updateArtifactAtMs: null,
+        }
+
+        const buildLeakageSnippet = (text: string, matchIndex: number, matchValue: string): string => {
+            const start = Math.max(0, matchIndex - 120)
+            const end = Math.min(text.length, matchIndex + matchValue.length + 120)
+            return text.slice(start, end).replace(/\s+/g, " ").trim()
+        }
 
         let choiceContextNote: string | undefined
         let choiceFinalizeDecision: { finalize: boolean; reason: string } | undefined
@@ -423,6 +443,17 @@ export async function POST(req: Request) {
             } else {
                 console.info(`[CHOICE][exploration-loop] stage=${choiceInteractionEvent.stage} reason=${choiceFinalizeDecision.reason} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
             }
+
+            console.info("[PAPER][post-choice-context]", {
+                stage: choiceInteractionEvent.stage,
+                stageStatus: paperSession?.stageStatus ?? "unknown",
+                decisionMode: choiceInteractionEvent.decisionMode ?? "unknown",
+                finalize: choiceFinalizeDecision.finalize,
+                finalizeReason: choiceFinalizeDecision.reason,
+                searchAlreadyDone: null,
+                recentSourcesCount: null,
+                hasCurrentArtifact: hasExistingArtifact,
+            })
         }
 
         // Update billing context with paper session info
@@ -1727,6 +1758,13 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
 
                         console.log("[F1-F6-TEST] createArtifact", { stage: paperSession?.currentStage, artifactId: result.artifactId, title })
                         if (paperToolTracker) paperToolTracker.sawCreateArtifactSuccess = true
+                        paperTurnObservability.createArtifactAtMs = Date.now()
+                        console.info("[PAPER][artifact-tool-success]", {
+                            stage: paperSession?.currentStage,
+                            artifactId: result.artifactId,
+                            hadLeakageBeforeArtifact: paperTurnObservability.firstLeakageAtMs !== null,
+                            firstLeakageMatch: paperTurnObservability.firstLeakageMatch,
+                        })
 
                         // Auto-submit: if model called submitStageForValidation before artifact existed
                         // (wrong tool order), retry submit now that artifact is created.
@@ -1900,6 +1938,14 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
 
                         console.log("[F1-F6-TEST] updateArtifact", { stage: paperSession?.currentStage, artifactId })
                         if (paperToolTracker) paperToolTracker.sawUpdateArtifactSuccess = true
+                        paperTurnObservability.updateArtifactAtMs = Date.now()
+                        console.info("[PAPER][artifact-tool-success]", {
+                            stage: paperSession?.currentStage,
+                            artifactId,
+                            mode: "update",
+                            hadLeakageBeforeArtifact: paperTurnObservability.firstLeakageAtMs !== null,
+                            firstLeakageMatch: paperTurnObservability.firstLeakageMatch,
+                        })
                         return {
                             success: true,
                             newArtifactId: result.artifactId,
@@ -2289,6 +2335,35 @@ Aturan:
               }
             : undefined
 
+        const draftingChoiceArtifactEnforcer =
+            choiceInteractionEvent && paperStageScope && paperSession?.stageStatus === "drafting"
+                ? ({ steps, stepNumber }: {
+                    steps: Array<{ toolCalls?: Array<{ toolName: string }> }>;
+                    stepNumber: number;
+                  }) => {
+                    if (stepNumber === 0) {
+                        return undefined
+                    }
+
+                    const prevToolNames = steps[stepNumber - 1]?.toolCalls?.map(tc => tc.toolName) ?? []
+                    const stageDataMap = paperSession?.stageData as Record<string, Record<string, unknown> | undefined> | undefined
+                    const currentStageData = stageDataMap?.[paperStageScope]
+                    const hasExistingArtifact = !!currentStageData?.artifactId
+
+                    if (
+                        prevToolNames.includes("updateStageData")
+                        && !hasExistingArtifact
+                        && !paperToolTracker.sawCreateArtifactSuccess
+                        && !paperToolTracker.sawUpdateArtifactSuccess
+                    ) {
+                        console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} stage=${paperStageScope} → createArtifact`)
+                        return { toolChoice: { type: "tool", toolName: "createArtifact" } as const }
+                    }
+
+                    return undefined
+                  }
+                : undefined
+
         try {
             const model = await getGatewayModel()
 
@@ -2300,6 +2375,15 @@ Aturan:
             console.log("[F1-F6-TEST] SearchPolicy", { stage: currentStage, policy: stagePolicy })
             const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession)
                 || (!paperSession && hasRecentSourcesInDb)
+            if (choiceInteractionEvent) {
+                console.info("[PAPER][post-choice-search-context]", {
+                    stage: choiceInteractionEvent.stage,
+                    searchAlreadyDone,
+                    recentSourcesCount: recentSourcesList.length,
+                    hasRecentSourcesInDb,
+                    ragChunksAvailable: null,
+                })
+            }
             // Check if RAG chunks are available for this conversation.
             // When chunks exist, the normal chat path (with RAG tools) can answer
             // follow-up questions about cited sources without a new web search.
@@ -2312,6 +2396,15 @@ Aturan:
                 )
             } catch {
                 // Non-critical — if check fails, don't block the flow
+            }
+            if (choiceInteractionEvent) {
+                console.info("[PAPER][post-choice-search-context-rag]", {
+                    stage: choiceInteractionEvent.stage,
+                    searchAlreadyDone,
+                    recentSourcesCount: recentSourcesList.length,
+                    hasRecentSourcesInDb,
+                    ragChunksAvailable,
+                })
             }
             // Force disable web search if paper intent detected but no session yet
             // This allows AI to call startPaperSession tool first before any web search
@@ -3041,14 +3134,16 @@ Aturan:
                 toolChoice: forcedToolChoice,
                 prepareStep: ((() => {
                     const forceInspect = primaryExactSourceRoutePlan.prepareStep
+                    const chainedEnforcer = (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
+                        revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params)
                     // When force-inspect prepareStep exists, it takes priority over
-                    // revisionChainEnforcer. Force-inspect completes in steps 0-1
-                    // (tool call + text), so it never reaches revision chain steps.
-                    if (forceInspect && revisionChainEnforcer) {
+                    // chain enforcers. Force-inspect completes in steps 0-1
+                    // (tool call + text), so it never reaches later tool steps.
+                    if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer)) {
                         return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
-                            forceInspect(params) ?? revisionChainEnforcer(params)
+                            forceInspect(params) ?? chainedEnforcer(params)
                     }
-                    return revisionChainEnforcer ?? forceInspect ?? deterministicSyncPrepareStep
+                    return chainedEnforcer ?? forceInspect ?? deterministicSyncPrepareStep
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 })()) as any,
                 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
@@ -3187,7 +3282,7 @@ Aturan:
                         // can happen at any stage where tool retry/fallback occurs.
                         if (paperStageScope && normalizedText.length > 0) {
                             const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
-                            const hasLeakage = /kesalahan teknis|kendala teknis|masalah teknis|maafkan aku|saya akan coba|memperbaiki|perbaiki|mohon tunggu|coba lagi|ada kendala|akan mencoba/i.test(normalizedText)
+                            const hasLeakage = paperRecoveryLeakagePattern.test(normalizedText)
 
                             if (hasArtifactSuccess && hasLeakage) {
                                 if (paperToolTracker.sawSubmitValidationSuccess) {
@@ -3612,7 +3707,7 @@ Aturan:
                                 // leakage. If artifact succeeded and leakage found, override stream.
                                 if (!streamContentOverride && accumulatedStreamText.length > 0) {
                                     const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
-                                    const fullStreamLeakage = /kesalahan teknis|kendala teknis|masalah teknis|maafkan aku|saya akan coba|memperbaiki|perbaiki|mohon tunggu|coba lagi|ada kendala|akan mencoba/i.test(accumulatedStreamText)
+                                    const fullStreamLeakage = paperRecoveryLeakagePattern.test(accumulatedStreamText)
                                     if (hasArtifactSuccess && fullStreamLeakage) {
                                         const cleanMsg = paperToolTracker.sawSubmitValidationSuccess
                                             ? "Artefak sudah diperbarui. Silakan review di panel validasi."
@@ -3623,6 +3718,17 @@ Aturan:
                                             `full-stream leakage detected (onFinish missed it). ` +
                                             `accumulatedLen=${accumulatedStreamText.length}`
                                         )
+                                        console.info("[PAPER][outcome-gated-stream][details]", {
+                                            stage: paperStageScope,
+                                            firstLeakageMatch: paperTurnObservability.firstLeakageMatch,
+                                            firstLeakageAtMs: paperTurnObservability.firstLeakageAtMs,
+                                            firstLeakageSnippet: paperTurnObservability.firstLeakageSnippet,
+                                            createArtifactAtMs: paperTurnObservability.createArtifactAtMs,
+                                            updateArtifactAtMs: paperTurnObservability.updateArtifactAtMs,
+                                            sawCreateArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess,
+                                            sawUpdateArtifactSuccess: paperToolTracker.sawUpdateArtifactSuccess,
+                                            sawSubmitValidationSuccess: paperToolTracker.sawSubmitValidationSuccess,
+                                        })
                                     }
                                 }
 
@@ -3676,7 +3782,25 @@ Aturan:
 
                             // Accumulate text deltas for outcome-gated full-stream guard
                             if (chunk.type === "text-delta" && typeof (chunk as { delta?: unknown }).delta === "string") {
-                                accumulatedStreamText += (chunk as { delta: string }).delta
+                                const delta = (chunk as { delta: string }).delta
+                                accumulatedStreamText += delta
+                                if (!paperTurnObservability.firstLeakageMatch) {
+                                    const match = paperRecoveryLeakagePattern.exec(accumulatedStreamText)
+                                    if (match && typeof match.index === "number") {
+                                        paperTurnObservability.firstLeakageMatch = match[0]
+                                        paperTurnObservability.firstLeakageAtMs = Date.now()
+                                        paperTurnObservability.firstLeakageSnippet = buildLeakageSnippet(accumulatedStreamText, match.index, match[0])
+                                        console.warn("[PAPER][recovery-leakage-first-detected]", {
+                                            stage: paperStageScope,
+                                            match: paperTurnObservability.firstLeakageMatch,
+                                            snippet: paperTurnObservability.firstLeakageSnippet,
+                                            sawUpdateStageData: paperToolTracker.sawUpdateStageData,
+                                            sawCreateArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess,
+                                            sawUpdateArtifactSuccess: paperToolTracker.sawUpdateArtifactSuccess,
+                                            sawSubmitValidationSuccess: paperToolTracker.sawSubmitValidationSuccess,
+                                        })
+                                    }
+                                }
                             }
 
                             ensureStart()
@@ -3800,11 +3924,13 @@ Aturan:
                     toolChoice: fallbackForcedToolChoice,
                     prepareStep: ((() => {
                         const forceInspect = fallbackExactSourceRoutePlan.prepareStep
-                        if (forceInspect && revisionChainEnforcer) {
+                        const chainedEnforcer = (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
+                            revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params)
+                        if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer)) {
                             return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
-                                forceInspect(params) ?? revisionChainEnforcer(params)
+                                forceInspect(params) ?? chainedEnforcer(params)
                         }
-                        return revisionChainEnforcer ?? forceInspect ?? fallbackDeterministicSyncPrepareStep
+                        return chainedEnforcer ?? forceInspect ?? fallbackDeterministicSyncPrepareStep
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     })()) as any,
                     stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
@@ -4066,7 +4192,7 @@ Aturan:
                         // Same all-stage guard as primary path
                         if (paperStageScope && normalizedText.length > 0) {
                             const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
-                            const hasLeakage = /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki|mohon tunggu|coba lagi|ada kendala/i.test(normalizedText)
+                            const hasLeakage = paperRecoveryLeakagePattern.test(normalizedText)
 
                             if (hasArtifactSuccess && hasLeakage) {
                                 if (paperToolTracker.sawSubmitValidationSuccess) {
@@ -4285,12 +4411,23 @@ Aturan:
                                 // Full-stream leakage guard (fallback path)
                                 if (!fallbackStreamContentOverride && accumulatedStreamText.length > 0) {
                                     const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
-                                    const fullStreamLeakage = /kesalahan teknis|kendala teknis|masalah teknis|maafkan aku|saya akan coba|memperbaiki|perbaiki|mohon tunggu|coba lagi|ada kendala|akan mencoba/i.test(accumulatedStreamText)
+                                    const fullStreamLeakage = paperRecoveryLeakagePattern.test(accumulatedStreamText)
                                     if (hasArtifactSuccess && fullStreamLeakage) {
                                         fallbackStreamContentOverride = paperToolTracker.sawSubmitValidationSuccess
                                             ? "Artefak sudah diperbarui. Silakan review di panel validasi."
                                             : "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
                                         console.info(`[PAPER][outcome-gated-stream][fallback] stage=${paperStageScope} full-stream leakage detected`)
+                                        console.info("[PAPER][outcome-gated-stream][fallback][details]", {
+                                            stage: paperStageScope,
+                                            firstLeakageMatch: paperTurnObservability.firstLeakageMatch,
+                                            firstLeakageAtMs: paperTurnObservability.firstLeakageAtMs,
+                                            firstLeakageSnippet: paperTurnObservability.firstLeakageSnippet,
+                                            createArtifactAtMs: paperTurnObservability.createArtifactAtMs,
+                                            updateArtifactAtMs: paperTurnObservability.updateArtifactAtMs,
+                                            sawCreateArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess,
+                                            sawUpdateArtifactSuccess: paperToolTracker.sawUpdateArtifactSuccess,
+                                            sawSubmitValidationSuccess: paperToolTracker.sawSubmitValidationSuccess,
+                                        })
                                     }
                                 }
 
@@ -4344,7 +4481,25 @@ Aturan:
                             }
 
                             if (chunk.type === "text-delta" && typeof (chunk as { delta?: unknown }).delta === "string") {
-                                accumulatedStreamText += (chunk as { delta: string }).delta
+                                const delta = (chunk as { delta: string }).delta
+                                accumulatedStreamText += delta
+                                if (!paperTurnObservability.firstLeakageMatch) {
+                                    const match = paperRecoveryLeakagePattern.exec(accumulatedStreamText)
+                                    if (match && typeof match.index === "number") {
+                                        paperTurnObservability.firstLeakageMatch = match[0]
+                                        paperTurnObservability.firstLeakageAtMs = Date.now()
+                                        paperTurnObservability.firstLeakageSnippet = buildLeakageSnippet(accumulatedStreamText, match.index, match[0])
+                                        console.warn("[PAPER][recovery-leakage-first-detected][fallback]", {
+                                            stage: paperStageScope,
+                                            match: paperTurnObservability.firstLeakageMatch,
+                                            snippet: paperTurnObservability.firstLeakageSnippet,
+                                            sawUpdateStageData: paperToolTracker.sawUpdateStageData,
+                                            sawCreateArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess,
+                                            sawUpdateArtifactSuccess: paperToolTracker.sawUpdateArtifactSuccess,
+                                            sawSubmitValidationSuccess: paperToolTracker.sawSubmitValidationSuccess,
+                                        })
+                                    }
+                                }
                             }
 
                             ensureStart()

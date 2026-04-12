@@ -140,19 +140,31 @@ export function normalizeGoogleGrounding(
 ): NormalizedCitation[] {
   try {
     const metadata = extractGoogleGroundingMetadata(providerMetadata)
-    if (!metadata) return []
+    if (!metadata) {
+      console.info('[normalizeGoogleGrounding][debug] no grounding metadata found')
+      return []
+    }
 
     const chunks = metadata.groundingChunks
-    if (!Array.isArray(chunks) || chunks.length === 0) return []
+    if (!Array.isArray(chunks) || chunks.length === 0) {
+      console.info('[normalizeGoogleGrounding][debug] no grounding chunks found', {
+        metadataKeys: isRecord(metadata) ? Object.keys(metadata) : [],
+      })
+      return []
+    }
 
     const sourceMap = new Map<number, { url: string; title: string }>()
+    let invalidChunkUrlCount = 0
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i]
       if (!isGroundingChunk(chunk)) continue
 
       const uri = chunk.web?.uri
-      if (!isValidUrl(uri)) continue
+      if (!isValidUrl(uri)) {
+        invalidChunkUrlCount += 1
+        continue
+      }
 
       sourceMap.set(i, {
         url: uri,
@@ -160,10 +172,18 @@ export function normalizeGoogleGrounding(
       })
     }
 
-    if (sourceMap.size === 0) return []
+    if (sourceMap.size === 0) {
+      console.info('[normalizeGoogleGrounding][debug] no valid chunk URLs survived validation', {
+        chunksRaw: chunks.length,
+        invalidChunkUrlCount,
+      })
+      return []
+    }
 
     const supports = metadata.groundingSupports
     const citations: NormalizedCitation[] = []
+    let validSupports = 0
+    let fallbackNoSupportsUsed = false
 
     if (Array.isArray(supports)) {
       for (const support of supports) {
@@ -171,6 +191,7 @@ export function normalizeGoogleGrounding(
 
         const chunkIndices = support.groundingChunkIndices
         if (!Array.isArray(chunkIndices)) continue
+        validSupports += 1
 
         const segment = support.segment
         const startIndex = isValidNumber(segment?.startIndex) ? segment.startIndex : undefined
@@ -195,6 +216,7 @@ export function normalizeGoogleGrounding(
 
     // Fallback: chunks exist but no supports mapping
     if (citations.length === 0) {
+      fallbackNoSupportsUsed = true
       for (const [, source] of sourceMap) {
         citations.push({
           url: source.url,
@@ -203,7 +225,23 @@ export function normalizeGoogleGrounding(
       }
     }
 
-    return filterBlockedDomains(citations)
+    console.info('[normalizeGoogleGrounding][debug]', {
+      chunksRaw: chunks.length,
+      validChunkSources: sourceMap.size,
+      invalidChunkUrlCount,
+      supportsRaw: Array.isArray(supports) ? supports.length : 0,
+      validSupports,
+      citationsBeforeFilter: citations.length,
+      fallbackNoSupportsUsed,
+    })
+
+    const filtered = filterBlockedDomains(citations)
+    console.info('[normalizeGoogleGrounding][debug-filter]', {
+      citationsBeforeFilter: citations.length,
+      citationsAfterFilter: filtered.length,
+    })
+
+    return filtered
   } catch (error) {
     console.error('[normalizeGoogleGrounding] Error:', error)
     return []
