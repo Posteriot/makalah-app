@@ -170,6 +170,9 @@ export default function NaskahConversationPage() {
     [],
   )
 
+  // Sync snapshot-derived sidebar state. The setState inside this
+  // effect is the canonical "sync external prop into local state"
+  // pattern — the snapshot is the external source of truth.
   useEffect(() => {
     const nextState = {
       isAvailable: visibleSnapshot.isAvailable,
@@ -177,6 +180,7 @@ export default function NaskahConversationPage() {
       highlightedSectionKeys: [],
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSidebarState((currentState) =>
       areSidebarStatesEqual(currentState, nextState)
         ? currentState
