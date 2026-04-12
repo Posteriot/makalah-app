@@ -58,6 +58,7 @@ interface StageWorkflowEntry {
   toolStrategy: ToolStrategy
   prosePolicy: ProsePolicy
   fallbackPolicy: FallbackPolicy
+  allowedActions: WorkflowAction[]
 }
 
 const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
@@ -67,6 +68,7 @@ const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
     toolStrategy: "none",
     prosePolicy: "discussion_only",
     fallbackPolicy: "no_rescue",
+    allowedActions: ["continue_discussion", "finalize_stage"],
   },
   topik: {
     workflowClass: "choice_finalize",
@@ -74,6 +76,7 @@ const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
     toolStrategy: "update_create_submit",
     prosePolicy: "short_confirmation",
     fallbackPolicy: "no_rescue",
+    allowedActions: ["continue_discussion", "finalize_stage"],
   },
   outline: {
     workflowClass: "choice_finalize",
@@ -81,6 +84,7 @@ const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
     toolStrategy: "update_create_submit",
     prosePolicy: "short_confirmation",
     fallbackPolicy: "no_rescue",
+    allowedActions: ["continue_discussion", "finalize_stage"],
   },
   abstrak: {
     workflowClass: "choice_finalize",
@@ -88,6 +92,7 @@ const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
     toolStrategy: "update_create_submit",
     prosePolicy: "short_confirmation",
     fallbackPolicy: "no_rescue",
+    allowedActions: ["continue_discussion", "finalize_stage"],
   },
   pendahuluan: {
     workflowClass: "choice_finalize",
@@ -95,6 +100,7 @@ const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
     toolStrategy: "update_create_submit",
     prosePolicy: "short_confirmation",
     fallbackPolicy: "no_rescue",
+    allowedActions: ["continue_discussion", "finalize_stage"],
   },
   tinjauan_literatur: {
     workflowClass: "choice_finalize",
@@ -102,6 +108,7 @@ const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
     toolStrategy: "update_create_submit",
     prosePolicy: "short_confirmation",
     fallbackPolicy: "no_rescue",
+    allowedActions: ["continue_discussion", "finalize_stage"],
   },
   metodologi: {
     workflowClass: "choice_finalize",
@@ -109,6 +116,7 @@ const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
     toolStrategy: "update_create_submit",
     prosePolicy: "short_confirmation",
     fallbackPolicy: "no_rescue",
+    allowedActions: ["continue_discussion", "finalize_stage"],
   },
   hasil: {
     workflowClass: "special_finalize",
@@ -116,6 +124,7 @@ const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
     toolStrategy: "special_executor",
     prosePolicy: "artifact_first",
     fallbackPolicy: "deterministic_rescue",
+    allowedActions: ["continue_discussion", "special_finalize"],
   },
   diskusi: {
     workflowClass: "direct_finalize",
@@ -123,6 +132,7 @@ const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
     toolStrategy: "update_create_submit",
     prosePolicy: "short_confirmation",
     fallbackPolicy: "no_rescue",
+    allowedActions: ["continue_discussion", "finalize_stage"],
   },
   kesimpulan: {
     workflowClass: "direct_finalize",
@@ -130,6 +140,7 @@ const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
     toolStrategy: "update_create_submit",
     prosePolicy: "short_confirmation",
     fallbackPolicy: "no_rescue",
+    allowedActions: ["continue_discussion", "finalize_stage"],
   },
   pembaruan_abstrak: {
     workflowClass: "direct_finalize",
@@ -137,6 +148,7 @@ const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
     toolStrategy: "update_create_submit",
     prosePolicy: "short_confirmation",
     fallbackPolicy: "no_rescue",
+    allowedActions: ["continue_discussion", "finalize_stage"],
   },
   daftar_pustaka: {
     workflowClass: "compile_finalize",
@@ -144,6 +156,7 @@ const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
     toolStrategy: "compile_create_submit",
     prosePolicy: "short_confirmation",
     fallbackPolicy: "no_rescue",
+    allowedActions: ["continue_discussion", "compile_then_finalize"],
   },
   lampiran: {
     workflowClass: "special_finalize",
@@ -151,6 +164,7 @@ const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
     toolStrategy: "special_executor",
     prosePolicy: "short_confirmation",
     fallbackPolicy: "deterministic_rescue",
+    allowedActions: ["continue_discussion", "special_finalize"],
   },
   judul: {
     workflowClass: "special_finalize",
@@ -158,6 +172,7 @@ const STAGE_REGISTRY: Record<string, StageWorkflowEntry> = {
     toolStrategy: "special_executor",
     prosePolicy: "short_confirmation",
     fallbackPolicy: "deterministic_rescue",
+    allowedActions: ["continue_discussion", "special_finalize"],
   },
 }
 
@@ -268,6 +283,18 @@ function buildFromEntry(entry: StageWorkflowEntry): Omit<ResolvedChoiceWorkflow,
   }
 }
 
+function buildSafeDiscussionFallback(contractVersion: ContractVersion, reason: string): ResolvedChoiceWorkflow {
+  return {
+    action: "continue_discussion",
+    workflowClass: "discussion_choice",
+    toolStrategy: "none",
+    prosePolicy: "discussion_only",
+    fallbackPolicy: "no_rescue",
+    reason,
+    contractVersion,
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main resolver
 // ---------------------------------------------------------------------------
@@ -317,15 +344,11 @@ export function resolveChoiceWorkflow(input: ResolveChoiceWorkflowInput): Resolv
   if (input.workflowAction) {
     const entry = STAGE_REGISTRY[input.stage]
     if (!entry) {
-      return {
-        action: input.workflowAction,
-        workflowClass: "discussion_choice",
-        toolStrategy: "none",
-        prosePolicy: "discussion_only",
-        fallbackPolicy: "no_rescue",
-        reason: `workflow_action_${input.workflowAction}`,
-        contractVersion: "v2",
-      }
+      return buildSafeDiscussionFallback("v2", "unknown_stage_fallback")
+    }
+
+    if (!entry.allowedActions.includes(input.workflowAction)) {
+      return buildSafeDiscussionFallback("v2", "invalid_action_for_stage_fallback")
     }
 
     // workflowAction determines the action, but registry enriches the metadata

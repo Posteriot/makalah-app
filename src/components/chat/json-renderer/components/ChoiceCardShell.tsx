@@ -5,7 +5,7 @@ import type { WorkflowAction } from "@/lib/json-render/choice-payload"
 
 interface ChoiceCardShellProps {
   title: string
-  workflowAction: WorkflowAction
+  workflowAction?: WorkflowAction
   decisionMode?: "exploration" | "commit"
 }
 

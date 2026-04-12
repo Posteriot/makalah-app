@@ -5,7 +5,7 @@ import { workflowActionSchema } from "./choice-payload"
 
 export const choiceCardShellPropsSchema = z.object({
   title: z.string().min(1),
-  workflowAction: workflowActionSchema,
+  workflowAction: workflowActionSchema.optional(),
   decisionMode: z.enum(["exploration", "commit"]).optional(),
 })
 

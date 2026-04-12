@@ -317,7 +317,10 @@ describe("buildChoiceContextNote", () => {
       stage: "daftar_pustaka",
       selectedOptionIds: ["opsi-compile"],
     }, { resolvedWorkflow: makeResolved({ action: "compile_then_finalize", workflowClass: "compile_finalize" }) })
-    expect(note).toContain("Mode: post-choice-finalize")
+    expect(note).toContain("Mode: post-choice-compile-finalize")
+    expect(note).toContain("compileDaftarPustaka")
+    expect(note).not.toContain("Mode: post-choice-finalize")
+    expect(note).not.toContain("1. updateStageData")
     expect(note).not.toContain("continue-discussion")
   })
 
@@ -329,6 +332,15 @@ describe("buildChoiceContextNote", () => {
     }, { resolvedWorkflow: makeResolved({ action: "validation_ready" }) })
     expect(note).toContain("Mode: validation-ready")
     expect(note).toContain("compileDaftarPustaka")
+  })
+
+  it("daftar_pustaka validation-ready does not instruct direct updateStageData", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "daftar_pustaka",
+      selectedOptionIds: ["sudah-cukup-lanjut-validasi"],
+    }, { resolvedWorkflow: makeResolved({ action: "validation_ready" }) })
+    expect(note).not.toContain("1. updateStageData")
   })
 })
 

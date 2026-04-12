@@ -272,7 +272,29 @@ export function buildChoiceContextNote(
     return baseLines.join("\n")
   }
 
-  // 5. Derive finalize decision from resolved workflow (primary) or legacy forceFinalize (fallback)
+  // 5. Daftar pustaka compile-first path
+  if (options?.resolvedWorkflow?.action === "compile_then_finalize" && event.stage === "daftar_pustaka") {
+    baseLines.push(
+      "- Mode: post-choice-compile-finalize",
+      "- The user has selected a bibliography compilation direction. This is a commit point.",
+      "- You MUST call tools in this EXACT order:",
+      "  1. compileDaftarPustaka({ mode: 'persist' })",
+      options?.hasExistingArtifact
+        ? "  2. updateArtifact (artifact already exists — update it with the compiled bibliography content)"
+        : "  2. createArtifact (create the bibliography artifact from the compiled bibliography content)",
+      "  3. submitStageForValidation",
+      "- Do NOT call updateStageData directly in this path — compileDaftarPustaka handles bibliography persistence.",
+      "- Do NOT output another choice card in this response.",
+      "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
+      "- Do NOT mention technical issues, retries, temporary failures, or partial-save problems in chat if the tools succeed.",
+      "- Do NOT preview bibliography body content in chat before the artifact tool succeeds. Keep the final chat response to a short confirmation plus pointer to the validation panel.",
+      "- Mention the validation panel ONLY if submitStageForValidation succeeds.",
+      "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
+    )
+    return baseLines.join("\n")
+  }
+
+  // 6. Derive finalize decision from resolved workflow (primary) or legacy forceFinalize (fallback)
   const shouldFinalize = options?.resolvedWorkflow
     ? options.resolvedWorkflow.action !== "continue_discussion"
     : options?.forceFinalize
@@ -298,7 +320,7 @@ export function buildChoiceContextNote(
     return baseLines.join("\n")
   }
 
-  // 6. Continue discussion path — hard prose contract (Patch 6)
+  // 7. Continue discussion path — hard prose contract (Patch 6)
   baseLines.push(
     `- Mode: continue-discussion (action=${options?.resolvedWorkflow?.action ?? "legacy"})`,
     "- This is a discussion turn, NOT a commit point.",

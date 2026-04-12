@@ -47,6 +47,17 @@ describe("choice workflow observability", () => {
     expect(result.workflowClass).toBe("discussion_choice")
   })
 
+  it("resolver emits audit-friendly reason for invalid stage + action combinations", () => {
+    const result = resolveChoiceWorkflow({
+      stage: "topik",
+      workflowAction: "special_finalize",
+      stageStatus: "drafting",
+    })
+    expect(result.action).toBe("continue_discussion")
+    expect(result.reason).toBe("invalid_action_for_stage_fallback")
+    expect(result.contractVersion).toBe("v2")
+  })
+
   it("outcome guard distinguishes prose violation types", () => {
     const falseDraft = sanitizeChoiceOutcome({
       action: "continue_discussion",

@@ -25,7 +25,7 @@ import { extractLegacySourcesFromText } from "@/lib/citations/legacy-source-extr
 import { splitInternalThought } from "@/lib/ai/internal-thought-separator"
 import { JsonRendererChoiceBlock } from "./json-renderer/JsonRendererChoiceBlock"
 import {
-    choiceSpecSchema,
+    parseChoiceSpecForRender,
     type JsonRendererChoiceRenderPayload,
     type JsonRendererChoiceSpec,
 } from "@/lib/json-render/choice-payload"
@@ -608,13 +608,13 @@ export function MessageBubble({
                 return `${id}:${elementType ?? "?"}`
             })
             .join(", ")
-        const parsedSpec = choiceSpecSchema.safeParse(spec)
+        const parsedSpec = parseChoiceSpecForRender(spec)
         if (!parsedSpec.success) {
             console.warn("[F1-F6-TEST] ChoiceSpec validation FAILED", { errors: parsedSpec.error.issues.map(i => `${i.path.join(".")}: ${i.message}`), elementTypes })
         } else {
-            console.log("[F1-F6-TEST] extractChoiceSpec OK", { messageId: uiMessage.id, elementTypes })
+            console.log("[F1-F6-TEST] extractChoiceSpec OK", { messageId: uiMessage.id, elementTypes, contractVersion: parsedSpec.contractVersion })
         }
-        return parsedSpec.success ? (spec as JsonRendererChoiceSpec) : null
+        return parsedSpec.success ? parsedSpec.spec : null
     }
 
     const searchStatus = extractSearchStatus(message)

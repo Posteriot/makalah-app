@@ -115,4 +115,35 @@ describe("resolveChoiceWorkflow", () => {
     expect(result.action).toBe("compile_then_finalize")
     expect(result.contractVersion).toBe("legacy")
   })
+
+  it("normalizes illegal gagasan + compile_then_finalize to safe discussion fallback", () => {
+    const result = resolveChoiceWorkflow({
+      stage: "gagasan",
+      workflowAction: "compile_then_finalize",
+      stageStatus: "drafting",
+    })
+    expect(result.action).toBe("continue_discussion")
+    expect(result.contractVersion).toBe("v2")
+    expect(result.reason).toBe("invalid_action_for_stage_fallback")
+  })
+
+  it("normalizes illegal topik + special_finalize to safe discussion fallback", () => {
+    const result = resolveChoiceWorkflow({
+      stage: "topik",
+      workflowAction: "special_finalize",
+      stageStatus: "drafting",
+    })
+    expect(result.action).toBe("continue_discussion")
+    expect(result.reason).toBe("invalid_action_for_stage_fallback")
+  })
+
+  it("normalizes validation_ready to safe discussion fallback", () => {
+    const result = resolveChoiceWorkflow({
+      stage: "outline",
+      workflowAction: "validation_ready",
+      stageStatus: "drafting",
+    })
+    expect(result.action).toBe("continue_discussion")
+    expect(result.reason).toBe("invalid_action_for_stage_fallback")
+  })
 })
