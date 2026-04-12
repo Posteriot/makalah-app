@@ -173,7 +173,7 @@ describe("NaskahPage — unavailable state", () => {
 // ────────────────────────────────────────────────────────────────────────────
 
 describe("NaskahPage — header", () => {
-  it("B1: header contains both the 'Naskah' identity label and the resolved title", () => {
+  it("B1: header contains the resolved paper title", () => {
     render(
       <NaskahPage
         snapshot={makeAvailableSnapshot({ title: "Judul Paper Saya" })}
@@ -185,7 +185,6 @@ describe("NaskahPage — header", () => {
     // which also contains the resolved title (per D-024 and D-043 both
     // surfaces show the title).
     const header = screen.getByTestId("naskah-header")
-    expect(within(header).getByText(/^naskah$/i)).toBeInTheDocument()
     expect(within(header).getByText("Judul Paper Saya")).toBeInTheDocument()
   })
 

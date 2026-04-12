@@ -1,5 +1,6 @@
 "use client"
 
+import { ZoomIn, ZoomOut } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import type {
   NaskahSection,
@@ -22,30 +23,26 @@ interface NaskahHeaderProps {
   updatePending: boolean
   isRefreshing?: boolean
   onRefresh?: () => void
-  /**
-   * Sections of the currently-viewed snapshot. Passed verbatim to
-   * `NaskahDownloadButton` so the download endpoint receives exactly
-   * the content the user is looking at — no DB roundtrip, no race
-   * against newer revisions.
-   */
   downloadSections: NaskahSection[]
-  /**
-   * When false, the download button is rendered but disabled. Used
-   * during initial load and when the snapshot is unavailable (no
-   * validated abstrak).
-   */
   downloadEnabled: boolean
+  /** Current zoom level (0.5 – 2.0). Controls scale of the paper preview. */
+  zoomLevel: number
+  /** Callback to change the zoom level. */
+  onZoomChange: (level: number) => void
 }
 
+const ZOOM_STEP = 0.1
+const ZOOM_MIN = 0.5
+const ZOOM_MAX = 2.0
+
 /**
- * Two-row Naskah header per D-058.
+ * Naskah header.
  *
- * Row 1: small "Naskah" identity label above the active paper title.
- * Row 2: status badge (Bertumbuh) + info text + page count + download.
+ * Row 1: paper title (compact).
+ * Row 2: status badge + info text + zoom controls + page count + download.
  *
  * When `updatePending` is true, an inline update banner appears below
- * the two rows with the "Update" CTA. The banner is the only place that
- * surfaces the manual refresh affordance per D-029.
+ * with the "Update" CTA per D-029.
  */
 export function NaskahHeader({
   title,
@@ -56,17 +53,16 @@ export function NaskahHeader({
   onRefresh,
   downloadSections,
   downloadEnabled,
+  zoomLevel,
+  onZoomChange,
 }: NaskahHeaderProps) {
   return (
     <header
       data-testid="naskah-header"
       className="bg-[var(--chat-background)] px-6 py-5 md:px-8"
     >
-      <div className="mb-3">
-        <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--chat-muted-foreground)]">
-          Naskah
-        </span>
-        <span className="mt-1 block text-xl font-semibold text-[var(--chat-foreground)]">
+      <div className="mb-1.5">
+        <span className="block text-base font-semibold text-[var(--chat-foreground)]">
           {title}
         </span>
       </div>
@@ -87,12 +83,44 @@ export function NaskahHeader({
         <span className="text-[var(--chat-muted-foreground)]">
           Naskah sedang bertumbuh seiring section tervalidasi.
         </span>
-        {/*
-          Right-aligned cluster: page count + download dropdown.
-          The whole group gets `ml-auto` so it pins to the right edge
-          of the row.
-        */}
         <div className="ml-auto flex items-center gap-3">
+          {/* Zoom controls */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              aria-label="Zoom out"
+              disabled={zoomLevel <= ZOOM_MIN}
+              onClick={() =>
+                onZoomChange(
+                  Math.max(ZOOM_MIN, Math.round((zoomLevel - ZOOM_STEP) * 10) / 10),
+                )
+              }
+              className={cn(
+                "rounded p-1 text-[var(--chat-muted-foreground)] transition-colors",
+                "hover:bg-[var(--chat-muted)] hover:text-[var(--chat-foreground)]",
+                "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent",
+              )}
+            >
+              <ZoomOut className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Zoom in"
+              disabled={zoomLevel >= ZOOM_MAX}
+              onClick={() =>
+                onZoomChange(
+                  Math.min(ZOOM_MAX, Math.round((zoomLevel + ZOOM_STEP) * 10) / 10),
+                )
+              }
+              className={cn(
+                "rounded p-1 text-[var(--chat-muted-foreground)] transition-colors",
+                "hover:bg-[var(--chat-muted)] hover:text-[var(--chat-foreground)]",
+                "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent",
+              )}
+            >
+              <ZoomIn className="h-4 w-4" />
+            </button>
+          </div>
           <span className="text-[var(--chat-muted-foreground)]">
             {pageCount} Halaman
           </span>

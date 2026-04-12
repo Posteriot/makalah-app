@@ -73,6 +73,7 @@ export function NaskahPage({
   const handlePageCountChange = useCallback((count: number) => {
     setActualPageCount(count)
   }, [])
+  const [zoomLevel, setZoomLevel] = useState(1)
   const visibleRevisionRef = useRef<number | null>(
     getSnapshotRevision(snapshot),
   )
@@ -170,6 +171,8 @@ export function NaskahPage({
         onRefresh={handleRefresh}
         downloadSections={activeSnapshot.sections}
         downloadEnabled={activeSnapshot.isAvailable}
+        zoomLevel={zoomLevel}
+        onZoomChange={setZoomLevel}
       />
 
       {activeSnapshot.isAvailable ? (
@@ -179,6 +182,7 @@ export function NaskahPage({
               title={activeSnapshot.title}
               sections={activeSnapshot.sections}
               onPageCountChange={handlePageCountChange}
+              zoomLevel={zoomLevel}
             />
           </main>
         </div>

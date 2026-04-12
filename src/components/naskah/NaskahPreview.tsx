@@ -22,6 +22,12 @@ interface NaskahPreviewProps {
    * real "X Halaman" in the header rather than "Estimasi X halaman".
    */
   onPageCountChange?: (count: number) => void
+  /**
+   * Zoom level for the paper preview. 1.0 = 100% (default).
+   * Applied as `transform: scale(zoomLevel)` on each page container
+   * with `transform-origin: top center`.
+   */
+  zoomLevel?: number
 }
 
 /**
@@ -152,6 +158,7 @@ export function NaskahPreview({
   title,
   sections,
   onPageCountChange,
+  zoomLevel = 1,
 }: NaskahPreviewProps) {
   const { ref: pageMeasurementRef, heightPx: contentAreaHeightPx } =
     useContentAreaHeightPx()
@@ -215,7 +222,7 @@ export function NaskahPreview({
   }, [totalPageCount, onPageCountChange])
 
   return (
-    <div className="flex h-full flex-col items-center gap-8 overflow-y-auto bg-[var(--chat-background)] py-10">
+    <div className="flex h-full flex-col items-center overflow-y-auto bg-[var(--chat-background)]">
       {/*
         Hidden PageContainer clone used as a height reference. Not visible
         but takes the same CSS box so padding / font metrics / dpi
@@ -242,22 +249,33 @@ export function NaskahPreview({
         )}
       />
 
-      <PageContainer
-        id={NASKAH_TITLE_PAGE_ANCHOR_ID}
-        testId="naskah-title-page"
-        className="flex flex-col items-center justify-center text-center"
+      {/*
+        Zoom wrapper. Uses CSS `zoom` (not `transform: scale`) so the
+        layout box scales with the zoom and the scroller's scrollbar
+        height adjusts automatically. `zoom` is well-supported in all
+        modern browsers (Chrome, Safari, Firefox 126+, Edge).
+      */}
+      <div
+        className="flex w-full flex-col items-center gap-8 py-10"
+        style={{ zoom: zoomLevel !== 1 ? zoomLevel : undefined }}
       >
-        <h1 className="text-4xl font-semibold">{title}</h1>
-      </PageContainer>
+        <PageContainer
+          id={NASKAH_TITLE_PAGE_ANCHOR_ID}
+          testId="naskah-title-page"
+          className="flex flex-col items-center justify-center text-center"
+        >
+          <h1 className="text-4xl font-semibold">{title}</h1>
+        </PageContainer>
 
-      {sections.map((section) => (
-        <PaginatedSection
-          key={section.key}
-          section={section}
-          contentAreaHeightPx={contentAreaHeightPx}
-          onPageCount={handleSectionPageCount}
-        />
-      ))}
+        {sections.map((section) => (
+          <PaginatedSection
+            key={section.key}
+            section={section}
+            contentAreaHeightPx={contentAreaHeightPx}
+            onPageCount={handleSectionPageCount}
+          />
+        ))}
+      </div>
     </div>
   )
 }
@@ -513,11 +531,13 @@ function PageContainer({
         "w-full max-w-[210mm] h-[297mm] shrink-0",
         // Mirror pdf-builder margins: top/bottom 2.5cm, left 3cm, right 2cm
         "pt-[2.5cm] pb-[2.5cm] pl-[3cm] pr-[2cm]",
-        // Paper surface uses chat-muted — matches chat input fill so the
-        // paper feels part of the same visual family as the rest of the
-        // chat scope. Token-based so the fill adapts between light and
-        // dark modes.
-        "rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-muted)]",
+        // Paper surface uses chat-sidebar — in light mode this gives
+        // the paper a lighter, more paper-like fill (between slate-100
+        // and slate-200) that distinguishes it from the darker
+        // chat-background canvas. In dark mode both sidebar and muted
+        // resolve to the same neutral-800, so there is no visible
+        // change.
+        "rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-sidebar)]",
         "text-[var(--chat-foreground)]",
         className,
       )}

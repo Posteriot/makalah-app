@@ -13,7 +13,7 @@ import type { NaskahSectionKey } from "./types"
  */
 
 export const NASKAH_TITLE_PAGE_ANCHOR_ID = "title-page" as const
-export const NASKAH_TITLE_PAGE_LABEL = "Judul"
+export const NASKAH_TITLE_PAGE_LABEL = "Judul Kerja"
 
 export function getNaskahSectionAnchorId(key: NaskahSectionKey): string {
   return `section-${key}`
