@@ -106,24 +106,35 @@ export function TopBar({
         {/* Right: Controls */}
         <div className="flex items-center gap-2 pt-1">
           {showNaskahLink && conversationId && (
-            <Link
-              href={`/naskah/${conversationId}`}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-action px-3 py-1.5 text-sm",
-                "transition-colors duration-150",
-                naskahAvailable
-                  ? "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]"
-                  : "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-accent)]",
-              )}
-            >
-              <span>Pratinjau</span>
-              {naskahAvailable && naskahUpdatePending && (
-                <span
-                  data-testid="naskah-update-dot"
-                  className="inline-flex h-2.5 w-2.5 rounded-full bg-[var(--chat-info)]"
-                />
-              )}
-            </Link>
+            naskahAvailable ? (
+              <Link
+                href={`/naskah/${conversationId}`}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-action px-3 py-1.5 text-sm",
+                  "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
+                  "transition-colors duration-150",
+                )}
+              >
+                <span>Pratinjau</span>
+                {naskahUpdatePending && (
+                  <span
+                    data-testid="naskah-update-dot"
+                    className="inline-flex h-2.5 w-2.5 rounded-full bg-[var(--chat-info)]"
+                  />
+                )}
+              </Link>
+            ) : (
+              <span
+                aria-disabled="true"
+                className={cn(
+                  "inline-flex items-center rounded-action px-3 py-1.5 text-sm",
+                  "text-[var(--chat-muted-foreground)] opacity-40",
+                  "cursor-default select-none",
+                )}
+              >
+                Pratinjau
+              </span>
+            )
           )}
 
           {showChatLink && conversationId && (

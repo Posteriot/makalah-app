@@ -50,7 +50,7 @@ describe("TopBar naskah entry point", () => {
     mockSetTheme.mockReset()
   })
 
-  it("menampilkan tombol Pratinjau persisten di route chat, muted saat unavailable", () => {
+  it("menampilkan Pratinjau persisten: disabled span saat unavailable, link saat available", () => {
     const { rerender } = render(
       <TopBar
         isSidebarCollapsed={false}
@@ -63,11 +63,13 @@ describe("TopBar naskah entry point", () => {
       />,
     )
 
-    // Button always present — even when naskah is unavailable.
-    const linkMuted = screen.getByRole("link", { name: /pratinjau/i })
-    expect(linkMuted).toHaveAttribute("href", "/naskah/conversation_1")
-    // Muted color when unavailable.
-    expect(linkMuted.className).toMatch(/chat-muted-foreground/)
+    // Unavailable: rendered as a non-clickable span, NOT a link.
+    expect(
+      screen.queryByRole("link", { name: /pratinjau/i }),
+    ).not.toBeInTheDocument()
+    const muted = screen.getByText(/pratinjau/i)
+    expect(muted.tagName).toBe("SPAN")
+    expect(muted.className).toMatch(/opacity-40/)
 
     rerender(
       <TopBar
@@ -81,11 +83,9 @@ describe("TopBar naskah entry point", () => {
       />,
     )
 
+    // Available: rendered as a clickable link.
     const linkActive = screen.getByRole("link", { name: /pratinjau/i })
     expect(linkActive).toHaveAttribute("href", "/naskah/conversation_1")
-    // Normal foreground color when available.
-    expect(linkActive.className).toMatch(/chat-foreground/)
-    expect(linkActive.className).not.toMatch(/chat-muted-foreground/)
   })
 
   it("menampilkan tombol Percakapan saat berada di route naskah", () => {
@@ -139,7 +139,7 @@ describe("TopBar naskah entry point", () => {
     link = screen.getByRole("link", { name: /pratinjau/i })
     expect(within(link).getByTestId("naskah-update-dot")).toBeInTheDocument()
 
-    // Dot suppressed when unavailable, even if updatePending is true.
+    // Dot suppressed when unavailable (renders as span, no link).
     rerender(
       <TopBar
         isSidebarCollapsed={false}
@@ -152,9 +152,11 @@ describe("TopBar naskah entry point", () => {
       />,
     )
 
-    link = screen.getByRole("link", { name: /pratinjau/i })
     expect(
-      within(link).queryByTestId("naskah-update-dot"),
+      screen.queryByRole("link", { name: /pratinjau/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByTestId("naskah-update-dot"),
     ).not.toBeInTheDocument()
   })
 })

@@ -120,20 +120,22 @@ describe("TopBar naskah integration", () => {
     })
   })
 
-  it("menampilkan Pratinjau muted saat session belum available, tanpa dot", () => {
+  it("menampilkan Pratinjau disabled saat session belum available, tanpa dot", () => {
     render(
       <ChatLayout conversationId="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">
         <div>chat-body</div>
       </ChatLayout>,
     )
 
-    // Button is always present — muted color when unavailable.
-    const link = screen.getByRole("link", { name: /pratinjau/i })
-    expect(link).toBeInTheDocument()
-    expect(link.className).toMatch(/chat-muted-foreground/)
-    // No update dot when unavailable.
+    // Rendered as a non-clickable span, not a link.
     expect(
-      within(link).queryByTestId("naskah-update-dot"),
+      screen.queryByRole("link", { name: /pratinjau/i }),
+    ).not.toBeInTheDocument()
+    const muted = screen.getByText(/pratinjau/i)
+    expect(muted.tagName).toBe("SPAN")
+    expect(muted.className).toMatch(/opacity-40/)
+    expect(
+      screen.queryByTestId("naskah-update-dot"),
     ).not.toBeInTheDocument()
   })
 
