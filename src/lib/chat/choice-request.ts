@@ -89,6 +89,13 @@ const choiceInteractionEventSchema = z.object({
   kind: z.literal("single-select"),
   selectedOptionIds: z.array(z.string().min(1)).min(1),
   customText: z.string().optional(),
+  workflowAction: z.enum([
+    "continue_discussion",
+    "finalize_stage",
+    "compile_then_finalize",
+    "special_finalize",
+    "validation_ready",
+  ]).optional(),
   decisionMode: z.enum(["exploration", "commit"]).optional(),
   submittedAt: z.number(),
 })
@@ -158,14 +165,18 @@ export function buildChoiceContextNote(
         "- Next action: call compileDaftarPustaka with mode 'persist'. This compiles and deduplicates references server-side.",
         "- After compileDaftarPustaka succeeds, call createArtifact with the compiled bibliography content.",
         "- Then call submitStageForValidation.",
-        "- Do NOT call updateStageData directly — compileDaftarPustaka handles data persistence internally."
+        "- Do NOT call updateStageData directly — compileDaftarPustaka handles data persistence internally.",
+        "- Do NOT mention technical issues, retries, temporary failures, or partial-save problems in chat if the tools succeed.",
+        "- Keep the final chat response to a short confirmation plus pointer to the validation panel."
       )
     } else {
       baseLines.push(
         "- Next action: summarize the stage decision, then call updateStageData, createArtifact, and submitStageForValidation in sequence. Do not open new branches.",
         "- If the current stage draft is not yet saved, you MUST call updateStageData first.",
         "- If the current stage does not have an artifact yet, you MUST call createArtifact after updateStageData.",
-        "- Once stage data and artifact both exist, call submitStageForValidation in the same response."
+        "- Once stage data and artifact both exist, call submitStageForValidation in the same response.",
+        "- Do NOT mention technical issues, retries, temporary failures, or partial-save problems in chat if the tools succeed.",
+        "- Do NOT preview the draft content in chat before the artifact tool succeeds. Keep the final chat response to a short confirmation plus pointer to the validation panel."
       )
     }
 
@@ -187,6 +198,7 @@ export function buildChoiceContextNote(
       "  3. submitStageForValidation",
       "- Do NOT output another choice card.",
       "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
+      "- Do NOT mention technical issues, retries, temporary failures, or partial-save problems in chat if the tools succeed.",
       "- Keep chat response to 1-2 sentences confirming no appendix needed.",
       "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
     )
@@ -207,6 +219,8 @@ export function buildChoiceContextNote(
       "  3. submitStageForValidation",
       "- Do NOT output another choice card.",
       "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
+      "- Do NOT mention technical issues, retries, temporary failures, or partial-save problems in chat if the tools succeed.",
+      "- Do NOT preview title-analysis content in chat before the artifact tool succeeds.",
       "- Keep chat response to 1-3 sentences confirming the selected title.",
       "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
     )
@@ -251,6 +265,8 @@ export function buildChoiceContextNote(
       "  3. submitStageForValidation",
       "- Do NOT output another choice card in this response.",
       "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
+      "- Do NOT mention technical issues, retries, temporary failures, or partial-save problems in chat if the tools succeed.",
+      "- Do NOT preview the draft content in chat before the artifact tool succeeds. Keep the final chat response to a short confirmation plus pointer to the validation panel.",
       "- Mention the validation panel ONLY if submitStageForValidation succeeds.",
       "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
     )

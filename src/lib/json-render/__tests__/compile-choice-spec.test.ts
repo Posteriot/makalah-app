@@ -138,7 +138,7 @@ describe("compileChoiceSpec", () => {
       ],
       appendValidationOption: false,
       workflowAction: "continue_discussion",
-    } as Parameters<typeof compileChoiceSpec>[0] & { workflowAction: string })
+    })
     const root = result.spec.elements[result.spec.root]
     expect((root.props as Record<string, unknown>).workflowAction).toBe("continue_discussion")
   })

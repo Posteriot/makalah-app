@@ -31,7 +31,7 @@ import { MobileEditDeleteSheet } from "./mobile/MobileEditDeleteSheet"
 import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 import { buildChoiceInteractionEvent, buildChoiceSyntheticText } from "@/lib/chat/choice-submit"
-import type { JsonRendererChoiceRenderPayload } from "@/lib/json-render/choice-payload"
+import type { JsonRendererChoiceRenderPayload, WorkflowAction } from "@/lib/json-render/choice-payload"
 import { SPEC_DATA_PART_TYPE } from "@json-render/core"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import {
@@ -1241,17 +1241,18 @@ export function ChatWindow({
     setSubmittedChoiceKeys((prev) => new Set([...prev, submissionKey]))
 
     // V3 YAML: payload is { spec } — extract label + decisionMode from spec elements, stage from session
-    const specAny = params.payload as unknown as { spec?: { elements?: Record<string, { type?: string; props?: { label?: string; optionId?: string; decisionMode?: string } }> } }
+    const specAny = params.payload as unknown as { spec?: { elements?: Record<string, { type?: string; props?: { label?: string; optionId?: string; decisionMode?: string; workflowAction?: string } }> } }
     const elements = specAny?.spec?.elements ?? {}
     const matchedElement = Object.values(elements).find(
       (el) => el?.props?.optionId === params.selectedOptionId
     )
     const selectedLabel = matchedElement?.props?.label ?? params.selectedOptionId
 
-    // Extract decisionMode from ChoiceCardShell props
+    // Extract decisionMode and workflowAction from ChoiceCardShell props
     const cardShell = Object.values(elements).find(el => el?.type === "ChoiceCardShell")
     const decisionMode = cardShell?.props?.decisionMode as "exploration" | "commit" | undefined
-    console.log("[F1-F6-TEST] ChoiceSubmit", { submissionKey, selectedOptionId: params.selectedOptionId, selectedLabel, decisionMode })
+    const workflowAction = cardShell?.props?.workflowAction as WorkflowAction | undefined
+    console.log("[F1-F6-TEST] ChoiceSubmit", { submissionKey, selectedOptionId: params.selectedOptionId, selectedLabel, decisionMode, workflowAction })
 
     // Use current paper stage from session (spec doesn't carry stage info)
     const currentStage = (paperSession?.currentStage ?? "gagasan") as PaperStageId
@@ -1264,6 +1265,7 @@ export function ChatWindow({
       kind: "single-select",
       selectedOptionId: params.selectedOptionId,
       customText: params.customText,
+      workflowAction,
       decisionMode: decisionMode === "exploration" || decisionMode === "commit" ? decisionMode : undefined,
     })
 

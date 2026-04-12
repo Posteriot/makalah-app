@@ -1,9 +1,12 @@
 import { defineCatalog } from "@json-render/core"
 import { schema } from "@json-render/react/schema"
 import { z } from "zod"
+import { workflowActionSchema } from "./choice-payload"
 
 export const choiceCardShellPropsSchema = z.object({
   title: z.string().min(1),
+  workflowAction: workflowActionSchema,
+  decisionMode: z.enum(["exploration", "commit"]).optional(),
 })
 
 export const choiceOptionButtonPropsSchema = z.object({

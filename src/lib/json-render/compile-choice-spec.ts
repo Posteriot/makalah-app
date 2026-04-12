@@ -1,4 +1,4 @@
-import type { JsonRendererChoiceSpec } from "./choice-payload"
+import type { JsonRendererChoiceSpec, WorkflowAction } from "./choice-payload"
 
 export const CHOICE_VALIDATE_OPTION_ID = "sudah-cukup-lanjut-validasi"
 const CHOICE_VALIDATE_OPTION_LABEL = "Sudah cukup, lanjut validasi"
@@ -34,6 +34,7 @@ export function compileChoiceSpec(params: {
   recommendedId?: string
   submitLabel?: string
   appendValidationOption?: boolean
+  workflowAction?: WorkflowAction
 }): {
   spec: JsonRendererChoiceSpec
   normalizedOptions: NormalizedOption[]
@@ -169,6 +170,7 @@ export function compileChoiceSpec(params: {
     type: "ChoiceCardShell",
     props: {
       title,
+      ...(params.workflowAction ? { workflowAction: params.workflowAction } : {}),
     },
     children: childIds,
   }

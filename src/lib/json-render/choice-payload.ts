@@ -90,8 +90,22 @@ const eventBindingsSchema = z.record(
 
 const nullableString = z.string().nullable().optional()
 
+const workflowActionValues = [
+  "continue_discussion",
+  "finalize_stage",
+  "compile_then_finalize",
+  "special_finalize",
+  "validation_ready",
+] as const
+
+export type WorkflowAction = (typeof workflowActionValues)[number]
+
+export const workflowActionSchema = z.enum(workflowActionValues)
+
 const choiceCardShellPropsSchema = z.object({
   title: z.string().min(1),
+  workflowAction: workflowActionSchema,
+  decisionMode: z.enum(["exploration", "commit"]).optional(),
 })
 
 const choiceOptionButtonPropsSchema = z.object({

@@ -20,7 +20,7 @@ function makeValidPayload(): JsonRendererChoicePayload {
       elements: {
         shell: {
           type: "ChoiceCardShell",
-          props: { title: "Arah Gagasan Penelitian" },
+          props: { title: "Arah Gagasan Penelitian", workflowAction: "continue_discussion" },
           children: ["opt-a", "opt-b", "submit"],
         },
         "opt-a": {
@@ -125,14 +125,11 @@ describe("parseJsonRendererChoicePayload — workflowAction contract", () => {
     expect((result.spec.elements["shell"].props as Record<string, unknown>).workflowAction).toBe("finalize_stage")
   })
 
-  it("currently accepts payload without workflowAction (pre-migration baseline)", () => {
-    // This test documents the CURRENT behavior: workflowAction is not yet required.
-    // After Task 2 makes it required, this test will be updated to expect rejection.
+  it("rejects payload without workflowAction in ChoiceCardShell props (now required)", () => {
     const payload = makeValidPayload()
-    const result = parseJsonRendererChoicePayload(payload)
-    expect(result.version).toBe(1)
-    // workflowAction is absent — currently allowed
-    expect((result.spec.elements["shell"].props as Record<string, unknown>).workflowAction).toBeUndefined()
+    // Remove workflowAction to simulate legacy payload
+    delete (payload.spec.elements["shell"].props as Record<string, unknown>).workflowAction
+    expect(() => parseJsonRendererChoicePayload(payload)).toThrow()
   })
 })
 
