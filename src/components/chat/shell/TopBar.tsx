@@ -65,7 +65,7 @@ export function TopBar({
   const hasArtifacts = artifactCount > 0
   const compactArtifactCount = artifactCount > 99 ? "99+" : `${artifactCount}`
   const showNaskahLink =
-    routeContext === "chat" && Boolean(conversationId) && naskahAvailable
+    routeContext === "chat" && Boolean(conversationId)
   const showChatLink = routeContext === "naskah" && Boolean(conversationId)
 
   return (
@@ -110,12 +110,14 @@ export function TopBar({
               href={`/naskah/${conversationId}`}
               className={cn(
                 "inline-flex items-center gap-2 rounded-action px-3 py-1.5 text-sm",
-                "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
                 "transition-colors duration-150",
+                naskahAvailable
+                  ? "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]"
+                  : "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-accent)]",
               )}
             >
               <span>Pratinjau</span>
-              {naskahUpdatePending && (
+              {naskahAvailable && naskahUpdatePending && (
                 <span
                   data-testid="naskah-update-dot"
                   className="inline-flex h-2.5 w-2.5 rounded-full bg-[var(--chat-info)]"

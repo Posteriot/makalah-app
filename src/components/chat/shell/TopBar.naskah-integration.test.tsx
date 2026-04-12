@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ChatLayout } from "@/components/chat/layout/ChatLayout"
 
@@ -120,15 +120,20 @@ describe("TopBar naskah integration", () => {
     })
   })
 
-  it("tidak menampilkan entry point Pratinjau saat session belum available", () => {
+  it("menampilkan Pratinjau muted saat session belum available, tanpa dot", () => {
     render(
       <ChatLayout conversationId="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">
         <div>chat-body</div>
       </ChatLayout>,
     )
 
+    // Button is always present — muted color when unavailable.
+    const link = screen.getByRole("link", { name: /pratinjau/i })
+    expect(link).toBeInTheDocument()
+    expect(link.className).toMatch(/chat-muted-foreground/)
+    // No update dot when unavailable.
     expect(
-      screen.queryByRole("link", { name: /pratinjau/i }),
+      within(link).queryByTestId("naskah-update-dot"),
     ).not.toBeInTheDocument()
   })
 

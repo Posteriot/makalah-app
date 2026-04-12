@@ -50,7 +50,7 @@ describe("TopBar naskah entry point", () => {
     mockSetTheme.mockReset()
   })
 
-  it("menampilkan tombol Pratinjau hanya saat availability true di route chat", () => {
+  it("menampilkan tombol Pratinjau persisten di route chat, muted saat unavailable", () => {
     const { rerender } = render(
       <TopBar
         isSidebarCollapsed={false}
@@ -63,9 +63,11 @@ describe("TopBar naskah entry point", () => {
       />,
     )
 
-    expect(
-      screen.queryByRole("link", { name: /pratinjau/i }),
-    ).not.toBeInTheDocument()
+    // Button always present — even when naskah is unavailable.
+    const linkMuted = screen.getByRole("link", { name: /pratinjau/i })
+    expect(linkMuted).toHaveAttribute("href", "/naskah/conversation_1")
+    // Muted color when unavailable.
+    expect(linkMuted.className).toMatch(/chat-muted-foreground/)
 
     rerender(
       <TopBar
@@ -79,8 +81,11 @@ describe("TopBar naskah entry point", () => {
       />,
     )
 
-    const link = screen.getByRole("link", { name: /pratinjau/i })
-    expect(link).toHaveAttribute("href", "/naskah/conversation_1")
+    const linkActive = screen.getByRole("link", { name: /pratinjau/i })
+    expect(linkActive).toHaveAttribute("href", "/naskah/conversation_1")
+    // Normal foreground color when available.
+    expect(linkActive.className).toMatch(/chat-foreground/)
+    expect(linkActive.className).not.toMatch(/chat-muted-foreground/)
   })
 
   it("menampilkan tombol Percakapan saat berada di route naskah", () => {
@@ -100,7 +105,7 @@ describe("TopBar naskah entry point", () => {
     expect(link).toHaveAttribute("href", "/chat/conversation_1")
   })
 
-  it("menampilkan titik update hanya saat updatePending true pada tombol Pratinjau", () => {
+  it("menampilkan titik update hanya saat available=true DAN updatePending=true", () => {
     const { rerender } = render(
       <TopBar
         isSidebarCollapsed={false}
@@ -118,6 +123,7 @@ describe("TopBar naskah entry point", () => {
       within(link).queryByTestId("naskah-update-dot"),
     ).not.toBeInTheDocument()
 
+    // Dot appears when available + pending.
     rerender(
       <TopBar
         isSidebarCollapsed={false}
@@ -132,5 +138,23 @@ describe("TopBar naskah entry point", () => {
 
     link = screen.getByRole("link", { name: /pratinjau/i })
     expect(within(link).getByTestId("naskah-update-dot")).toBeInTheDocument()
+
+    // Dot suppressed when unavailable, even if updatePending is true.
+    rerender(
+      <TopBar
+        isSidebarCollapsed={false}
+        onToggleSidebar={vi.fn()}
+        artifactCount={2}
+        conversationId="conversation_1"
+        routeContext="chat"
+        naskahAvailable={false}
+        naskahUpdatePending={true}
+      />,
+    )
+
+    link = screen.getByRole("link", { name: /pratinjau/i })
+    expect(
+      within(link).queryByTestId("naskah-update-dot"),
+    ).not.toBeInTheDocument()
   })
 })
