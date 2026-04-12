@@ -13,7 +13,12 @@ interface NaskahHeaderProps {
   /** Reserved for future title-source badges; not rendered in phase 1. */
   titleSource: NaskahTitleSource
   status: NaskahSnapshotStatus
-  pageEstimate: number
+  /**
+   * Actual rendered page count from NaskahPreview's line-level
+   * pagination, or the compiler's estimate as fallback before
+   * measurement fires.
+   */
+  pageCount: number
   updatePending: boolean
   isRefreshing?: boolean
   onRefresh?: () => void
@@ -36,7 +41,7 @@ interface NaskahHeaderProps {
  * Two-row Naskah header per D-058.
  *
  * Row 1: small "Naskah" identity label above the active paper title.
- * Row 2: status badge (Bertumbuh) + info text + page estimate.
+ * Row 2: status badge (Bertumbuh) + info text + page count + download.
  *
  * When `updatePending` is true, an inline update banner appears below
  * the two rows with the "Update" CTA. The banner is the only place that
@@ -45,7 +50,7 @@ interface NaskahHeaderProps {
 export function NaskahHeader({
   title,
   status,
-  pageEstimate,
+  pageCount,
   updatePending,
   isRefreshing = false,
   onRefresh,
@@ -83,15 +88,13 @@ export function NaskahHeader({
           Naskah sedang bertumbuh seiring section tervalidasi.
         </span>
         {/*
-          Right-aligned cluster: page estimate + download dropdown.
+          Right-aligned cluster: page count + download dropdown.
           The whole group gets `ml-auto` so it pins to the right edge
-          of the row, with the page estimate sitting just left of the
-          download button per D-* spec ("dropdown di sebelah kanan ui
-          teks 'Estimasi X Halaman'").
+          of the row.
         */}
         <div className="ml-auto flex items-center gap-3">
           <span className="text-[var(--chat-muted-foreground)]">
-            Estimasi {pageEstimate} halaman
+            {pageCount} Halaman
           </span>
           <NaskahDownloadButton
             title={title}

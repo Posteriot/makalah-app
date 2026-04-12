@@ -206,7 +206,7 @@ describe("NaskahPage — header", () => {
     ).toBeInTheDocument()
   })
 
-  it("B3: header renders the page estimate as 'Estimasi N halaman'", () => {
+  it("B3: header renders the page count as 'N Halaman'", () => {
     render(
       <NaskahPage
         snapshot={makeAvailableSnapshot({ pageEstimate: 7 })}
@@ -215,7 +215,9 @@ describe("NaskahPage — header", () => {
     )
 
     const header = screen.getByTestId("naskah-header")
-    expect(within(header).getByText(/estimasi 7 halaman/i)).toBeInTheDocument()
+    // Before the line-level pagination hook fires (jsdom has no
+    // layout), the header falls back to the compiler's pageEstimate.
+    expect(within(header).getByText(/7 halaman/i)).toBeInTheDocument()
   })
 
   it("B4: header renders an Update button when updatePending is true", () => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { NaskahCompiledSnapshot } from "@/lib/naskah/types"
 import { NaskahHeader } from "./NaskahHeader"
 import { NaskahPreview } from "./NaskahPreview"
@@ -66,6 +66,13 @@ export function NaskahPage({
     NaskahCompiledSnapshot["sections"][number]["key"][]
   >([])
   const [isRefreshing, setIsRefreshing] = useState(false)
+  // Actual rendered page count reported by NaskahPreview's pagination
+  // engine. Falls back to the compiler's character-based estimate
+  // until the first measurement fires. `null` = not yet measured.
+  const [actualPageCount, setActualPageCount] = useState<number | null>(null)
+  const handlePageCountChange = useCallback((count: number) => {
+    setActualPageCount(count)
+  }, [])
   const visibleRevisionRef = useRef<number | null>(
     getSnapshotRevision(snapshot),
   )
@@ -157,7 +164,7 @@ export function NaskahPage({
         title={activeSnapshot.title}
         titleSource={activeSnapshot.titleSource}
         status={activeSnapshot.status}
-        pageEstimate={activeSnapshot.pageEstimate}
+        pageCount={actualPageCount ?? activeSnapshot.pageEstimate}
         updatePending={updatePending}
         isRefreshing={isRefreshing}
         onRefresh={handleRefresh}
@@ -171,6 +178,7 @@ export function NaskahPage({
             <NaskahPreview
               title={activeSnapshot.title}
               sections={activeSnapshot.sections}
+              onPageCountChange={handlePageCountChange}
             />
           </main>
         </div>

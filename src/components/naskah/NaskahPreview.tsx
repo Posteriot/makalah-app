@@ -1,6 +1,6 @@
 "use client"
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import {
   NASKAH_TITLE_PAGE_ANCHOR_ID,
@@ -14,6 +14,14 @@ import { useLineLevelPagination } from "./useLineLevelPagination"
 interface NaskahPreviewProps {
   title: string
   sections: NaskahSection[]
+  /**
+   * Fired whenever the total rendered page count changes. The count
+   * is derived from actual line-level pagination measurements (title
+   * page + every section's `pages.length`), NOT from the character-
+   * based estimate in the snapshot. Consumers use this to show the
+   * real "X Halaman" in the header rather than "Estimasi X halaman".
+   */
+  onPageCountChange?: (count: number) => void
 }
 
 /**
@@ -140,9 +148,39 @@ function useContentAreaHeightPx(): {
  * 2cm) so the web preview stays visually close to the eventual export
  * per D-055.
  */
-export function NaskahPreview({ title, sections }: NaskahPreviewProps) {
+export function NaskahPreview({
+  title,
+  sections,
+  onPageCountChange,
+}: NaskahPreviewProps) {
   const { ref: pageMeasurementRef, heightPx: contentAreaHeightPx } =
     useContentAreaHeightPx()
+
+  // Per-section page counts reported by each PaginatedSection via
+  // `onSectionPageCount`. Stored as a Map<sectionKey, count> and
+  // aggregated into a total (title page + sum). A `useRef`-backed
+  // map avoids re-renders on every individual section report; we
+  // only re-render when the aggregated total actually changes.
+  const sectionCountsRef = useRef(new Map<string, number>())
+  const [totalPageCount, setTotalPageCount] = useState<number | null>(null)
+
+  const handleSectionPageCount = useCallback(
+    (key: string, count: number) => {
+      const prev = sectionCountsRef.current.get(key)
+      if (prev === count) return
+      sectionCountsRef.current.set(key, count)
+      let total = 1 // title page
+      for (const c of sectionCountsRef.current.values()) total += c
+      setTotalPageCount(total)
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (totalPageCount != null) {
+      onPageCountChange?.(totalPageCount)
+    }
+  }, [totalPageCount, onPageCountChange])
 
   return (
     <div className="flex h-full flex-col items-center gap-8 overflow-y-auto bg-[var(--chat-background)] py-10">
@@ -185,6 +223,7 @@ export function NaskahPreview({ title, sections }: NaskahPreviewProps) {
           key={section.key}
           section={section}
           contentAreaHeightPx={contentAreaHeightPx}
+          onPageCount={handleSectionPageCount}
         />
       ))}
     </div>
@@ -194,6 +233,8 @@ export function NaskahPreview({ title, sections }: NaskahPreviewProps) {
 interface PaginatedSectionProps {
   section: NaskahSection
   contentAreaHeightPx: number | null
+  /** Reports the actual rendered page count for this section. */
+  onPageCount?: (sectionKey: string, count: number) => void
 }
 
 /**
@@ -235,6 +276,7 @@ interface PaginatedSectionProps {
 function PaginatedSection({
   section,
   contentAreaHeightPx,
+  onPageCount,
 }: PaginatedSectionProps) {
   const strippedMarkdown = useMemo(
     () => stripLeadingDuplicateHeading(section.content, section.label),
@@ -258,7 +300,7 @@ function PaginatedSection({
   // edits like "abc" → "abx" where the character count is unchanged
   // but glyph metrics differ. (The previous string-length heuristic
   // missed those cases — caught by Codex audit M1.)
-  const { pages, measurementRef } = useLineLevelPagination({
+  const { pages, measurementRef, isReady } = useLineLevelPagination({
     contentAreaHeightPx,
     measureTrigger: strippedMarkdown,
   })
@@ -302,6 +344,16 @@ function PaginatedSection({
   // back to one un-clipped page so the section label still appears.
   const visiblePages: LineLevelPageOrFallback[] =
     pages.length === 0 ? [{ startY: 0, endY: null }] : pages
+
+  // Report actual page count to parent once pagination settles.
+  // Only fires when the hook is ready (measurement complete) so the
+  // parent doesn't see the fallback "1 page" count that exists before
+  // the first useLayoutEffect runs.
+  useEffect(() => {
+    if (isReady) {
+      onPageCount?.(section.key, visiblePages.length)
+    }
+  }, [isReady, visiblePages.length, section.key, onPageCount])
 
   return (
     <>
