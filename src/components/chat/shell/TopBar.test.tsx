@@ -1,0 +1,162 @@
+import { render, screen, within } from "@testing-library/react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+import { TopBar } from "./TopBar"
+
+const mockSetTheme = vi.fn()
+
+vi.mock("next-themes", () => ({
+  useTheme: () => ({
+    resolvedTheme: "light",
+    setTheme: mockSetTheme,
+  }),
+}))
+
+vi.mock("@/lib/hooks/useCurrentUser", () => ({
+  useCurrentUser: () => ({
+    user: { _id: "users_1", firstName: "Erik" },
+    isLoading: false,
+  }),
+}))
+
+vi.mock("@/components/layout/header", () => ({
+  UserDropdown: () => <div data-testid="user-dropdown" />,
+}))
+
+vi.mock("@/components/ui/button", () => ({
+  Button: ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button {...props}>{children}</button>
+  ),
+}))
+
+vi.mock("@/components/ui/tooltip", () => ({
+  TooltipProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  TooltipContent: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+}))
+
+describe("TopBar naskah entry point", () => {
+  beforeEach(() => {
+    mockSetTheme.mockReset()
+  })
+
+  it("menampilkan Pratinjau persisten: disabled span saat unavailable, link saat available", () => {
+    const { rerender } = render(
+      <TopBar
+        isSidebarCollapsed={false}
+        onToggleSidebar={vi.fn()}
+        artifactCount={2}
+        conversationId="conversation_1"
+        routeContext="chat"
+        naskahAvailable={false}
+        naskahUpdatePending={false}
+      />,
+    )
+
+    // Unavailable: rendered as a non-clickable span, NOT a link.
+    expect(
+      screen.queryByRole("link", { name: /pratinjau/i }),
+    ).not.toBeInTheDocument()
+    const muted = screen.getByText(/pratinjau/i)
+    expect(muted.tagName).toBe("SPAN")
+    expect(muted.className).toMatch(/opacity-40/)
+
+    rerender(
+      <TopBar
+        isSidebarCollapsed={false}
+        onToggleSidebar={vi.fn()}
+        artifactCount={2}
+        conversationId="conversation_1"
+        routeContext="chat"
+        naskahAvailable={true}
+        naskahUpdatePending={false}
+      />,
+    )
+
+    // Available: rendered as a clickable link.
+    const linkActive = screen.getByRole("link", { name: /pratinjau/i })
+    expect(linkActive).toHaveAttribute("href", "/naskah/conversation_1")
+  })
+
+  it("menampilkan tombol Percakapan saat berada di route naskah", () => {
+    render(
+      <TopBar
+        isSidebarCollapsed={false}
+        onToggleSidebar={vi.fn()}
+        artifactCount={2}
+        conversationId="conversation_1"
+        routeContext="naskah"
+        naskahAvailable={true}
+        naskahUpdatePending={false}
+      />,
+    )
+
+    const link = screen.getByRole("link", { name: /percakapan/i })
+    expect(link).toHaveAttribute("href", "/chat/conversation_1")
+  })
+
+  it("menampilkan titik update hanya saat available=true DAN updatePending=true", () => {
+    const { rerender } = render(
+      <TopBar
+        isSidebarCollapsed={false}
+        onToggleSidebar={vi.fn()}
+        artifactCount={2}
+        conversationId="conversation_1"
+        routeContext="chat"
+        naskahAvailable={true}
+        naskahUpdatePending={false}
+      />,
+    )
+
+    let link = screen.getByRole("link", { name: /pratinjau/i })
+    expect(
+      within(link).queryByTestId("naskah-update-dot"),
+    ).not.toBeInTheDocument()
+
+    // Dot appears when available + pending.
+    rerender(
+      <TopBar
+        isSidebarCollapsed={false}
+        onToggleSidebar={vi.fn()}
+        artifactCount={2}
+        conversationId="conversation_1"
+        routeContext="chat"
+        naskahAvailable={true}
+        naskahUpdatePending={true}
+      />,
+    )
+
+    link = screen.getByRole("link", { name: /pratinjau/i })
+    expect(within(link).getByTestId("naskah-update-dot")).toBeInTheDocument()
+
+    // Dot suppressed when unavailable (renders as span, no link).
+    rerender(
+      <TopBar
+        isSidebarCollapsed={false}
+        onToggleSidebar={vi.fn()}
+        artifactCount={2}
+        conversationId="conversation_1"
+        routeContext="chat"
+        naskahAvailable={false}
+        naskahUpdatePending={true}
+      />,
+    )
+
+    expect(
+      screen.queryByRole("link", { name: /pratinjau/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByTestId("naskah-update-dot"),
+    ).not.toBeInTheDocument()
+  })
+})

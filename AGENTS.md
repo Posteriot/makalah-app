@@ -52,6 +52,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Do not skip unfinished processes.
 - It's better to take longer than to draw conclusions without evidence.
 
+### SCOPE EXPANSION POLICY
+- Work scope in this branch is repository-wide unless the user explicitly narrows it.
+- Do not treat a task as limited to a single file, folder, feature, or layer when adjacent changes are required for correctness.
+- You may modify source code, tests, configs, prompts, skills, scripts, docs, and supporting files when they are materially connected to the requested outcome.
+- If a requested implementation crosses frontend, backend, AI pipeline, data model, observability, deployment, or documentation boundaries, follow the real dependency chain instead of stopping at artificial scope lines.
+- `scope.md` defines the active repository scope for execution planning and may be expanded when the user requests broader authority to complete work end-to-end.
+
 
 ### AI TOOLS & SKILLS ARCHITECTURE PRINCIPLE
 - **Tools must be simple executors.** Do not add filtering, scoring, or quality judgment to tool pipelines. Tools retrieve data — that's it.
