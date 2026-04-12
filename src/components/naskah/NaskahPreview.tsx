@@ -455,7 +455,7 @@ function PaginatedSection({
             ) : (
               <div
                 style={{
-                  height: `${page.endY - page.startY}px`,
+                  height: `${page.endY! - page.startY}px`,
                   overflow: "hidden",
                 }}
               >
