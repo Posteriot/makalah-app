@@ -59,8 +59,9 @@ import {
     parseOptionalChoiceInteractionEvent,
     validateChoiceInteractionEvent,
     buildChoiceContextNote,
-    shouldFinalizeAfterChoice,
+    resolveChoiceWorkflow,
 } from "@/lib/chat/choice-request"
+import type { ResolvedChoiceWorkflow } from "@/lib/chat/choice-request"
 import { resolveEffectiveFileIds } from "@/lib/chat/effective-file-ids"
 import {
     classifyAttachmentHealth,
@@ -393,8 +394,53 @@ export async function POST(req: Request) {
             return text.slice(start, end).replace(/\s+/g, " ").trim()
         }
 
+        const buildArtifactLifecycleClosing = (submittedForValidation: boolean): string =>
+            submittedForValidation
+                ? "Artefaknya sudah siap. Silakan review di panel validasi."
+                : "Artefaknya sudah siap, tetapi belum dikirim ke panel validasi."
+
+        const sanitizeOutcomeGatedText = (params: {
+            text: string
+            submittedForValidation: boolean
+        }): string => {
+            const normalized = params.text.replace(/\n{3,}/g, "\n\n").trim()
+            if (normalized.length === 0) {
+                return buildArtifactLifecycleClosing(params.submittedForValidation)
+            }
+
+            const paragraphs = normalized
+                .split(/\n{2,}/)
+                .map((paragraph) => paragraph.trim())
+                .filter(Boolean)
+            const keptParagraphs = paragraphs.filter((paragraph) => !paperRecoveryLeakagePattern.test(paragraph))
+
+            let sanitizedBody = keptParagraphs.join("\n\n").trim()
+
+            if (sanitizedBody.length === 0) {
+                const match = paperRecoveryLeakagePattern.exec(normalized)
+                if (match && typeof match.index === "number") {
+                    sanitizedBody = normalized
+                        .slice(0, match.index)
+                        .trim()
+                        .replace(/[,:;\-\s]+$/, "")
+                        .trim()
+                }
+            }
+
+            const closing = buildArtifactLifecycleClosing(params.submittedForValidation)
+            if (sanitizedBody.length === 0) {
+                return closing
+            }
+
+            if (/panel validasi|artefak|artifact/i.test(sanitizedBody)) {
+                return sanitizedBody
+            }
+
+            return `${sanitizedBody}\n\n${closing}`
+        }
+
         let choiceContextNote: string | undefined
-        let choiceFinalizeDecision: { finalize: boolean; reason: string } | undefined
+        let resolvedWorkflow: ResolvedChoiceWorkflow | undefined
         if (choiceInteractionEvent) {
             try {
                 validateChoiceInteractionEvent({
@@ -424,34 +470,37 @@ export async function POST(req: Request) {
             const currentStageChoiceData = choiceStageData?.[choiceInteractionEvent.stage]
             const hasExistingArtifact = !!currentStageChoiceData?.artifactId
 
-            // Compute finalize decision via reusable helper — decisionMode from card metadata is primary signal
-            choiceFinalizeDecision = shouldFinalizeAfterChoice({
+            // Resolve choice workflow via unified registry — workflowAction is primary signal
+            resolvedWorkflow = resolveChoiceWorkflow({
                 stage: choiceInteractionEvent.stage as PaperStageId,
+                workflowAction: choiceInteractionEvent.workflowAction,
+                decisionMode: choiceInteractionEvent.decisionMode,
                 stageData: currentStageChoiceData as Record<string, unknown> | undefined,
                 hasExistingArtifact,
-                decisionMode: choiceInteractionEvent.decisionMode,
+                stageStatus: paperSession?.stageStatus as string | undefined,
             })
 
             choiceContextNote = buildChoiceContextNote(choiceInteractionEvent, {
                 hasExistingArtifact,
-                forceFinalize: choiceFinalizeDecision.finalize,
+                resolvedWorkflow,
             })
 
             // Observability: log choice commit semantics
-            if (choiceFinalizeDecision.finalize) {
-                console.info(`[CHOICE][commit-point-finalize] stage=${choiceInteractionEvent.stage} reason=${choiceFinalizeDecision.reason} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
+            if (resolvedWorkflow.action !== "continue_discussion") {
+                console.info(`[CHOICE][commit-point] stage=${choiceInteractionEvent.stage} action=${resolvedWorkflow.action} class=${resolvedWorkflow.workflowClass} reason=${resolvedWorkflow.reason} contract=${resolvedWorkflow.contractVersion}`)
             } else {
-                console.info(`[CHOICE][exploration-loop] stage=${choiceInteractionEvent.stage} reason=${choiceFinalizeDecision.reason} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
+                console.info(`[CHOICE][exploration-loop] stage=${choiceInteractionEvent.stage} action=${resolvedWorkflow.action} reason=${resolvedWorkflow.reason} contract=${resolvedWorkflow.contractVersion}`)
             }
 
             console.info("[PAPER][post-choice-context]", {
                 stage: choiceInteractionEvent.stage,
                 stageStatus: paperSession?.stageStatus ?? "unknown",
+                workflowAction: choiceInteractionEvent.workflowAction ?? "none",
                 decisionMode: choiceInteractionEvent.decisionMode ?? "unknown",
-                finalize: choiceFinalizeDecision.finalize,
-                finalizeReason: choiceFinalizeDecision.reason,
-                searchAlreadyDone: null,
-                recentSourcesCount: null,
+                resolvedAction: resolvedWorkflow.action,
+                workflowClass: resolvedWorkflow.workflowClass,
+                contractVersion: resolvedWorkflow.contractVersion,
+                reason: resolvedWorkflow.reason,
                 hasCurrentArtifact: hasExistingArtifact,
             })
         }
@@ -3265,8 +3314,7 @@ Aturan:
 
                         // Generic cross-stage partial-save-stall detection (post-choice commit point)
                         if (choiceInteractionEvent && paperStageScope) {
-                            const wasCommitPoint = choiceInteractionEvent.decisionMode === "commit"
-                                || (choiceFinalizeDecision?.finalize === true)
+                            const wasCommitPoint = resolvedWorkflow?.action !== "continue_discussion"
                             if (wasCommitPoint
                                 && paperToolTracker.sawUpdateStageData
                                 && !paperToolTracker.sawCreateArtifactSuccess
@@ -3285,15 +3333,13 @@ Aturan:
                             const hasLeakage = paperRecoveryLeakagePattern.test(normalizedText)
 
                             if (hasArtifactSuccess && hasLeakage) {
-                                if (paperToolTracker.sawSubmitValidationSuccess) {
-                                    persistedContent = "Artefak sudah diperbarui. Silakan review di panel validasi."
-                                    streamContentOverride = persistedContent
-                                    console.info(`[PAPER][outcome-gated] stage=${paperStageScope} replaced noisy persisted+stream text with clean success_with_validation message`)
-                                } else {
-                                    persistedContent = "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
-                                    streamContentOverride = persistedContent
-                                    console.info(`[PAPER][outcome-gated] stage=${paperStageScope} replaced noisy persisted+stream text with clean success_without_validation message`)
-                                }
+                                const sanitized = sanitizeOutcomeGatedText({
+                                    text: normalizedText,
+                                    submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
+                                })
+                                persistedContent = sanitized
+                                streamContentOverride = sanitized
+                                console.info(`[PAPER][outcome-gated] stage=${paperStageScope} sanitized noisy persisted+stream text after artifact lifecycle success`)
                             }
                         }
 
@@ -3709,13 +3755,13 @@ Aturan:
                                     const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
                                     const fullStreamLeakage = paperRecoveryLeakagePattern.test(accumulatedStreamText)
                                     if (hasArtifactSuccess && fullStreamLeakage) {
-                                        const cleanMsg = paperToolTracker.sawSubmitValidationSuccess
-                                            ? "Artefak sudah diperbarui. Silakan review di panel validasi."
-                                            : "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
-                                        streamContentOverride = cleanMsg
+                                        streamContentOverride = sanitizeOutcomeGatedText({
+                                            text: accumulatedStreamText,
+                                            submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
+                                        })
                                         console.info(
                                             `[PAPER][outcome-gated-stream] stage=${paperStageScope} ` +
-                                            `full-stream leakage detected (onFinish missed it). ` +
+                                            `full-stream leakage detected (onFinish missed it, sanitized instead of full replace). ` +
                                             `accumulatedLen=${accumulatedStreamText.length}`
                                         )
                                         console.info("[PAPER][outcome-gated-stream][details]", {
@@ -4195,15 +4241,13 @@ Aturan:
                             const hasLeakage = paperRecoveryLeakagePattern.test(normalizedText)
 
                             if (hasArtifactSuccess && hasLeakage) {
-                                if (paperToolTracker.sawSubmitValidationSuccess) {
-                                    persistedContent = "Artefak sudah diperbarui. Silakan review di panel validasi."
-                                    fallbackStreamContentOverride = persistedContent
-                                    console.info(`[PAPER][outcome-gated][fallback] stage=${paperStageScope} replaced noisy persisted+stream text with clean success_with_validation message`)
-                                } else {
-                                    persistedContent = "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
-                                    fallbackStreamContentOverride = persistedContent
-                                    console.info(`[PAPER][outcome-gated][fallback] stage=${paperStageScope} replaced noisy persisted+stream text with clean success_without_validation message`)
-                                }
+                                const sanitized = sanitizeOutcomeGatedText({
+                                    text: normalizedText,
+                                    submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
+                                })
+                                persistedContent = sanitized
+                                fallbackStreamContentOverride = sanitized
+                                console.info(`[PAPER][outcome-gated][fallback] stage=${paperStageScope} sanitized noisy persisted+stream text after artifact lifecycle success`)
                             }
                         }
 
@@ -4413,10 +4457,11 @@ Aturan:
                                     const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
                                     const fullStreamLeakage = paperRecoveryLeakagePattern.test(accumulatedStreamText)
                                     if (hasArtifactSuccess && fullStreamLeakage) {
-                                        fallbackStreamContentOverride = paperToolTracker.sawSubmitValidationSuccess
-                                            ? "Artefak sudah diperbarui. Silakan review di panel validasi."
-                                            : "Artefak sudah dibuat/diperbarui, tetapi belum dikirim ke panel validasi."
-                                        console.info(`[PAPER][outcome-gated-stream][fallback] stage=${paperStageScope} full-stream leakage detected`)
+                                        fallbackStreamContentOverride = sanitizeOutcomeGatedText({
+                                            text: accumulatedStreamText,
+                                            submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
+                                        })
+                                        console.info(`[PAPER][outcome-gated-stream][fallback] stage=${paperStageScope} full-stream leakage detected (sanitized instead of full replace)`)
                                         console.info("[PAPER][outcome-gated-stream][fallback][details]", {
                                             stage: paperStageScope,
                                             firstLeakageMatch: paperTurnObservability.firstLeakageMatch,

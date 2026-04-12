@@ -1,5 +1,6 @@
 import { z } from "zod"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
+import type { ResolvedChoiceWorkflow } from "./choice-workflow-registry"
 
 export { resolveChoiceWorkflow } from "./choice-workflow-registry"
 export type { ResolvedChoiceWorkflow, ResolveChoiceWorkflowInput } from "./choice-workflow-registry"
@@ -140,7 +141,12 @@ export function validateChoiceInteractionEvent(params: {
 
 export function buildChoiceContextNote(
   event: ParsedChoiceInteractionEvent,
-  options?: { hasExistingArtifact?: boolean; forceFinalize?: boolean }
+  options?: {
+    hasExistingArtifact?: boolean
+    resolvedWorkflow?: ResolvedChoiceWorkflow
+    /** @deprecated Use resolvedWorkflow instead */
+    forceFinalize?: boolean
+  }
 ): string {
   const selectedOptionIds = event.selectedOptionIds.map((id) => id.trim().toLowerCase())
   const requestedValidation =
@@ -151,6 +157,11 @@ export function buildChoiceContextNote(
         /^approve(?:-|$)/.test(id) ||
         /(?:validasi|validation)(?:-|$)/.test(id)
     )
+
+  // Warn if using legacy forceFinalize path
+  if (options?.forceFinalize !== undefined && !options?.resolvedWorkflow) {
+    console.warn("[buildChoiceContextNote] Using legacy forceFinalize path. Migrate to resolvedWorkflow.")
+  }
 
   const baseLines = [
     "USER_CHOICE_DECISION:",
@@ -163,7 +174,11 @@ export function buildChoiceContextNote(
     baseLines.push(`- Custom note: ${event.customText.trim()}`)
   }
 
-  if (requestedValidation) {
+  // 1. Validation-ready path: resolvedWorkflow OR option ID fallback
+  if (
+    options?.resolvedWorkflow?.action === "validation_ready"
+    || requestedValidation
+  ) {
     baseLines.push("- Mode: validation-ready")
 
     // daftar_pustaka has a special compilation step that must run before submit
@@ -193,7 +208,7 @@ export function buildChoiceContextNote(
     return baseLines.join("\n")
   }
 
-  // Lampiran "tidak ada" path: create minimal placeholder artifact
+  // 2. Lampiran "tidak ada" path: create minimal placeholder artifact
   const NO_APPENDIX_IDS = new Set(["tidak-ada-lampiran", "option-tidak-ada-lampiran", "no-appendix"])
   if (event.stage === "lampiran" && selectedOptionIds.some(id => NO_APPENDIX_IDS.has(id))) {
     baseLines.push(
@@ -212,7 +227,7 @@ export function buildChoiceContextNote(
     return baseLines.join("\n")
   }
 
-  // Judul post-choice: user selected a title option
+  // 3. Judul post-choice: user selected a title option
   if (event.stage === "judul") {
     baseLines.push(
       "- Mode: post-choice-title-selection",
@@ -234,7 +249,7 @@ export function buildChoiceContextNote(
     return baseLines.join("\n")
   }
 
-  // Hasil post-choice: artifact-first mandatory contract
+  // 4. Hasil post-choice: artifact-first mandatory contract
   if (event.stage === "hasil") {
     baseLines.push(
       "- Mode: post-choice-artifact-first",
@@ -257,9 +272,12 @@ export function buildChoiceContextNote(
     return baseLines.join("\n")
   }
 
-  // Finalize decision comes solely from the resolved helper (forceFinalize).
-  // Do NOT check ALWAYS_FINALIZE_STAGES here — that would bypass decisionMode override.
-  if (options?.forceFinalize) {
+  // 5. Derive finalize decision from resolved workflow (primary) or legacy forceFinalize (fallback)
+  const shouldFinalize = options?.resolvedWorkflow
+    ? options.resolvedWorkflow.action !== "continue_discussion"
+    : options?.forceFinalize
+
+  if (shouldFinalize) {
     baseLines.push(
       "- Mode: post-choice-finalize",
       "- The user has selected a concrete stage direction from the choice card. This is a commit point, not an exploration loop.",
@@ -280,9 +298,13 @@ export function buildChoiceContextNote(
     return baseLines.join("\n")
   }
 
+  // 6. Continue discussion path — hard prose contract (Patch 6)
   baseLines.push(
-    "- Mode: decision-to-draft",
-    "- Next action: translate the user's selected direction into a concrete stage draft. If the content becomes mature enough, updateStageData and createArtifact are allowed in this response. Do not submit validation automatically.",
+    `- Mode: continue-discussion (action=${options?.resolvedWorkflow?.action ?? "legacy"})`,
+    "- This is a discussion turn, NOT a commit point.",
+    "- Do NOT start artifact lifecycle (no createArtifact, no updateArtifact, no submitStageForValidation).",
+    "- Do NOT write final-handoff phrasing (e.g. 'berikut draf', 'draf yang akan diajukan', 'silakan review di panel').",
+    "- Respond by: summarizing the user's choice, explaining consequences, sharpening direction, or continuing discussion.",
     "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
   )
 
