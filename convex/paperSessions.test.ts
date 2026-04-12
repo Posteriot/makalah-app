@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { submitForValidation, requestRevision, updateStageData, autoRescueRevision, approveStage, rewindToStage } from "./paperSessions";
+import { describe, expect, it, vi } from "vitest";
+import { submitForValidation, requestRevision, updateStageData, autoRescueRevision } from "./paperSessions";
 
 vi.mock("./authHelpers", () => ({
   requireAuthUser: vi.fn(),
@@ -7,15 +7,7 @@ vi.mock("./authHelpers", () => ({
   requireAuthUserId: vi.fn(),
 }));
 
-vi.mock("./naskahRebuild", () => ({
-  rebuildNaskahSnapshot: vi.fn(async () => ({ written: true, revision: 1 })),
-}));
-
-import { requirePaperSessionOwner, requireAuthUserId } from "./authHelpers";
-import { rebuildNaskahSnapshot } from "./naskahRebuild";
-
-const mockedRebuildNaskahSnapshot = vi.mocked(rebuildNaskahSnapshot);
-const mockedRequireAuthUserId = vi.mocked(requireAuthUserId);
+import { requirePaperSessionOwner } from "./authHelpers";
 
 const mockedRequirePaperSessionOwner = vi.mocked(requirePaperSessionOwner);
 
@@ -328,171 +320,5 @@ describe("autoRescueRevision mutation", () => {
       currentStatus: "drafting",
     });
     expect(patches.length).toBe(0);
-  });
-});
-
-// ────────────────────────────────────────────────────────────────────────────
-// Naskah rebuild hook integration
-//
-// approveStage and rewindToStage MUST call rebuildNaskahSnapshot at the
-// tail (after the existing db.patch) so the materialized snapshot stays
-// in sync with the validated stageData. The mutation handler is the only
-// rebuild trigger; rebuild errors propagate so the entire mutation rolls
-// back atomically.
-// ────────────────────────────────────────────────────────────────────────────
-
-describe("approveStage / rewindToStage — naskah rebuild hook", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function makeHookCtx(session: any, opts: { artifactsById?: Record<string, any> } = {}) {
-    const patches: Array<{ id: string; patch: Record<string, unknown> }> = [];
-    const inserts: Array<{ table: string; doc: Record<string, unknown> }> = [];
-    const artifactsById = opts.artifactsById ?? {};
-    return {
-      patches,
-      inserts,
-      ctx: {
-        db: {
-          get: vi.fn(async (id: string) => {
-            if (id === session._id) return session;
-            if (id in artifactsById) return artifactsById[id];
-            return null;
-          }),
-          patch: vi.fn(async (id: string, patch: Record<string, unknown>) => {
-            patches.push({ id, patch });
-          }),
-          insert: vi.fn(async (table: string, doc: Record<string, unknown>) => {
-            inserts.push({ table, doc });
-            return `${table}_${inserts.length}`;
-          }),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          query: vi.fn((): any => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const builder: any = {
-              withIndex: vi.fn(() => builder),
-              order: vi.fn(() => builder),
-              first: vi.fn(async () => null),
-              collect: vi.fn(async () => []),
-              unique: vi.fn(async () => null),
-            };
-            return builder;
-          }),
-        },
-      },
-    };
-  }
-
-  function makeApproveSession() {
-    // gagasan stage with no artifactId so the artifact-fetch + draft-title
-    // patch branches inside approveStage are skipped. Minimal viable state
-    // to reach the tail of the handler.
-    return {
-      _id: "paperSessions_1",
-      userId: "users_1",
-      conversationId: "conversations_1",
-      currentStage: "gagasan",
-      stageStatus: "pending_validation",
-      stageData: {
-        gagasan: { ringkasan: "ide" },
-      },
-      paperMemoryDigest: [],
-      stageMessageBoundaries: [],
-    };
-  }
-
-  function makeRewindSession() {
-    return {
-      _id: "paperSessions_1",
-      userId: "users_1",
-      conversationId: "conversations_1",
-      currentStage: "abstrak",
-      stageStatus: "drafting",
-      stageData: {
-        topik: { validatedAt: 1, definitif: "Topik" },
-        abstrak: { validatedAt: 2, ringkasan: "abstrak" },
-      },
-      paperMemoryDigest: [],
-    };
-  }
-
-  beforeEach(() => {
-    mockedRebuildNaskahSnapshot.mockClear();
-    mockedRebuildNaskahSnapshot.mockResolvedValue({ written: true, revision: 1 });
-    mockedRequireAuthUserId.mockResolvedValue({ _id: "users_1" } as never);
-  });
-
-  it("F1: approveStage calls rebuildNaskahSnapshot once with the session id", async () => {
-    const session = makeApproveSession();
-    const { ctx, patches } = makeHookCtx(session);
-
-    const fn = approveStage as unknown as {
-      _handler: (
-        ctx: unknown,
-        args: { sessionId: string; userId: string },
-      ) => Promise<unknown>;
-    };
-
-    await fn._handler(ctx, {
-      sessionId: "paperSessions_1",
-      userId: "users_1",
-    });
-
-    // Existing patch path still ran
-    expect(patches.length).toBeGreaterThanOrEqual(1);
-    // Rebuild hook was called exactly once with the session id
-    expect(mockedRebuildNaskahSnapshot).toHaveBeenCalledTimes(1);
-    expect(mockedRebuildNaskahSnapshot).toHaveBeenCalledWith(
-      ctx,
-      "paperSessions_1",
-    );
-  });
-
-  it("F2: rewindToStage calls rebuildNaskahSnapshot once with the session id", async () => {
-    const session = makeRewindSession();
-    const { ctx, patches } = makeHookCtx(session);
-
-    const fn = rewindToStage as unknown as {
-      _handler: (
-        ctx: unknown,
-        args: { sessionId: string; userId: string; targetStage: string },
-      ) => Promise<unknown>;
-    };
-
-    await fn._handler(ctx, {
-      sessionId: "paperSessions_1",
-      userId: "users_1",
-      targetStage: "topik",
-    });
-
-    expect(patches.length).toBeGreaterThanOrEqual(1);
-    expect(mockedRebuildNaskahSnapshot).toHaveBeenCalledTimes(1);
-    expect(mockedRebuildNaskahSnapshot).toHaveBeenCalledWith(
-      ctx,
-      "paperSessions_1",
-    );
-  });
-
-  it("F3: rebuild errors propagate out of approveStage (transactional rollback)", async () => {
-    const session = makeApproveSession();
-    const { ctx } = makeHookCtx(session);
-
-    mockedRebuildNaskahSnapshot.mockRejectedValueOnce(
-      new Error("rebuild boom"),
-    );
-
-    const fn = approveStage as unknown as {
-      _handler: (
-        ctx: unknown,
-        args: { sessionId: string; userId: string },
-      ) => Promise<unknown>;
-    };
-
-    await expect(
-      fn._handler(ctx, {
-        sessionId: "paperSessions_1",
-        userId: "users_1",
-      }),
-    ).rejects.toThrow(/rebuild boom/);
-
-    expect(mockedRebuildNaskahSnapshot).toHaveBeenCalledTimes(1);
   });
 });

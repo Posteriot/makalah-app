@@ -16,7 +16,6 @@ import {
     type DaftarPustakaCompileCandidate,
 } from "./paperSessions/daftarPustakaCompiler";
 import { validateStageDataKeys, sanitizeNestedArrayFields } from "./paperSessions/stageDataWhitelist";
-import { rebuildNaskahSnapshot } from "./naskahRebuild";
 
 const DEFAULT_WORKING_TITLE = "Paper Tanpa Judul";
 const MAX_WORKING_TITLE_LENGTH = 80;
@@ -1144,11 +1143,6 @@ export const approveStage = mutation({
 
         await ctx.db.patch(args.sessionId, patchData);
 
-        // Naskah rebuild hook — atomic with the approval. If rebuild
-        // throws, the entire mutation rolls back so the snapshot can
-        // never drift from the validated stageData.
-        await rebuildNaskahSnapshot(ctx, args.sessionId);
-
         return {
             previousStage: currentStage,
             nextStage,
@@ -1737,11 +1731,6 @@ export const rewindToStage = mutation({
             paperMemoryDigest: updatedDigest,
             updatedAt: now,
         });
-
-        // Naskah rebuild hook — atomic with the rewind. If rebuild
-        // throws, the entire mutation rolls back so the snapshot can
-        // never drift from the invalidated stageData.
-        await rebuildNaskahSnapshot(ctx, args.sessionId);
 
         return {
             success: true,

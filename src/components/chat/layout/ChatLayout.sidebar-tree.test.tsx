@@ -12,7 +12,6 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: mockPush,
   }),
-  usePathname: () => "/chat/conversation-active",
 }))
 
 vi.mock("@/lib/hooks/useConversations", () => ({
@@ -27,19 +26,6 @@ vi.mock("@/lib/hooks/useConversations", () => ({
     isLoading: false,
     hasMore: true,
     loadMore: mockLoadMore,
-  }),
-}))
-
-vi.mock("@/lib/hooks/usePaperSession", () => ({
-  usePaperSession: () => ({
-    session: undefined,
-  }),
-}))
-
-vi.mock("@/lib/hooks/useNaskah", () => ({
-  useNaskah: () => ({
-    availability: undefined,
-    updatePending: false,
   }),
 }))
 
