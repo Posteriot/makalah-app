@@ -2,9 +2,11 @@
 
 import { cn } from "@/lib/utils"
 import type {
+  NaskahSection,
   NaskahSnapshotStatus,
   NaskahTitleSource,
 } from "@/lib/naskah/types"
+import { NaskahDownloadButton } from "./NaskahDownloadButton"
 
 interface NaskahHeaderProps {
   title: string
@@ -15,6 +17,19 @@ interface NaskahHeaderProps {
   updatePending: boolean
   isRefreshing?: boolean
   onRefresh?: () => void
+  /**
+   * Sections of the currently-viewed snapshot. Passed verbatim to
+   * `NaskahDownloadButton` so the download endpoint receives exactly
+   * the content the user is looking at — no DB roundtrip, no race
+   * against newer revisions.
+   */
+  downloadSections: NaskahSection[]
+  /**
+   * When false, the download button is rendered but disabled. Used
+   * during initial load and when the snapshot is unavailable (no
+   * validated abstrak).
+   */
+  downloadEnabled: boolean
 }
 
 /**
@@ -34,6 +49,8 @@ export function NaskahHeader({
   updatePending,
   isRefreshing = false,
   onRefresh,
+  downloadSections,
+  downloadEnabled,
 }: NaskahHeaderProps) {
   return (
     <header
@@ -65,9 +82,23 @@ export function NaskahHeader({
         <span className="text-[var(--chat-muted-foreground)]">
           Naskah sedang bertumbuh seiring section tervalidasi.
         </span>
-        <span className="ml-auto text-[var(--chat-muted-foreground)]">
-          Estimasi {pageEstimate} halaman
-        </span>
+        {/*
+          Right-aligned cluster: page estimate + download dropdown.
+          The whole group gets `ml-auto` so it pins to the right edge
+          of the row, with the page estimate sitting just left of the
+          download button per D-* spec ("dropdown di sebelah kanan ui
+          teks 'Estimasi X Halaman'").
+        */}
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-[var(--chat-muted-foreground)]">
+            Estimasi {pageEstimate} halaman
+          </span>
+          <NaskahDownloadButton
+            title={title}
+            sections={downloadSections}
+            disabled={!downloadEnabled}
+          />
+        </div>
       </div>
 
       {updatePending && (

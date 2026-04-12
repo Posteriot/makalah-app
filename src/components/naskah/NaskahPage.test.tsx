@@ -148,6 +148,21 @@ describe("NaskahPage — unavailable state", () => {
       screen.queryByRole("button", { name: /export/i }),
     ).not.toBeInTheDocument()
   })
+
+  it("A3: renders the download button but disables it in the unavailable state", () => {
+    render(
+      <NaskahPage
+        snapshot={makeUnavailableSnapshot()}
+        updatePending={false}
+      />,
+    )
+
+    const downloadBtn = screen.getByRole("button", {
+      name: /download naskah/i,
+    })
+    expect(downloadBtn).toBeInTheDocument()
+    expect(downloadBtn).toBeDisabled()
+  })
 })
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -335,12 +350,17 @@ describe("NaskahPage — shell sync", () => {
 })
 
 // ────────────────────────────────────────────────────────────────────────────
-// GROUP E — Export deferral (D-015, plan verification checklist)
-// Phase 1 ships with NO active export affordance anywhere on the page.
+// GROUP E — Export vs download distinction
+// The legacy "export" pipeline (stage-based, requires currentStage ===
+// "completed") remains deferred for naskah — the page must NOT surface
+// any button matching /export/i. Naskah's own download path is a
+// separate affordance: real PDF/DOCX builders that take the snapshot
+// directly. The download button IS rendered (and enabled when the
+// snapshot is available), the export pipeline is not.
 // ────────────────────────────────────────────────────────────────────────────
 
-describe("NaskahPage — export deferral", () => {
-  it("E1: zero export buttons in the available state", () => {
+describe("NaskahPage — export vs download", () => {
+  it("E1: zero legacy 'export' buttons in the available state", () => {
     render(
       <NaskahPage
         snapshot={makeFullSnapshot()}
@@ -351,5 +371,20 @@ describe("NaskahPage — export deferral", () => {
     expect(
       screen.queryByRole("button", { name: /export/i }),
     ).not.toBeInTheDocument()
+  })
+
+  it("E2: download button IS rendered and enabled in the available state", () => {
+    render(
+      <NaskahPage
+        snapshot={makeFullSnapshot()}
+        updatePending={false}
+      />,
+    )
+
+    const downloadBtn = screen.getByRole("button", {
+      name: /download naskah/i,
+    })
+    expect(downloadBtn).toBeInTheDocument()
+    expect(downloadBtn).not.toBeDisabled()
   })
 })

@@ -161,6 +161,8 @@ export function NaskahPage({
         updatePending={updatePending}
         isRefreshing={isRefreshing}
         onRefresh={handleRefresh}
+        downloadSections={activeSnapshot.sections}
+        downloadEnabled={activeSnapshot.isAvailable}
       />
 
       {activeSnapshot.isAvailable ? (
