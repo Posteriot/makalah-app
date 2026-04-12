@@ -63,6 +63,7 @@ import {
     shouldAttemptRescue,
 } from "@/lib/chat/choice-request"
 import type { ResolvedChoiceWorkflow } from "@/lib/chat/choice-request"
+import { sanitizeChoiceOutcome, paperRecoveryLeakagePattern } from "@/lib/chat/choice-outcome-guard"
 import { resolveEffectiveFileIds } from "@/lib/chat/effective-file-ids"
 import {
     classifyAttachmentHealth,
@@ -374,7 +375,6 @@ export async function POST(req: Request) {
         const isDraftingStage = !!paperStageScope && paperSession?.stageStatus === "drafting"
         const isHasilPostChoice = choiceInteractionEvent?.stage === "hasil"
         const paperToolTracker = createPaperToolTracker()
-        const paperRecoveryLeakagePattern = /kesalahan teknis|kendala teknis|masalah teknis|maafkan aku|saya akan coba|memperbaiki|perbaiki|mohon tunggu|coba lagi|ada kendala|akan mencoba/i
         const paperTurnObservability: {
             firstLeakageMatch: string | null
             firstLeakageSnippet: string | null
@@ -393,51 +393,6 @@ export async function POST(req: Request) {
             const start = Math.max(0, matchIndex - 120)
             const end = Math.min(text.length, matchIndex + matchValue.length + 120)
             return text.slice(start, end).replace(/\s+/g, " ").trim()
-        }
-
-        const buildArtifactLifecycleClosing = (submittedForValidation: boolean): string =>
-            submittedForValidation
-                ? "Artefaknya sudah siap. Silakan review di panel validasi."
-                : "Artefaknya sudah siap, tetapi belum dikirim ke panel validasi."
-
-        const sanitizeOutcomeGatedText = (params: {
-            text: string
-            submittedForValidation: boolean
-        }): string => {
-            const normalized = params.text.replace(/\n{3,}/g, "\n\n").trim()
-            if (normalized.length === 0) {
-                return buildArtifactLifecycleClosing(params.submittedForValidation)
-            }
-
-            const paragraphs = normalized
-                .split(/\n{2,}/)
-                .map((paragraph) => paragraph.trim())
-                .filter(Boolean)
-            const keptParagraphs = paragraphs.filter((paragraph) => !paperRecoveryLeakagePattern.test(paragraph))
-
-            let sanitizedBody = keptParagraphs.join("\n\n").trim()
-
-            if (sanitizedBody.length === 0) {
-                const match = paperRecoveryLeakagePattern.exec(normalized)
-                if (match && typeof match.index === "number") {
-                    sanitizedBody = normalized
-                        .slice(0, match.index)
-                        .trim()
-                        .replace(/[,:;\-\s]+$/, "")
-                        .trim()
-                }
-            }
-
-            const closing = buildArtifactLifecycleClosing(params.submittedForValidation)
-            if (sanitizedBody.length === 0) {
-                return closing
-            }
-
-            if (/panel validasi|artefak|artifact/i.test(sanitizedBody)) {
-                return sanitizedBody
-            }
-
-            return `${sanitizedBody}\n\n${closing}`
         }
 
         let choiceContextNote: string | undefined
@@ -3325,22 +3280,19 @@ Aturan:
                             }
                         }
 
-                        // Outcome-gated persisted content: replace noisy model text with clean system message
-                        // when artifact lifecycle succeeded but model prose leaked recovery/error narration.
-                        // Applies to ALL stages — not just review stages — because recovery leakage
-                        // can happen at any stage where tool retry/fallback occurs.
+                        // Outcome-gated persisted content: action-aware guard that handles both
+                        // false draft handoff (continue_discussion) and recovery leakage (finalize paths).
                         if (paperStageScope && normalizedText.length > 0) {
-                            const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
-                            const hasLeakage = paperRecoveryLeakagePattern.test(normalizedText)
-
-                            if (hasArtifactSuccess && hasLeakage) {
-                                const sanitized = sanitizeOutcomeGatedText({
-                                    text: normalizedText,
-                                    submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
-                                })
-                                persistedContent = sanitized
-                                streamContentOverride = sanitized
-                                console.info(`[PAPER][outcome-gated] stage=${paperStageScope} sanitized noisy persisted+stream text after artifact lifecycle success`)
+                            const guardResult = sanitizeChoiceOutcome({
+                                action: resolvedWorkflow?.action ?? "finalize_stage",
+                                text: normalizedText,
+                                hasArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess,
+                                submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
+                            })
+                            if (guardResult.wasModified) {
+                                persistedContent = guardResult.text
+                                streamContentOverride = guardResult.text
+                                console.info(`[PAPER][outcome-guard] stage=${paperStageScope} violation=${guardResult.violationType} action=${resolvedWorkflow?.action ?? "unknown"} contract=${resolvedWorkflow?.contractVersion ?? "legacy"}`)
                             }
                         }
 
@@ -3759,23 +3711,22 @@ Aturan:
                                     console.info(`[F1-F6-TEST] ChoiceCardSpec { elements: "${elementTypes}", hasSubmitButton: ${hasSubmitBtn} }`)
                                 }
 
-                                // Outcome-gated stream override: check FULL accumulated stream text
-                                // (not just onFinish text which only has final step) for recovery
-                                // leakage. If artifact succeeded and leakage found, override stream.
+                                // Outcome-gated stream override: action-aware guard on full accumulated stream text
                                 if (!streamContentOverride && accumulatedStreamText.length > 0) {
-                                    const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
-                                    const fullStreamLeakage = paperRecoveryLeakagePattern.test(accumulatedStreamText)
-                                    if (hasArtifactSuccess && fullStreamLeakage) {
-                                        streamContentOverride = sanitizeOutcomeGatedText({
-                                            text: accumulatedStreamText,
-                                            submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
-                                        })
+                                    const streamGuardResult = sanitizeChoiceOutcome({
+                                        action: resolvedWorkflow?.action ?? "finalize_stage",
+                                        text: accumulatedStreamText,
+                                        hasArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess,
+                                        submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
+                                    })
+                                    if (streamGuardResult.wasModified) {
+                                        streamContentOverride = streamGuardResult.text
                                         console.info(
-                                            `[PAPER][outcome-gated-stream] stage=${paperStageScope} ` +
-                                            `full-stream leakage detected (onFinish missed it, sanitized instead of full replace). ` +
+                                            `[PAPER][outcome-guard-stream] stage=${paperStageScope} ` +
+                                            `violation=${streamGuardResult.violationType} action=${resolvedWorkflow?.action ?? "unknown"} ` +
                                             `accumulatedLen=${accumulatedStreamText.length}`
                                         )
-                                        console.info("[PAPER][outcome-gated-stream][details]", {
+                                        console.info("[PAPER][outcome-guard-stream][details]", {
                                             stage: paperStageScope,
                                             firstLeakageMatch: paperTurnObservability.firstLeakageMatch,
                                             firstLeakageAtMs: paperTurnObservability.firstLeakageAtMs,
@@ -4255,20 +4206,18 @@ Aturan:
                             }
                         }
 
-                        // Outcome-gated persisted content (fallback path)
-                        // Same all-stage guard as primary path
+                        // Outcome-gated persisted content (fallback path) — action-aware guard
                         if (paperStageScope && normalizedText.length > 0) {
-                            const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
-                            const hasLeakage = paperRecoveryLeakagePattern.test(normalizedText)
-
-                            if (hasArtifactSuccess && hasLeakage) {
-                                const sanitized = sanitizeOutcomeGatedText({
-                                    text: normalizedText,
-                                    submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
-                                })
-                                persistedContent = sanitized
-                                fallbackStreamContentOverride = sanitized
-                                console.info(`[PAPER][outcome-gated][fallback] stage=${paperStageScope} sanitized noisy persisted+stream text after artifact lifecycle success`)
+                            const guardResult = sanitizeChoiceOutcome({
+                                action: resolvedWorkflow?.action ?? "finalize_stage",
+                                text: normalizedText,
+                                hasArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess,
+                                submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
+                            })
+                            if (guardResult.wasModified) {
+                                persistedContent = guardResult.text
+                                fallbackStreamContentOverride = guardResult.text
+                                console.info(`[PAPER][outcome-guard][fallback] stage=${paperStageScope} violation=${guardResult.violationType} action=${resolvedWorkflow?.action ?? "unknown"} contract=${resolvedWorkflow?.contractVersion ?? "legacy"}`)
                             }
                         }
 
@@ -4473,17 +4422,18 @@ Aturan:
                                     console.info(`[CHOICE-CARD][yaml-capture] fallback stage=${paperStageScope} specKeys=${Object.keys(fallbackCapturedChoiceSpec).join(",")}`)
                                 }
 
-                                // Full-stream leakage guard (fallback path)
+                                // Full-stream outcome guard (fallback path) — action-aware
                                 if (!fallbackStreamContentOverride && accumulatedStreamText.length > 0) {
-                                    const hasArtifactSuccess = paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess
-                                    const fullStreamLeakage = paperRecoveryLeakagePattern.test(accumulatedStreamText)
-                                    if (hasArtifactSuccess && fullStreamLeakage) {
-                                        fallbackStreamContentOverride = sanitizeOutcomeGatedText({
-                                            text: accumulatedStreamText,
-                                            submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
-                                        })
-                                        console.info(`[PAPER][outcome-gated-stream][fallback] stage=${paperStageScope} full-stream leakage detected (sanitized instead of full replace)`)
-                                        console.info("[PAPER][outcome-gated-stream][fallback][details]", {
+                                    const streamGuardResult = sanitizeChoiceOutcome({
+                                        action: resolvedWorkflow?.action ?? "finalize_stage",
+                                        text: accumulatedStreamText,
+                                        hasArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess,
+                                        submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
+                                    })
+                                    if (streamGuardResult.wasModified) {
+                                        fallbackStreamContentOverride = streamGuardResult.text
+                                        console.info(`[PAPER][outcome-guard-stream][fallback] stage=${paperStageScope} violation=${streamGuardResult.violationType} action=${resolvedWorkflow?.action ?? "unknown"} accumulatedLen=${accumulatedStreamText.length}`)
+                                        console.info("[PAPER][outcome-guard-stream][fallback][details]", {
                                             stage: paperStageScope,
                                             firstLeakageMatch: paperTurnObservability.firstLeakageMatch,
                                             firstLeakageAtMs: paperTurnObservability.firstLeakageAtMs,
