@@ -1,6 +1,9 @@
 import { z } from "zod"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 
+export { resolveChoiceWorkflow } from "./choice-workflow-registry"
+export type { ResolvedChoiceWorkflow, ResolveChoiceWorkflowInput } from "./choice-workflow-registry"
+
 const VALIDATE_OPTION_ID = "sudah-cukup-lanjut-validasi"
 
 // Stages that ALWAYS finalize after choice (no maturity check needed)
@@ -27,6 +30,10 @@ const STAGE_MATURITY_KEYS: Partial<Record<PaperStageId, string[]>> = {
 
 /**
  * Determine if a post-choice turn should finalize (artifact + submit) or stay exploratory.
+ *
+ * @deprecated Use `resolveChoiceWorkflow` from `./choice-workflow-registry` instead.
+ * This function remains for backward compatibility during migration. Task 4 will
+ * wire the route to use the new resolver; this function will be removed afterward.
  *
  * Priority order:
  * 1. decisionMode from choice card metadata (primary — model declares intent)
