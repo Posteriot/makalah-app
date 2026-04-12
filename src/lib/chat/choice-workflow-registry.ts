@@ -272,6 +272,46 @@ function buildFromEntry(entry: StageWorkflowEntry): Omit<ResolvedChoiceWorkflow,
 // Main resolver
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Rescue decision helper
+// ---------------------------------------------------------------------------
+
+export function shouldAttemptRescue(params: {
+  resolvedWorkflow: ResolvedChoiceWorkflow
+  paperToolTracker: {
+    sawCreateArtifactSuccess: boolean
+    sawUpdateArtifactSuccess: boolean
+    sawSubmitValidationSuccess: boolean
+    sawUpdateStageData: boolean
+  }
+}): { shouldRescue: boolean; reason: string } {
+  // Only rescue for stages with deterministic_rescue fallback policy
+  if (params.resolvedWorkflow.fallbackPolicy !== "deterministic_rescue") {
+    return { shouldRescue: false, reason: "no_rescue_policy" }
+  }
+
+  // Only rescue if the action was supposed to finalize
+  if (params.resolvedWorkflow.action === "continue_discussion") {
+    return { shouldRescue: false, reason: "discussion_turn" }
+  }
+
+  // Check if tool chain completed successfully
+  const hasArtifactSuccess = params.paperToolTracker.sawCreateArtifactSuccess || params.paperToolTracker.sawUpdateArtifactSuccess
+  const hasSubmitSuccess = params.paperToolTracker.sawSubmitValidationSuccess
+
+  // If everything completed, no rescue needed
+  if (hasArtifactSuccess && hasSubmitSuccess) {
+    return { shouldRescue: false, reason: "tool_chain_complete" }
+  }
+
+  // Rescue needed: model was supposed to finalize but didn't complete
+  return { shouldRescue: true, reason: "incomplete_finalize_tool_chain" }
+}
+
+// ---------------------------------------------------------------------------
+// Main resolver
+// ---------------------------------------------------------------------------
+
 export function resolveChoiceWorkflow(input: ResolveChoiceWorkflowInput): ResolvedChoiceWorkflow {
   // Priority 1: workflowAction from new contract
   if (input.workflowAction) {

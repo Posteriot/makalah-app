@@ -2,7 +2,7 @@ import { z } from "zod"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 import type { ResolvedChoiceWorkflow } from "./choice-workflow-registry"
 
-export { resolveChoiceWorkflow } from "./choice-workflow-registry"
+export { resolveChoiceWorkflow, shouldAttemptRescue } from "./choice-workflow-registry"
 export type { ResolvedChoiceWorkflow, ResolveChoiceWorkflowInput } from "./choice-workflow-registry"
 
 const VALIDATE_OPTION_ID = "sudah-cukup-lanjut-validasi"

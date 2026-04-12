@@ -60,6 +60,7 @@ import {
     validateChoiceInteractionEvent,
     buildChoiceContextNote,
     resolveChoiceWorkflow,
+    shouldAttemptRescue,
 } from "@/lib/chat/choice-request"
 import type { ResolvedChoiceWorkflow } from "@/lib/chat/choice-request"
 import { resolveEffectiveFileIds } from "@/lib/chat/effective-file-ids"
@@ -3356,15 +3357,20 @@ Aturan:
                         // Server-owned fallback: lampiran "tidak ada" path
                         // If model failed to create placeholder artifact, server does it
                         const NO_APPENDIX_IDS = new Set(["tidak-ada-lampiran", "option-tidak-ada-lampiran", "no-appendix"])
+                        const lampiranRescueCheck = resolvedWorkflow ? shouldAttemptRescue({
+                            resolvedWorkflow,
+                            paperToolTracker,
+                        }) : { shouldRescue: true, reason: "legacy_no_resolver" }
                         if (
                             paperStageScope === "lampiran" &&
+                            lampiranRescueCheck.shouldRescue &&
                             choiceInteractionEvent?.stage === "lampiran" &&
                             choiceInteractionEvent.selectedOptionIds.some(id => NO_APPENDIX_IDS.has(id.trim().toLowerCase())) &&
                             paperToolTracker.sawUpdateStageData &&
                             !paperToolTracker.sawCreateArtifactSuccess &&
                             !paperToolTracker.sawUpdateArtifactSuccess
                         ) {
-                            console.info("[LAMPIRAN][server-fallback] model failed to create placeholder artifact, server creating it now")
+                            console.info(`[PAPER][rescue] stage=lampiran reason=${lampiranRescueCheck.reason} fallbackPolicy=${resolvedWorkflow?.fallbackPolicy ?? "legacy"}`)
                             try {
                                 // Read alasanTidakAda from stageData if available
                                 const lampiranStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["lampiran"]
@@ -3413,15 +3419,20 @@ Aturan:
                         }
 
                         // Server-owned fallback: judul title selection
+                        const judulRescueCheck = resolvedWorkflow ? shouldAttemptRescue({
+                            resolvedWorkflow,
+                            paperToolTracker,
+                        }) : { shouldRescue: true, reason: "legacy_no_resolver" }
                         if (
                             paperStageScope === "judul" &&
+                            judulRescueCheck.shouldRescue &&
                             choiceInteractionEvent?.stage === "judul" &&
                             !paperToolTracker.sawUpdateStageData &&
                             !paperToolTracker.sawCreateArtifactSuccess &&
                             !paperToolTracker.sawUpdateArtifactSuccess &&
                             normalizedText.length > 0
                         ) {
-                            console.info("[JUDUL][server-fallback] model failed to execute tool calls, server completing judul lifecycle")
+                            console.info(`[PAPER][rescue] stage=judul reason=${judulRescueCheck.reason} fallbackPolicy=${resolvedWorkflow?.fallbackPolicy ?? "legacy"}`)
                             try {
                                 // Deterministic title resolution from choice card payload
                                 let selectedTitle: string | undefined
@@ -4066,15 +4077,20 @@ Aturan:
 
                         // Server-owned fallback: lampiran "tidak ada" path (fallback parity)
                         const FALLBACK_NO_APPENDIX_IDS = new Set(["tidak-ada-lampiran", "option-tidak-ada-lampiran", "no-appendix"])
+                        const lampiranRescueCheckFb = resolvedWorkflow ? shouldAttemptRescue({
+                            resolvedWorkflow,
+                            paperToolTracker,
+                        }) : { shouldRescue: true, reason: "legacy_no_resolver" }
                         if (
                             paperStageScope === "lampiran" &&
+                            lampiranRescueCheckFb.shouldRescue &&
                             choiceInteractionEvent?.stage === "lampiran" &&
                             choiceInteractionEvent.selectedOptionIds.some(id => FALLBACK_NO_APPENDIX_IDS.has(id.trim().toLowerCase())) &&
                             paperToolTracker.sawUpdateStageData &&
                             !paperToolTracker.sawCreateArtifactSuccess &&
                             !paperToolTracker.sawUpdateArtifactSuccess
                         ) {
-                            console.info("[LAMPIRAN][server-fallback][fallback] model failed to create placeholder artifact, server creating it now")
+                            console.info(`[PAPER][rescue] stage=lampiran reason=${lampiranRescueCheckFb.reason} fallbackPolicy=${resolvedWorkflow?.fallbackPolicy ?? "legacy"} path=fallback`)
                             try {
                                 const lampiranStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["lampiran"]
                                 const alasan = typeof lampiranStageData?.alasanTidakAda === "string" ? lampiranStageData.alasanTidakAda : ""
@@ -4120,15 +4136,20 @@ Aturan:
                         }
 
                         // Server-owned fallback: judul (fallback path parity)
+                        const judulRescueCheckFb = resolvedWorkflow ? shouldAttemptRescue({
+                            resolvedWorkflow,
+                            paperToolTracker,
+                        }) : { shouldRescue: true, reason: "legacy_no_resolver" }
                         if (
                             paperStageScope === "judul" &&
+                            judulRescueCheckFb.shouldRescue &&
                             choiceInteractionEvent?.stage === "judul" &&
                             !paperToolTracker.sawUpdateStageData &&
                             !paperToolTracker.sawCreateArtifactSuccess &&
                             !paperToolTracker.sawUpdateArtifactSuccess &&
                             normalizedText.length > 0
                         ) {
-                            console.info("[JUDUL][server-fallback][fallback] model failed to execute tool calls, server completing judul lifecycle")
+                            console.info(`[PAPER][rescue] stage=judul reason=${judulRescueCheckFb.reason} fallbackPolicy=${resolvedWorkflow?.fallbackPolicy ?? "legacy"} path=fallback`)
                             try {
                                 // Deterministic title resolution from choice card payload (fallback path)
                                 let selectedTitle: string | undefined
