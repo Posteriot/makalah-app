@@ -157,18 +157,50 @@ export function NaskahPreview({
     useContentAreaHeightPx()
 
   // Per-section page counts reported by each PaginatedSection via
-  // `onSectionPageCount`. Stored as a Map<sectionKey, count> and
-  // aggregated into a total (title page + sum). A `useRef`-backed
-  // map avoids re-renders on every individual section report; we
-  // only re-render when the aggregated total actually changes.
+  // `handleSectionPageCount`. Stored as a Map<sectionKey, count>.
+  //
+  // CNT-1 fix: the map is rebuilt from scratch whenever `sections`
+  // changes so stale keys from removed sections don't persist.
+  //
+  // CNT-2 fix: we only publish the total to `onPageCountChange`
+  // once ALL currently-visible sections have reported, preventing
+  // the header from flashing intermediate partial totals like
+  // "2 Halaman" before settling to "5 Halaman".
   const sectionCountsRef = useRef(new Map<string, number>())
+  const expectedSectionCountRef = useRef(sections.length)
   const [totalPageCount, setTotalPageCount] = useState<number | null>(null)
+
+  // Stable identity for section keys so the effect below only fires
+  // when the actual key list changes, not on every render.
+  const sectionKeysJoined = useMemo(
+    () => sections.map((s) => s.key).join(","),
+    [sections],
+  )
+
+  // CNT-1: Clear the counts map when the section key list changes
+  // (e.g., snapshot refresh adds/removes a section). The setState
+  // inside this effect is the canonical "sync external state into
+  // React state" pattern — the map acts as the external store.
+  useEffect(() => {
+    sectionCountsRef.current = new Map()
+    expectedSectionCountRef.current = sections.length
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTotalPageCount(null)
+  }, [sectionKeysJoined, sections.length])
 
   const handleSectionPageCount = useCallback(
     (key: string, count: number) => {
       const prev = sectionCountsRef.current.get(key)
       if (prev === count) return
       sectionCountsRef.current.set(key, count)
+
+      // CNT-2: Only publish once ALL sections have reported. This
+      // prevents flashing partial totals when sections measure one
+      // by one.
+      if (sectionCountsRef.current.size < expectedSectionCountRef.current) {
+        return
+      }
+
       let total = 1 // title page
       for (const c of sectionCountsRef.current.values()) total += c
       setTotalPageCount(total)
@@ -383,8 +415,7 @@ function PaginatedSection({
 
       {visiblePages.map((page, pageIdx) => {
         const isFirstPage = pageIdx === 0
-        const sliceHeight =
-          page.endY != null ? page.endY - page.startY : null
+        const isFallback = page.endY == null
         return (
           <PageContainer
             key={pageIdx}
@@ -393,17 +424,28 @@ function PaginatedSection({
             data-section-key={section.key}
             data-page-index={pageIdx}
           >
-            <div
-              style={{
-                height:
-                  sliceHeight != null ? `${sliceHeight}px` : "100%",
-                overflow: "hidden",
-              }}
-            >
-              <div style={{ marginTop: `${-page.startY}px` }}>
-                {flowingContent}
+            {isFallback ? (
+              // PAG-1 fix: before the pagination hook settles
+              // (SSR, initial render), render the full flowing
+              // content WITHOUT a clip wrapper so long sections
+              // are not truncated to one A4 page height. The
+              // content overflows the fixed-height PageContainer
+              // visually — acceptable for the brief pre-paint
+              // flash because useLayoutEffect fires before the
+              // browser paints and replaces this with real pages.
+              flowingContent
+            ) : (
+              <div
+                style={{
+                  height: `${page.endY - page.startY}px`,
+                  overflow: "hidden",
+                }}
+              >
+                <div style={{ marginTop: `${-page.startY}px` }}>
+                  {flowingContent}
+                </div>
               </div>
-            </div>
+            )}
           </PageContainer>
         )
       })}

@@ -30,6 +30,10 @@ import type { NaskahSection } from "@/lib/naskah/types"
 const DOCX_MIME =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
+// 512KB — generous ceiling for a naskah snapshot. Typical payloads
+// are under 50KB. Rejects abusive uploads before JSON.parse runs.
+const MAX_BODY_BYTES = 512 * 1024
+
 export async function POST(request: NextRequest) {
   try {
     const isAuthed = await isAuthenticated()
@@ -37,6 +41,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: "Unauthorized — please sign in" },
         { status: 401 },
+      )
+    }
+
+    // EXP-1: reject oversized payloads before JSON parsing.
+    const contentLength = parseInt(
+      request.headers.get("Content-Length") ?? "0",
+      10,
+    )
+    if (contentLength > MAX_BODY_BYTES) {
+      return NextResponse.json(
+        { success: false, error: "Request body too large" },
+        { status: 413 },
       )
     }
 

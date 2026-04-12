@@ -28,6 +28,10 @@ import {
 } from "@/lib/naskah/export/naskah-pdf-builder"
 import type { NaskahSection } from "@/lib/naskah/types"
 
+// 512KB — generous ceiling for a naskah snapshot. Typical payloads
+// are under 50KB. Rejects abusive uploads before JSON.parse runs.
+const MAX_BODY_BYTES = 512 * 1024
+
 export async function POST(request: NextRequest) {
   try {
     const isAuthed = await isAuthenticated()
@@ -35,6 +39,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: "Unauthorized — please sign in" },
         { status: 401 },
+      )
+    }
+
+    // EXP-1: reject oversized payloads before JSON parsing. A typical
+    // naskah snapshot is under 50KB; 512KB is generous headroom.
+    const contentLength = parseInt(
+      request.headers.get("Content-Length") ?? "0",
+      10,
+    )
+    if (contentLength > MAX_BODY_BYTES) {
+      return NextResponse.json(
+        { success: false, error: "Request body too large" },
+        { status: 413 },
       )
     }
 
