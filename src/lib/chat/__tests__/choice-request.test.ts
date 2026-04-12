@@ -333,6 +333,46 @@ describe("shouldFinalizeAfterChoice", () => {
   })
 })
 
+describe("parseOptionalChoiceInteractionEvent — workflowAction contract", () => {
+  it("parses workflowAction from choice submit event", () => {
+    const event = parseOptionalChoiceInteractionEvent({
+      interactionEvent: {
+        type: "paper.choice.submit",
+        version: 1,
+        conversationId: "conv-1",
+        stage: "gagasan",
+        sourceMessageId: "msg-1",
+        choicePartId: "part-1",
+        kind: "single-select",
+        selectedOptionIds: ["opsi-a"],
+        workflowAction: "continue_discussion",
+        submittedAt: Date.now(),
+      },
+    })
+
+    expect(event?.workflowAction).toBe("continue_discussion")
+  })
+
+  it("accepts event without workflowAction for backwards compat (legacy path)", () => {
+    const event = parseOptionalChoiceInteractionEvent({
+      interactionEvent: {
+        type: "paper.choice.submit",
+        version: 1,
+        conversationId: "conv-1",
+        stage: "gagasan",
+        sourceMessageId: "msg-1",
+        choicePartId: "part-1",
+        kind: "single-select",
+        selectedOptionIds: ["opsi-a"],
+        submittedAt: Date.now(),
+      },
+    })
+
+    expect(event).not.toBeNull()
+    expect(event?.workflowAction).toBeUndefined()
+  })
+})
+
 describe("validateChoiceInteractionEvent — stale choice guard", () => {
   const validEvent = {
     type: "paper.choice.submit" as const,

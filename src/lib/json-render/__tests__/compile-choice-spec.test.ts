@@ -125,6 +125,24 @@ describe("compileChoiceSpec", () => {
     expect(validationOptions[0].label).toBe("Sudah cukup, lanjut validasi")
   })
 
+  it("propagates workflowAction into ChoiceCardShell props when provided", () => {
+    // This test will FAIL until Task 2 adds workflowAction support to compileChoiceSpec.
+    // For now it documents the expected contract.
+    const result = compileChoiceSpec({
+      stage: "gagasan",
+      kind: "single-select",
+      title: "Test",
+      options: [
+        { id: "a", label: "A" },
+        { id: "b", label: "B" },
+      ],
+      appendValidationOption: false,
+      workflowAction: "continue_discussion",
+    } as Parameters<typeof compileChoiceSpec>[0] & { workflowAction: string })
+    const root = result.spec.elements[result.spec.root]
+    expect((root.props as Record<string, unknown>).workflowAction).toBe("continue_discussion")
+  })
+
   it("does not set recommended to validation option", () => {
     const result = compileChoiceSpec({
       stage: "gagasan",

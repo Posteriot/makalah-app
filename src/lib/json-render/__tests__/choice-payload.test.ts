@@ -117,6 +117,25 @@ describe("parseJsonRendererChoicePayload", () => {
   })
 })
 
+describe("parseJsonRendererChoicePayload — workflowAction contract", () => {
+  it("accepts payload with workflowAction in ChoiceCardShell props", () => {
+    const payload = makeValidPayload()
+    ;(payload.spec.elements["shell"].props as Record<string, unknown>).workflowAction = "finalize_stage"
+    const result = parseJsonRendererChoicePayload(payload)
+    expect((result.spec.elements["shell"].props as Record<string, unknown>).workflowAction).toBe("finalize_stage")
+  })
+
+  it("currently accepts payload without workflowAction (pre-migration baseline)", () => {
+    // This test documents the CURRENT behavior: workflowAction is not yet required.
+    // After Task 2 makes it required, this test will be updated to expect rejection.
+    const payload = makeValidPayload()
+    const result = parseJsonRendererChoicePayload(payload)
+    expect(result.version).toBe(1)
+    // workflowAction is absent — currently allowed
+    expect((result.spec.elements["shell"].props as Record<string, unknown>).workflowAction).toBeUndefined()
+  })
+})
+
 describe("cloneSpecWithReadOnlyState", () => {
   it('disables submit button, changes label to "Sudah dikirim", removes on', () => {
     const payload = makeValidPayload()
