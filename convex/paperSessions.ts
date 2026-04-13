@@ -644,6 +644,50 @@ export const create = mutation({
 });
 
 /**
+ * Lazy-migration helper: ensure a paper session exists for a conversation.
+ * Called from getPaperModeSystemPrompt when a legacy conversation lacks one.
+ * Single-transaction check + insert — Convex OCC retries the loser so the
+ * retry will see the winner's insert.
+ */
+export const ensurePaperSessionExists = mutation({
+    args: {
+        userId: v.id("users"),
+        conversationId: v.id("conversations"),
+    },
+    handler: async (ctx, { userId, conversationId }) => {
+        await requireAuthUserId(ctx, userId);
+        const { conversation } = await requireConversationOwner(ctx, conversationId);
+        if (conversation.userId !== userId) {
+            throw new Error("Unauthorized");
+        }
+
+        const existing = await ctx.db
+            .query("paperSessions")
+            .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+            .unique();
+
+        if (existing) {
+            console.info(`[PAPER][ensure-session] Reusing existing session for conversation ${conversationId}`);
+            return existing._id;
+        }
+
+        const now = Date.now();
+
+        console.info(`[PAPER][ensure-session] Creating new session for legacy conversation ${conversationId}`);
+        return await ctx.db.insert("paperSessions", {
+            userId,
+            conversationId,
+            currentStage: "gagasan",
+            stageStatus: "drafting",
+            workingTitle: conversation.title ?? "Percakapan baru",
+            stageData: {},
+            createdAt: now,
+            updatedAt: now,
+        });
+    },
+});
+
+/**
  * Update data for the current stage.
  */
 export const updateStageData = mutation({
