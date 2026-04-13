@@ -3174,6 +3174,18 @@ Aturan:
                 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
                 onFinish: async ({ text, steps, providerMetadata, usage }) => {
+                        // Tool chain ordering observability — log the actual tool call sequence
+                        if (paperStageScope && Array.isArray(steps) && steps.length > 0) {
+                            const toolSequence = steps
+                                .flatMap((s: { toolCalls?: Array<{ toolName: string }> }, i: number) =>
+                                    (s.toolCalls ?? []).map(tc => `${i}:${tc.toolName}`)
+                                )
+                            const expected = ["updateStageData", "createArtifact", "submitStageForValidation"]
+                            const actualNames = toolSequence.map(t => t.split(":")[1])
+                            const isCorrectOrder = expected.every((tool, idx) => actualNames[idx] === tool)
+                            console.info(`[F1-F6-TEST] ToolChainOrder { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], correct: ${isCorrectOrder} }`)
+                        }
+
                         let sources: { url: string; title: string; publishedAt?: number | null }[] | undefined
 
                         const googleMetadata = providerMetadata?.google as unknown as GoogleGenerativeAIProviderMetadata | undefined
@@ -3970,6 +3982,18 @@ Aturan:
                     stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, steps, usage }) => {
+                        // Tool chain ordering observability (fallback path)
+                        if (paperStageScope && Array.isArray(steps) && steps.length > 0) {
+                            const toolSequence = steps
+                                .flatMap((s: { toolCalls?: Array<{ toolName: string }> }, i: number) =>
+                                    (s.toolCalls ?? []).map(tc => `${i}:${tc.toolName}`)
+                                )
+                            const expected = ["updateStageData", "createArtifact", "submitStageForValidation"]
+                            const actualNames = toolSequence.map(t => t.split(":")[1])
+                            const isCorrectOrder = expected.every((tool, idx) => actualNames[idx] === tool)
+                            console.info(`[F1-F6-TEST] ToolChainOrder[fallback] { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], correct: ${isCorrectOrder} }`)
+                        }
+
                         // Concatenate text from ALL steps for persistence (same as primary path)
                         const allStepsText = Array.isArray(steps) && steps.length > 1
                             ? steps.map((s: { text?: string }) => typeof s.text === "string" ? s.text : "").filter((t) => t.trim().length > 0).join("\n\n").trim()
