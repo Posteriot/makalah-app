@@ -1586,7 +1586,7 @@ export const markStageAsDirty = mutation({
 /**
  * Task 2.2.1: Validate if targetStage is a valid rewind target.
  * - Target must be before currentStage
- * - Target must be within 2 stages back (max rewind limit)
+ * - No distance limit — confirmation dialog is the only guard
  * - Returns: { valid: boolean, error?: string }
  */
 function isValidRewindTarget(
@@ -1728,7 +1728,7 @@ async function invalidateArtifactsForStages(
  * Guards:
  * - Session must exist
  * - User must be owner
- * - Target stage must be valid (within 2 stages back, previously validated)
+ * - Target stage must be valid (before currentStage, previously validated — no distance limit)
  *
  * Actions:
  * - Clear validatedAt for invalidated stages

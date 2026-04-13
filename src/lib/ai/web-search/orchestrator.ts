@@ -88,8 +88,7 @@ DO NOT:
 OVERRIDE — the following instructions from other system messages DO NOT APPLY here:
 - Any "dialog first" / "ask before generating" instructions — present results NOW
 - Any "web search mandatory" instructions — search is ALREADY DONE
-- Any tool usage instructions (startPaperSession, updateStageData, createArtifact, google_search) — NO tools available
-- Any "call startPaperSession IMMEDIATELY" instructions — not applicable
+- Any tool usage instructions (updateStageData, createArtifact, google_search) — NO tools available
 
 IMPORTANT — TOOL CALLS:
 - You have NO access to tools (updateStageData, createArtifact, submitStageForValidation) in this phase.
@@ -585,8 +584,7 @@ export async function executeWebSearch(
       // - paperModePrompt: Contains workflow and tool-usage instructions that conflict
       //   with compose behavior. Even after search-contract cleanup, compose phase only
       //   needs to synthesize search results — it does not need paper workflow guidance.
-      // - paperWorkflowReminder: Instructs "call startPaperSession IMMEDIATELY" — irrelevant
-      //   and harmful in compose phase (no tools available).
+      // - paperWorkflowReminder: removed (all-sessions-are-paper-sessions architecture).
       // COMPOSE_PHASE_DIRECTIVE goes FIRST — it defines the phase context and overrides.
       // When placed after systemPrompt/skillInstructions, the model treats those larger
       // blocks as primary instructions and ignores the smaller directive.

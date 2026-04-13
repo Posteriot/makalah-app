@@ -2417,8 +2417,6 @@ Aturan:
                     ragChunksAvailable,
                 })
             }
-            // Force disable web search if paper intent detected but no session yet
-            // This allows AI to call startPaperSession tool first before any web search
             // ════════════════════════════════════════════════════════════════
             // Search Mode Decision — Unified LLM Router
             // Pre-router guardrails (structural/data) → LLM router → post-decision notes
@@ -2467,10 +2465,7 @@ Aturan:
                 })
                 console.log(`[⏱ LATENCY] searchRouter=${Date.now() - routerStart}ms decision=${webSearchDecision.enableWebSearch ? "SEARCH" : "NO-SEARCH"} intent=${webSearchDecision.intentType} confidence=${webSearchDecision.confidence}`)
 
-                // Capture router intent for completed-session guard (outer scope).
-                // IMPORTANT: The completed-session guard at ~line 2176 depends on this value.
-                // If you add a fast-path that skips the router for completed sessions,
-                // the guard will silently fall back to regex-only mode.
+                // Capture router intent for downstream sync/compile detection
                 routerIntentType = webSearchDecision.intentType
 
                 // Trust the router decision. Router prompt handles stage policy rules.
