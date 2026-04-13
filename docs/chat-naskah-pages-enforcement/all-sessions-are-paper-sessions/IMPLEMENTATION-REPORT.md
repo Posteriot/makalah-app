@@ -3,12 +3,22 @@
 **Date:** 2026-04-14
 **Branch:** `chat-naskah-pages-enforcement`
 **Base SHA:** `c982159e` (last doc commit before implementation)
-**Head SHA:** `cc9d9c97` (final implementation commit)
+**Head SHA:** `9cec879d` (final implementation commit, post-audit fixes included)
 **Plan executed:** `implementation-plan.md` (v3, Codex-approved)
 
 ## Execution Summary
 
-10 commits. 25 files changed. 191 insertions, 1877 deletions. Zero new test failures.
+13 commits (10 original + 3 post-audit fixes). 26 files changed. 412 insertions, 1888 deletions. Zero new test failures.
+
+## Post-Implementation Audit Fixes (Codex round 4)
+
+Codex rejected initial implementation with 4 critical issues. All fixed:
+
+| # | SHA | Issue | Fix |
+|---|-----|-------|-----|
+| 11 | `3a22fac3` | Backend rewind limit `stagesBack > 2` still enforced | Deleted guard at `convex/paperSessions.ts:1618-1625` |
+| 12 | `750f953b` | `session === null` treated as "ready" → isPaperMode true without session | 3-state model: loading / ready / absent. `isPaperMode` only true when ready. |
+| 13 | `9cec879d` | Lazy migration only on chat API, not UI read path | `usePaperSession` hook auto-calls `ensurePaperSessionExists` when absent + userId available |
 
 ## Commits (in execution order)
 
