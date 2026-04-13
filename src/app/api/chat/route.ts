@@ -2351,10 +2351,12 @@ Aturan:
                     }
 
                     const prevToolNames = steps[stepNumber - 1]?.toolCalls?.map(tc => tc.toolName) ?? []
+                    const allPrevToolNames = steps.flatMap(s => s.toolCalls?.map(tc => tc.toolName) ?? [])
                     const stageDataMap = paperSession?.stageData as Record<string, Record<string, unknown> | undefined> | undefined
                     const currentStageData = stageDataMap?.[paperStageScope]
                     const hasExistingArtifact = !!currentStageData?.artifactId
 
+                    // Step 1→2: after updateStageData, force createArtifact
                     if (
                         prevToolNames.includes("updateStageData")
                         && !hasExistingArtifact
@@ -2363,6 +2365,16 @@ Aturan:
                     ) {
                         console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} stage=${paperStageScope} → createArtifact`)
                         return { toolChoice: { type: "tool", toolName: "createArtifact" } as const }
+                    }
+
+                    // Step 2→3: after createArtifact, force submitStageForValidation
+                    if (
+                        (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess)
+                        && !paperToolTracker.sawSubmitValidationSuccess
+                        && !allPrevToolNames.includes("submitStageForValidation")
+                    ) {
+                        console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} stage=${paperStageScope} → submitStageForValidation`)
+                        return { toolChoice: { type: "tool", toolName: "submitStageForValidation" } as const }
                     }
 
                     return undefined
