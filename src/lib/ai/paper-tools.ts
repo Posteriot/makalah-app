@@ -65,42 +65,6 @@ export const createPaperTools = (context: {
 }) => {
     const convexOptions = context.convexToken ? { token: context.convexToken } : undefined
     return {
-        startPaperSession: tool({
-            description: `Initialize a new paper writing session for this conversation.
-
-You MUST call this tool IMMEDIATELY when the user indicates intent to write a paper/makalah/skripsi.
-
-Rules for filling initialIdea:
-- If user mentions a specific topic → use that topic
-- If user only says "start writing a paper" without a topic → leave this parameter empty
-- Do NOT wait for the user to provide a topic first, call this tool IMMEDIATELY`,
-            inputSchema: z.object({
-                initialIdea: z.string().optional().describe(
-                    "Raw idea, initial title, or topic. Optional — if user has not mentioned a topic, leave empty."
-                ),
-            }),
-            execute: async ({ initialIdea }) => {
-                try {
-                    const sessionId = await retryMutation(
-                        () => fetchMutation(api.paperSessions.create, {
-                            userId: context.userId,
-                            conversationId: context.conversationId,
-                            initialIdea: initialIdea || undefined,
-                        }, convexOptions),
-                        "paperSessions.create"
-                    );
-                    return {
-                        success: true,
-                        sessionId,
-                        message: "Paper writing session started successfully. AI is now in 'Paper Writing Mode'. Follow the instructions for stage 'gagasan'.",
-                    };
-                } catch (error) {
-                    console.error("Error in startPaperSession tool:", error);
-                    return { success: false, error: "Failed to start paper session in database." };
-                }
-            },
-        }),
-
         getCurrentPaperState: tool({
             description: "Retrieve the latest status of the paper writing session (active stage, draft data, validation status). Useful for synchronization after a pause.",
             inputSchema: z.object({}),
