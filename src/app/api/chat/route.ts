@@ -522,7 +522,7 @@ export async function POST(req: Request) {
         const userMessageCount = Array.isArray(messages)
             ? messages.filter((message: { role?: string }) => message?.role === "user").length
             : 0
-        // Attachment awareness directive (updated 2026-04-10):
+        // Attachment awareness directive (updated 2026.04.10):
         // Fires on EVERY turn where files are attached, regardless of mode, prompt length,
         // or attachment resolution reason. The previous conditional logic (only fire on
         // first turn, short prompts, non-paper mode, explicit attachment) created a bug
