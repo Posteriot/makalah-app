@@ -108,8 +108,15 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
     const rewindToStageMutation = useMutation(api.paperSessions.rewindToStage);
     const createMessageMutation = useMutation(api.messages.createMessage);
 
-    const sessionState: "loading" | "ready" = session === undefined ? "loading" : "ready";
-    // isPaperMode derived from sessionState for backward compat during migration
+    // 3-state model:
+    // - "loading": Convex query hasn't resolved yet (session === undefined)
+    // - "ready": session exists and is loaded
+    // - "absent": query resolved but no session found (legacy conversation pre-migration)
+    const sessionState: "loading" | "ready" | "absent" =
+        session === undefined ? "loading" :
+        session === null ? "absent" :
+        "ready";
+    // isPaperMode: true only when session actually exists and is loaded
     const isPaperMode = sessionState === "ready";
 
     const approveStage = async (userId: Id<"users">) => {

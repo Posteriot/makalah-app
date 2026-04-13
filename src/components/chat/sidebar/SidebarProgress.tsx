@@ -230,6 +230,7 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
     stageData,
     rewindToStage,
     isLoading,
+    sessionState,
   } = usePaperSession(conversationId as Id<"conversations"> | undefined)
 
   const conversation = useQuery(
@@ -322,11 +323,13 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
     )
   }
 
-  // Loading guard - session is resolving from Convex
+  // Session not yet available
   if (!session) {
     return (
       <div className="flex items-center justify-center p-8">
-        <span className="text-xs text-[var(--chat-muted-foreground)]">Memuat...</span>
+        <span className="text-xs text-[var(--chat-muted-foreground)]">
+          {sessionState === "loading" ? "Memuat..." : "Kirim pesan untuk memulai sesi paper."}
+        </span>
       </div>
     )
   }
