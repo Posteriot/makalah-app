@@ -624,7 +624,7 @@ export function ChatWindow({
     markStageAsDirty,
     rewindToStage,
     getStageStartIndex,
-  } = usePaperSession(safeConversationId ?? undefined)
+  } = usePaperSession(safeConversationId ?? undefined, userId ?? undefined)
 
   // Clear optimistic flag once Convex subscription confirms pending_validation
   useEffect(() => {

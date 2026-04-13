@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { PaperStageId, STAGE_ORDER, getStageLabel, getStageNumber } from "../../../convex/paperSessions/constants";
@@ -92,7 +92,7 @@ export function calculateCurrentStageStartIndex(
     return messages.length;
 }
 
-export const usePaperSession = (conversationId?: Id<"conversations">) => {
+export const usePaperSession = (conversationId?: Id<"conversations">, userId?: Id<"users">) => {
     const { isAuthenticated } = useConvexAuth();
 
     const session = useQuery(
@@ -107,6 +107,7 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
     const markStageAsDirtyMutation = useMutation(api.paperSessions.markStageAsDirty);
     const rewindToStageMutation = useMutation(api.paperSessions.rewindToStage);
     const createMessageMutation = useMutation(api.messages.createMessage);
+    const ensurePaperSessionMutation = useMutation(api.paperSessions.ensurePaperSessionExists);
 
     // 3-state model:
     // - "loading": Convex query hasn't resolved yet (session === undefined)
@@ -118,6 +119,21 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
         "ready";
     // isPaperMode: true only when session actually exists and is loaded
     const isPaperMode = sessionState === "ready";
+
+    // Lazy migration: auto-create paper session for legacy conversations on UI read path.
+    // When session is "absent" and we have both conversationId and userId,
+    // call ensurePaperSessionExists. Convex reactivity will auto-update the query.
+    // TODO(2026-05-15): Remove after all active conversations have been migrated.
+    const migrationAttempted = useRef(false);
+    useEffect(() => {
+        if (sessionState === "absent" && conversationId && userId && !migrationAttempted.current) {
+            migrationAttempted.current = true;
+            console.info(`[PAPER][lazy-migration-ui] Creating paper session for legacy conversation ${conversationId}`);
+            ensurePaperSessionMutation({ userId, conversationId }).catch((err) => {
+                console.error(`[PAPER][lazy-migration-ui] Failed:`, err);
+            });
+        }
+    }, [sessionState, conversationId, userId, ensurePaperSessionMutation]);
 
     const approveStage = async (userId: Id<"users">) => {
         if (!session) return;
