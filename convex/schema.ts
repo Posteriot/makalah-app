@@ -612,8 +612,8 @@ export default defineSchema({
         signifikansiPenelitian: v.optional(v.string()), // Mengapa penelitian ini penting
         hipotesis: v.optional(v.string()), // Hipotesis atau pertanyaan penelitian
         sitasiAPA: v.optional(v.array(v.object({
-          inTextCitation: v.string(),
-          fullReference: v.string(),
+          inTextCitation: v.optional(v.string()),
+          fullReference: v.optional(v.string()),
           url: v.optional(v.string()),
         }))),
         webSearchReferences: v.optional(v.array(v.object({
@@ -633,13 +633,13 @@ export default defineSchema({
         gapAnalysis: v.optional(v.string()),
         justifikasiPenelitian: v.optional(v.string()), // Mengapa penelitian ini diperlukan
         referensi: v.optional(v.array(v.object({
-          title: v.string(),
+          title: v.optional(v.string()),
           authors: v.optional(v.string()),
           year: v.optional(v.number()),
           url: v.optional(v.string()),
           publishedAt: v.optional(v.number()), // Timestamp from web search source metadata
-          inTextCitation: v.string(),
-          isFromPhase1: v.boolean(),
+          inTextCitation: v.optional(v.string()),
+          isFromPhase1: v.optional(v.boolean()),
         }))),
         webSearchReferences: v.optional(v.array(v.object({
           url: v.string(),
@@ -658,11 +658,7 @@ export default defineSchema({
         teknikAnalisis: v.optional(v.string()),
         etikaPenelitian: v.optional(v.string()),
         alatInstrumen: v.optional(v.string()), // Alat atau instrumen penelitian
-        pendekatanPenelitian: v.optional(v.union(
-          v.literal("kualitatif"),
-          v.literal("kuantitatif"),
-          v.literal("mixed")
-        )),
+        pendekatanPenelitian: v.optional(v.string()),
         webSearchReferences: v.optional(v.array(v.object({
           url: v.string(),
           title: v.string(),

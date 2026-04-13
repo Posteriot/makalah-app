@@ -3153,7 +3153,7 @@ Aturan:
                 })()) as any,
                 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
-                onFinish: async ({ text, providerMetadata, usage }) => {
+                onFinish: async ({ text, steps, providerMetadata, usage }) => {
                         let sources: { url: string; title: string; publishedAt?: number | null }[] | undefined
 
                         const googleMetadata = providerMetadata?.google as unknown as GoogleGenerativeAIProviderMetadata | undefined
@@ -3176,7 +3176,13 @@ Aturan:
                                 .filter(Boolean) as { url: string; title: string; publishedAt?: number | null }[]
                         }
 
-                        const rawText = typeof text === "string" ? text.trim() : ""
+                        // Concatenate text from ALL steps for persistence.
+                        // `text` only contains the final step — multi-step pre-tool text would be lost.
+                        // `steps` is guaranteed complete here (onFinish fires after all steps resolve).
+                        const allStepsText = Array.isArray(steps) && steps.length > 1
+                            ? steps.map((s: { text?: string }) => typeof s.text === "string" ? s.text : "").filter((t) => t.trim().length > 0).join("\n\n").trim()
+                            : ""
+                        const rawText = (allStepsText || (typeof text === "string" ? text : "")).trim()
                         // Strip yaml-spec fences from persisted text — pipeYamlRender strips
                         // them from the stream but onFinish receives raw model output
                         const normalizedText = rawText.replace(
@@ -3943,8 +3949,12 @@ Aturan:
                     })()) as any,
                     stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
                     ...samplingOptions,
-                    onFinish: async ({ text, usage }) => {
-                        const rawText = typeof text === "string" ? text.trim() : ""
+                    onFinish: async ({ text, steps, usage }) => {
+                        // Concatenate text from ALL steps for persistence (same as primary path)
+                        const allStepsText = Array.isArray(steps) && steps.length > 1
+                            ? steps.map((s: { text?: string }) => typeof s.text === "string" ? s.text : "").filter((t) => t.trim().length > 0).join("\n\n").trim()
+                            : ""
+                        const rawText = (allStepsText || (typeof text === "string" ? text : "")).trim()
                         // Strip yaml-spec fences from persisted text — pipeYamlRender strips
                         // them from the stream but onFinish receives raw model output
                         const normalizedText = rawText.replace(

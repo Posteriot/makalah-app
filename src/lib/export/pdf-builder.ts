@@ -562,13 +562,7 @@ function buildMetodologiSection(
 
   if (metodologi.pendekatanPenelitian) {
     writeHeading2(doc, "3.1 Pendekatan Penelitian")
-    const pendekatan =
-      metodologi.pendekatanPenelitian === "kualitatif"
-        ? "Kualitatif"
-        : metodologi.pendekatanPenelitian === "kuantitatif"
-          ? "Kuantitatif"
-          : "Mixed Methods"
-    writeParagraph(doc, `Penelitian ini menggunakan pendekatan ${pendekatan}.`)
+    writeParagraph(doc, `Penelitian ini menggunakan pendekatan ${metodologi.pendekatanPenelitian}.`)
   }
 
   if (metodologi.desainPenelitian) {
@@ -821,11 +815,12 @@ function buildLampiranSection(
 
   lampiran.forEach((item) => {
     // Heading untuk setiap lampiran
-    const title = item.judul || item.label
-    doc.font(FONTS.bold).fontSize(FONT_SIZES.body).text(`${item.label}: `, {
+    const label = item.label ?? ""
+    const title = item.judul || label
+    doc.font(FONTS.bold).fontSize(FONT_SIZES.body).text(`${label}: `, {
       continued: true,
     })
-    doc.font(FONTS.regular).text(title, {
+    doc.font(FONTS.regular).text(title || "Lampiran", {
       lineGap: FONT_SIZES.body * (LINE_HEIGHT - 1),
     })
     doc.moveDown(0.3)

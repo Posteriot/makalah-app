@@ -296,13 +296,7 @@ function buildMetodologiSection(
     paragraphs.push(
       createSectionHeading("3.1 Pendekatan Penelitian", HeadingLevel.HEADING_2)
     )
-    const pendekatan =
-      metodologi.pendekatanPenelitian === "kualitatif"
-        ? "Kualitatif"
-        : metodologi.pendekatanPenelitian === "kuantitatif"
-          ? "Kuantitatif"
-          : "Mixed Methods"
-    paragraphs.push(createParagraph(`Penelitian ini menggunakan pendekatan ${pendekatan}.`))
+    paragraphs.push(createParagraph(`Penelitian ini menggunakan pendekatan ${metodologi.pendekatanPenelitian}.`))
   }
 
   // Desain Penelitian

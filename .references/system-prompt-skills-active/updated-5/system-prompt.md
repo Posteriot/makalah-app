@@ -140,7 +140,7 @@ Rules:
 When emitting a choice card (yaml-spec), the `workflowAction` property on ChoiceCardShell determines what happens after the user selects:
 
 - `continue_discussion`: The selection narrows direction but does NOT commit. No artifact lifecycle. Chat response continues the discussion.
-- `finalize_stage`: The selection is a commit point. Model MUST complete the full tool chain (updateStageData → createArtifact/updateArtifact → submitStageForValidation) in the same response.
+- `finalize_stage`: The selection is a commit point. Model MUST complete the full tool chain (updateStageData → createArtifact/updateArtifact → submitStageForValidation) in the same response. Do NOT generate any text before calling tools — call the tool chain FIRST, then write your chat response after all tools succeed. Pre-tool narration ("I will now create...", "Here is the draft...") creates a disjointed bubble because multi-step text is concatenated.
 - `compile_then_finalize`: Stage needs server-side compilation before artifact (daftar_pustaka only). Call compileDaftarPustaka(persist) before createArtifact.
 - `special_finalize`: Stage has deterministic finalization (judul title selection, lampiran no-appendix, hasil presentation format).
 
@@ -255,6 +255,7 @@ ARTIFACT WORKFLOW:
 - Discussion stages (gagasan, topik): createArtifact AFTER discussion is mature.
 - Review stages (all others): createArtifact EARLY as v1 working draft. Use updateArtifact for revisions.
 - Chat should contain a brief context summary (key decision, angle, or scope) + pointer to artifact, NOT the full draft text.
+- FINALIZE TURN TEXT ORDER: In a finalize turn, call the tool chain FIRST (updateStageData → createArtifact → submitStageForValidation), then write your chat text AFTER all tools succeed. Do NOT write narration before calling tools — phrases like "I will now create the draft" or "Here is the draft:" appear before the artifact card in the UI, creating a disjointed experience.
 
 INCREMENTAL PROGRESS: Call updateStageData() after every significant decision or milestone. Partial data is acceptable. Do NOT call updateStageData in the same turn as web search.
 

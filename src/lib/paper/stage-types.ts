@@ -53,8 +53,8 @@ export interface AbstrakData {
 }
 
 export interface SitasiAPA {
-  inTextCitation: string
-  fullReference: string
+  inTextCitation?: string
+  fullReference?: string
   url?: string
 }
 
@@ -77,7 +77,7 @@ export interface PendahuluanData {
 }
 
 export interface Referensi {
-  title: string
+  title?: string
   authors?: string
   year?: number
   url?: string
@@ -102,7 +102,7 @@ export interface MetodologiData {
   metodePerolehanData?: string
   teknikAnalisis?: string
   etikaPenelitian?: string
-  pendekatanPenelitian?: "kualitatif" | "kuantitatif" | "mixed"
+  pendekatanPenelitian?: string
   alatInstrumen?: string
   webSearchReferences?: WebSearchReference[]
   artifactId?: string
@@ -119,7 +119,7 @@ export interface DataPoint {
 
 export interface HasilData {
   temuanUtama?: string[] | string
-  metodePenyajian?: "narrative" | "tabular" | "mixed"
+  metodePenyajian?: string
   dataPoints?: DataPoint[]
   webSearchReferences?: WebSearchReference[]
   artifactId?: string
@@ -191,9 +191,9 @@ export interface DaftarPustakaData {
 }
 
 export interface LampiranItem {
-  label: string
+  label?: string
   judul?: string
-  tipe?: "table" | "figure" | "instrument" | "rawData" | "other"
+  tipe?: string
   konten?: string
   referencedInSections?: string[]
 }
@@ -209,7 +209,7 @@ export interface LampiranData {
 }
 
 export interface JudulOpsi {
-  judul: string
+  judul?: string
   keywordsCovered?: string[]
   coverageScore?: number
 }
@@ -225,12 +225,12 @@ export interface JudulData {
 }
 
 export interface OutlineSection {
-  id: string
+  id?: string
   judul?: string
   level?: number
   parentId?: string | null
   estimatedWordCount?: number
-  status?: "complete" | "partial" | "empty"
+  status?: string
 }
 
 export interface OutlineData {
