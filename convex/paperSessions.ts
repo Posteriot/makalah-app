@@ -698,6 +698,12 @@ export const updateStageData = mutation({
     },
     handler: async (ctx, args) => {
         const { session } = await requirePaperSessionOwner(ctx, args.sessionId);
+
+        // Completed state: descriptive throw (preserves caller contract — callers expect throw for invalid state)
+        if (session.currentStage === "completed") {
+            throw new Error("Cannot update stage data in completed state — rewind to a specific stage first");
+        }
+
         if (!STAGE_ORDER.includes(args.stage as PaperStageId)) {
             throw new Error(`Unknown stage: ${args.stage}`);
         }
@@ -1587,7 +1593,10 @@ function isValidRewindTarget(
     currentStage: string,
     targetStage: string
 ): { valid: boolean; error?: string } {
-    const currentIndex = STAGE_ORDER.indexOf(currentStage as PaperStageId);
+    // Handle "completed" as virtual position after all 14 stages
+    const currentIndex = currentStage === "completed"
+        ? STAGE_ORDER.length
+        : STAGE_ORDER.indexOf(currentStage as PaperStageId);
     const targetIndex = STAGE_ORDER.indexOf(targetStage as PaperStageId);
 
     // Unknown stages
@@ -1629,7 +1638,9 @@ function getStagesToInvalidate(
     currentStage: string
 ): string[] {
     const targetIndex = STAGE_ORDER.indexOf(targetStage as PaperStageId);
-    const currentIndex = STAGE_ORDER.indexOf(currentStage as PaperStageId);
+    const currentIndex = currentStage === "completed"
+        ? STAGE_ORDER.length
+        : STAGE_ORDER.indexOf(currentStage as PaperStageId);
 
     if (targetIndex === -1 || currentIndex === -1) return [];
 
@@ -1797,6 +1808,12 @@ export const rewindToStage = mutation({
             createdAt: now,
         });
 
+        // Log large rewinds for observability
+        const invalidatedCount = stagesToInvalidate.length;
+        if (invalidatedCount > 5) {
+            console.info(`[PAPER][rewind] Large rewind: ${currentStage} → ${args.targetStage}, invalidating ${invalidatedCount} stages`);
+        }
+
         // Update session
         await ctx.db.patch(args.sessionId, {
             currentStage: args.targetStage,
@@ -1804,6 +1821,8 @@ export const rewindToStage = mutation({
             stageData: updatedStageData,
             paperMemoryDigest: updatedDigest,
             updatedAt: now,
+            // Clear completion timestamp when rewinding from completed
+            ...(currentStage === "completed" ? { completedAt: undefined } : {}),
         });
 
         // Naskah rebuild hook — atomic with the rewind. If rebuild
