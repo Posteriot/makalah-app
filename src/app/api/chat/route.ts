@@ -2348,48 +2348,35 @@ Aturan:
                     steps: Array<{ toolCalls?: Array<{ toolName: string }> }>;
                     stepNumber: number;
                   }) => {
-                    const prevToolNames = stepNumber > 0
-                        ? (steps[stepNumber - 1]?.toolCalls?.map(tc => tc.toolName) ?? [])
-                        : []
+                    // Use completed steps array for state — NOT paperToolTracker which
+                    // updates during tool execution (after prepareStep already ran).
                     const allPrevToolNames = steps.flatMap(s => s.toolCalls?.map(tc => tc.toolName) ?? [])
-                    const stageDataMap = paperSession?.stageData as Record<string, Record<string, unknown> | undefined> | undefined
-                    const currentStageData = stageDataMap?.[paperStageScope]
-                    const hasExistingArtifact = !!currentStageData?.artifactId
+                    const sawCompile = allPrevToolNames.includes("compileDaftarPustaka")
+                    const sawUpdateStageData = allPrevToolNames.includes("updateStageData")
+                    const sawCreateArtifact = allPrevToolNames.includes("createArtifact")
+                    const sawUpdateArtifact = allPrevToolNames.includes("updateArtifact")
+                    const sawSubmit = allPrevToolNames.includes("submitStageForValidation")
+                    const sawArtifact = sawCreateArtifact || sawUpdateArtifact
 
-                    // compile_then_finalize: compileDaftarPustaka(persist) → updateStageData → createArtifact → submitStageForValidation
-                    if (isCompileThenFinalize && !paperToolTracker.sawCompileDaftarPustakaPersist) {
+                    // compile_then_finalize: compileDaftarPustaka(persist) first
+                    if (isCompileThenFinalize && !sawCompile) {
                         console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} stage=${paperStageScope} → compileDaftarPustaka (compile_then_finalize)`)
                         return { toolChoice: { type: "tool", toolName: "compileDaftarPustaka" } as const }
                     }
 
-                    // Step 0: force updateStageData as first tool (or after compileDaftarPustaka for compile_then_finalize)
-                    if (
-                        !paperToolTracker.sawUpdateStageData
-                        && !hasExistingArtifact
-                        && !paperToolTracker.sawCreateArtifactSuccess
-                    ) {
+                    // Chain: updateStageData → createArtifact → submitStageForValidation
+                    if (!sawUpdateStageData && !sawArtifact) {
                         console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} stage=${paperStageScope} → updateStageData (chain start)`)
                         return { toolChoice: { type: "tool", toolName: "updateStageData" } as const }
                     }
 
-                    // After updateStageData, force createArtifact
-                    if (
-                        paperToolTracker.sawUpdateStageData
-                        && !hasExistingArtifact
-                        && !paperToolTracker.sawCreateArtifactSuccess
-                        && !paperToolTracker.sawUpdateArtifactSuccess
-                    ) {
-                        console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} stage=${paperStageScope} → createArtifact`)
+                    if (sawUpdateStageData && !sawArtifact) {
+                        console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} stage=${paperStageScope} → createArtifact`)
                         return { toolChoice: { type: "tool", toolName: "createArtifact" } as const }
                     }
 
-                    // After createArtifact, force submitStageForValidation
-                    if (
-                        (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess)
-                        && !paperToolTracker.sawSubmitValidationSuccess
-                        && !allPrevToolNames.includes("submitStageForValidation")
-                    ) {
-                        console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} stage=${paperStageScope} → submitStageForValidation`)
+                    if (sawArtifact && !sawSubmit) {
+                        console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} stage=${paperStageScope} → submitStageForValidation`)
                         return { toolChoice: { type: "tool", toolName: "submitStageForValidation" } as const }
                     }
 
