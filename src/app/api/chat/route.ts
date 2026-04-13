@@ -2346,15 +2346,23 @@ Aturan:
                     steps: Array<{ toolCalls?: Array<{ toolName: string }> }>;
                     stepNumber: number;
                   }) => {
-                    if (stepNumber === 0) {
-                        return undefined
-                    }
-
-                    const prevToolNames = steps[stepNumber - 1]?.toolCalls?.map(tc => tc.toolName) ?? []
+                    const prevToolNames = stepNumber > 0
+                        ? (steps[stepNumber - 1]?.toolCalls?.map(tc => tc.toolName) ?? [])
+                        : []
                     const allPrevToolNames = steps.flatMap(s => s.toolCalls?.map(tc => tc.toolName) ?? [])
                     const stageDataMap = paperSession?.stageData as Record<string, Record<string, unknown> | undefined> | undefined
                     const currentStageData = stageDataMap?.[paperStageScope]
                     const hasExistingArtifact = !!currentStageData?.artifactId
+
+                    // Step 0: force updateStageData as first tool in the chain
+                    if (
+                        stepNumber === 0
+                        && !paperToolTracker.sawUpdateStageData
+                        && !hasExistingArtifact
+                    ) {
+                        console.info(`[CHOICE][artifact-enforcer] step=0 stage=${paperStageScope} → updateStageData (chain start)`)
+                        return { toolChoice: { type: "tool", toolName: "updateStageData" } as const }
+                    }
 
                     // Step 1→2: after updateStageData, force createArtifact
                     if (

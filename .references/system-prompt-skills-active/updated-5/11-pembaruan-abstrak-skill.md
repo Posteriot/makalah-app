@@ -68,6 +68,9 @@ Recommended:
 - keywordsBaru — updated keyword list (only if content changes warrant it; otherwise omit to keep original)
 - wordCount — word count of the updated abstract
 
+## Artifact Format
+The updated abstract artifact MUST match the format of the original abstract artifact (Stage 4). If the original abstract has a "Kata Kunci:" section at the end, the updated abstract MUST also include "Kata Kunci:" with the updated keyword list. Preserve the same structural elements — do not drop sections that exist in the original.
+
 ## Guardrails
 - Never rewrite the abstract from scratch — always start from the original and make targeted edits
 - Never fabricate references, data, or findings not present in the approved stages
