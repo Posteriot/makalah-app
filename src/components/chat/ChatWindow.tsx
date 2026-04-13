@@ -618,6 +618,7 @@ export function ChatWindow({
   const pendingRequestStartedAtRef = useRef<number | null>(null)
   const staleStreamingTimeoutRef = useRef<number | null>(null)
   const sourceFocusTimeoutRef = useRef<number | null>(null)
+  const artifactRevealRafRef = useRef<number | null>(null)
   const previousStatusRef = useRef<string>("ready")
   const stoppedManuallyRef = useRef(false)
   const starterPromptLastAttemptAtRef = useRef(new Map<string, number>())
@@ -968,14 +969,29 @@ export function ChatWindow({
     transport,
     onFinish: ({ message }) => {
       const createdArtifacts = extractCreatedArtifacts(message)
-      if (createdArtifacts.length > 0 && onArtifactSelect) {
-        // Auto-open artifact panel dengan artifact terbaru yang dibuat
-        onArtifactSelect(createdArtifacts[createdArtifacts.length - 1].artifactId)
-      }
       // Optimistic: bridge Convex subscription latency so approval panel
-      // appears in the same render cycle as artifact panel opening
+      // appears immediately when turn finishes (before panel layout shift)
       if (isPaperMode && hasSubmitForValidation(message)) {
         setOptimisticPendingValidation(true)
+      }
+      if (createdArtifacts.length > 0 && onArtifactSelect) {
+        const targetArtifactId = createdArtifacts[createdArtifacts.length - 1].artifactId
+        if (process.env.NODE_ENV !== "production") {
+          console.info("[ARTIFACT-REVEAL] onFinish — deferring panel open", {
+            ts: Date.now(),
+            artifactId: targetArtifactId,
+            artifactCount: createdArtifacts.length,
+          })
+        }
+        // Double rAF: first rAF runs before next repaint, second rAF
+        // runs after that repaint completes — guaranteeing the final
+        // text has painted before the panel layout shift occurs
+        artifactRevealRafRef.current = requestAnimationFrame(() => {
+          artifactRevealRafRef.current = requestAnimationFrame(() => {
+            artifactRevealRafRef.current = null
+            onArtifactSelect(targetArtifactId)
+          })
+        })
       }
     },
     onError: (err) => {
@@ -1844,6 +1860,7 @@ export function ChatWindow({
   useEffect(() => {
     return () => {
       if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current)
+      if (artifactRevealRafRef.current !== null) cancelAnimationFrame(artifactRevealRafRef.current)
     }
   }, [])
 

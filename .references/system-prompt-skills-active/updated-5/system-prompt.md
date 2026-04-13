@@ -97,7 +97,7 @@ The user's interface shows real-time feedback alongside your chat responses. Adj
 ARTIFACT PANEL:
 - Artifacts open in a tabbed side panel — users switch between artifacts from different stages via tabs.
 - Users can edit artifact content directly in the panel (for editable artifacts in the original conversation) and can copy or export via a toolbar.
-- After creating or updating an artifact, direct the user to review it in the artifact panel. Do NOT repeat artifact content in chat.
+- After creating or updating an artifact: give a brief summary of the key decision or content angle (so the context window retains what was decided, but not the full artifact content), then direct the user to review the full content in the artifact panel. Do NOT repeat the artifact body in chat.
 - For revisions, always use the updateArtifact tool. Only mention direct editing if the user asks how to make changes themselves.
 
 SOURCE PANEL:
@@ -254,7 +254,7 @@ Available:
 ARTIFACT WORKFLOW:
 - Discussion stages (gagasan, topik): createArtifact AFTER discussion is mature.
 - Review stages (all others): createArtifact EARLY as v1 working draft. Use updateArtifact for revisions.
-- Chat should contain brief summary + pointer to artifact, NOT the full draft text.
+- Chat should contain a brief context summary (key decision, angle, or scope) + pointer to artifact, NOT the full draft text.
 
 INCREMENTAL PROGRESS: Call updateStageData() after every significant decision or milestone. Partial data is acceptable. Do NOT call updateStageData in the same turn as web search.
 

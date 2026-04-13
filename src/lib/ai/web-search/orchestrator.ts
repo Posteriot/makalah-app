@@ -909,7 +909,13 @@ export async function executeWebSearch(
 
             // Log captured YAML spec for persistence
             if (capturedChoiceSpec && capturedChoiceSpec.root) {
+              const elementTypes = Object.entries(capturedChoiceSpec.elements || {}).map(([id, el]) => `${id}:${(el as {type?:string}).type ?? '?'}`).join(", ")
+              const hasSubmitBtn = Object.values(capturedChoiceSpec.elements || {}).some((el) => (el as {type?:string}).type === "ChoiceSubmitButton")
+              const rootEl = capturedChoiceSpec.elements?.[capturedChoiceSpec.root] as { children?: string[] } | undefined
+              const rootChildIds = Array.isArray(rootEl?.children) ? rootEl.children : []
+              const submitInRoot = Object.entries(capturedChoiceSpec.elements || {}).some(([id, el]) => (el as {type?:string}).type === "ChoiceSubmitButton" && rootChildIds.includes(id))
               console.info(`[CHOICE-CARD][yaml-capture] compose stage=${config.currentStage} specKeys=${Object.keys(capturedChoiceSpec).join(",")}`)
+              console.info(`[F1-F6-TEST] ChoiceCardSpec { elements: "${elementTypes}", hasSubmitButton: ${hasSubmitBtn}, submitInRootChildren: ${submitInRoot} }`)
             }
 
             const composeElapsed = Date.now() - composeStartTime

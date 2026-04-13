@@ -623,46 +623,44 @@ export function MessageBubble({
     const choiceBlockPayload = useMemo<JsonRendererChoiceRenderPayload | null>(() => {
         if (!choiceSpec) return null
 
-        // Safety net: if model generated ChoiceOptionButtons but no ChoiceSubmitButton, inject one
+        // Safety net: ensure ChoiceSubmitButton exists AND is reachable in root.children
         const elements = choiceSpec.elements ?? {}
         const choiceElements = Object.values(elements).filter(
             (el) => !!el && typeof el === "object"
         ) as Array<{ type?: string; props?: Record<string, unknown>; children?: string[] }>
         const hasOptionButtons = choiceElements.some((el) => el.type === "ChoiceOptionButton")
-        const hasSubmitButton = choiceElements.some((el) => el.type === "ChoiceSubmitButton")
+        const submitEntry = Object.entries(elements).find(
+            ([, el]) => !!el && typeof el === "object" && (el as { type?: string }).type === "ChoiceSubmitButton"
+        )
+        const rootElement = elements[choiceSpec.root] as { children?: string[] } | undefined
+        const rootChildren = Array.isArray(rootElement?.children) ? rootElement.children : []
+        // Element exists AND is listed in root.children (not orphaned)
+        const hasReachableSubmitButton = !!submitEntry && rootChildren.includes(submitEntry[0])
 
         let normalizedSpec = choiceSpec
 
-        // Safety net 2: if ChoiceSubmitButton exists but has empty/missing label, fix it
-        if (hasSubmitButton) {
-            const submitEntry = Object.entries(elements).find(
-                ([, el]) => !!el && typeof el === "object" && (el as { type?: string }).type === "ChoiceSubmitButton"
-            )
-            if (submitEntry) {
-                const [submitKey, submitEl] = submitEntry
-                const submitProps = (submitEl as { props?: Record<string, unknown> }).props ?? {}
-                if (!submitProps.label || (typeof submitProps.label === "string" && submitProps.label.trim().length === 0)) {
-                    normalizedSpec = {
-                        ...choiceSpec,
-                        elements: {
-                            ...elements,
-                            [submitKey]: {
-                                ...submitEl,
-                                props: { ...submitProps, label: "Lanjutkan" },
-                            },
+        // Safety net 2: if ChoiceSubmitButton exists and reachable but has empty/missing label, fix it
+        if (hasReachableSubmitButton && submitEntry) {
+            const [submitKey, submitEl] = submitEntry
+            const submitProps = (submitEl as { props?: Record<string, unknown> }).props ?? {}
+            if (!submitProps.label || (typeof submitProps.label === "string" && submitProps.label.trim().length === 0)) {
+                normalizedSpec = {
+                    ...choiceSpec,
+                    elements: {
+                        ...elements,
+                        [submitKey]: {
+                            ...submitEl,
+                            props: { ...submitProps, label: "Lanjutkan" },
                         },
-                    } as JsonRendererChoiceSpec
-                    console.warn("[F1-F6-TEST] ChoiceSubmitButton had empty label — set to 'Lanjutkan'")
-                }
+                    },
+                } as JsonRendererChoiceSpec
+                console.warn("[F1-F6-TEST] ChoiceSubmitButton had empty label — set to 'Lanjutkan'")
             }
         }
 
-        if (hasOptionButtons && !hasSubmitButton) {
+        if (hasOptionButtons && !hasReachableSubmitButton) {
             const submitId = "injected-submit-btn"
-            const rootElement = elements[choiceSpec.root]
-            const rootChildren = Array.isArray((rootElement as { children?: string[] })?.children)
-                ? [...(rootElement as { children: string[] }).children, submitId]
-                : [submitId]
+            const updatedRootChildren = [...rootChildren, submitId]
 
             normalizedSpec = {
                 ...choiceSpec,
@@ -670,7 +668,7 @@ export function MessageBubble({
                     ...elements,
                     [choiceSpec.root]: {
                         ...rootElement,
-                        children: rootChildren,
+                        children: updatedRootChildren,
                     },
                     [submitId]: {
                         type: "ChoiceSubmitButton",
@@ -688,7 +686,8 @@ export function MessageBubble({
                     },
                 },
             } as JsonRendererChoiceSpec
-            console.warn("[F1-F6-TEST] ChoiceSubmitButton missing from model YAML — injected fallback")
+            const wasOrphan = !!submitEntry && !rootChildren.includes(submitEntry[0])
+            console.warn(`[F1-F6-TEST] ChoiceSubmitButton ${wasOrphan ? "orphaned in spec" : "missing from model YAML"} — injected fallback`)
         }
 
         const specWithState = normalizedSpec as JsonRendererChoiceSpec & {
