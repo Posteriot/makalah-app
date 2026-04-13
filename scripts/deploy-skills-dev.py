@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Deploy stage skills + system prompt from updated-5 to dev DB (wary-ferret-59)."""
+"""Deploy stage skills + system prompt from updated-6 to dev DB (wary-ferret-59)."""
 import json
 import subprocess
 import sys
 import os
 
 ADMIN_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48"
-CHANGE_NOTE = "updated-5: stage-specific post-artifact brief summary instructions"
-SRC_DIR = ".references/system-prompt-skills-active/updated-5"
+CHANGE_NOTE = "updated-6: all-sessions-are-paper-sessions — remove startPaperSession, auto-create sessions, navigable completed state"
+SRC_DIR = ".references/system-prompt-skills-active/updated-6"
 
 SKILLS = [
     ("01-gagasan-skill.md", "gagasan-skill"),
