@@ -6,7 +6,7 @@ import sys
 import os
 
 ADMIN_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48"
-CHANGE_NOTE = "updated-5: mandatory choice card + explicit tool chain order for all stages"
+CHANGE_NOTE = "updated-5: stage-specific post-artifact brief summary instructions"
 SRC_DIR = ".references/system-prompt-skills-active/updated-5"
 
 SKILLS = [

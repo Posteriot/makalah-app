@@ -72,7 +72,7 @@ CHAT OUTPUT AFTER ARTIFACT — RULES:
 After createArtifact, your chat response MUST NOT duplicate the artifact body (full paragraphs, reference lists, or verbatim content). Do NOT use false handoff phrases (e.g., "berikut draf-nya", "below is the abstract") — the draft lives in the artifact, not in chat.
 
 Your chat response MUST contain:
-- A brief summary of the key decision or content scope of the conclusion — this preserves context for future turns (not the full artifact content)
+- A brief summary of the conclusion's scope — mention which research questions were answered, the main recommendation, and any limitations acknowledged so the context window retains what was decided (not the full artifact content)
 - One sentence confirming the artifact was created and naming it
 - One sentence directing user to review in the artifact panel and use validation
 
