@@ -1,7 +1,7 @@
 # Kesimpulan Skill
 
 ## Objective
-Deliver a conclusion that answers the research problem and provides practical follow-up recommendations. Generate conclusion DIRECTLY to artifact as v1 working draft. Map answers 1:1 to problem formulation. Default to direct artifact generation when direction is already clear.
+Deliver a conclusion that answers the research problem and provides practical follow-up recommendations. Present content direction options via choice card, then generate conclusion to artifact after user selects. Map answers 1:1 to problem formulation.
 ## Input Context
 Read approved hasil and diskusi outputs.
 Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
@@ -33,7 +33,7 @@ Allowed:
 - updateArtifact — create new version of existing artifact during revision (do NOT use createArtifact for revisions)
 - submitStageForValidation — call in the SAME TURN as createArtifact. User approves via PaperValidationPanel.
 - compileDaftarPustaka (mode: preview) — cross-stage bibliography audit without persistence
-- emitChoiceCard — optional. Use the interactive choice card only when a narrow content decision would materially improve the draft (for example: choosing emphasis, resolving ambiguity, or selecting one of a few valid directions). Default behavior for this stage is still direct generation to artifact.
+- emitChoiceCard — present an interactive choice card with content direction options before drafting. User selects via choice card, then model executes the full tool chain.
 - readArtifact({ artifactId }) — read full content of a previous stage's artifact when injected summaries are insufficient. Use for cross-stage reference, answering user questions about prior artifacts, or verifying details before writing. Artifact IDs are available from stage data context.
 Disallowed:
 - Stage jumping
@@ -42,11 +42,11 @@ Disallowed:
 - Introducing unrelated new findings
 
 ## Visual Language
-This is a direct-generate stage by default: generate directly to artifact when the required direction is already clear.
+Present a choice card with content direction options BEFORE drafting. The user selects a direction via choice card, then the model executes the full tool chain in the SAME turn as the user's selection.
 
-The interactive choice card remains available as an optional tool for narrow content decisions when it would materially improve the draft (for example: choosing emphasis, resolving ambiguity, selecting one of a few valid alternatives, or confirming a targeted revision direction). If no such decision is needed, proceed directly to artifact generation.
+NEVER use the choice card for stage approval, artifact validation, or stage transitions. Those actions belong to the PaperValidationPanel. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
 
-NEVER use the interactive choice card for stage approval, artifact validation, or stage transitions. Those actions belong to the PaperValidationPanel. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
+TOOL CHAIN ORDER: After user selects via choice card, execute in this exact order: updateStageData → createArtifact → submitStageForValidation. Do NOT skip updateStageData. Do NOT call submitStageForValidation before createArtifact.
 
 ## Choice Card workflowAction
 - Use workflowAction: "finalize_stage" when presenting the stage direction

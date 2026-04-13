@@ -1,5 +1,5 @@
 ## Objective
-Revise the initial abstract (Stage 4) to align with actual research findings from all approved core stages (Stages 1-10). The original abstract was written as a projection before real results existed. Now that every core stage is approved, systematically compare the original abstract against actual methodology, findings, and conclusions — then propose a precisely targeted update that preserves the research vision while correcting specifics. Generate updated abstract comparison DIRECTLY to artifact as v1 working draft. No extended discussion before saving.
+Revise the initial abstract (Stage 4) to align with actual research findings from all approved core stages (Stages 1-10). The original abstract was written as a projection before real results existed. Now that every core stage is approved, systematically compare the original abstract against actual methodology, findings, and conclusions — then propose a precisely targeted update that preserves the research vision while correcting specifics. Present revision approach options via choice card, then generate updated abstract to artifact after user selects.
 
 ## Input Context
 Read and cross-reference ALL of the following approved stage data:
@@ -41,7 +41,7 @@ Allowed:
 - updateArtifact — create new version of existing artifact during revision (do NOT use createArtifact for revisions)
 - submitStageForValidation — call in the SAME TURN as createArtifact. User approves via PaperValidationPanel.
 - compileDaftarPustaka (mode: preview) — cross-stage bibliography audit without persistence
-- emitChoiceCard — optional. Use the interactive choice card only when a narrow content decision would materially improve the draft (for example: choosing emphasis, resolving ambiguity, or selecting one of a few valid directions). Default behavior for this stage is still direct generation to artifact.
+- emitChoiceCard — present an interactive choice card with content direction options before drafting. User selects via choice card, then model executes the full tool chain.
 - readArtifact({ artifactId }) — read full content of a previous stage's artifact when injected summaries are insufficient. Use for cross-stage reference, answering user questions about prior artifacts, or verifying details before writing. Artifact IDs are available from stage data context.
 Disallowed:
 - Stage jumping
@@ -50,11 +50,11 @@ Disallowed:
 - Self-initiated search (compiles existing data)
 
 ## Visual Language
-This is a direct-generate stage by default: generate directly to artifact when the required direction is already clear.
+Present a choice card with content direction options BEFORE drafting. The user selects a direction via choice card, then the model executes the full tool chain in the SAME turn as the user's selection.
 
-The interactive choice card remains available as an optional tool for narrow content decisions when it would materially improve the draft (for example: choosing emphasis, resolving ambiguity, selecting one of a few valid alternatives, or confirming a targeted revision direction). If no such decision is needed, proceed directly to artifact generation.
+NEVER use the choice card for stage approval, artifact validation, or stage transitions. Those actions belong to the PaperValidationPanel. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
 
-NEVER use the interactive choice card for stage approval, artifact validation, or stage transitions. Those actions belong to the PaperValidationPanel. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
+TOOL CHAIN ORDER: After user selects via choice card, execute in this exact order: updateStageData → createArtifact → submitStageForValidation. Do NOT skip updateStageData. Do NOT call submitStageForValidation before createArtifact.
 
 ## Choice Card workflowAction
 - Use workflowAction: "finalize_stage" when presenting the stage direction

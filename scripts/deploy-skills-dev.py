@@ -6,7 +6,7 @@ import sys
 import os
 
 ADMIN_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48"
-CHANGE_NOTE = "updated-5: post-artifact chat must include brief context summary (not just pointer)"
+CHANGE_NOTE = "updated-5: mandatory choice card + explicit tool chain order for all stages"
 SRC_DIR = ".references/system-prompt-skills-active/updated-5"
 
 SKILLS = [

@@ -39,7 +39,7 @@ Allowed:
 - searchAcrossSources({ query }) — semantic search across all stored sources. Use to find cross-reference evidence.
   EVIDENCE BREADTH: Report retrieved evidence breadth honestly. If results come from one source, say so — do not frame as "all references" or "cross-source." Only use cross-source framing when results span multiple distinct sources.
 - submitStageForValidation — call in the SAME TURN as createArtifact. User approves via PaperValidationPanel.
-- emitChoiceCard — optional. Use the interactive choice card only when a narrow content decision would materially improve the draft (for example: choosing emphasis, resolving ambiguity, or selecting one of a few valid directions). Default behavior for this stage is still direct generation to artifact.
+- emitChoiceCard — present an interactive choice card with content direction options before drafting. User selects via choice card, then model executes the full tool chain.
 - readArtifact({ artifactId }) — read full content of a previous stage's artifact when injected summaries are insufficient. Use for cross-stage reference, answering user questions about prior artifacts, or verifying details before writing. Artifact IDs are available from stage data context.
 Disallowed:
 - Placeholder bibliography entries
@@ -48,11 +48,11 @@ Disallowed:
 - Calling function tools in the same turn as web search
 
 ## Visual Language
-This is a direct-generate stage by default: generate directly to artifact when the required direction is already clear.
+Present a choice card with content direction options BEFORE drafting. The user selects a direction via choice card, then the model executes the full tool chain in the SAME turn as the user's selection.
 
-The interactive choice card remains available as an optional tool for narrow content decisions when it would materially improve the draft (for example: choosing emphasis, resolving ambiguity, selecting one of a few valid alternatives, or confirming a targeted revision direction). If no such decision is needed, proceed directly to artifact generation.
+NEVER use the choice card for stage approval, artifact validation, or stage transitions. Those actions belong to the PaperValidationPanel. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
 
-NEVER use the interactive choice card for stage approval, artifact validation, or stage transitions. Those actions belong to the PaperValidationPanel. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
+TOOL CHAIN ORDER: After user selects via choice card, execute in this exact order: updateStageData → createArtifact → submitStageForValidation. Do NOT skip updateStageData. Do NOT call submitStageForValidation before createArtifact.
 
 ## Choice Card workflowAction
 - Use workflowAction: "compile_then_finalize" when presenting the bibliography compilation card

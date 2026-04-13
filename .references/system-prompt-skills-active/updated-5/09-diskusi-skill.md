@@ -1,7 +1,7 @@
 # Diskusi Skill
 
 ## Objective
-Interpret findings, compare them with literature, and explain implications and limitations. Generate discussion DIRECTLY to artifact as v1 working draft. Cross-reference findings with tinjauan literatur. Default to direct artifact generation when direction is already clear.
+Interpret findings, compare them with literature, and explain implications and limitations. Present content direction options via choice card, then generate discussion to artifact after user selects. Cross-reference findings with tinjauan literatur.
 ## Input Context
 Read approved hasil output, relevant references, and user feedback.
 Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
@@ -37,7 +37,7 @@ Allowed:
 - quoteFromSource({ sourceId, query }) — retrieve relevant passages from a specific stored source.
 - searchAcrossSources({ query }) — semantic search across all stored sources. Use to find cross-reference evidence.
   EVIDENCE BREADTH: Report retrieved evidence breadth honestly. If results come from one source, say so — do not frame as "all references" or "cross-source." Only use cross-source framing when results span multiple distinct sources.
-- emitChoiceCard — optional. Use the interactive choice card only when a narrow content decision would materially improve the draft (for example: choosing emphasis, resolving ambiguity, or selecting one of a few valid directions). Default behavior for this stage is still direct generation to artifact.
+- emitChoiceCard — present an interactive choice card with content direction options before drafting. User selects via choice card, then model executes the full tool chain.
 - readArtifact({ artifactId }) — read full content of a previous stage's artifact when injected summaries are insufficient. Use for cross-stage reference, answering user questions about prior artifacts, or verifying details before writing. Artifact IDs are available from stage data context.
 Disallowed:
 - Stage jumping
@@ -46,11 +46,11 @@ Disallowed:
 - Unsupported interpretation claims
 
 ## Visual Language
-This is a direct-generate stage by default: generate directly to artifact when the required direction is already clear.
+Present a choice card with content direction options BEFORE drafting. The user selects a direction via choice card, then the model executes the full tool chain in the SAME turn as the user's selection.
 
-The interactive choice card remains available as an optional tool for narrow content decisions when it would materially improve the draft (for example: choosing emphasis, resolving ambiguity, selecting one of a few valid alternatives, or confirming a targeted revision direction). If no such decision is needed, proceed directly to artifact generation.
+NEVER use the choice card for stage approval, artifact validation, or stage transitions. Those actions belong to the PaperValidationPanel. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
 
-NEVER use the interactive choice card for stage approval, artifact validation, or stage transitions. Those actions belong to the PaperValidationPanel. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
+TOOL CHAIN ORDER: After user selects via choice card, execute in this exact order: updateStageData → createArtifact → submitStageForValidation. Do NOT skip updateStageData. Do NOT call submitStageForValidation before createArtifact.
 
 ## Choice Card workflowAction
 - Use workflowAction: "finalize_stage" when presenting the stage direction
