@@ -33,7 +33,6 @@ Allowed:
 - updateArtifact — create new version of existing artifact during revision (do NOT use createArtifact for revisions)
 - submitStageForValidation — ONLY after user confirms topic direction via choice card
 - compileDaftarPustaka (mode: preview) — cross-stage bibliography audit without persistence
-- emitChoiceCard — present interactive choice card to guide the user (see Visual Language below)
 - readArtifact({ artifactId }) — read full content of a previous stage's artifact when injected summaries are insufficient. Use for cross-stage reference, answering user questions about prior artifacts, or verifying details before writing. Artifact IDs are available from stage data context.
 Disallowed:
 - Stage jumping

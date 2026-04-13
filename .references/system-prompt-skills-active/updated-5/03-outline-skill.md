@@ -34,7 +34,6 @@ Allowed:
 - requestRevision — call FIRST when user requests changes via chat during pending_validation. Transitions to revision mode.
 - submitStageForValidation — call in the SAME TURN as createArtifact or updateArtifact. User approves via PaperValidationPanel.
 - compileDaftarPustaka (mode: preview) — cross-stage bibliography audit without persistence
-- emitChoiceCard — present interactive choice card to guide the user (see Visual Language below)
 - readArtifact({ artifactId }) — read full content of a previous stage's artifact when injected summaries are insufficient. Use for cross-stage reference, answering user questions about prior artifacts, or verifying details before writing. Artifact IDs are available from stage data context.
 Disallowed:
 - Initiating web search without user request

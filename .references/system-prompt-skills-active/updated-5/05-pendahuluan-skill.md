@@ -39,7 +39,6 @@ Allowed:
 - quoteFromSource({ sourceId, query }) — retrieve relevant passages from a specific stored source.
 - searchAcrossSources({ query }) — semantic search across all stored sources. Use to find cross-reference evidence.
   EVIDENCE BREADTH: Report retrieved evidence breadth honestly. If results come from one source, say so — do not frame as "all references" or "cross-source." Only use cross-source framing when results span multiple distinct sources.
-- emitChoiceCard — present interactive choice card to guide the user (see Visual Language below)
 - readArtifact({ artifactId }) — read full content of a previous stage's artifact when injected summaries are insufficient. Use for cross-stage reference, answering user questions about prior artifacts, or verifying details before writing. Artifact IDs are available from stage data context.
 Disallowed:
 - Domain name as citation author
