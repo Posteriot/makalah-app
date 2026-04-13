@@ -1223,6 +1223,8 @@ export const approveStage = mutation({
         // never drift from the validated stageData.
         await rebuildNaskahSnapshot(ctx, args.sessionId);
 
+        console.info(`[PAPER][stage-transition] ${currentStage} → ${nextStage} (${nextStage === "completed" ? "session completed" : "drafting"})`);
+
         return {
             previousStage: currentStage,
             nextStage,

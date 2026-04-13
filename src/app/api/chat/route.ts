@@ -371,6 +371,7 @@ export async function POST(req: Request) {
                 ? (paperSession.currentStage as PaperStageId)
                 : undefined
         const isDraftingStage = !!paperStageScope && paperSession?.stageStatus === "drafting"
+        console.info(`[PAPER][session-resolve] stage=${paperSession?.currentStage ?? "none"} status=${paperSession?.stageStatus ?? "none"} hasPrompt=${!!paperModePrompt} skillFallback=${skillResolverFallback} stageInstructionSource=${paperModeContext.stageInstructionSource}`)
         const isHasilPostChoice = choiceInteractionEvent?.stage === "hasil"
         const paperToolTracker = createPaperToolTracker()
         const paperTurnObservability: {
