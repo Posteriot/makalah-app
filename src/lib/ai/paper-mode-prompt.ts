@@ -1,4 +1,4 @@
-import { fetchQuery } from "convex/nextjs";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { STAGE_ORDER, getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants";
@@ -79,6 +79,7 @@ export type PaperModePromptContext = {
 
 export const getPaperModeSystemPrompt = async (
     conversationId: Id<"conversations">,
+    userId: Id<"users">,
     convexToken?: string,
     requestId?: string
 ): Promise<PaperModePromptContext> => {
@@ -94,22 +95,34 @@ export const getPaperModeSystemPrompt = async (
     try {
         const convexOptions = convexToken ? { token: convexToken } : undefined;
         const sessionStart = Date.now();
-        const session = await fetchQuery(
+        let session = await fetchQuery(
             api.paperSessions.getByConversation,
             { conversationId },
             convexOptions
         );
         logPaperPromptLatency("paperPrompt.getSession", sessionStart, { found: !!session });
+
+        // Lazy migration: ensure paper session exists for legacy conversations
+        // TODO(2026-05-15): Remove after all active conversations have been migrated
         if (!session) {
-            logPaperPromptLatency("paperPrompt.total", paperPromptStart, {
-                hasPrompt: false,
-                reason: "no_session",
-            });
-            return {
-                prompt: "",
-                skillResolverFallback: false,
-                stageInstructionSource: "none",
-            };
+            console.info(`[PAPER][lazy-migration] Creating paper session for legacy conversation ${conversationId}`);
+            await fetchMutation(
+                api.paperSessions.ensurePaperSessionExists,
+                { userId, conversationId },
+                convexOptions
+            );
+            session = await fetchQuery(
+                api.paperSessions.getByConversation,
+                { conversationId },
+                convexOptions
+            );
+            logPaperPromptLatency("paperPrompt.lazyMigration", sessionStart, { created: !!session });
+
+            if (!session) {
+                // Should not happen — but guard against mutation failure
+                console.error(`[PAPER][lazy-migration] Failed to create session for ${conversationId}`);
+                return { prompt: "", skillResolverFallback: false, stageInstructionSource: "none" };
+            }
         }
 
         const stage = session.currentStage as PaperStageId | "completed";

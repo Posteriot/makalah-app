@@ -355,6 +355,7 @@ export async function POST(req: Request) {
         // Task Group 3: Fetch paper mode system prompt if paper session exists
         const paperModeContext = await getPaperModeSystemPrompt(
             currentConversationId as Id<"conversations">,
+            userId as Id<"users">,
             convexToken,
             requestId
         )
