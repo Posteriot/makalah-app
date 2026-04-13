@@ -11,7 +11,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants";
+import { STAGE_ORDER, getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants";
 import { Undo, WarningTriangle } from "iconoir-react";
 
 interface RewindConfirmationDialogProps {
@@ -36,6 +36,12 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
     const targetLabel = getStageLabel(targetStage);
     const currentLabel = getStageLabel(currentStage as PaperStageId);
 
+    const targetIndex = STAGE_ORDER.indexOf(targetStage);
+    const currentIndex = currentStage === "completed"
+        ? STAGE_ORDER.length
+        : STAGE_ORDER.indexOf(currentStage as PaperStageId);
+    const invalidatedCount = currentIndex - targetIndex;
+
     const handleConfirm = () => {
         onConfirm();
     };
@@ -56,7 +62,11 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
                             <div className="chat-rewind-comment-box flex items-start gap-2 p-3 rounded-md">
                                 <WarningTriangle className="h-4 w-4 text-[var(--chat-foreground)] shrink-0" />
                                 <div className="text-left text-xs leading-relaxed text-[var(--chat-foreground)]">
-                                    Semua artifact dan keputusan dari tahap {targetLabel} sampai {currentLabel} akan ditandai sebagai <em>invalidated</em> dan perlu direvisi ulang. Progres perlu divalidasi ulang setelah revisi.
+                                    {invalidatedCount >= STAGE_ORDER.length ? (
+                                        <>Seluruh baseline makalah ({invalidatedCount} tahap) akan ditandai <em>invalidated</em> dan perlu direvisi ulang dari awal.</>
+                                    ) : (
+                                        <>{invalidatedCount} tahap (dari {targetLabel} sampai {currentLabel}) akan ditandai <em>invalidated</em> dan perlu divalidasi ulang setelah revisi.</>
+                                    )}
                                 </div>
                             </div>
                         </div>
