@@ -544,7 +544,7 @@ export default defineSchema({
         angle: v.optional(v.string()),
         novelty: v.optional(v.string()),
         referensiAwal: v.optional(v.array(v.object({
-          title: v.string(),
+          title: v.optional(v.string()),
           authors: v.optional(v.string()),
           year: v.optional(v.number()),
           url: v.optional(v.string()),
@@ -567,7 +567,7 @@ export default defineSchema({
         argumentasiKebaruan: v.optional(v.string()),
         researchGap: v.optional(v.string()), // Gap spesifik yang akan diisi
         referensiPendukung: v.optional(v.array(v.object({
-          title: v.string(),
+          title: v.optional(v.string()),
           authors: v.optional(v.string()),
           year: v.optional(v.number()),
           url: v.optional(v.string()),

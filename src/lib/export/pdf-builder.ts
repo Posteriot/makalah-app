@@ -622,13 +622,7 @@ function buildHasilSection(
 
   if (hasil.metodePenyajian) {
     writeHeading2(doc, "4.3 Metode Penyajian")
-    const metode =
-      hasil.metodePenyajian === "narrative"
-        ? "Naratif"
-        : hasil.metodePenyajian === "tabular"
-          ? "Tabular"
-          : "Mixed"
-    writeParagraph(doc, `Metode penyajian hasil: ${metode}.`)
+    writeParagraph(doc, `Metode penyajian hasil: ${hasil.metodePenyajian}.`)
   }
 }
 
@@ -775,7 +769,7 @@ function buildDaftarPustakaSection(
  * Format reference entry jika fullReference tidak tersedia.
  */
 function formatReference(entry: {
-  title: string
+  title?: string
   authors?: string
   year?: number
   url?: string
@@ -791,7 +785,7 @@ function formatReference(entry: {
     parts.push(`(${entry.year}).`)
   }
 
-  parts.push(entry.title)
+  parts.push(entry.title ?? "Untitled")
 
   if (entry.doi) {
     parts.push(`https://doi.org/${entry.doi}`)

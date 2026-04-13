@@ -33,7 +33,7 @@ export const GagasanData = v.object({
     angle: v.optional(v.string()),
     novelty: v.optional(v.string()),
     referensiAwal: v.optional(v.array(v.object({
-        title: v.string(),
+        title: v.optional(v.string()),
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),
@@ -52,7 +52,7 @@ export const TopikData = v.object({
     argumentasiKebaruan: v.optional(v.string()),
     researchGap: v.optional(v.string()), // Gap spesifik yang akan diisi
     referensiPendukung: v.optional(v.array(v.object({
-        title: v.string(),
+        title: v.optional(v.string()),
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),
@@ -196,7 +196,7 @@ export const DaftarPustakaData = v.object({
     ...legacyRingkasanFields,
     // Array of reference entries - compiled from all previous stages
     entries: v.optional(v.array(v.object({
-        title: v.string(), // Required - identifier for dedup
+        title: v.optional(v.string()), // identifier for dedup
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),

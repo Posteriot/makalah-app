@@ -1,5 +1,5 @@
 export interface ReferensiAwal {
-  title: string
+  title?: string
   authors?: string
   year?: number
   url?: string
@@ -24,7 +24,7 @@ export interface GagasanData {
 }
 
 export interface ReferensiPendukung {
-  title: string
+  title?: string
   authors?: string
   year?: number
   url?: string
@@ -168,7 +168,7 @@ export interface PembaruanAbstrakData {
 
 // Phase 6: Finalization
 export interface DaftarPustakaEntry {
-  title: string
+  title?: string
   authors?: string
   year?: number
   url?: string

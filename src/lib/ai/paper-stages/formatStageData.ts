@@ -527,7 +527,7 @@ function formatLampiranData(data: LampiranData, isCurrentStage: boolean, summary
         const itemsToShow = summaryMode ? data.items.slice(0, 3) : data.items;
         itemsToShow.forEach((item) => {
             const tipeStr = item.tipe ? ` (${item.tipe})` : "";
-            output += `Appendix ${item.label}: ${item.judul || "Untitled"}${tipeStr}\n`;
+            output += `Appendix ${item.label ?? "?"}: ${item.judul || "Untitled"}${tipeStr}\n`;
 
             if (!summaryMode && item.referencedInSections && item.referencedInSections.length > 0) {
                 output += `  -> Referenced in: ${item.referencedInSections.join(", ")}\n`;
@@ -568,8 +568,9 @@ function formatJudulData(data: JudulData, isCurrentStage: boolean, summaryMode =
             const coverageStr = opsi.coverageScore !== undefined
                 ? ` (coverage: ${Math.round(normalizePercentage(opsi.coverageScore))}%)`
                 : "";
-            const selected = data.judulTerpilih === opsi.judul ? " [SELECTED]" : "";
-            output += `  ${idx + 1}. ${opsi.judul}${coverageStr}${selected}\n`;
+            const title = opsi.judul ?? "Untitled"
+            const selected = data.judulTerpilih === title ? " [SELECTED]" : "";
+            output += `  ${idx + 1}. ${title}${coverageStr}${selected}\n`;
         });
     } else if (!data.judulTerpilih) {
         output += `Title not yet selected\n`;
@@ -613,7 +614,7 @@ function formatOutlineData(data: OutlineData, isCurrentStage: boolean, summaryMo
                 ? ` (~${section.estimatedWordCount} words)`
                 : "";
 
-            output += `${indent}${statusIcon} ${section.judul || section.id}${wordCount}\n`;
+            output += `${indent}${statusIcon} ${section.judul || section.id || "Section"}${wordCount}\n`;
         });
 
         if (summaryMode && data.sections.length > 10) {
@@ -656,7 +657,7 @@ function formatOutlineChecklist(
         const statusIcon = section.status === "complete" ? "[OK]"
             : section.status === "partial" ? "[~]"
             : "[_]";
-        output += `${indent}${statusIcon} ${section.judul || section.id}\n`;
+        output += `${indent}${statusIcon} ${section.judul || section.id || "Section"}\n`;
     });
 
     // Show indicator if content was truncated
