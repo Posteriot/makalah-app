@@ -180,12 +180,38 @@ export const getPaperModeSystemPrompt = async (
         // ── Extract results with graceful fallbacks ──
 
         // Stage instructions: critical — if failed, use fallback
-        const stageInstructions = stageInstructionsResult.status === "fulfilled"
+        let stageInstructions = stageInstructionsResult.status === "fulfilled"
             ? stageInstructionsResult.value.instructions
             : (() => {
                 console.error("Error resolving stage instructions:", (stageInstructionsResult as PromiseRejectedResult).reason);
                 return fallbackStageInstructions;
             })();
+
+        // Override with unified completed-state instructions
+        if (stage === "completed") {
+            stageInstructions = `
+COMPLETED SESSION — ALL 14 STAGES APPROVED
+═══════════════════════════════════════════
+
+Status: All stages validated and approved. Paper is complete.
+
+YOUR ROLE NOW:
+- Answer questions about any part of the paper
+- Discuss improvements, alternative approaches, or next steps
+- If user wants to REVISE a specific stage, tell them to click that stage in the progress timeline above the chat
+- You CANNOT modify stage data or create artifacts in completed state — user must rewind first via the timeline UI
+
+DO NOT:
+- Call updateStageData (will throw — session is completed)
+- Call createArtifact or submitStageForValidation
+- Output a choice card
+
+DO:
+- Respond naturally to any question about the paper
+- Reference approved content from any stage when relevant
+- Suggest specific stage names when user describes what they want to change (e.g. "kalau mau ubah bagian pendahuluan, klik tahap Pendahuluan di timeline atas")
+`;
+        }
         const stageInstructionSource = stageInstructionsResult.status === "fulfilled"
             ? stageInstructionsResult.value.source
             : "fallback";
