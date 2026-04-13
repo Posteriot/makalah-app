@@ -877,6 +877,12 @@ export function MessageBubble({
     const showUnifiedCard = isAssistant && (
         taskSummary !== null || shouldShowProcessIndicators
     )
+
+    // Observability: log UnifiedProcessCard render state for E2E audit (last message only to avoid noise)
+    const isLastAssistantMessage = isAssistant && allMessages && messageIndex === allMessages.length - 1
+    if (showUnifiedCard && taskSummary && isLastAssistantMessage) {
+        console.info(`[UNIFIED-PROCESS-UI] stage=${taskSummary.stageId} progress=${taskSummary.completed}/${taskSummary.total} tasks=[${taskSummary.tasks.map(t => `${t.field}:${t.status}`).join(",")}]`)
+    }
     // Task 4.1: Extract sources (try annotations first, then fallback to property if we extend type)
     const sourcesFromAnnotation = (message as {
         annotations?: { type?: string; sources?: { url: string; title: string; publishedAt?: number | null }[] }[]
