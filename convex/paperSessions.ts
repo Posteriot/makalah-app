@@ -1615,15 +1615,6 @@ function isValidRewindTarget(
         };
     }
 
-    // Max 2 stages back limit
-    const stagesBack = currentIndex - targetIndex;
-    if (stagesBack > 2) {
-        return {
-            valid: false,
-            error: `Can only rewind up to 2 stages back. Target: ${targetStage} (${stagesBack} stages back)`,
-        };
-    }
-
     return { valid: true };
 }
 
