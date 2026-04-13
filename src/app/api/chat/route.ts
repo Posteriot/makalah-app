@@ -2340,6 +2340,8 @@ Aturan:
               }
             : undefined
 
+        const isCompileThenFinalize = resolvedWorkflow?.action === "compile_then_finalize"
+
         const draftingChoiceArtifactEnforcer =
             choiceInteractionEvent && paperStageScope && paperSession?.stageStatus === "drafting"
                 ? ({ steps, stepNumber }: {
@@ -2354,19 +2356,25 @@ Aturan:
                     const currentStageData = stageDataMap?.[paperStageScope]
                     const hasExistingArtifact = !!currentStageData?.artifactId
 
-                    // Step 0: force updateStageData as first tool in the chain
+                    // compile_then_finalize: compileDaftarPustaka(persist) → updateStageData → createArtifact → submitStageForValidation
+                    if (isCompileThenFinalize && !paperToolTracker.sawCompileDaftarPustakaPersist) {
+                        console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} stage=${paperStageScope} → compileDaftarPustaka (compile_then_finalize)`)
+                        return { toolChoice: { type: "tool", toolName: "compileDaftarPustaka" } as const }
+                    }
+
+                    // Step 0: force updateStageData as first tool (or after compileDaftarPustaka for compile_then_finalize)
                     if (
-                        stepNumber === 0
-                        && !paperToolTracker.sawUpdateStageData
+                        !paperToolTracker.sawUpdateStageData
                         && !hasExistingArtifact
+                        && !paperToolTracker.sawCreateArtifactSuccess
                     ) {
-                        console.info(`[CHOICE][artifact-enforcer] step=0 stage=${paperStageScope} → updateStageData (chain start)`)
+                        console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} stage=${paperStageScope} → updateStageData (chain start)`)
                         return { toolChoice: { type: "tool", toolName: "updateStageData" } as const }
                     }
 
-                    // Step 1→2: after updateStageData, force createArtifact
+                    // After updateStageData, force createArtifact
                     if (
-                        prevToolNames.includes("updateStageData")
+                        paperToolTracker.sawUpdateStageData
                         && !hasExistingArtifact
                         && !paperToolTracker.sawCreateArtifactSuccess
                         && !paperToolTracker.sawUpdateArtifactSuccess
@@ -2375,7 +2383,7 @@ Aturan:
                         return { toolChoice: { type: "tool", toolName: "createArtifact" } as const }
                     }
 
-                    // Step 2→3: after createArtifact, force submitStageForValidation
+                    // After createArtifact, force submitStageForValidation
                     if (
                         (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess)
                         && !paperToolTracker.sawSubmitValidationSuccess
@@ -3180,10 +3188,12 @@ Aturan:
                                 .flatMap((s: { toolCalls?: Array<{ toolName: string }> }, i: number) =>
                                     (s.toolCalls ?? []).map(tc => `${i}:${tc.toolName}`)
                                 )
-                            const expected = ["updateStageData", "createArtifact", "submitStageForValidation"]
+                            const expected = isCompileThenFinalize
+                                ? ["compileDaftarPustaka", "updateStageData", "createArtifact", "submitStageForValidation"]
+                                : ["updateStageData", "createArtifact", "submitStageForValidation"]
                             const actualNames = toolSequence.map(t => t.split(":")[1])
                             const isCorrectOrder = expected.every((tool, idx) => actualNames[idx] === tool)
-                            console.info(`[F1-F6-TEST] ToolChainOrder { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], correct: ${isCorrectOrder} }`)
+                            console.info(`[F1-F6-TEST] ToolChainOrder { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], expected: [${expected.join(", ")}], correct: ${isCorrectOrder} }`)
                         }
 
                         let sources: { url: string; title: string; publishedAt?: number | null }[] | undefined
