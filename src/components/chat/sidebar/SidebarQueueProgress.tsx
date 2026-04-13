@@ -387,7 +387,6 @@ export function SidebarQueueProgress({ conversationId }: SidebarQueueProgressPro
   // Get paper session for current conversation
   const {
     session,
-    isPaperMode,
     currentStage,
     stageData,
     rewindToStage,
@@ -484,15 +483,11 @@ export function SidebarQueueProgress({ conversationId }: SidebarQueueProgressPro
     )
   }
 
-  // Empty state - no paper session in this conversation
-  if (!isPaperMode || !session) {
+  // Loading guard - session is resolving from Convex
+  if (!session) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center text-[var(--chat-muted-foreground)] opacity-50">
-        <GitBranch className="h-8 w-8 mb-2" />
-        <span className="text-sm font-mono font-medium mb-1">Tidak ada paper aktif</span>
-        <span className="text-xs font-mono">
-          Percakapan ini bukan sesi penulisan paper
-        </span>
+      <div className="flex items-center justify-center p-8">
+        <span className="text-xs text-[var(--chat-muted-foreground)]">Memuat...</span>
       </div>
     )
   }

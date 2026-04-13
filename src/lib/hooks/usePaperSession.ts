@@ -108,7 +108,9 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
     const rewindToStageMutation = useMutation(api.paperSessions.rewindToStage);
     const createMessageMutation = useMutation(api.messages.createMessage);
 
-    const isPaperMode = !!session;
+    const sessionState: "loading" | "ready" = session === undefined ? "loading" : "ready";
+    // isPaperMode derived from sessionState for backward compat during migration
+    const isPaperMode = sessionState === "ready";
 
     const approveStage = async (userId: Id<"users">) => {
         if (!session) return;
@@ -226,6 +228,7 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
 
     return {
         session,
+        sessionState,
         isPaperMode,
         currentStage,
         stageStatus: session?.stageStatus,
