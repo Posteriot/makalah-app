@@ -45,7 +45,6 @@ import {
   shouldShowTechnicalReportTrigger,
 } from "@/lib/technical-report/chatSnapshot"
 import { resolveTechnicalReportSearchStatus } from "@/lib/technical-report/searchStatus"
-import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import * as Sentry from "@sentry/nextjs"
 
 /** Minimal artifact shape from Convex query (only fields we need for signal reconstruction) */
@@ -134,36 +133,6 @@ export function resolveArtifactSourceFocusTarget(
   }
 
   return null
-}
-
-function extractMessageTextForIntent(uiMessage: UIMessage): string {
-  const partsText = uiMessage.parts
-    ?.filter((part): part is Extract<UIMessage["parts"][number], { type: "text" }> => part.type === "text")
-    .map((part) => part.text)
-    .join("")
-    .trim()
-
-  if (partsText && partsText.length > 0) return partsText
-  return ""
-}
-
-export function shouldPreferUnifiedPaperLoadingUi(params: {
-  isPaperMode: boolean
-  hasPendingAssistantGeneration: boolean
-  messages: UIMessage[]
-}): boolean {
-  if (params.isPaperMode || !params.hasPendingAssistantGeneration) return false
-
-  const latestUserMessage = [...params.messages]
-    .reverse()
-    .find((message) => message.role === "user")
-
-  if (!latestUserMessage) return false
-
-  const latestUserText = extractMessageTextForIntent(latestUserMessage)
-  if (!latestUserText) return false
-
-  return hasPaperWritingIntent(latestUserText)
 }
 
 function setPendingStarterPrompt(conversationId: string, prompt: string) {
@@ -1579,16 +1548,7 @@ export function ChatWindow({
   const isGenerating = status === "submitted" || status === "streaming"
 
   const hasPendingAssistantGeneration = isGenerating || isAwaitingAssistantStart
-  const prefersUnifiedPaperLoadingUi = useMemo(
-    () =>
-      shouldPreferUnifiedPaperLoadingUi({
-        isPaperMode,
-        hasPendingAssistantGeneration,
-        messages,
-      }),
-    [hasPendingAssistantGeneration, isPaperMode, messages]
-  )
-  const effectivePaperUiMode = isPaperMode || prefersUnifiedPaperLoadingUi
+  const effectivePaperUiMode = isPaperMode
   const hasStandalonePendingIndicator =
     hasPendingAssistantGeneration &&
     !effectivePaperUiMode &&

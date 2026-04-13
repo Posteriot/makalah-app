@@ -37,11 +37,9 @@ function timeAgo(ts: number): string {
 }
 
 const TOOL_LABELS: Record<string, string> = {
-  "(chat biasa)": "Obrolan Biasa",
   google_search: "Pencarian Web",
   web_search: "Pencarian Web",
   two_pass_search: "Pencarian Web",
-  startPaperSession: "Mulai Paper",
   updateStageData: "Update Stage",
   submitStageForValidation: "Submit Validasi",
   getCurrentPaperState: "State Paper",

@@ -23,7 +23,6 @@ const SHIMMER_TEXTS = new Set([
 
 const TOOL_LABEL_MAP: Record<string, string> = {
     google_search: "Pencarian web",
-    startPaperSession: "Memulai sesi paper",
     getCurrentPaperState: "Mengambil status sesi paper",
     updateStageData: "Menyimpan progres tahapan",
     submitStageForValidation: "Mengirim validasi tahapan",
