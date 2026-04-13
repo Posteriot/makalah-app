@@ -1,4 +1,4 @@
-# All Sessions Are Paper Sessions — Implementation Plan (v2, post-Codex audit)
+# All Sessions Are Paper Sessions — Implementation Plan (v3, post-Codex audit round 2)
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -14,20 +14,36 @@
 
 ---
 
-## Codex Audit Fixes Applied (v1 → v2)
+## Codex Audit Fixes Applied
 
-| Codex Finding | Severity | Fix in v2 |
-|---------------|----------|-----------|
+### Round 1 (v1 → v2)
+
+| Codex Finding | Severity | Fix |
+|---------------|----------|-----|
 | Lazy migration ordering wrong — `getPaperModeSystemPrompt` returns empty before migration runs | Critical | Task 8 rewritten: migration inside `getPaperModeSystemPrompt`, not after it |
-| Idempotency claim false — `by_conversation` index ≠ unique constraint, concurrent inserts possible | Critical | Task 1: single-transaction `ctx.db.insert`. New Task 1b: `ensurePaperSessionExists` internal mutation for lazy migration with duplicate guard |
+| Idempotency claim false — `by_conversation` index ≠ unique constraint, concurrent inserts possible | Critical | Task 1: single-transaction `ctx.db.insert`. New Task 1b: `ensurePaperSessionExists` with OCC |
 | `updateStageData` return `{success: false}` breaks caller contract (callers don't read return) | Critical | Task 5: keep throwing, improve error message only. No contract change. |
 | Missing dependency sweep — ChatWindow.tsx, schemas.ts, chat-config.ts, 2 sidebar components | Critical | Task 3 expanded to cover all 5 missed files |
-| `isPaperMode = !!session` dead branch in `usePaperSession.ts` | Design | Task 6b added: remove `isPaperMode` conditional, remove empty-state UI |
-| Inconsistent completed instructions (paper-stages vs new prompt) | Design | Task 7: replace `paper-stages/index.ts:75` completed fallback with new unified prompt |
-| RewindConfirmationDialog — `getStageLabel("completed")` already returns "Selesai" | Suggestion | Task 6: remove unnecessary guard (was wrong in v1) |
-| RewindConfirmationDialog warning too generic for full-paper invalidation | Design | Task 6: add stage count to warning text |
+| `isPaperMode = !!session` dead branch in `usePaperSession.ts` | Design | Task 6b: replace with sessionState machine |
+| Inconsistent completed instructions (paper-stages vs new prompt) | Design | Task 7: replace `paper-stages/index.ts:75` completed fallback |
+| `getStageLabel("completed")` already returns "Selesai" | Suggestion | Task 6: removed unnecessary guard |
+| Warning too generic for full-paper invalidation | Design | Task 6: add stage count to warning text |
 | Single helper for session creation | Suggestion | Task 1b: `ensurePaperSessionExists` shared by both paths |
-| Observability for auto-migration and large rewinds | Suggestion | Tasks 1b and 5: explicit logging added |
+| Observability for auto-migration and large rewinds | Suggestion | Tasks 1b and 5: explicit logging |
+
+### Round 2 (v2 → v3)
+
+| Codex Finding | Severity | Fix |
+|---------------|----------|-----|
+| design.md body contradicts audit notes (route.ts migration, idempotency) | Critical | design.md v3: full body rewrite, no audit-note appendages |
+| `ensurePaperSessionExists` missing auth guards (requireAuthUserId, requireConversationOwner) | Critical | Task 1b: auth guards added, matches existing `create` mutation |
+| Task 8 userId placeholder unresolved — `getPaperModeSystemPrompt` doesn't accept userId | Critical | Task 8: add `userId` param to signature, update call site in route.ts |
+| `isPaperMode = true` lies to runtime during loading — triggers paper UI before data ready | Critical | Task 6b: proper `sessionState: "loading" | "ready"`, derive isPaperMode from state |
+| Duplicate row remediation not addressed | Design | design.md: explicit stance — `.unique()` throws on duplicates, follow-up migration script |
+| `completedAt: undefined` behavior unverified in Convex patch | Design | design.md: verified — Convex patch with undefined removes field. aiOps filter works correctly. |
+| Task 6 + 6b conflict on same files if parallelized | Gap | Task 6b now sequential after Task 6 in dependency graph |
+| stageData: {} reasoning was assumption, not verified | Gap | Task 1: verified against schema — all stage fields `v.optional()` |
+| Stale telemetry UI references (startPaperSession, chat biasa) | Gap | Task 3: added telemetry cleanup for RecentFailuresPanel, ToolHealthPanel, ToolStateIndicator |
 
 ---
 
@@ -81,7 +97,7 @@ handler: async (ctx, { userId, title }) => {
 
 **Step 3: Verify paperSessions schema compatibility**
 
-Check `convex/schema.ts` for required fields on `paperSessions` table. Ensure `stageData: {}` is valid (the `create` mutation at line 606 already uses similar pattern).
+Verified: `convex/schema.ts:537` defines `stageData: v.object({...})` where all 14 stage fields are `v.optional(v.object({...}))`. Empty object `{}` passes validation because every field is optional. The existing `create` mutation at line 634 writes `{gagasan: args.initialIdea ? {...} : undefined}` — Convex strips `undefined` values, making it functionally equivalent to `{}`.
 
 **Step 4: Run test**
 
@@ -135,10 +151,15 @@ export const ensurePaperSessionExists = mutation({
         conversationId: v.id("conversations"),
     },
     handler: async (ctx, { userId, conversationId }) => {
+        // Auth guards — same as paperSessions.create (line 613-614)
+        await requireAuthUserId(ctx, userId);
+        const { conversation } = await requireConversationOwner(ctx, conversationId);
+        if (conversation.userId !== userId) {
+            throw new Error("Unauthorized");
+        }
+
         // Single-transaction check + insert = no race within this mutation.
-        // If two mutations run concurrently, Convex OCC (optimistic concurrency
-        // control) will retry the loser — the retry will see the winner's insert
-        // and return it. This is safe because Convex mutations are serializable.
+        // Convex OCC retries the loser — the retry will see the winner's insert.
         const existing = await ctx.db
             .query("paperSessions")
             .withIndex("by_conversation", q => q.eq("conversationId", conversationId))
@@ -149,7 +170,6 @@ export const ensurePaperSessionExists = mutation({
             return existing._id;
         }
 
-        const conversation = await ctx.db.get(conversationId);
         const now = Date.now();
 
         console.info(`[PAPER][ensure-session] Creating new session for legacy conversation ${conversationId}`);
@@ -158,7 +178,7 @@ export const ensurePaperSessionExists = mutation({
             conversationId,
             currentStage: "gagasan",
             stageStatus: "drafting",
-            workingTitle: conversation?.title ?? "Percakapan baru",
+            workingTitle: conversation.title ?? "Percakapan baru",
             stageData: {},
             createdAt: now,
             updatedAt: now,
@@ -167,7 +187,7 @@ export const ensurePaperSessionExists = mutation({
 });
 ```
 
-> **Codex audit fix:** Convex mutations are serializable (OCC). Read + insert in same mutation = safe. No separate unique constraint needed.
+> **Codex audit v2 fix:** Auth guards added — `requireAuthUserId` + `requireConversationOwner` + ownership check. Same guards as existing `paperSessions.create` mutation. Uses `conversation` from ownership check instead of separate `ctx.db.get`.
 
 **Step 3: Run tests**
 
@@ -275,21 +295,29 @@ import type { CompletedSessionHandling } from "../completed-session"
 
 Remove `CompletedSessionClassifierSchema` definition (line 10), `CompletedSessionClassifierOutput` type (line 57), and the type compat assertion (lines 159-161). These are dead types now.
 
-**Step 4: Full sweep**
+**Step 4: Update stale telemetry UI labels**
+
+> **Codex audit v2 fix:** These files reference `startPaperSession` and `(chat biasa)` in display labels. Not compile blockers but misleading after architectural change.
+
+- `src/components/ai-ops/panels/RecentFailuresPanel.tsx:34` — remove `startPaperSession: "Mulai Paper"` from label map
+- `src/components/ai-ops/panels/ToolHealthPanel.tsx:40,44` — remove `"(chat biasa)": "Obrolan Biasa"` and `startPaperSession: "Mulai Paper"` from label map
+- `src/components/chat/ToolStateIndicator.tsx:26` — remove `startPaperSession: "Memulai sesi paper"` from label map
+
+**Step 5: Full sweep**
 
 ```bash
-grep -r "paper-intent-detector\|paper-workflow-reminder\|completed-session\|CompletedSessionHandling\|CompletedSessionClassifier" src/ --include="*.ts" --include="*.tsx" -l
+grep -r "paper-intent-detector\|paper-workflow-reminder\|completed-session\|CompletedSessionHandling\|CompletedSessionClassifier\|startPaperSession\|chat.biasa" src/ --include="*.ts" --include="*.tsx" -l
 ```
 
-Expected: No matches (except possibly this plan file).
+Expected: No matches (except possibly paper-tools.ts which is handled in Task 2, and this plan file).
 
-**Step 5: Do NOT run type check yet** — route.ts still imports deleted modules. That's Task 4.
+**Step 6: Do NOT run type check yet** — route.ts still imports deleted modules. That's Task 4.
 
-**Step 6: Commit**
+**Step 7: Commit**
 
 ```bash
 git add -u
-git add src/components/chat/ChatWindow.tsx src/lib/ai/classifiers/schemas.ts
+git add src/components/chat/ChatWindow.tsx src/lib/ai/classifiers/schemas.ts src/components/ai-ops/panels/RecentFailuresPanel.tsx src/components/ai-ops/panels/ToolHealthPanel.tsx src/components/chat/ToolStateIndicator.tsx
 git commit -m "refactor: delete dual-mode files + fix all runtime references (ChatWindow, schemas)"
 ```
 
@@ -632,7 +660,9 @@ git commit -m "feat: remove rewind limit in all 3 progress components, improve r
 - Modify: `src/components/chat/sidebar/SidebarProgress.tsx:346-355` (remove empty state)
 - Modify: `src/components/chat/sidebar/SidebarQueueProgress.tsx:507-516` (remove empty state)
 
-**Step 1: Simplify usePaperSession**
+**Step 1: Replace isPaperMode with sessionState in usePaperSession**
+
+> **Codex audit v2 fix:** `isPaperMode = true` lies to runtime when Convex query is still loading (`session === undefined`). This triggers paper-only UI paths before data is ready. Replace with proper state machine.
 
 At line 111, change:
 ```typescript
@@ -640,13 +670,14 @@ At line 111, change:
 const isPaperMode = !!session;
 
 // AFTER:
-// isPaperMode is always true in all-paper-sessions architecture.
-// Kept as constant for now to avoid touching all consumer sites.
-// TODO: remove isPaperMode from all consumers in follow-up cleanup
-const isPaperMode = true;
+const sessionState: "loading" | "ready" = session === undefined ? "loading" : "ready";
+// isPaperMode derived from sessionState for backward compat during migration
+const isPaperMode = sessionState === "ready";
 ```
 
-> Note: Full removal of isPaperMode from all consumers is a larger refactor. For now, hardcode to `true` so dead branches become unreachable. Clean up in follow-up.
+This preserves the boolean interface for existing consumers but correctly reports `false` during loading. Consumers that gate paper-only UI on `isPaperMode` will now wait for session data instead of racing.
+
+> Note: `session === undefined` means Convex query hasn't resolved yet. `session === null` should not happen in all-paper-sessions world (lazy migration guarantees creation). If it does, `isPaperMode = false` is the correct safe fallback.
 
 **Step 2: Remove empty-state UI in sidebar components**
 
@@ -753,11 +784,56 @@ git commit -m "feat: unified completed-state prompt with rewind-via-timeline gui
 ### Task 8: Lazy Migration Inside getPaperModeSystemPrompt
 
 **Files:**
-- Modify: `src/lib/ai/paper-mode-prompt.ts:94-113` (session fetch + early return)
+- Modify: `src/lib/ai/paper-mode-prompt.ts:80-113` (add userId param + lazy migration)
+- Modify: `src/app/api/chat/route.ts:359-363` (pass userId to updated signature)
 
-> **Codex audit fix (critical):** v1 placed lazy migration AFTER `getPaperModeSystemPrompt` returned empty prompt. This is wrong — migration must happen INSIDE the function, before the prompt is built.
+> **Codex audit fix (critical):** v1 placed lazy migration AFTER `getPaperModeSystemPrompt` returned empty prompt. This is wrong — migration must happen INSIDE the function, before the prompt is built. v2 had a placeholder for userId — now fully resolved.
 
-**Step 1: Modify getPaperModeSystemPrompt**
+**Step 1: Add userId parameter to getPaperModeSystemPrompt**
+
+Change signature at line 80:
+
+```typescript
+// BEFORE:
+export const getPaperModeSystemPrompt = async (
+    conversationId: Id<"conversations">,
+    convexToken?: string,
+    requestId?: string
+): Promise<PaperModePromptContext> => {
+
+// AFTER:
+export const getPaperModeSystemPrompt = async (
+    conversationId: Id<"conversations">,
+    userId: Id<"users">,
+    convexToken?: string,
+    requestId?: string
+): Promise<PaperModePromptContext> => {
+```
+
+**Step 2: Update call site in route.ts**
+
+At `src/app/api/chat/route.ts:359-363`:
+
+```typescript
+// BEFORE:
+const paperModeContext = await getPaperModeSystemPrompt(
+    currentConversationId as Id<"conversations">,
+    convexToken,
+    requestId
+)
+
+// AFTER:
+const paperModeContext = await getPaperModeSystemPrompt(
+    currentConversationId as Id<"conversations">,
+    userId as Id<"users">,
+    convexToken,
+    requestId
+)
+```
+
+> `userId` is already available at this point in route.ts — it's extracted from auth earlier in the handler.
+
+**Step 3: Add lazy migration inside getPaperModeSystemPrompt**
 
 At lines 94-113, replace the early return with lazy migration:
 
@@ -773,9 +849,9 @@ try {
     logPaperPromptLatency("paperPrompt.getSession", sessionStart, { found: !!session });
 
     // Lazy migration: ensure paper session exists for legacy conversations
+    // TODO(2026-05-15): Remove after all active conversations have been migrated
     if (!session) {
         console.info(`[PAPER][lazy-migration] Creating paper session for legacy conversation ${conversationId}`);
-        const userId = /* extract from convex auth context or pass as param */;
         await fetchMutation(
             api.paperSessions.ensurePaperSessionExists,
             { userId, conversationId },
@@ -868,7 +944,7 @@ git commit --allow-empty -m "test: verified all-sessions-are-paper-sessions E2E"
 
 ---
 
-## Task Dependency Graph (v2)
+## Task Dependency Graph (v3)
 
 ```
 Task 1  (auto-create, same txn) ──────┐
@@ -877,9 +953,11 @@ Task 2  (delete startPaperSession) ────┤
 Task 3  (delete files + ALL refs) ─────┤── Task 4 (clean route.ts) ── Task 8 (lazy migration in getPaperModeSystemPrompt)
                                        │
 Task 5  (fix backend completed) ───────┤── Task 9 (E2E verification)
-Task 6  (UI unlock rewind, 3 components)┤
-Task 6b (remove isPaperMode dead branches)┤
+Task 6  (UI unlock rewind, 3 components)──── Task 6b (isPaperMode + empty state in SAME sidebar files)
 Task 7  (unified completed prompt) ────┘
 ```
 
-Tasks 1, 1b, 2, 3, 5, 6, 6b, 7 can be parallelized. Task 4 depends on 3. Task 8 depends on 1b + 4. Task 9 depends on all.
+> **Codex audit v2 fix:** Task 6 and 6b MUST be sequential (not parallel) — both modify `SidebarProgress.tsx` and `SidebarQueueProgress.tsx`. Task 6b depends on Task 6.
+```
+
+Tasks 1, 1b, 2, 3, 5, 6, 7 can be parallelized. Task 6b depends on Task 6 (same files). Task 4 depends on 3 (deleted files). Task 8 depends on 1b + 4. Task 9 depends on all.
