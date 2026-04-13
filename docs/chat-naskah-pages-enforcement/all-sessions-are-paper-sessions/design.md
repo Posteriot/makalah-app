@@ -119,14 +119,20 @@ if (!paperSession) {
 }
 ```
 
-Idempotent — `paperSessions.create` returns existing session ID if already exists. Remove after ~30 days when all active conversations migrated.
+Uses `ensurePaperSessionExists` mutation (read-then-insert in same Convex transaction, OCC-safe). Remove after ~30 days when all active conversations migrated.
+
+> **Codex audit fix:** Lazy migration must happen INSIDE `getPaperModeSystemPrompt`, not after it returns. The function returns empty prompt when session is null, and route.ts skips paper session fetch when prompt is empty — migration after the function is too late.
+
+> **Codex audit fix:** `paperSessions.create` is NOT idempotent — `by_conversation` is a Convex index, not a unique constraint. Concurrent requests can insert duplicates. Fix: `ensurePaperSessionExists` mutation with read+insert in single transaction (Convex OCC handles retry).
 
 ## Bug Fixes Included
 
 | Bug | Resolution |
 |-----|-----------|
-| `updateStageData` crashes on `completed` | Section 3: graceful no-op return |
+| `updateStageData` crashes on `completed` | Section 3: keep throwing (preserve caller contract), improve error message |
 | `completed-prestream` too aggressive | Section 2: entire block deleted |
+
+> **Codex audit fix:** Original design proposed `return {success: false}` for completed state. This is wrong — callers (paper-tools.ts, route.ts auto-link) don't read return values and would silently fail. Fix: keep throwing with descriptive error message.
 
 ## Bug Fixes NOT Included (Separate Issues)
 
