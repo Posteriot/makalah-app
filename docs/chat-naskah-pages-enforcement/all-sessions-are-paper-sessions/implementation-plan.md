@@ -135,9 +135,30 @@ describe("ensurePaperSessionExists", () => {
     // Verify ctx.db.insert NOT called
   });
 
-  it("should handle concurrent creation gracefully", async () => {
-    // If query returns null but insert would create duplicate,
-    // the second caller should detect and return existing
+  it("should not create duplicate when called twice for same conversation", async () => {
+    // Concurrency is handled by Convex OCC at runtime, not testable in unit harness.
+    // Instead, test the idempotent check: call handler twice, second call should
+    // see the first insert and return existing ID.
+    const { ctx } = makeMockCtx();
+    // First call: query returns null → insert
+    mockedRequireAuthUserId.mockResolvedValue(undefined);
+    mockedRequireConversationOwner.mockResolvedValue({
+      conversation: { userId: "users_1", title: "Test" },
+    });
+    ctx.db.query.mockReturnValue({
+      withIndex: vi.fn(() => ({
+        unique: vi.fn()
+          .mockResolvedValueOnce(null)           // first call: no session
+          .mockResolvedValueOnce({ _id: "ps_1" }) // second call: session exists
+      })),
+    });
+
+    const handler = getHandler(ensurePaperSessionExists);
+    await handler(ctx, { userId: "users_1", conversationId: "conv_1" });
+    const result = await handler(ctx, { userId: "users_1", conversationId: "conv_1" });
+    expect(result).toBe("ps_1");
+    // insert called only once (first call), not twice
+    expect(ctx.db.insert).toHaveBeenCalledTimes(1);
   });
 });
 ```
@@ -283,7 +304,22 @@ Remove import at line 48:
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 ```
 
-Remove usage at line 166 (and the function/block that calls it). Replace with appropriate logic for the all-paper-sessions world — or remove entirely if intent detection is no longer needed in the frontend.
+Delete the `shouldPreferUnifiedPaperLoadingUi` function (lines 150-167) entirely. In all-paper-sessions, `isPaperMode` is always true once loaded, so `shouldPreferUnifiedPaperLoadingUi` returns `false` on line 155 unconditionally. The function is dead code.
+
+Also delete `extractMessageTextForIntent` (lines ~130-148) if only used by `shouldPreferUnifiedPaperLoadingUi`.
+
+In `ChatWindow.tsx` at line ~1582-1589, replace:
+```typescript
+// BEFORE:
+const prefersUnifiedPaperLoadingUi = useMemo(
+    () => shouldPreferUnifiedPaperLoadingUi({ isPaperMode, ... }),
+    [...]
+)
+const effectivePaperUiMode = isPaperMode || prefersUnifiedPaperLoadingUi
+
+// AFTER:
+const effectivePaperUiMode = isPaperMode
+```
 
 **Step 3: Fix classifiers/schemas.ts**
 
@@ -306,7 +342,7 @@ Remove `CompletedSessionClassifierSchema` definition (line 10), `CompletedSessio
 **Step 5: Full sweep**
 
 ```bash
-grep -r "paper-intent-detector\|paper-workflow-reminder\|completed-session\|CompletedSessionHandling\|CompletedSessionClassifier\|startPaperSession\|chat.biasa" src/ --include="*.ts" --include="*.tsx" -l
+grep -rE "paper-intent-detector|paper-workflow-reminder|completed-session|CompletedSessionHandling|CompletedSessionClassifier|startPaperSession|chat biasa|Obrolan Biasa|shouldPreferUnifiedPaperLoadingUi" src/ --include="*.ts" --include="*.tsx" -l
 ```
 
 Expected: No matches (except possibly paper-tools.ts which is handled in Task 2, and this plan file).
@@ -559,7 +595,7 @@ await ctx.db.patch(args.sessionId, {
 });
 ```
 
-> Note: Verify `completedAt: undefined` actually clears the field in Convex. If Convex requires explicit unset, use the Convex `v.optional()` unset pattern. Check Convex docs during implementation.
+> Verified: Convex `ctx.db.patch` with `completedAt: undefined` removes the field from the document. Schema defines `completedAt: v.optional(v.number())` at `convex/schema.ts:736`. After clearing, `aiOps.ts:57` filter `q.eq(q.field("completedAt"), undefined)` correctly counts the session as active again.
 
 **Step 6: Run tests**
 
@@ -874,7 +910,7 @@ try {
     // ... rest of prompt building continues with guaranteed session
 ```
 
-> Note: `getPaperModeSystemPrompt` currently doesn't receive `userId`. Either add it as a parameter or extract from the Convex auth token. Check the call site in route.ts to determine the cleanest approach.
+> Resolved: Steps 1-2 above add `userId` param to `getPaperModeSystemPrompt` and supply it from `route.ts` where `userId` is already extracted from auth.
 
 **Step 2: Add TODO cleanup comment**
 
