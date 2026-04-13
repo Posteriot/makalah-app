@@ -8,7 +8,7 @@
 
 **Tech Stack:** Convex (backend mutations/queries), Next.js App Router (API route), React (UI components), Vitest (testing)
 
-**Design doc:** `docs/plans/2026-04-14-all-sessions-are-paper-sessions-design.md`
+**Design doc:** `docs/chat-naskah-pages-enforcement/all-sessions-are-paper-sessions/design.md`
 
 ---
 
