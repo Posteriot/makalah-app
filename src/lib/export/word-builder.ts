@@ -638,12 +638,13 @@ function buildLampiranSection(
 
   lampiran.forEach((item) => {
     // Heading untuk setiap lampiran
-    const title = item.judul || item.label
+    const label = item.label ?? ""
+    const title = item.judul || label
     paragraphs.push(
       new Paragraph({
         children: [
-          new TextRun({ text: `${item.label}: `, bold: true }),
-          new TextRun({ text: title }),
+          new TextRun({ text: `${label}: `, bold: true }),
+          new TextRun({ text: title || "Lampiran" }),
         ],
         spacing: { before: 300, after: 100 },
       })
