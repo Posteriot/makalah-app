@@ -32,6 +32,10 @@ export function pipePlanCapture(
   let captureContent = ""
   // Text before the unfenced plan start that hasn't been flushed yet
   let prePlanText = ""
+  // Track chunk text property name. AI SDK uses { textDelta }, but when
+  // pipeYamlRender is upstream it re-emits as { delta }. Default "textDelta"
+  // is overridden on first chunk if { delta } is detected.
+  let chunkTextKey: "textDelta" | "delta" = "textDelta"
 
   function tryParsePlan(content: string, source: "fenced" | "unfenced"): PlanDataPart | null {
     try {
@@ -64,7 +68,7 @@ export function pipePlanCapture(
 
   function emitText(controller: ReadableStreamDefaultController, text: string) {
     if (text.length > 0) {
-      controller.enqueue({ type: "text-delta", textDelta: text })
+      controller.enqueue({ type: "text-delta", [chunkTextKey]: text })
     }
   }
 
@@ -256,14 +260,24 @@ export function pipePlanCapture(
             break
           }
 
-          const chunk = value as { type?: string; textDelta?: string }
+          const chunk = value as { type?: string; textDelta?: string; delta?: string }
 
-          if (chunk.type !== "text-delta" || typeof chunk.textDelta !== "string") {
+          if (chunk.type !== "text-delta") {
             controller.enqueue(value)
             continue
           }
 
-          buffer += chunk.textDelta
+          // Handle both property names (textDelta from AI SDK, delta from pipeYamlRender)
+          const textContent = chunk.textDelta ?? chunk.delta
+          if (typeof textContent !== "string") {
+            controller.enqueue(value)
+            continue
+          }
+
+          // Lock output format to match input format
+          if (chunk.delta !== undefined) chunkTextKey = "delta"
+
+          buffer += textContent
 
           // Process based on current state
           if (state === "normal") processNormal(controller)

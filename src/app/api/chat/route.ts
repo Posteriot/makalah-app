@@ -62,6 +62,7 @@ import {
     shouldAttemptRescue,
 } from "@/lib/chat/choice-request"
 import type { ResolvedChoiceWorkflow } from "@/lib/chat/choice-request"
+import { compileChoiceSpec } from "@/lib/json-render/compile-choice-spec"
 import { sanitizeChoiceOutcome, paperRecoveryLeakagePattern } from "@/lib/chat/choice-outcome-guard"
 import { resolveEffectiveFileIds } from "@/lib/chat/effective-file-ids"
 import {
@@ -2435,6 +2436,43 @@ Aturan:
                   }
                 : undefined
 
+        // Free-text reactive enforcer: when model voluntarily starts tool chain
+        // from a free-text message (no choice card interaction), force completion.
+        // Step 0 is free — model decides whether to discuss or finalize.
+        // After model calls updateStageData, chain is forced: createArtifact → submit.
+        const freeTextReactiveEnforcer =
+            !choiceInteractionEvent && paperStageScope && paperSession?.stageStatus === "drafting"
+                ? ({ steps, stepNumber }: {
+                    steps: Array<{ toolCalls?: Array<{ toolName: string }> }>;
+                    stepNumber: number;
+                  }) => {
+                    if (stepNumber === 0) return undefined
+
+                    const allPrevToolNames = steps.flatMap(s => s.toolCalls?.map(tc => tc.toolName) ?? [])
+                    const sawUpdateStageData = allPrevToolNames.includes("updateStageData")
+
+                    // Only activate after model voluntarily called updateStageData
+                    if (!sawUpdateStageData) return undefined
+
+                    const sawCreateArtifact = allPrevToolNames.includes("createArtifact")
+                    const sawUpdateArtifact = allPrevToolNames.includes("updateArtifact")
+                    const sawSubmit = allPrevToolNames.includes("submitStageForValidation")
+                    const sawArtifact = sawCreateArtifact || sawUpdateArtifact
+
+                    if (!sawArtifact) {
+                        console.info(`[FREETEXT][reactive-enforcer] step=${stepNumber} stage=${paperStageScope} → createArtifact`)
+                        return { toolChoice: { type: "tool", toolName: "createArtifact" } as const }
+                    }
+
+                    if (!sawSubmit) {
+                        console.info(`[FREETEXT][reactive-enforcer] step=${stepNumber} stage=${paperStageScope} → submitStageForValidation`)
+                        return { toolChoice: { type: "tool", toolName: "submitStageForValidation" } as const }
+                    }
+
+                    return undefined
+                  }
+                : undefined
+
         try {
             const model = await getGatewayModel()
 
@@ -2982,11 +3020,11 @@ Aturan:
                 prepareStep: ((() => {
                     const forceInspect = primaryExactSourceRoutePlan.prepareStep
                     const chainedEnforcer = (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
-                        revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params)
+                        revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params) ?? freeTextReactiveEnforcer?.(params)
                     // When force-inspect prepareStep exists, it takes priority over
                     // chain enforcers. Force-inspect completes in steps 0-1
                     // (tool call + text), so it never reaches later tool steps.
-                    if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer)) {
+                    if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer || freeTextReactiveEnforcer)) {
                         return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
                             forceInspect(params) ?? chainedEnforcer(params)
                     }
@@ -3368,6 +3406,18 @@ Aturan:
                             })
                         }
 
+                        // Empty response recovery: if model produced nothing during a drafting stage,
+                        // inject a recovery message so user isn't stranded without interaction.
+                        if (
+                            persistedContent.length === 0 &&
+                            paperStageScope &&
+                            paperSession?.stageStatus === "drafting" &&
+                            !paperToolTracker?.sawSubmitValidationSuccess
+                        ) {
+                            persistedContent = "Please select the next step to continue."
+                            console.info(`[EMPTY-RESPONSE][recovery] stage=${paperStageScope} injecting recovery message + fallback choice card`)
+                        }
+
                         if (persistedContent.length > 0) {
                             const persistedReasoningTrace = (() => {
                                 if (!reasoningTraceEnabled) return undefined
@@ -3383,6 +3433,30 @@ Aturan:
                             })()
 
 
+
+                            // Fallback choice card: if model didn't emit a choice card during
+                            // a drafting stage response and didn't finalize, inject a default
+                            // so user isn't stranded without interaction options.
+                            // Convex reactivity will render it on the client after message persists.
+                            if (
+                                !(capturedChoiceSpec && capturedChoiceSpec.root) &&
+                                paperStageScope &&
+                                paperSession?.stageStatus === "drafting" &&
+                                !paperToolTracker?.sawSubmitValidationSuccess
+                            ) {
+                                const { spec: fallbackSpec } = compileChoiceSpec({
+                                    stage: paperStageScope,
+                                    kind: "single-select",
+                                    title: "Apa langkah selanjutnya?",
+                                    options: [
+                                        { id: "lanjutkan-diskusi", label: "Lanjutkan diskusi" },
+                                    ],
+                                    recommendedId: "lanjutkan-diskusi",
+                                    appendValidationOption: true,
+                                })
+                                capturedChoiceSpec = fallbackSpec as typeof capturedChoiceSpec
+                                console.info(`[CHOICE-CARD][fallback-injected] stage=${paperStageScope} reason=model_did_not_emit_choice_card`)
+                            }
 
                             await saveAssistantMessage(
                                 persistedContent,
@@ -3547,14 +3621,17 @@ Aturan:
                             generateMessageId: () => messageId,
                             sendReasoning: isTransparentReasoning,
                         })
-                        const yamlTransformedStream = isDraftingStage
-                            ? pipeYamlRender(uiStream)
-                            : uiStream
-
+                        // pipePlanCapture BEFORE pipeYamlRender: plan-spec stripping works
+                        // with AI SDK's textDelta format. pipeYamlRender then transforms
+                        // the clean text into @json-render format for the client.
                         const hasPaperStage = !!paperStageScope
                         const planTransformedStream = hasPaperStage
-                            ? pipePlanCapture(yamlTransformedStream) as typeof yamlTransformedStream
-                            : yamlTransformedStream
+                            ? pipePlanCapture(uiStream) as typeof uiStream
+                            : uiStream
+
+                        const yamlTransformedStream = isDraftingStage
+                            ? pipeYamlRender(planTransformedStream)
+                            : planTransformedStream
 
                         // ReadableStream from pipeYamlRender may not have [Symbol.asyncIterator]
                         // in all runtimes, so use a reader-based async generator
@@ -3571,7 +3648,7 @@ Aturan:
                             }
                         }
 
-                        for await (const chunk of iterateStream(planTransformedStream)) {
+                        for await (const chunk of iterateStream(yamlTransformedStream)) {
                             // Capture data-spec parts emitted by pipeYamlRender for DB persistence
                             if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
                                 try {
@@ -3589,7 +3666,8 @@ Aturan:
                                 } catch { /* spec capture error — non-critical */ }
                             }
 
-                            // Capture plan-spec parts emitted by pipePlanCapture for DB persistence
+                            // Capture plan-spec parts emitted by pipePlanCapture for DB persistence.
+                            // These are internal-only — do NOT forward to client.
                             if ((chunk as { type?: string }).type === PLAN_DATA_PART_TYPE) {
                                 try {
                                     const data = (chunk as { data?: { spec?: PlanSpec } }).data
@@ -3597,6 +3675,7 @@ Aturan:
                                         capturedPlanSpec = data.spec
                                     }
                                 } catch { /* plan capture error — non-critical */ }
+                                continue
                             }
 
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
@@ -3854,8 +3933,8 @@ Aturan:
                     prepareStep: ((() => {
                         const forceInspect = fallbackExactSourceRoutePlan.prepareStep
                         const chainedEnforcer = (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
-                            revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params)
-                        if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer)) {
+                            revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params) ?? freeTextReactiveEnforcer?.(params)
+                        if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer || freeTextReactiveEnforcer)) {
                             return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
                                 forceInspect(params) ?? chainedEnforcer(params)
                         }
@@ -4164,6 +4243,17 @@ Aturan:
                             }
                         }
 
+                        // Empty response recovery (same as primary path)
+                        if (
+                            persistedContent.length === 0 &&
+                            paperStageScope &&
+                            paperSession?.stageStatus === "drafting" &&
+                            !paperToolTracker?.sawSubmitValidationSuccess
+                        ) {
+                            persistedContent = "Please select the next step to continue."
+                            console.info(`[EMPTY-RESPONSE][recovery][fallback] stage=${paperStageScope} injecting recovery message + fallback choice card`)
+                        }
+
                         if (persistedContent.length > 0) {
                             const persistedReasoningTrace = (() => {
                                 if (!reasoningTraceEnabled) return undefined
@@ -4177,6 +4267,27 @@ Aturan:
                                 captureFallbackReasoningSnapshot()
                                 return fallbackReasoningTraceSnapshot
                             })()
+
+                            // Fallback choice card (same as primary path)
+                            if (
+                                !(fallbackCapturedChoiceSpec && fallbackCapturedChoiceSpec.root) &&
+                                paperStageScope &&
+                                paperSession?.stageStatus === "drafting" &&
+                                !paperToolTracker?.sawSubmitValidationSuccess
+                            ) {
+                                const { spec: injectedSpec } = compileChoiceSpec({
+                                    stage: paperStageScope,
+                                    kind: "single-select",
+                                    title: "Apa langkah selanjutnya?",
+                                    options: [
+                                        { id: "lanjutkan-diskusi", label: "Lanjutkan diskusi" },
+                                    ],
+                                    recommendedId: "lanjutkan-diskusi",
+                                    appendValidationOption: true,
+                                })
+                                fallbackCapturedChoiceSpec = injectedSpec as typeof fallbackCapturedChoiceSpec
+                                console.info(`[CHOICE-CARD][fallback-injected] stage=${paperStageScope} reason=model_did_not_emit_choice_card (fallback model)`)
+                            }
 
                             await saveAssistantMessage(
                                 persistedContent,
@@ -4316,13 +4427,14 @@ Aturan:
                             generateMessageId: () => messageId,
                             sendReasoning: fallbackTransparent,
                         })
-                        const fallbackYamlStream = isDraftingStage
-                            ? pipeYamlRender(fallbackUiStream)
+                        // pipePlanCapture BEFORE pipeYamlRender (same as primary path)
+                        const fallbackPlanStream = !!paperStageScope
+                            ? pipePlanCapture(fallbackUiStream) as typeof fallbackUiStream
                             : fallbackUiStream
 
-                        const fallbackPlanStream = !!paperStageScope
-                            ? pipePlanCapture(fallbackYamlStream) as typeof fallbackYamlStream
-                            : fallbackYamlStream
+                        const fallbackYamlStream = isDraftingStage
+                            ? pipeYamlRender(fallbackPlanStream)
+                            : fallbackPlanStream
 
                         // ReadableStream from pipeYamlRender may not have [Symbol.asyncIterator]
                         async function* iterateFallbackStream<T>(stream: ReadableStream<T>): AsyncGenerator<T> {
@@ -4338,7 +4450,7 @@ Aturan:
                             }
                         }
 
-                        for await (const chunk of iterateFallbackStream(fallbackPlanStream)) {
+                        for await (const chunk of iterateFallbackStream(fallbackYamlStream)) {
                             // Capture data-spec parts emitted by pipeYamlRender for DB persistence
                             if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
                                 try {
@@ -4354,7 +4466,7 @@ Aturan:
                                 } catch { /* spec capture error — non-critical */ }
                             }
 
-                            // Capture plan-spec parts emitted by pipePlanCapture for DB persistence
+                            // Capture plan-spec parts — internal only, do NOT forward to client.
                             if ((chunk as { type?: string }).type === PLAN_DATA_PART_TYPE) {
                                 try {
                                     const data = (chunk as { data?: { spec?: PlanSpec } }).data
@@ -4362,6 +4474,7 @@ Aturan:
                                         fallbackCapturedPlanSpec = data.spec
                                     }
                                 } catch { /* plan capture error — non-critical */ }
+                                continue
                             }
 
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {

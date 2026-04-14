@@ -104,6 +104,7 @@ import type * as paperSessions from "../paperSessions.js";
 import type * as paperSessions_constants from "../paperSessions/constants.js";
 import type * as paperSessions_daftarPustakaCompiler from "../paperSessions/daftarPustakaCompiler.js";
 import type * as paperSessions_stageDataWhitelist from "../paperSessions/stageDataWhitelist.js";
+import type * as paperSessions_stage_required_fields from "../paperSessions/stage_required_fields.js";
 import type * as paperSessions_types from "../paperSessions/types.js";
 import type * as papers from "../papers.js";
 import type * as permissions from "../permissions.js";
@@ -227,6 +228,7 @@ declare const fullApi: ApiFromModules<{
   "paperSessions/constants": typeof paperSessions_constants;
   "paperSessions/daftarPustakaCompiler": typeof paperSessions_daftarPustakaCompiler;
   "paperSessions/stageDataWhitelist": typeof paperSessions_stageDataWhitelist;
+  "paperSessions/stage_required_fields": typeof paperSessions_stage_required_fields;
   "paperSessions/types": typeof paperSessions_types;
   papers: typeof papers;
   permissions: typeof permissions;

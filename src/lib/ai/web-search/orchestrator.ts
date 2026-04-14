@@ -1106,8 +1106,10 @@ export async function executeWebSearch(
           generateMessageId: () => messageId,
           sendReasoning: config.isTransparentReasoning,
         })
-        const yamlStream = config.isDraftingStage ? pipeYamlRender(uiStream) : uiStream
-        return pipePlanCapture(yamlStream) as typeof yamlStream
+        // pipePlanCapture BEFORE pipeYamlRender: plan-spec stripping works
+        // with AI SDK's textDelta format, then pipeYamlRender transforms to @json-render format.
+        const planStream = pipePlanCapture(uiStream) as typeof uiStream
+        return config.isDraftingStage ? pipeYamlRender(planStream) : planStream
       }
 
       // ── Run compose with one-time failover ──
