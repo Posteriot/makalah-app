@@ -52,7 +52,7 @@ Between step 4 and step 5, `updateStageData` may have already been called. This 
 - These fields make the stage look "mature" to the model
 - But the artifact hasn't been created yet (`artifactId` is absent)
 
-### Model skips choice card
+### Model likely skips choice card (probabilistic, not deterministic)
 
 On step 6, the model receives:
 - Message history with original prompt + choice card (context preserved)
@@ -60,11 +60,11 @@ On step 6, the model receives:
 - `stageData` that looks mature (from the interrupted choice flow)
 - NO `choiceInteractionEvent` (no enforcer, no choice context note)
 
-The model sees mature `stageData` and decides to **skip the choice card**, proceeding directly to draft/finalize. The user loses their ability to choose a direction.
+The model sees mature `stageData` and is **likely to skip the choice card**, proceeding directly to draft/finalize. This is probabilistic model behavior — nothing in the code forces the skip, but mature stageData strongly signals "ready to finalize" to the model. The user likely loses their ability to choose a direction.
 
 ### No enforcer protection
 
-The `[CHOICE][artifact-enforcer]` only activates when `choiceInteractionEvent` is present in the request body. Without it, the enforcer doesn't force the tool chain. The model is free to do whatever it interprets from the context — which, given mature stageData, is likely "skip choice, finalize."
+The `[CHOICE][artifact-enforcer]` only activates when `choiceInteractionEvent` is present in the request body. Without it, the enforcer doesn't force the tool chain. The model is free to do whatever it interprets from the context.
 
 ## Root Cause
 
@@ -72,13 +72,32 @@ The `[CHOICE][artifact-enforcer]` only activates when `choiceInteractionEvent` i
 
 ## Impact
 
-- **User loses agency** — can't re-select direction after edit/resend
+- **User loses agency** — likely can't re-select direction after edit/resend
 - **Silent behavior change** — no error, no warning. Model just proceeds differently.
-- **Global across all stages** — any stage with choice card → finalize flow is affected
-- **Only affects interrupted choice flows** — if artifact was already created, this doesn't apply (stage is in pending_validation or later)
+- **Global across all stages** — any edit/resend mid-draft (with or without choice card) is affected. This is intentional: edit/resend = "restart this stage from scratch" is a consistent, predictable behavior regardless of which message was edited.
+- **Only affects incomplete stages** — if artifact was already created (`artifactId` exists), this doesn't apply (stage is in pending_validation or later)
+
+## Scope Decision
+
+The stageData reset fires on ANY edit/resend where `stageData[currentStage]` has fields but no `artifactId` — not just after choice card confirmation. This means:
+- Edit/resend after choice confirmation → reset (primary use case)
+- Edit/resend mid-draft discussion (no choice card involved) → also reset
+- Edit/resend after artifact exists → NO reset (guard blocks)
+
+This broader scope is an intentional design choice: "edit/resend = clean slate for current stage" is more consistent and predictable than scoping reset only to choice-card messages. A user who edits any message mid-stage expects a fresh start.
+
+## stageStatus Compatibility
+
+The reset clears stageData but does NOT reset `stageStatus`. This is safe because:
+- The guard requires `!artifactId` → which means `submitStageForValidation` hasn't been called → `stageStatus` is still `"drafting"` (the only status before submission)
+- The auto-rescue mechanism (stageStatus → "revision") only triggers when `stageStatus === "pending_validation"`, which requires a prior `submitStageForValidation` → which requires `artifactId` → which means our guard would have blocked the reset
+
+If a future code path changes this assumption, the reset mutation logs `[PAPER][edit-resend-reset]` with the cleared fields, making it auditable.
 
 ## Solution Direction
 
-Deterministic reset: on edit/resend, if `stageData[currentStage]` exists but `artifactId` is absent, clear stageData for that stage (preserve `revisionCount` only). This forces the model to present a fresh choice card.
+Deterministic stageData reset: on edit/resend, if `stageData[currentStage]` exists but `artifactId` is absent, clear stageData for that stage (preserve `revisionCount` only). This removes the mature-data signal and makes the model start fresh — highly likely to present a choice card again for stages that use them, or restart discussion for stages that don't.
+
+Note: the reset itself is deterministic (code guarantees stageData is cleared). The model's subsequent behavior (presenting choice card vs other) is probabilistic — but with empty stageData, the expected behavior is consistent with a fresh stage start.
 
 See `implementation-plan.md` in this directory for the full implementation plan.

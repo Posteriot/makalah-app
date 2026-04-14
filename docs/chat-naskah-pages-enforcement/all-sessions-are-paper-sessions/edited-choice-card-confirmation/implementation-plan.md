@@ -104,9 +104,9 @@ const resetStageDataForEditResendMutation = useMutation(api.paperSessions.resetS
 In `handleEdit` (line 1975+), AFTER `editAndTruncate` (line 2034) and BEFORE sending the new message (line 2093), add:
 
 ```typescript
-// Reset stageData if choice flow was interrupted (no artifact yet).
-// This forces the model to present a fresh choice card instead of
-// silently finalizing from stale data saved by the interrupted flow.
+// Reset stageData on edit/resend when stage is incomplete (no artifact yet).
+// Fires for ANY edit/resend mid-stage, not just choice card confirmations.
+// This is intentional: edit/resend = "restart this stage from scratch".
 if (isPaperMode && paperSession && userId) {
     const currentStageData = stageData?.[paperSession.currentStage as string];
     if (currentStageData && !currentStageData.artifactId) {
@@ -143,7 +143,7 @@ npx tsc --noEmit
 
 ```bash
 git add src/components/chat/ChatWindow.tsx
-git commit -m "feat: reset stageData on edit/resend of interrupted choice flow"
+git commit -m "feat: reset stageData on edit/resend of incomplete stage"
 ```
 
 ---
@@ -169,15 +169,17 @@ npx tsc --noEmit
 ## Behavioral Contract
 
 ### When reset triggers:
-- User edits/resends a message
+- User edits/resends ANY message during an incomplete stage
 - Paper mode is active (`isPaperMode && paperSession`)
 - Current stage has stageData (`stageData[currentStage]` exists)
 - Current stage has NO artifact (`!stageData[currentStage].artifactId`)
 
+This is intentionally broad: edit/resend = "restart this stage from scratch" regardless of which message was edited or whether a choice card was involved. Consistent, predictable behavior.
+
 ### When reset does NOT trigger:
 - Not in paper mode
 - No stageData for current stage (nothing to clear)
-- Current stage already has artifact (stage was completed — this is revision territory, not choice flow interruption)
+- Current stage already has artifact (stage was completed — this is revision territory)
 - Current stage is "completed" (not a valid STAGE_ORDER member)
 
 ### What gets cleared:
@@ -190,6 +192,15 @@ npx tsc --noEmit
 - `validatedAt` — never cleared (guard prevents reset when artifact exists)
 - All other stages' data — untouched
 
+### stageStatus compatibility:
+- The guard `!artifactId` implies `submitStageForValidation` hasn't been called → `stageStatus` is still `"drafting"`
+- Auto-rescue (stageStatus → "revision") only triggers from `"pending_validation"` which requires prior `submitStageForValidation` which requires `artifactId` → guard would have blocked
+- Therefore: `stageStatus` does NOT need resetting. It is always `"drafting"` when the reset fires.
+
+### Deterministic vs probabilistic:
+- The stageData reset is **deterministic** — code guarantees fields are cleared
+- The model's subsequent behavior (presenting choice card, restarting discussion) is **probabilistic** — but with empty stageData, the model behaves consistently with a fresh stage start
+
 ### Observability:
 - Convex log: `[PAPER][edit-resend-reset] stage=X cleared=[field1,field2,...]`
 - Browser console: `[PAPER][edit-resend-reset] Client: stage=X cleared=N fields`
@@ -197,4 +208,4 @@ npx tsc --noEmit
 ## E2E Audit Addition
 
 Add to per-stage checklist:
-- **12. Edit/resend after choice confirmation** — if user edits/resends the "Pilihan terkonfirmasi" message, model MUST present a fresh choice card (not skip to finalize). Verify from: `[PAPER][edit-resend-reset]` in Convex logs + fresh choice card in UI.
+- **12. Edit/resend on incomplete stage** — if user edits/resends any message while stage has no artifact, stageData should be cleared. Verify from: `[PAPER][edit-resend-reset]` in Convex logs. Model should start fresh (choice card for stages that use them, discussion restart for others).
