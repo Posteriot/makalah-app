@@ -3324,6 +3324,9 @@ Aturan:
                         }
 
                         // Persist captured plan to stageData
+                        if (!capturedPlanSpec && paperStageScope) {
+                            console.info(`[PLAN-CAPTURE] no plan-spec detected in response (stage=${paperStageScope})`)
+                        }
                         if (capturedPlanSpec && paperSession?._id && paperStageScope) {
                             try {
                                 await fetchMutationWithToken(api.paperSessions.updatePlan, {

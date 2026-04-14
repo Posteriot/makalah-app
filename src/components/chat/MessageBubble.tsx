@@ -881,7 +881,8 @@ export function MessageBubble({
     // Observability: log UnifiedProcessCard render state for E2E audit (last message only to avoid noise)
     const isLastAssistantMessage = isAssistant && allMessages && messageIndex === allMessages.length - 1
     if (showUnifiedCard && taskSummary && isLastAssistantMessage) {
-        console.info(`[UNIFIED-PROCESS-UI] stage=${taskSummary.stageId} progress=${taskSummary.completed}/${taskSummary.total} tasks=[${taskSummary.tasks.map(t => `${t.field}:${t.status}`).join(",")}]`)
+        const source = taskSummary.tasks[0]?.field?.startsWith("plan-") ? "model-driven" : "hardcoded-fallback"
+        console.info(`[UNIFIED-PROCESS-UI] stage=${taskSummary.stageId} source=${source} progress=${taskSummary.completed}/${taskSummary.total} tasks=[${taskSummary.tasks.map(t => `${t.field}:${t.status}`).join(",")}]`)
     }
     // Task 4.1: Extract sources (try annotations first, then fallback to property if we extend type)
     const sourcesFromAnnotation = (message as {

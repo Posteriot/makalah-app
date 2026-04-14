@@ -1190,6 +1190,7 @@ export const submitForValidation = mutation({
             }
         }
 
+        console.info(`[PAPER][submitForValidation] gate PASSED stage=${currentStage} required=${requiredFields?.length ?? 0} fields`)
         console.info(`[PAPER][submitForValidation] stage=${currentStage} artifactId=${artifactId} → pending_validation`)
         await ctx.db.patch(args.sessionId, {
             stageStatus: "pending_validation",

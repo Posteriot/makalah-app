@@ -107,6 +107,7 @@ function formatPlanContext(stageData: Record<string, unknown>, currentStage: str
     const lines: string[] = ["═══ YOUR CURRENT PLAN ═══"]
 
     if (!plan?.tasks?.length) {
+        console.info(`[PLAN-CONTEXT] stage=${currentStage} injected=no-plan-yet`)
         lines.push(
             "No plan yet. You MUST emit a ```plan-spec``` block in this response",
             "to define your task plan for this stage.",
@@ -131,6 +132,7 @@ function formatPlanContext(stageData: Record<string, unknown>, currentStage: str
 
     lines.push("")
     lines.push(`Progress: ${completed}/${plan.tasks.length} complete`)
+    console.info(`[PLAN-CONTEXT] stage=${currentStage} injected=plan progress=${completed}/${plan.tasks.length}`)
     lines.push("")
     lines.push("IMPORTANT: Emit an updated ```plan-spec``` block in EVERY response")
     lines.push("to reflect your current progress.")

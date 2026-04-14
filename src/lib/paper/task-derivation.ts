@@ -160,6 +160,7 @@ export function deriveTaskList(
   const currentStageData = (stageData[stageId] ?? {}) as Record<string, unknown>
 
   // ── Model-driven path: read from _plan if available ──
+  const hasPlan = !!(currentStageData._plan as { tasks?: unknown[] } | undefined)?.tasks?.length
   const plan = currentStageData._plan as { tasks?: { label?: string; status?: string }[] } | undefined
   if (plan?.tasks && Array.isArray(plan.tasks) && plan.tasks.length > 0) {
     const tasks: TaskItem[] = plan.tasks
