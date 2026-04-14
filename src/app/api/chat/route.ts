@@ -50,7 +50,7 @@ import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
 import { pipeYamlRender } from "@json-render/yaml"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
-import { PLAN_DATA_PART_TYPE, type PlanSpec, UNFENCED_PLAN_REGEX, planSpecSchema } from "@/lib/ai/harness/plan-spec"
+import { PLAN_DATA_PART_TYPE, type PlanSpec, UNFENCED_PLAN_REGEX, planSpecSchema, enforcePlanImmutability } from "@/lib/ai/harness/plan-spec"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
@@ -2881,12 +2881,14 @@ Aturan:
                         // Persist plan captured by pipePlanCapture in orchestrator compose stream
                         if (result.capturedPlanSpec && paperSession?._id && paperStageScope) {
                             try {
+                                const existingPlan = ((paperSession.stageData as Record<string, Record<string, unknown>>)?.[paperStageScope]?._plan) as PlanSpec | undefined
+                                const immutablePlan = enforcePlanImmutability(result.capturedPlanSpec, existingPlan, paperStageScope)
                                 await fetchMutationWithToken(api.paperSessions.updatePlan, {
                                     sessionId: paperSession._id,
                                     stage: paperStageScope,
-                                    plan: result.capturedPlanSpec,
+                                    plan: immutablePlan,
                                 })
-                                console.info(`[PLAN-CAPTURE] persisted (search path) stage=${paperStageScope} tasks=${result.capturedPlanSpec.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
+                                console.info(`[PLAN-CAPTURE] persisted (search path) stage=${paperStageScope} tasks=${immutablePlan.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
                             } catch (e) {
                                 console.warn(`[PLAN-CAPTURE] search path persist failed:`, e)
                             }
@@ -3480,12 +3482,14 @@ Aturan:
                         }
                         if (capturedPlanSpec && paperSession?._id && paperStageScope) {
                             try {
+                                const existingPlan = ((paperSession.stageData as Record<string, Record<string, unknown>>)?.[paperStageScope]?._plan) as PlanSpec | undefined
+                                const immutablePlan = enforcePlanImmutability(capturedPlanSpec, existingPlan, paperStageScope)
                                 await fetchMutationWithToken(api.paperSessions.updatePlan, {
                                     sessionId: paperSession._id,
                                     stage: paperStageScope,
-                                    plan: capturedPlanSpec,
+                                    plan: immutablePlan,
                                 })
-                                console.info(`[PLAN-CAPTURE] persisted stage=${paperStageScope} tasks=${capturedPlanSpec.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
+                                console.info(`[PLAN-CAPTURE] persisted stage=${paperStageScope} tasks=${immutablePlan.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
                             } catch (e) {
                                 console.warn(`[PLAN-CAPTURE] persist failed:`, e)
                             }
@@ -4300,12 +4304,14 @@ Aturan:
                         // Persist captured plan to stageData (fallback path)
                         if (fallbackCapturedPlanSpec && paperSession?._id && paperStageScope) {
                             try {
+                                const existingPlan = ((paperSession.stageData as Record<string, Record<string, unknown>>)?.[paperStageScope]?._plan) as PlanSpec | undefined
+                                const immutablePlan = enforcePlanImmutability(fallbackCapturedPlanSpec, existingPlan, paperStageScope)
                                 await fetchMutationWithToken(api.paperSessions.updatePlan, {
                                     sessionId: paperSession._id,
                                     stage: paperStageScope,
-                                    plan: fallbackCapturedPlanSpec,
+                                    plan: immutablePlan,
                                 })
-                                console.info(`[PLAN-CAPTURE] persisted (fallback) stage=${paperStageScope} tasks=${fallbackCapturedPlanSpec.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
+                                console.info(`[PLAN-CAPTURE] persisted (fallback) stage=${paperStageScope} tasks=${immutablePlan.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
                             } catch (e) {
                                 console.warn(`[PLAN-CAPTURE] fallback persist failed:`, e)
                             }

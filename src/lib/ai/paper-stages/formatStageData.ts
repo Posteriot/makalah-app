@@ -104,39 +104,57 @@ function formatPlanContext(stageData: Record<string, unknown>, currentStage: str
     const currentStageData = (stageData[currentStage] ?? {}) as Record<string, unknown>
     const plan = currentStageData._plan as PlanSpec | undefined
 
-    const lines: string[] = ["═══ YOUR CURRENT PLAN ═══"]
+    const lines: string[] = ["═══ YOUR EXECUTION PLAN (BINDING) ═══"]
 
     if (!plan?.tasks?.length) {
         console.info(`[PLAN-CONTEXT] stage=${currentStage} injected=no-plan-yet t=${Date.now()}`)
         lines.push(
             "No plan yet. You MUST emit a ```plan-spec``` block in this response",
             "to define your task plan for this stage.",
+            "",
+            "Once emitted, the task list is LOCKED. You may only change task STATUS",
+            "(pending → in-progress → complete), never add, remove, or rename tasks.",
         )
-        lines.push("═══════════════════════════")
+        lines.push("═══════════════════════════════════════")
         return lines.join("\n")
     }
 
-    lines.push(`Stage: ${plan.stage}`)
-    lines.push(`Summary: ${plan.summary}`)
-    lines.push("")
-    lines.push("Tasks:")
-
     let completed = 0
+    let currentTaskLabel: string | null = null
     for (const task of plan.tasks) {
-        const icon = task.status === "complete" ? "✅"
-            : task.status === "in-progress" ? "🔄"
-            : "⬚"
-        lines.push(`  ${icon} ${task.label} [${task.status}]`)
         if (task.status === "complete") completed++
+        else if (!currentTaskLabel) currentTaskLabel = task.label
     }
 
+    const allComplete = completed === plan.tasks.length
+
+    lines.push(`Stage: ${plan.stage} | Progress: ${completed}/${plan.tasks.length}`)
+    if (currentTaskLabel && !allComplete) {
+        lines.push(`CURRENT TASK → ${currentTaskLabel}`)
+    }
+    if (allComplete) {
+        lines.push("ALL TASKS COMPLETE → You may now finalize (createArtifact + submitStageForValidation).")
+    }
     lines.push("")
-    lines.push(`Progress: ${completed}/${plan.tasks.length} complete`)
+
+    for (const task of plan.tasks) {
+        const isCurrent = task.label === currentTaskLabel && !allComplete
+        const icon = task.status === "complete" ? "✅"
+            : task.status === "in-progress" ? "→ 🔄"
+            : "  ⬚"
+        lines.push(`${icon} ${task.label} [${task.status}]${isCurrent ? "  ← FOCUS HERE" : ""}`)
+    }
+
     console.info(`[PLAN-CONTEXT] stage=${currentStage} injected=plan progress=${completed}/${plan.tasks.length} t=${Date.now()}`)
+
     lines.push("")
-    lines.push("IMPORTANT: Emit an updated ```plan-spec``` block in EVERY response")
-    lines.push("to reflect your current progress.")
-    lines.push("═══════════════════════════")
+    lines.push("PLAN RULES:")
+    lines.push("- This plan is YOUR binding execution contract. Work through tasks in order.")
+    lines.push("- Focus on the CURRENT TASK only. Do not skip ahead.")
+    lines.push("- In your plan-spec block, change ONLY the status field (pending → in-progress → complete).")
+    lines.push("- Do NOT add new tasks. Do NOT remove tasks. Do NOT rename tasks. Task count is LOCKED.")
+    lines.push("- Finalize (createArtifact) ONLY when ALL tasks are complete.")
+    lines.push("═══════════════════════════════════════")
 
     return lines.join("\n")
 }
