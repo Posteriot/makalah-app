@@ -688,6 +688,67 @@ export const ensurePaperSessionExists = mutation({
 });
 
 /**
+ * Reset stageData for the current stage when user edits/resends a message
+ * during an incomplete stage (no artifact yet).
+ *
+ * Guard: only resets if stageData has fields but NO artifactId.
+ * Scope: fires on ANY edit/resend mid-stage, not just choice card confirmations.
+ * This is intentional: edit/resend = "restart this stage from scratch".
+ *
+ * Preserves: revisionCount (revision history must survive edit/resend).
+ * Clears: all other fields (angle, analisis, temuanUtama, etc.)
+ */
+export const resetStageDataForEditResend = mutation({
+    args: {
+        sessionId: v.id("paperSessions"),
+        userId: v.id("users"),
+    },
+    handler: async (ctx, args) => {
+        const session = await ctx.db.get(args.sessionId);
+        if (!session) throw new Error("Session not found");
+        if (session.userId !== args.userId) throw new Error("Unauthorized");
+
+        const currentStage = session.currentStage;
+        if (!STAGE_ORDER.includes(currentStage as PaperStageId)) {
+            return { reset: false, reason: "not_a_stage" };
+        }
+
+        const stageData = session.stageData as Record<string, Record<string, unknown>>;
+        const currentStageData = stageData[currentStage];
+
+        // Guard: only reset if has data but no artifact (incomplete stage)
+        if (!currentStageData || currentStageData.artifactId) {
+            return {
+                reset: false,
+                reason: currentStageData?.artifactId ? "has_artifact" : "no_data",
+            };
+        }
+
+        // Preserve revisionCount only
+        const revisionCount = typeof currentStageData.revisionCount === "number"
+            ? currentStageData.revisionCount : 0;
+        const clearedFields = Object.keys(currentStageData).filter(k => k !== "revisionCount");
+
+        if (clearedFields.length === 0) {
+            return { reset: false, reason: "nothing_to_clear" };
+        }
+
+        const updatedStageData = { ...stageData };
+        updatedStageData[currentStage] = { revisionCount };
+
+        await ctx.db.patch(args.sessionId, {
+            stageData: updatedStageData,
+            updatedAt: Date.now(),
+        });
+
+        console.info(
+            `[PAPER][edit-resend-reset] stage=${currentStage} cleared=[${clearedFields.join(",")}]`
+        );
+        return { reset: true, stage: currentStage, clearedFields };
+    },
+});
+
+/**
  * Update data for the current stage.
  */
 export const updateStageData = mutation({
