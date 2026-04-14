@@ -6,7 +6,7 @@ import sys
 import os
 
 ADMIN_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48"
-CHANGE_NOTE = "updated-6: all-sessions-are-paper-sessions — remove startPaperSession, auto-create sessions, navigable completed state"
+CHANGE_NOTE = "updated-6: harness plan system — model-driven task tracking, validation gate, plan-spec capture"
 SRC_DIR = ".references/system-prompt-skills-active/updated-6"
 
 SKILLS = [
@@ -138,7 +138,7 @@ def main():
                         "version": stale["version"],
                     })
                     print(f"    archived stale draft v{stale['version']}")
-            except RuntimeError:
+            except Exception:
                 pass  # non-critical — stale drafts don't break activation
 
         except RuntimeError as e:

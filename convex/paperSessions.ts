@@ -16,7 +16,7 @@ import {
     type DaftarPustakaCompileCandidate,
 } from "./paperSessions/daftarPustakaCompiler";
 import { validateStageDataKeys, sanitizeNestedArrayFields } from "./paperSessions/stageDataWhitelist";
-import { STAGE_REQUIRED_FIELDS, isFieldPresent } from "./paperSessions/stage-required-fields";
+import { STAGE_REQUIRED_FIELDS, isFieldPresent } from "./paperSessions/stage_required_fields";
 import { rebuildNaskahSnapshot } from "./naskahRebuild";
 
 const DEFAULT_WORKING_TITLE = "Paper Tanpa Judul";
