@@ -704,9 +704,7 @@ export const resetStageDataForEditResend = mutation({
         userId: v.id("users"),
     },
     handler: async (ctx, args) => {
-        const session = await ctx.db.get(args.sessionId);
-        if (!session) throw new Error("Session not found");
-        if (session.userId !== args.userId) throw new Error("Unauthorized");
+        const { session } = await requirePaperSessionOwner(ctx, args.sessionId);
 
         const currentStage = session.currentStage;
         if (!STAGE_ORDER.includes(currentStage as PaperStageId)) {
