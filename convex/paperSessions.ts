@@ -887,6 +887,9 @@ export const updateStageData = mutation({
             warnings.push(...truncationWarnings);
         }
 
+        const savedKeys = Object.keys(truncatedData);
+        console.info(`[PAPER][updateStageData] stage=${args.stage} keys=[${savedKeys.join(",")}]${warnings.length > 0 ? ` warnings=${warnings.length}` : ""}`);
+
         return {
             success: true,
             stage: args.stage,
@@ -1135,7 +1138,7 @@ export const submitForValidation = mutation({
             );
         }
 
-        console.log(`[AutoPresent] guard PASSED → setting stageStatus=pending_validation`)
+        console.info(`[PAPER][submitForValidation] stage=${currentStage} artifactId=${artifactId} → pending_validation`)
         await ctx.db.patch(args.sessionId, {
             stageStatus: "pending_validation",
             updatedAt: Date.now(),

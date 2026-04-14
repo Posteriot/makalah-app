@@ -275,6 +275,7 @@ export const createConversation = mutation({
 
         // Auto-create paper session — every conversation is a paper session.
         // Same transaction = atomic, no race condition possible.
+        console.info(`[PAPER][auto-create] conversationId=${conversationId} stage=gagasan`)
         await ctx.db.insert("paperSessions", {
             userId,
             conversationId,
