@@ -539,6 +539,7 @@ export default defineSchema({
       gagasan: v.optional(v.object({
         ringkasan: v.optional(v.string()),
         ringkasanDetail: v.optional(v.string()), // Legacy detail summary (kept for compatibility)
+        _plan: v.optional(v.any()), // Harness plan system: model-driven task tracking
         ideKasar: v.optional(v.string()), // Optional: may not exist during initial revision
         analisis: v.optional(v.string()),
         angle: v.optional(v.string()),
@@ -562,6 +563,7 @@ export default defineSchema({
       topik: v.optional(v.object({
         ringkasan: v.optional(v.string()),
         ringkasanDetail: v.optional(v.string()),
+        _plan: v.optional(v.any()),
         definitif: v.optional(v.string()), // Optional: may not exist during initial revision
         angleSpesifik: v.optional(v.string()),
         argumentasiKebaruan: v.optional(v.string()),
@@ -590,6 +592,7 @@ export default defineSchema({
       abstrak: v.optional(v.object({
         ringkasan: v.optional(v.string()),
         ringkasanDetail: v.optional(v.string()),
+        _plan: v.optional(v.any()),
         ringkasanPenelitian: v.optional(v.string()),
         keywords: v.optional(v.array(v.string())),
         wordCount: v.optional(v.number()),
@@ -605,6 +608,7 @@ export default defineSchema({
       pendahuluan: v.optional(v.object({
         ringkasan: v.optional(v.string()),
         ringkasanDetail: v.optional(v.string()),
+        _plan: v.optional(v.any()),
         latarBelakang: v.optional(v.string()),
         rumusanMasalah: v.optional(v.string()),
         researchGapAnalysis: v.optional(v.string()),
@@ -628,6 +632,7 @@ export default defineSchema({
       tinjauan_literatur: v.optional(v.object({
         ringkasan: v.optional(v.string()),
         ringkasanDetail: v.optional(v.string()),
+        _plan: v.optional(v.any()),
         kerangkaTeoretis: v.optional(v.string()),
         reviewLiteratur: v.optional(v.string()),
         gapAnalysis: v.optional(v.string()),
@@ -653,6 +658,7 @@ export default defineSchema({
       metodologi: v.optional(v.object({
         ringkasan: v.optional(v.string()),
         ringkasanDetail: v.optional(v.string()),
+        _plan: v.optional(v.any()),
         desainPenelitian: v.optional(v.string()),
         metodePerolehanData: v.optional(v.string()),
         teknikAnalisis: v.optional(v.string()),
