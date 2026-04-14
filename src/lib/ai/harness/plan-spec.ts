@@ -6,7 +6,6 @@ import { z } from "zod"
 
 export const PLAN_DATA_PART_TYPE = "plan-data-part" as const
 export const PLAN_FENCE_OPEN = "```plan-spec"
-export const PLAN_FENCE_CLOSE = "```"
 
 // ============================================================================
 // SCHEMA
