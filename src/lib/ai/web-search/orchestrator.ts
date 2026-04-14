@@ -35,7 +35,7 @@ import { pipeYamlRender } from "@json-render/yaml"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
-import { PLAN_DATA_PART_TYPE, type PlanSpec } from "@/lib/ai/harness/plan-spec"
+import { PLAN_DATA_PART_TYPE, type PlanSpec, planSpecSchema, UNFENCED_PLAN_REGEX } from "@/lib/ai/harness/plan-spec"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
 import {
   createCuratedTraceController,
@@ -971,6 +971,25 @@ export async function executeWebSearch(
               console.warn(`[Orchestrator][${reqId}] Compose used fallback model before first text output`)
             }
 
+            // Fallback plan extraction from composedText when stream capture missed unfenced plan
+            let fallbackPlanSpec: PlanSpec | null = null
+            if (!capturedPlanSpec && composedText) {
+              try {
+                UNFENCED_PLAN_REGEX.lastIndex = 0
+                const match = UNFENCED_PLAN_REGEX.exec(composedText)
+                if (match) {
+                  const yamlLib = await import("js-yaml")
+                  const fixed = match[1].replace(/^(\s*-\s*label:\s*.+)\n\s*status:/gm, "$1\n    status:")
+                  const parsed = yamlLib.default.load(fixed.trim())
+                  const result = planSpecSchema.safeParse(parsed)
+                  if (result.success) {
+                    console.info(`[PLAN-CAPTURE] parsed (composedText fallback) stage=${result.data.stage} tasks=${result.data.tasks.length}`)
+                    fallbackPlanSpec = result.data
+                  }
+                }
+              } catch { /* non-critical */ }
+            }
+
             await config.onFinish({
               text: textWithInlineCitations,
               sources: cleanSources.map((s) => ({ url: s.url, title: s.title, ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}), ...(s.citedText ? { citedText: s.citedText } : {}) })),
@@ -990,7 +1009,7 @@ export async function executeWebSearch(
               retrieverIndex: successRetrieverIndex,
               attemptedRetrievers,
               capturedChoiceSpec: capturedChoiceSpec && capturedChoiceSpec.root ? capturedChoiceSpec : undefined,
-              capturedPlanSpec: capturedPlanSpec ?? undefined,
+              capturedPlanSpec: capturedPlanSpec ?? fallbackPlanSpec ?? undefined,
               reasoningSnapshot,
             })
             console.log(`[⏱ LATENCY][${reqId}] onFinish(DB writes)=${Date.now() - onFinishStart}ms`)

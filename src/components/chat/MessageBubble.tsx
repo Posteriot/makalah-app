@@ -928,9 +928,14 @@ export function MessageBubble({
     const internalThoughtContent = streamedInternalThought?.trim()
         ? streamedInternalThought.trim()
         : fallbackSplitContent.internalThoughtContent
-    const publicDisplayText = streamedInternalThought?.trim()
+    const publicDisplayTextRaw = streamedInternalThought?.trim()
         ? (fallbackSplitContent.publicContent || rawDisplayText)
         : (fallbackSplitContent.publicContent || rawDisplayText)
+    // Strip unfenced plan-spec YAML that leaked through streaming (model didn't use code fences)
+    const publicDisplayText = publicDisplayTextRaw
+        ?.replace(/```plan-spec[\s\S]*?```/g, "")
+        .replace(/(?:^|\n)stage:\s*\w+\s*\nsummary:\s*.+\ntasks:\s*\n(?:\s*-\s*label:\s*.+\n\s*status:\s*(?:complete|in-progress|pending)\s*\n?)+/g, "")
+        .replace(/\n{3,}/g, "\n\n").trim()
     const normalizedLegacyCitedText = (() => {
         if (!isAssistant) return null
         if (sources.length === 0) return null
