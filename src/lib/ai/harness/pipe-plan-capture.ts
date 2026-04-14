@@ -2,17 +2,21 @@ import yaml from "js-yaml"
 import {
   PLAN_DATA_PART_TYPE,
   PLAN_FENCE_OPEN,
+  UNFENCED_PLAN_REGEX,
   planSpecSchema,
   type PlanDataPart,
 } from "./plan-spec"
 
 /**
- * Stream transformer that detects ```plan-spec fences in text-delta chunks,
- * parses YAML, validates, strips fence from visible text, and emits
- * PLAN_DATA_PART_TYPE parts.
+ * Stream transformer that detects plan-spec content in text-delta chunks.
  *
- * Non-plan chunks pass through unchanged.
- * Malformed YAML is logged and skipped — never breaks the stream.
+ * Two detection modes:
+ * 1. FENCED: ```plan-spec ... ``` — primary, parse YAML inside fence
+ * 2. UNFENCED: raw "stage: X\nsummary: ...\ntasks:\n..." — safety net
+ *    when model doesn't comply with fence instruction
+ *
+ * Both modes: parse YAML, validate with Zod, strip from visible text,
+ * emit PLAN_DATA_PART_TYPE part. Malformed content is logged and skipped.
  */
 export function pipePlanCapture(
   input: ReadableStream<unknown>
@@ -20,6 +24,59 @@ export function pipePlanCapture(
   let buffer = ""
   let insideFence = false
   let fenceContent = ""
+
+  /**
+   * Try to parse a plan-spec string (YAML or unfenced format).
+   * Returns PlanDataPart if valid, null otherwise.
+   */
+  function tryParsePlan(content: string, source: "fenced" | "unfenced"): PlanDataPart | null {
+    try {
+      // Fix common indentation issue: "status:" not indented under list item
+      const fixedContent = content.replace(
+        /^(\s*-\s*label:\s*.+)\n\s*status:/gm,
+        "$1\n    status:"
+      )
+      const parsed = yaml.load(fixedContent.trim())
+      const result = planSpecSchema.safeParse(parsed)
+      if (result.success) {
+        console.info(
+          `[PLAN-CAPTURE] parsed (${source}) stage=${result.data.stage} tasks=${result.data.tasks.length}`
+        )
+        return {
+          type: PLAN_DATA_PART_TYPE,
+          data: { spec: result.data },
+        }
+      } else {
+        console.warn(
+          `[PLAN-CAPTURE] validation failed (${source}):`,
+          result.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`)
+        )
+      }
+    } catch (e) {
+      console.warn(`[PLAN-CAPTURE] YAML parse error (${source}):`, e)
+    }
+    return null
+  }
+
+  /**
+   * Check buffer for unfenced plan-spec pattern. If found, strip it
+   * from the text and emit PlanDataPart.
+   * Returns { cleanText, part } or null if no match.
+   */
+  function detectUnfenced(text: string): { cleanText: string; part: PlanDataPart } | null {
+    // Reset regex state (global flag)
+    UNFENCED_PLAN_REGEX.lastIndex = 0
+    const match = UNFENCED_PLAN_REGEX.exec(text)
+    if (!match) return null
+
+    const planYaml = match[1]
+    const part = tryParsePlan(planYaml, "unfenced")
+    if (!part) return null
+
+    // Strip the matched plan from text
+    const cleanText = text.slice(0, match.index) + text.slice(match.index + match[0].length)
+    return { cleanText: cleanText.replace(/\n{3,}/g, "\n\n"), part }
+  }
 
   return new ReadableStream({
     async start(controller) {
@@ -29,11 +86,23 @@ export function pipePlanCapture(
         while (true) {
           const { done, value } = await reader.read()
           if (done) {
+            // Flush remaining buffer — check for unfenced before flushing
             if (buffer.length > 0 && !insideFence) {
-              controller.enqueue({
-                type: "text-delta",
-                textDelta: buffer,
-              })
+              const unfenced = detectUnfenced(buffer)
+              if (unfenced) {
+                controller.enqueue(unfenced.part)
+                if (unfenced.cleanText.length > 0) {
+                  controller.enqueue({
+                    type: "text-delta",
+                    textDelta: unfenced.cleanText,
+                  })
+                }
+              } else {
+                controller.enqueue({
+                  type: "text-delta",
+                  textDelta: buffer,
+                })
+              }
               buffer = ""
             }
             controller.close()
@@ -57,25 +126,53 @@ export function pipePlanCapture(
               const fenceStart = buffer.indexOf(PLAN_FENCE_OPEN)
 
               if (fenceStart === -1) {
+                // No fence found — check for unfenced pattern in safe portion
                 const safeLength = Math.max(
                   0,
                   buffer.length - PLAN_FENCE_OPEN.length
                 )
                 if (safeLength > 0) {
-                  controller.enqueue({
-                    type: "text-delta",
-                    textDelta: buffer.slice(0, safeLength),
-                  })
+                  const safeText = buffer.slice(0, safeLength)
+
+                  // Check for unfenced plan-spec in safe text
+                  const unfenced = detectUnfenced(safeText)
+                  if (unfenced) {
+                    controller.enqueue(unfenced.part)
+                    if (unfenced.cleanText.length > 0) {
+                      controller.enqueue({
+                        type: "text-delta",
+                        textDelta: unfenced.cleanText,
+                      })
+                    }
+                  } else {
+                    controller.enqueue({
+                      type: "text-delta",
+                      textDelta: safeText,
+                    })
+                  }
                   buffer = buffer.slice(safeLength)
                 }
                 break
               }
 
               if (fenceStart > 0) {
-                controller.enqueue({
-                  type: "text-delta",
-                  textDelta: buffer.slice(0, fenceStart),
-                })
+                // Check pre-fence text for unfenced pattern
+                const preFence = buffer.slice(0, fenceStart)
+                const unfenced = detectUnfenced(preFence)
+                if (unfenced) {
+                  controller.enqueue(unfenced.part)
+                  if (unfenced.cleanText.length > 0) {
+                    controller.enqueue({
+                      type: "text-delta",
+                      textDelta: unfenced.cleanText,
+                    })
+                  }
+                } else {
+                  controller.enqueue({
+                    type: "text-delta",
+                    textDelta: preFence,
+                  })
+                }
               }
 
               insideFence = true
@@ -109,29 +206,8 @@ export function pipePlanCapture(
               buffer = buffer.slice(closeIdx + closeLen)
               insideFence = false
 
-              try {
-                const parsed = yaml.load(fenceContent.trim())
-                const result = planSpecSchema.safeParse(parsed)
-                if (result.success) {
-                  const part: PlanDataPart = {
-                    type: PLAN_DATA_PART_TYPE,
-                    data: { spec: result.data },
-                  }
-                  controller.enqueue(part)
-                  console.info(
-                    `[PLAN-CAPTURE] parsed stage=${result.data.stage} tasks=${result.data.tasks.length}`
-                  )
-                } else {
-                  console.warn(
-                    `[PLAN-CAPTURE] validation failed:`,
-                    result.error.issues.map(
-                      (i) => `${i.path.join(".")}: ${i.message}`
-                    )
-                  )
-                }
-              } catch (e) {
-                console.warn(`[PLAN-CAPTURE] YAML parse error:`, e)
-              }
+              const part = tryParsePlan(fenceContent, "fenced")
+              if (part) controller.enqueue(part)
 
               fenceContent = ""
             }

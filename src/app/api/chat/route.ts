@@ -2798,8 +2798,11 @@ Aturan:
                         } else if (paperStageScope) {
                             console.info(`[PLAN-CAPTURE] no plan-spec detected in search response (stage=${paperStageScope})`)
                         }
-                        // Strip any remaining plan-spec fences from text BEFORE saving
-                        const searchText = result.text.replace(/```plan-spec[\s\S]*?```/g, "").trim()
+                        // Strip fenced AND unfenced plan-spec from text BEFORE saving
+                        const searchText = result.text
+                            .replace(/```plan-spec[\s\S]*?```/g, "")
+                            .replace(/(?:^|\n)stage:\s*\w+\s*\nsummary:\s*.+\ntasks:\s*\n(?:\s*-\s*label:\s*.+\n\s*status:\s*(?:complete|in-progress|pending)\s*\n?)+/g, "")
+                            .replace(/\n{3,}/g, "\n\n").trim()
 
                         // ──── Save assistant message ────
                         await saveAssistantMessage(
@@ -2972,6 +2975,9 @@ Aturan:
                             ""
                         ).replace(
                             /```plan-spec[\s\S]*?```/g,
+                            ""
+                        ).replace(
+                            /(?:^|\n)stage:\s*\w+\s*\nsummary:\s*.+\ntasks:\s*\n(?:\s*-\s*label:\s*.+\n\s*status:\s*(?:complete|in-progress|pending)\s*\n?)+/g,
                             ""
                         ).replace(/\n{3,}/g, "\n\n").trim()
                         const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
@@ -3792,6 +3798,9 @@ Aturan:
                             ""
                         ).replace(
                             /```plan-spec[\s\S]*?```/g,
+                            ""
+                        ).replace(
+                            /(?:^|\n)stage:\s*\w+\s*\nsummary:\s*.+\ntasks:\s*\n(?:\s*-\s*label:\s*.+\n\s*status:\s*(?:complete|in-progress|pending)\s*\n?)+/g,
                             ""
                         ).replace(/\n{3,}/g, "\n\n").trim()
                         const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0

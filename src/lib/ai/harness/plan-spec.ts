@@ -7,6 +7,13 @@ import { z } from "zod"
 export const PLAN_DATA_PART_TYPE = "plan-data-part" as const
 export const PLAN_FENCE_OPEN = "```plan-spec"
 
+/**
+ * Regex to detect unfenced plan-spec YAML emitted by model without code fences.
+ * Matches: "stage: <word>\nsummary: <text>\ntasks:\n" followed by task entries.
+ * Used as safety net when model doesn't comply with fence instruction.
+ */
+export const UNFENCED_PLAN_REGEX = /(?:^|\n)(stage:\s*\w+\s*\nsummary:\s*.+\ntasks:\s*\n(?:\s*-\s*label:\s*.+\n\s*status:\s*(?:complete|in-progress|pending)\s*\n?)+)/g
+
 // ============================================================================
 // SCHEMA
 // ============================================================================

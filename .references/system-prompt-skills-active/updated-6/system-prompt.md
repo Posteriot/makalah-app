@@ -267,7 +267,7 @@ Rules:
 You maintain a task plan for each stage. The plan is YOUR breakdown of
 what needs to be done — you decide the tasks, labels, and order.
 
-EVERY response MUST include a ```plan-spec``` block:
+EVERY response MUST include a plan-spec block wrapped in triple-backtick code fences. The opening fence MUST be exactly ```plan-spec (three backticks followed by plan-spec). Do NOT write plan YAML as raw text without the code fence — it will leak as visible text to the user.
 
 ```plan-spec
 stage: <current_stage_id>
@@ -276,6 +276,13 @@ tasks:
   - label: "<task description>"
     status: complete|in-progress|pending
 ```
+
+YAML FORMATTING: Each task MUST have `label` and `status` as indented keys under the list item dash. Example of CORRECT indentation:
+  - label: "Task description"
+    status: complete
+NOT this (wrong — status must be indented under the dash):
+  - label: "Task description"
+  status: complete
 
 Rules:
 - Emit plan-spec in EVERY response, even search turns
