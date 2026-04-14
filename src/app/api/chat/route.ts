@@ -371,7 +371,12 @@ export async function POST(req: Request) {
                 ? (paperSession.currentStage as PaperStageId)
                 : undefined
         const isDraftingStage = !!paperStageScope && paperSession?.stageStatus === "drafting"
-        console.info(`[PAPER][session-resolve] stage=${paperSession?.currentStage ?? "none"} status=${paperSession?.stageStatus ?? "none"} hasPrompt=${!!paperModePrompt} skillFallback=${skillResolverFallback} stageInstructionSource=${paperModeContext.stageInstructionSource}`)
+        // Detect post-edit-resend-reset: stage is drafting but stageData is empty/minimal (only revisionCount)
+        const currentStageDataKeys = paperSession?.stageData
+            ? Object.keys((paperSession.stageData as Record<string, Record<string, unknown>>)[paperSession.currentStage] ?? {}).filter(k => k !== "revisionCount")
+            : []
+        const isPostEditResendReset = !!paperStageScope && paperSession?.stageStatus === "drafting" && currentStageDataKeys.length === 0
+        console.info(`[PAPER][session-resolve] stage=${paperSession?.currentStage ?? "none"} status=${paperSession?.stageStatus ?? "none"} hasPrompt=${!!paperModePrompt} skillFallback=${skillResolverFallback} stageInstructionSource=${paperModeContext.stageInstructionSource}${isPostEditResendReset ? " postEditResendReset=true" : ""}`)
         const isHasilPostChoice = choiceInteractionEvent?.stage === "hasil"
         const paperToolTracker = createPaperToolTracker()
         const paperTurnObservability: {
