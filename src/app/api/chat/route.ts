@@ -2791,7 +2791,7 @@ Aturan:
                                     stage: paperStageScope,
                                     plan: result.capturedPlanSpec,
                                 })
-                                console.info(`[PLAN-CAPTURE] persisted (search path) stage=${paperStageScope} tasks=${result.capturedPlanSpec.tasks.length}`)
+                                console.info(`[PLAN-CAPTURE] persisted (search path) stage=${paperStageScope} tasks=${result.capturedPlanSpec.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
                             } catch (e) {
                                 console.warn(`[PLAN-CAPTURE] search path persist failed:`, e)
                             }
@@ -3328,7 +3328,7 @@ Aturan:
                                     stage: paperStageScope,
                                     plan: capturedPlanSpec,
                                 })
-                                console.info(`[PLAN-CAPTURE] persisted stage=${paperStageScope} tasks=${capturedPlanSpec.tasks.length}`)
+                                console.info(`[PLAN-CAPTURE] persisted stage=${paperStageScope} tasks=${capturedPlanSpec.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
                             } catch (e) {
                                 console.warn(`[PLAN-CAPTURE] persist failed:`, e)
                             }
@@ -4108,7 +4108,7 @@ Aturan:
                                     stage: paperStageScope,
                                     plan: fallbackCapturedPlanSpec,
                                 })
-                                console.info(`[PLAN-CAPTURE] persisted (fallback) stage=${paperStageScope} tasks=${fallbackCapturedPlanSpec.tasks.length}`)
+                                console.info(`[PLAN-CAPTURE] persisted (fallback) stage=${paperStageScope} tasks=${fallbackCapturedPlanSpec.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
                             } catch (e) {
                                 console.warn(`[PLAN-CAPTURE] fallback persist failed:`, e)
                             }
