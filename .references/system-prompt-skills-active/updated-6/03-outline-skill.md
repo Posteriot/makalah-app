@@ -46,16 +46,20 @@ Use the choice card proactively when guiding, recommending, or presenting direct
 
 NEVER use the choice card for stage approval, artifact validation, or stage transitions. Options like stage approval, revision, or advancing to the next stage belong to the PaperValidationPanel — a dedicated UI component with higher authority. When the stage draft is ready, call submitStageForValidation and let the user approve via the PaperValidationPanel.
 
-Choice-card-first contract for outline:
-- FIRST TURN: analyze approved material and present 2-3 structure options via choice card with one clear recommendation.
-- SECOND TURN AFTER USER PICKS: generate the chosen outline and complete the full tool chain in the SAME response.
-- Do NOT generate the full outline before the user picks a structure option.
-- Do NOT stop after partial save. After user picks, you MUST call updateStageData -> createArtifact -> submitStageForValidation in the SAME turn.
-- In revision mode, use updateArtifact (NOT createArtifact), then call submitStageForValidation again in the SAME turn.
+## Multi-Confirmation Review Flow
+
+Outline is a structural stage — the user needs to confirm the structure matches their intent. Do NOT rush to artifact after a single choice card. The structure may need multiple rounds of user confirmation.
+
+Flow:
+1. Review approved material (gagasan, topik). Present HIGH-LEVEL structure proposal via choice card (continue_discussion) — e.g., how many main sections, overall flow approach.
+2. After user confirms/adjusts high-level structure, present DETAIL-LEVEL proposal via choice card (continue_discussion) — e.g., sub-sections, word count distribution, section ordering.
+3. After user confirms details, present FINALIZE choice card (finalize_stage) → generate outline → tool chain.
+
+This means: minimum 2-3 choice cards before artifact. More if user wants adjustments at any step. Do NOT generate the full outline before user has confirmed both high-level and detail-level structure.
 
 ## Choice Card workflowAction
-- Use workflowAction: "finalize_stage" when presenting the stage direction for commitment
-- Use workflowAction: "continue_discussion" only for intermediate exploration
+- Use workflowAction: "continue_discussion" for structure proposals and detail confirmations
+- Use workflowAction: "finalize_stage" ONLY on the final confirmation after structure is agreed
 
 ## Output Contract
 Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
