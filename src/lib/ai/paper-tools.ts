@@ -414,12 +414,27 @@ The tool will:
                         };
                     }
 
-                    await retryMutation(
+                    const submitResult = await retryMutation(
                         () => fetchMutation(api.paperSessions.submitForValidation, {
                             sessionId: session._id,
                         }, convexOptions),
                         "paperSessions.submitForValidation"
-                    );
+                    ) as { success: boolean; error?: string; missingFields?: string[] };
+
+                    // Validation gate may return soft failure (required fields missing)
+                    if (submitResult && submitResult.success === false) {
+                        const missingFields = submitResult.missingFields ?? []
+                        console.warn("[F1-F6-TEST] submitStageForValidation GATE BLOCKED", { stage: session.currentStage, missingFields })
+                        return {
+                            success: false,
+                            errorCode: "MISSING_REQUIRED_FIELDS",
+                            retryable: true,
+                            missingFields,
+                            error: submitResult.error ?? `Missing required fields: ${missingFields.join(", ")}`,
+                            nextAction: `Call updateStageData with the missing fields (${missingFields.join(", ")}), then retry submitStageForValidation.`,
+                        };
+                    }
+
                     if (context.toolTracker) context.toolTracker.sawSubmitValidationSuccess = true
                     console.log("[F1-F6-TEST] submitStageForValidation", { stage: session.currentStage, status: "pending_validation" })
                     return {

@@ -48,10 +48,9 @@ import {
 import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 // buildUserFacingSearchPayload now handled by orchestrator
 import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
-import yaml from "js-yaml"
 import { pipeYamlRender } from "@json-render/yaml"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
-import { PLAN_DATA_PART_TYPE, type PlanSpec, planSpecSchema } from "@/lib/ai/harness/plan-spec"
+import { PLAN_DATA_PART_TYPE, type PlanSpec } from "@/lib/ai/harness/plan-spec"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
@@ -2784,28 +2783,23 @@ Aturan:
                         const retrieverModelName = result.retrieverName || "unknown"
                         const combinedModelName = `${retrieverModelName}+${modelNames.primary.model}`
 
-                        // Extract and persist plan from search path text
-                        let searchText = result.text
-                        const planFenceRegex = /```plan-spec\n([\s\S]*?)\n```/
-                        const planMatch = searchText.match(planFenceRegex)
-                        if (planMatch && paperSession?._id && paperStageScope) {
+                        // Persist plan captured by pipePlanCapture in orchestrator compose stream
+                        if (result.capturedPlanSpec && paperSession?._id && paperStageScope) {
                             try {
-                                const parsed = yaml.load(planMatch[1].trim())
-                                const planResult = planSpecSchema.safeParse(parsed)
-                                if (planResult.success) {
-                                    await fetchMutationWithToken(api.paperSessions.updatePlan, {
-                                        sessionId: paperSession._id,
-                                        stage: paperStageScope,
-                                        plan: planResult.data,
-                                    })
-                                    console.info(`[PLAN-CAPTURE] persisted (search path) stage=${paperStageScope} tasks=${planResult.data.tasks.length}`)
-                                }
+                                await fetchMutationWithToken(api.paperSessions.updatePlan, {
+                                    sessionId: paperSession._id,
+                                    stage: paperStageScope,
+                                    plan: result.capturedPlanSpec,
+                                })
+                                console.info(`[PLAN-CAPTURE] persisted (search path) stage=${paperStageScope} tasks=${result.capturedPlanSpec.tasks.length}`)
                             } catch (e) {
-                                console.warn(`[PLAN-CAPTURE] search path parse/persist failed:`, e)
+                                console.warn(`[PLAN-CAPTURE] search path persist failed:`, e)
                             }
+                        } else if (paperStageScope) {
+                            console.info(`[PLAN-CAPTURE] no plan-spec detected in search response (stage=${paperStageScope})`)
                         }
-                        // Strip plan-spec from text BEFORE saving
-                        searchText = searchText.replace(/```plan-spec[\s\S]*?```/g, "").trim()
+                        // Strip any remaining plan-spec fences from text BEFORE saving
+                        const searchText = result.text.replace(/```plan-spec[\s\S]*?```/g, "").trim()
 
                         // ──── Save assistant message ────
                         await saveAssistantMessage(

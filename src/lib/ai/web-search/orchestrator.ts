@@ -34,6 +34,8 @@ import type { SkillContext } from "@/lib/ai/skills/types"
 import { pipeYamlRender } from "@json-render/yaml"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
+import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
+import { PLAN_DATA_PART_TYPE, type PlanSpec } from "@/lib/ai/harness/plan-spec"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
 import {
   createCuratedTraceController,
@@ -723,6 +725,15 @@ export async function executeWebSearch(
       // ── Chunk processor: returns action for stream consumption loop ──
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       async function processComposeChunk(chunk: any): Promise<"continue" | "break" | "retry"> {
+        // Capture plan-spec parts emitted by pipePlanCapture
+        if ((chunk as { type?: string }).type === PLAN_DATA_PART_TYPE) {
+          try {
+            const data = (chunk as { data?: { spec?: PlanSpec } }).data
+            if (data?.spec) capturedPlanSpec = data.spec
+          } catch { /* plan capture error — non-critical */ }
+          return "continue"
+        }
+
         // Capture data-spec parts emitted by pipeYamlRender for DB persistence
         if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
           try {
@@ -979,6 +990,7 @@ export async function executeWebSearch(
               retrieverIndex: successRetrieverIndex,
               attemptedRetrievers,
               capturedChoiceSpec: capturedChoiceSpec && capturedChoiceSpec.root ? capturedChoiceSpec : undefined,
+              capturedPlanSpec: capturedPlanSpec ?? undefined,
               reasoningSnapshot,
             })
             console.log(`[⏱ LATENCY][${reqId}] onFinish(DB writes)=${Date.now() - onFinishStart}ms`)
@@ -1067,13 +1079,16 @@ export async function executeWebSearch(
       }
 
       // ── Build readable stream from compose result ──
+      let capturedPlanSpec: PlanSpec | null = null
+
       const buildComposeReadable = (result: ReturnType<typeof streamText>) => {
         const uiStream = result.toUIMessageStream({
           sendStart: false,
           generateMessageId: () => messageId,
           sendReasoning: config.isTransparentReasoning,
         })
-        return config.isDraftingStage ? pipeYamlRender(uiStream) : uiStream
+        const yamlStream = config.isDraftingStage ? pipeYamlRender(uiStream) : uiStream
+        return pipePlanCapture(yamlStream) as typeof yamlStream
       }
 
       // ── Run compose with one-time failover ──

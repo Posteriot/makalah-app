@@ -86,6 +86,8 @@ export interface WebSearchResult {
   attemptedRetrievers: string[]
   /** Captured YAML choice spec emitted by pipeYamlRender (drafting stages only). */
   capturedChoiceSpec?: import("@json-render/core").Spec
+  /** Captured plan spec emitted by pipePlanCapture (paper stages). */
+  capturedPlanSpec?: import("@/lib/ai/harness/plan-spec").PlanSpec
   /** Persisted reasoning trace snapshot from compose phase (transparent reasoning only). */
   reasoningSnapshot?: PersistedCuratedTraceSnapshot
 }
