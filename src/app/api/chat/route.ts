@@ -2461,7 +2461,21 @@ Aturan:
             // variation (Indonesian, Javanese, English, slang, etc.) and will miss edge
             // cases that cause users to lose search functionality silently.
 
-            if (exactSourceResolution.mode === "force-inspect") {
+            // --- Harness plan guard: gagasan first turn = NO SEARCH ---
+            // On first prompt in gagasan stage (no plan, no stageData), model should
+            // discuss the idea first, emit plan, and offer search via choice card.
+            // This eliminates ~30s blank screen from auto-search.
+            const isGagasanFirstTurn = currentStage === "gagasan"
+                && !choiceInteractionEvent
+                && !searchAlreadyDone
+                && !(paperSession?.stageData as Record<string, Record<string, unknown>> | undefined)?.gagasan?._plan
+
+            if (isGagasanFirstTurn) {
+                searchRequestedByPolicy = false
+                activeStageSearchReason = "gagasan_first_turn_discuss_first"
+                activeStageSearchNote = "First turn: model discusses idea and offers search via choice card"
+                console.info(`[SearchDecision] Gagasan first turn: blocking auto-search — model discusses first, offers search via choice card`)
+            } else if (exactSourceResolution.mode === "force-inspect") {
                 // Exact source follow-up already matched a unique stored source.
                 // Block search — the model should use inspectSourceDocument instead.
                 // Without this guard, the LLM search router can override force-inspect
