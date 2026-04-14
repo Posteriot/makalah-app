@@ -2615,6 +2615,11 @@ Aturan:
                 activeStageSearchNote = getPaperToolsOnlyNote(currentStage as string)
             }
 
+            // Observability: explicit first-turn flow detection
+            if (isGagasanFirstTurn && !enableWebSearch) {
+                console.info(`[HARNESS-FLOW] gagasan-first-turn: discuss-first → tools path (no search). Model will emit plan + discussion + search choice card.`)
+            }
+
             const requestedResponseMode = await inferSearchResponseMode({
                 lastUserMessage: normalizedLastUserContent,
                 model,
