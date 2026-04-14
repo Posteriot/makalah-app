@@ -132,21 +132,18 @@ export function pipePlanCapture(
 
   /**
    * Process buffer in "fenced" state — accumulate until closing fence.
+   *
+   * Close fence = \n``` followed by optional whitespace then newline or
+   * end-of-buffer. Must NOT match \n```yaml-spec or \n```plan-spec
+   * (those are opening fences of other blocks).
    */
   function processFenced(controller: ReadableStreamDefaultController) {
-    const closePatterns = ["\n```\n", "\n```"]
-    let closeIdx = -1
-    let closeLen = 0
+    // Match \n``` with optional trailing whitespace, then newline or end.
+    // Does NOT match \n```yaml-spec (letter after backticks = opening fence).
+    const closeFenceRe = /\n```[ \t]*(?:\n|$)/
+    const match = closeFenceRe.exec(buffer)
 
-    for (const pattern of closePatterns) {
-      const idx = buffer.indexOf(pattern)
-      if (idx !== -1 && (closeIdx === -1 || idx < closeIdx)) {
-        closeIdx = idx
-        closeLen = pattern.length
-      }
-    }
-
-    if (closeIdx === -1) {
+    if (!match) {
       // Fence not closed — accumulate
       captureContent += buffer
       buffer = ""
@@ -154,8 +151,8 @@ export function pipePlanCapture(
     }
 
     // Fence closed
-    captureContent += buffer.slice(0, closeIdx)
-    buffer = buffer.slice(closeIdx + closeLen)
+    captureContent += buffer.slice(0, match.index)
+    buffer = buffer.slice(match.index + match[0].length)
     state = "normal"
 
     const part = tryParsePlan(captureContent, "fenced")
