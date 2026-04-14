@@ -2341,8 +2341,13 @@ Aturan:
 
         const isCompileThenFinalize = resolvedWorkflow?.action === "compile_then_finalize"
 
+        // Artifact-enforcer only activates on finalize/compile/special actions.
+        // continue_discussion = model keeps discussing, no forced artifact chain.
+        const shouldEnforceArtifactChain =
+            resolvedWorkflow?.action !== "continue_discussion"
+
         const draftingChoiceArtifactEnforcer =
-            choiceInteractionEvent && paperStageScope && paperSession?.stageStatus === "drafting"
+            choiceInteractionEvent && paperStageScope && paperSession?.stageStatus === "drafting" && shouldEnforceArtifactChain
                 ? ({ steps, stepNumber }: {
                     steps: Array<{ toolCalls?: Array<{ toolName: string }> }>;
                     stepNumber: number;
