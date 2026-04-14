@@ -50,7 +50,7 @@ import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
 import { pipeYamlRender } from "@json-render/yaml"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
-import { PLAN_DATA_PART_TYPE, type PlanSpec } from "@/lib/ai/harness/plan-spec"
+import { PLAN_DATA_PART_TYPE, type PlanSpec, UNFENCED_PLAN_REGEX, planSpecSchema } from "@/lib/ai/harness/plan-spec"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
@@ -2380,8 +2380,21 @@ Aturan:
         const shouldEnforceArtifactChain =
             resolvedWorkflow?.action !== "continue_discussion"
 
+        // Plan completion gate: if plan exists with incomplete tasks,
+        // don't enforce artifact chain on finalize — let model continue discussion.
+        const currentPlan = (paperSession?.stageData as Record<string, Record<string, unknown>> | undefined)
+            ?.[paperStageScope ?? ""]?._plan as PlanSpec | undefined
+        const planHasIncompleteTasks = currentPlan?.tasks?.some(
+            (t: { status: string }) => t.status !== "complete"
+        ) ?? false
+
+        if (shouldEnforceArtifactChain && planHasIncompleteTasks && resolvedWorkflow?.action === "finalize_stage") {
+            console.info(`[PLAN-GATE] enforcer downgraded: plan has incomplete tasks (${currentPlan?.tasks.filter((t: { status: string }) => t.status === "complete").length}/${currentPlan?.tasks.length} complete)`)
+        }
+
         const draftingChoiceArtifactEnforcer =
-            choiceInteractionEvent && paperStageScope && paperSession?.stageStatus === "drafting" && shouldEnforceArtifactChain
+            choiceInteractionEvent && paperStageScope && paperSession?.stageStatus === "drafting"
+            && shouldEnforceArtifactChain && !(planHasIncompleteTasks && resolvedWorkflow?.action === "finalize_stage")
                 ? ({ steps, stepNumber }: {
                     steps: Array<{ toolCalls?: Array<{ toolName: string }> }>;
                     stepNumber: number;
@@ -3383,7 +3396,27 @@ Aturan:
 
                         // Persist captured plan to stageData
                         if (!capturedPlanSpec && paperStageScope) {
-                            console.info(`[PLAN-CAPTURE] no plan-spec detected in response (stage=${paperStageScope})`)
+                            // Fallback: extract unfenced plan-spec from rawText
+                            // (same pattern as search path in orchestrator.ts:974-991)
+                            const localPlanRegex = new RegExp(UNFENCED_PLAN_REGEX.source, UNFENCED_PLAN_REGEX.flags)
+                            const unfencedMatch = localPlanRegex.exec(rawText)
+                            if (unfencedMatch) {
+                                try {
+                                    const { default: yaml } = await import("js-yaml")
+                                    const parsed = yaml.load(unfencedMatch[1])
+                                    const result = planSpecSchema.safeParse(parsed)
+                                    if (result.success) {
+                                        capturedPlanSpec = result.data
+                                        console.info(`[PLAN-CAPTURE] fallback extracted from rawText (tools path) stage=${paperStageScope} tasks=${result.data.tasks.length}`)
+                                    }
+                                } catch { /* yaml parse fail — ignore */ }
+                            }
+                            if (!capturedPlanSpec) {
+                                const planProbe = rawText.substring(0, 500).replace(/\n/g, "\\n")
+                                const hasFenced = rawText.includes("```plan-spec")
+                                const hasUnfenced = /stage:\s*\w+\s*\nsummary:/.test(rawText)
+                                console.info(`[PLAN-CAPTURE] no plan-spec detected in response (stage=${paperStageScope}) hasFenced=${hasFenced} hasUnfenced=${hasUnfenced} rawTextLen=${rawText.length} probe=${planProbe}`)
+                            }
                         }
                         if (capturedPlanSpec && paperSession?._id && paperStageScope) {
                             try {

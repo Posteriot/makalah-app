@@ -151,6 +151,23 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                         }
                     }
 
+                    // Guard: strip harness-internal fields (e.g. _plan) — model must not
+                    // write these directly; they're managed by harness mutations.
+                    for (const k of Object.keys(data)) {
+                        if (k.startsWith("_")) delete data[k]
+                    }
+
+                    // Guard: reject empty data — enforcer sometimes forces updateStageData
+                    // before model provides content, causing empty writes + OCC cascade.
+                    const dataKeys = Object.keys(data).filter(k => data[k] !== undefined && data[k] !== null)
+                    if (dataKeys.length === 0) {
+                        console.warn("[updateStageData] Rejected: empty data object (keys=[])")
+                        return {
+                            success: false,
+                            error: "No data provided. Include at least one field to save.",
+                        }
+                    }
+
                     // Normalize keywords: model sometimes sends comma-separated string
                     // instead of array, causing Convex schema validation error.
                     if (data && typeof data.keywords === "string") {
