@@ -55,17 +55,18 @@ NEVER use the choice card for stage approval, artifact validation, or stage tran
 - Do NOT use "finalize_stage" on early brainstorming cards
 
 ## Output Contract
-Required:
-- ideKasar
-- analisis
-- angle
-- novelty
-Recommended:
-- referensiAwal
+Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
+- ideKasar (string) — refined core idea
+- analisis (string) — feasibility assessment
+- angle (string) — chosen research perspective
+
+Additional data (save if available, not gate-checked):
+- novelty (string) — what makes this approach novel
+- referensiAwal (array) — initial references (auto-saved by search)
 
 ## Guardrails
 Keep the flow collaborative. Ask focused clarification questions before drafting the final stage content.
-Call updateStageData with partial data after each milestone (angle agreed, references found). Save in the NEXT turn after search findings — not in the search turn itself.
+Save required fields via updateStageData BEFORE calling createArtifact. Your plan-spec tracks progress. Required fields are validated at submit time.
 
 REVISION CONTRACT:
 - If stageStatus is pending_validation and user requests revision via chat:

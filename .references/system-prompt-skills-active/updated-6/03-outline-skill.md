@@ -58,14 +58,12 @@ Choice-card-first contract for outline:
 - Use workflowAction: "continue_discussion" only for intermediate exploration
 
 ## Output Contract
-Required:
-- sections
-- totalWordCount
-Recommended:
-- completenessScore
-- sections[].checkedAt
-- sections[].checkedBy
-- sections[].editHistory
+Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
+- sections (array) — outline sections with IDs, titles, levels
+- totalWordCount (number) — estimated total word count
+
+Additional data (save if available, not gate-checked):
+- completenessScore (number) — self-assessed completeness
 
 ## Guardrails
 Ensure section ordering supports the 13-stage workflow, avoids structural duplication, and keeps IDs stable for living-checklist tracking.

@@ -53,14 +53,13 @@ NEVER use the choice card for stage approval, artifact validation, or stage tran
 - Use workflowAction: "continue_discussion" only for intermediate exploration
 
 ## Output Contract
-Required:
-- pendekatanPenelitian
-- desainPenelitian
-Recommended:
-- metodePerolehanData
-- teknikAnalisis
-- alatInstrumen
-- etikaPenelitian
+Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
+- desainPenelitian (string) — research design
+- pendekatanPenelitian (string) — research approach
+
+Additional data (save if available, not gate-checked):
+- metodePerolehanData (string) — data collection method
+- teknikAnalisis (string) — analysis technique
 
 ## Guardrails
 Method choices must be internally consistent and feasible for the user context.

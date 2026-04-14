@@ -59,13 +59,13 @@ NEVER use the choice card for stage approval, artifact validation, or stage tran
 - Use workflowAction: "continue_discussion" only for intermediate exploration
 
 ## Output Contract
-Required:
-- kerangkaTeoretis
-- reviewLiteratur
-Recommended:
-- gapAnalysis
-- justifikasiPenelitian
-- referensi
+Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
+- kerangkaTeoretis (string) — theoretical framework
+- reviewLiteratur (string) — literature review synthesis
+
+Additional data (save if available, not gate-checked):
+- gapAnalysis (string) — gap analysis
+- referensi (array) — collected references
 
 ## Guardrails
 Prioritize high-quality references and keep claims traceable to sources.

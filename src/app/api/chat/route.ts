@@ -48,7 +48,10 @@ import {
 import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 // buildUserFacingSearchPayload now handled by orchestrator
 import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
+import yaml from "js-yaml"
 import { pipeYamlRender } from "@json-render/yaml"
+import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
+import { PLAN_DATA_PART_TYPE, type PlanSpec, planSpecSchema } from "@/lib/ai/harness/plan-spec"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
@@ -2781,9 +2784,32 @@ Aturan:
                         const retrieverModelName = result.retrieverName || "unknown"
                         const combinedModelName = `${retrieverModelName}+${modelNames.primary.model}`
 
+                        // Extract and persist plan from search path text
+                        let searchText = result.text
+                        const planFenceRegex = /```plan-spec\n([\s\S]*?)\n```/
+                        const planMatch = searchText.match(planFenceRegex)
+                        if (planMatch && paperSession?._id && paperStageScope) {
+                            try {
+                                const parsed = yaml.load(planMatch[1].trim())
+                                const planResult = planSpecSchema.safeParse(parsed)
+                                if (planResult.success) {
+                                    await fetchMutationWithToken(api.paperSessions.updatePlan, {
+                                        sessionId: paperSession._id,
+                                        stage: paperStageScope,
+                                        plan: planResult.data,
+                                    })
+                                    console.info(`[PLAN-CAPTURE] persisted (search path) stage=${paperStageScope} tasks=${planResult.data.tasks.length}`)
+                                }
+                            } catch (e) {
+                                console.warn(`[PLAN-CAPTURE] search path parse/persist failed:`, e)
+                            }
+                        }
+                        // Strip plan-spec from text BEFORE saving
+                        searchText = searchText.replace(/```plan-spec[\s\S]*?```/g, "").trim()
+
                         // ──── Save assistant message ────
                         await saveAssistantMessage(
-                            result.text,
+                            searchText,
                             result.sources.length > 0 ? result.sources : undefined,
                             combinedModelName,
                             result.reasoningSnapshot,
@@ -2818,7 +2844,7 @@ Aturan:
                             10
                         )
                         void maybeUpdateTitleFromAI({
-                            assistantText: result.text,
+                            assistantText: searchText,
                             minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
                                 ? minPairsForFinalTitle
                                 : 3,
@@ -2874,6 +2900,7 @@ Aturan:
 
             const primaryMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
             let capturedChoiceSpec: Spec | null = null
+            let capturedPlanSpec: PlanSpec | null = null
             // Shared: set by onFinish when outcome-gated guard replaces persisted content.
             // Writer loop checks this before writing finish event to emit data-cited-text override.
             let streamContentOverride: string | null = null
@@ -2944,10 +2971,13 @@ Aturan:
                             ? steps.map((s: { text?: string }) => typeof s.text === "string" ? s.text : "").filter((t) => t.trim().length > 0).join("\n\n").trim()
                             : ""
                         const rawText = (allStepsText || (typeof text === "string" ? text : "")).trim()
-                        // Strip yaml-spec fences from persisted text — pipeYamlRender strips
-                        // them from the stream but onFinish receives raw model output
+                        // Strip yaml-spec and plan-spec fences from persisted text — pipeYamlRender/pipePlanCapture
+                        // strip them from the stream but onFinish receives raw model output
                         const normalizedText = rawText.replace(
                             /```yaml-spec[\s\S]*?```/g,
+                            ""
+                        ).replace(
+                            /```plan-spec[\s\S]*?```/g,
                             ""
                         ).replace(/\n{3,}/g, "\n\n").trim()
                         const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
@@ -3067,7 +3097,7 @@ Aturan:
                         if (
                             paperSession?.currentStage === "completed" &&
                             normalizedText.length > 0 &&
-                            /tool_code|sekarang kita masuk ke tahap|yaml-spec|```yaml/i.test(normalizedText)
+                            /tool_code|sekarang kita masuk ke tahap|yaml-spec|plan-spec|```yaml/i.test(normalizedText)
                         ) {
                             persistedContent = "Semua tahap penyusunan makalah sudah selesai dan disetujui.\n\nRiwayat percakapan di sidebar menyimpan artifact dari setiap tahap, mulai dari gagasan awal sampai pemilihan judul. Linimasa progres juga sudah penuh, menandakan seluruh tahapan penyusunan makalah telah terlewati."
                             console.info("[PAPER][completed-guard] replaced corrupt/off-context model output with system-owned closing message")
@@ -3293,6 +3323,20 @@ Aturan:
                             )
                         }
 
+                        // Persist captured plan to stageData
+                        if (capturedPlanSpec && paperSession?._id && paperStageScope) {
+                            try {
+                                await fetchMutationWithToken(api.paperSessions.updatePlan, {
+                                    sessionId: paperSession._id,
+                                    stage: paperStageScope,
+                                    plan: capturedPlanSpec,
+                                })
+                                console.info(`[PLAN-CAPTURE] persisted stage=${paperStageScope} tasks=${capturedPlanSpec.tasks.length}`)
+                            } catch (e) {
+                                console.warn(`[PLAN-CAPTURE] persist failed:`, e)
+                            }
+                        }
+
                         // ═══ BILLING: Record token usage ═══
                         if (usage) {
                             await recordUsageAfterOperation({
@@ -3413,6 +3457,11 @@ Aturan:
                             ? pipeYamlRender(uiStream)
                             : uiStream
 
+                        const hasPaperStage = !!paperStageScope
+                        const planTransformedStream = hasPaperStage
+                            ? pipePlanCapture(yamlTransformedStream) as typeof yamlTransformedStream
+                            : yamlTransformedStream
+
                         // ReadableStream from pipeYamlRender may not have [Symbol.asyncIterator]
                         // in all runtimes, so use a reader-based async generator
                         async function* iterateStream<T>(stream: ReadableStream<T>): AsyncGenerator<T> {
@@ -3428,7 +3477,7 @@ Aturan:
                             }
                         }
 
-                        for await (const chunk of iterateStream(yamlTransformedStream)) {
+                        for await (const chunk of iterateStream(planTransformedStream)) {
                             // Capture data-spec parts emitted by pipeYamlRender for DB persistence
                             if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
                                 try {
@@ -3444,6 +3493,16 @@ Aturan:
                                         capturedChoiceSpec = data.spec
                                     }
                                 } catch { /* spec capture error — non-critical */ }
+                            }
+
+                            // Capture plan-spec parts emitted by pipePlanCapture for DB persistence
+                            if ((chunk as { type?: string }).type === PLAN_DATA_PART_TYPE) {
+                                try {
+                                    const data = (chunk as { data?: { spec?: PlanSpec } }).data
+                                    if (data?.spec) {
+                                        capturedPlanSpec = data.spec
+                                    }
+                                } catch { /* plan capture error — non-critical */ }
                             }
 
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
@@ -3633,6 +3692,7 @@ Aturan:
                 let fallbackReasoningTraceSnapshot: PersistedCuratedTraceSnapshot | undefined
                 let fallbackReasoningSourceCount = 0
                 let fallbackCapturedChoiceSpec: Spec | null = null
+                let fallbackCapturedPlanSpec: PlanSpec | null = null
                 let fallbackStreamContentOverride: string | null = null
                 const captureFallbackReasoningSnapshot = () => {
                     if (!fallbackReasoningTraceController?.enabled) return
@@ -3728,10 +3788,13 @@ Aturan:
                             ? steps.map((s: { text?: string }) => typeof s.text === "string" ? s.text : "").filter((t) => t.trim().length > 0).join("\n\n").trim()
                             : ""
                         const rawText = (allStepsText || (typeof text === "string" ? text : "")).trim()
-                        // Strip yaml-spec fences from persisted text — pipeYamlRender strips
-                        // them from the stream but onFinish receives raw model output
+                        // Strip yaml-spec and plan-spec fences from persisted text — pipeYamlRender/pipePlanCapture
+                        // strip them from the stream but onFinish receives raw model output
                         const normalizedText = rawText.replace(
                             /```yaml-spec[\s\S]*?```/g,
+                            ""
+                        ).replace(
+                            /```plan-spec[\s\S]*?```/g,
                             ""
                         ).replace(/\n{3,}/g, "\n\n").trim()
                         const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
@@ -3803,7 +3866,7 @@ Aturan:
                         if (
                             paperSession?.currentStage === "completed" &&
                             normalizedText.length > 0 &&
-                            /tool_code|sekarang kita masuk ke tahap|yaml-spec|```yaml/i.test(normalizedText)
+                            /tool_code|sekarang kita masuk ke tahap|yaml-spec|plan-spec|```yaml/i.test(normalizedText)
                         ) {
                             persistedContent = "Semua tahap penyusunan makalah sudah selesai dan disetujui.\n\nRiwayat percakapan di sidebar menyimpan artifact dari setiap tahap, mulai dari gagasan awal sampai pemilihan judul. Linimasa progres juga sudah penuh, menandakan seluruh tahapan penyusunan makalah telah terlewati."
                             console.info("[PAPER][completed-guard][fallback] replaced corrupt/off-context model output with system-owned closing message")
@@ -4040,6 +4103,20 @@ Aturan:
                             })
                         }
 
+                        // Persist captured plan to stageData (fallback path)
+                        if (fallbackCapturedPlanSpec && paperSession?._id && paperStageScope) {
+                            try {
+                                await fetchMutationWithToken(api.paperSessions.updatePlan, {
+                                    sessionId: paperSession._id,
+                                    stage: paperStageScope,
+                                    plan: fallbackCapturedPlanSpec,
+                                })
+                                console.info(`[PLAN-CAPTURE] persisted (fallback) stage=${paperStageScope} tasks=${fallbackCapturedPlanSpec.tasks.length}`)
+                            } catch (e) {
+                                console.warn(`[PLAN-CAPTURE] fallback persist failed:`, e)
+                            }
+                        }
+
                         // ═══ BILLING: Record token usage (fallback) ═══
                         if (usage) {
                             await recordUsageAfterOperation({
@@ -4146,6 +4223,10 @@ Aturan:
                             ? pipeYamlRender(fallbackUiStream)
                             : fallbackUiStream
 
+                        const fallbackPlanStream = !!paperStageScope
+                            ? pipePlanCapture(fallbackYamlStream) as typeof fallbackYamlStream
+                            : fallbackYamlStream
+
                         // ReadableStream from pipeYamlRender may not have [Symbol.asyncIterator]
                         async function* iterateFallbackStream<T>(stream: ReadableStream<T>): AsyncGenerator<T> {
                             const reader = stream.getReader()
@@ -4160,7 +4241,7 @@ Aturan:
                             }
                         }
 
-                        for await (const chunk of iterateFallbackStream(fallbackYamlStream)) {
+                        for await (const chunk of iterateFallbackStream(fallbackPlanStream)) {
                             // Capture data-spec parts emitted by pipeYamlRender for DB persistence
                             if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
                                 try {
@@ -4174,6 +4255,16 @@ Aturan:
                                         fallbackCapturedChoiceSpec = data.spec
                                     }
                                 } catch { /* spec capture error — non-critical */ }
+                            }
+
+                            // Capture plan-spec parts emitted by pipePlanCapture for DB persistence
+                            if ((chunk as { type?: string }).type === PLAN_DATA_PART_TYPE) {
+                                try {
+                                    const data = (chunk as { data?: { spec?: PlanSpec } }).data
+                                    if (data?.spec) {
+                                        fallbackCapturedPlanSpec = data.spec
+                                    }
+                                } catch { /* plan capture error — non-critical */ }
                             }
 
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {

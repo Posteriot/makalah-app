@@ -58,12 +58,11 @@ TOOL CHAIN ORDER: After user selects via choice card, execute in this exact orde
 - The post-choice handler calls compileDaftarPustaka(persist) before createArtifact
 
 ## Output Contract
-Required:
-- entries
-- totalCount
-Recommended:
-- incompleteCount
-- duplicatesMerged
+Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
+- entries (array) — compiled bibliography entries
+
+Additional data (save if available, not gate-checked):
+- totalCount (number) — total entry count
 
 ## Guardrails
 Use consistent citation formatting and avoid duplicates. Final compilation must go through compileDaftarPustaka({ mode: "persist" }).

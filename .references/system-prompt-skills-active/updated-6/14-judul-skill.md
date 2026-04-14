@@ -52,11 +52,12 @@ NEVER use the choice card for stage approval, artifact validation, or stage tran
 - The post-choice handler uses the selected title text as-is
 
 ## Output Contract
-Required:
-- opsiJudul
-- judulTerpilih
-Recommended:
-- alasanPemilihan
+Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
+- opsiJudul (array) — title options
+- judulTerpilih (string) — selected title
+
+Additional data (save if available, not gate-checked):
+- alasanPemilihan (string) — selection rationale
 
 ## Guardrails
 Title selection must reflect scope, contribution, and evidence from previous stages.

@@ -60,11 +60,12 @@ NEVER use the choice card for stage approval, artifact validation, or stage tran
 - The post-choice handler expects metodePenyajian from the selected option
 
 ## Output Contract
-Required:
-- temuanUtama
-Recommended:
-- metodePenyajian
-- dataPoints
+Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
+- temuanUtama (array) — key findings
+
+Additional data (save if available, not gate-checked):
+- metodePenyajian (string) — presentation method
+- dataPoints (array) — data points
 
 ## Guardrails
 Differentiate clearly between observed findings and interpretation.

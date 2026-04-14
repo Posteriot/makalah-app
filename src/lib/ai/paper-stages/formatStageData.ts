@@ -6,6 +6,7 @@
  */
 
 import { getStageLabel, type PaperStageId } from "../../../../convex/paperSessions/constants";
+import type { PlanSpec } from "@/lib/ai/harness/plan-spec";
 import type {
     AbstrakData,
     DaftarPustakaData,
@@ -99,6 +100,45 @@ function formatWebSearchReferences(stageData: StageData, currentStage: PaperStag
     ].join("\n");
 }
 
+function formatPlanContext(stageData: Record<string, unknown>, currentStage: string): string {
+    const currentStageData = (stageData[currentStage] ?? {}) as Record<string, unknown>
+    const plan = currentStageData._plan as PlanSpec | undefined
+
+    const lines: string[] = ["═══ YOUR CURRENT PLAN ═══"]
+
+    if (!plan?.tasks?.length) {
+        lines.push(
+            "No plan yet. You MUST emit a ```plan-spec``` block in this response",
+            "to define your task plan for this stage.",
+        )
+        lines.push("═══════════════════════════")
+        return lines.join("\n")
+    }
+
+    lines.push(`Stage: ${plan.stage}`)
+    lines.push(`Summary: ${plan.summary}`)
+    lines.push("")
+    lines.push("Tasks:")
+
+    let completed = 0
+    for (const task of plan.tasks) {
+        const icon = task.status === "complete" ? "✅"
+            : task.status === "in-progress" ? "🔄"
+            : "⬚"
+        lines.push(`  ${icon} ${task.label} [${task.status}]`)
+        if (task.status === "complete") completed++
+    }
+
+    lines.push("")
+    lines.push(`Progress: ${completed}/${plan.tasks.length} complete`)
+    lines.push("")
+    lines.push("IMPORTANT: Emit an updated ```plan-spec``` block in EVERY response")
+    lines.push("to reflect your current progress.")
+    lines.push("═══════════════════════════")
+
+    return lines.join("\n")
+}
+
 /**
  * Format stageData object into a human-readable string.
  * Only includes stages that have actual content.
@@ -108,6 +148,11 @@ export function formatStageData(
     currentStage: PaperStageId | "completed"
 ): string {
     const sections: string[] = [];
+
+    // Plan context block (first section — tells model its current task plan)
+    if (currentStage !== "completed") {
+        sections.push(formatPlanContext(stageData, currentStage));
+    }
 
     const activeStageBlock = formatActiveStageData(stageData, currentStage);
     if (activeStageBlock) {

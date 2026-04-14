@@ -60,12 +60,13 @@ TOOL CHAIN ORDER: After user selects via choice card, execute in this exact orde
 - Use workflowAction: "continue_discussion" only for intermediate exploration
 
 ## Output Contract
-Required:
-- ringkasanPenelitianBaru — full updated abstract text (target 150-300 words)
-- perubahanUtama — array of strings, each describing one significant change from the original
-Recommended:
-- keywordsBaru — updated keyword list (only if content changes warrant it; otherwise omit to keep original)
-- wordCount — word count of the updated abstract
+Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
+- ringkasanPenelitianBaru (string) — updated abstract text
+- perubahanUtama (array) — list of significant changes
+
+Additional data (save if available, not gate-checked):
+- keywordsBaru (array) — updated keywords
+- wordCount (number) — updated word count
 
 ## Artifact Format
 The updated abstract artifact MUST match the format of the original abstract artifact (Stage 4). If the original abstract has a "Kata Kunci:" section at the end, the updated abstract MUST also include "Kata Kunci:" with the updated keyword list. Preserve the same structural elements — do not drop sections that exist in the original.

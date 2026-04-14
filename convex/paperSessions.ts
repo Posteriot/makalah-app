@@ -16,6 +16,7 @@ import {
     type DaftarPustakaCompileCandidate,
 } from "./paperSessions/daftarPustakaCompiler";
 import { validateStageDataKeys, sanitizeNestedArrayFields } from "./paperSessions/stageDataWhitelist";
+import { STAGE_REQUIRED_FIELDS, isFieldPresent } from "./paperSessions/stage-required-fields";
 import { rebuildNaskahSnapshot } from "./naskahRebuild";
 
 const DEFAULT_WORKING_TITLE = "Paper Tanpa Judul";
@@ -899,6 +900,39 @@ export const updateStageData = mutation({
 });
 
 /**
+ * Harness-level mutation: persist model's plan to stageData._plan.
+ * Called by route.ts onFinish, NOT by model tool call.
+ */
+export const updatePlan = mutation({
+    args: {
+        sessionId: v.id("paperSessions"),
+        stage: v.string(),
+        plan: v.any(),
+    },
+    handler: async (ctx, args) => {
+        const { session } = await requirePaperSessionOwner(ctx, args.sessionId);
+
+        if (session.currentStage !== args.stage) {
+            console.warn(`[PAPER][updatePlan] stage mismatch: current=${session.currentStage} plan=${args.stage} — skipped`);
+            return { success: false, reason: "stage_mismatch" };
+        }
+
+        const stageData = { ...(session.stageData ?? {}) } as Record<string, Record<string, unknown>>;
+        const currentStageData = { ...(stageData[args.stage] ?? {}) };
+        currentStageData._plan = args.plan;
+        stageData[args.stage] = currentStageData;
+
+        await ctx.db.patch(args.sessionId, {
+            stageData,
+            updatedAt: Date.now(),
+        });
+
+        console.info(`[PAPER][updatePlan] stage=${args.stage} tasks=${args.plan?.tasks?.length ?? 0}`);
+        return { success: true };
+    },
+});
+
+/**
  * Append web search references to current stage's stageData.
  * Server-side auto-persist: deterministic, not dependent on AI behavior.
  * - Appends to webSearchReferences with URL dedup
@@ -1136,6 +1170,24 @@ export const submitForValidation = mutation({
                 "submitForValidation failed: Artifact must be created first. " +
                 "Call createArtifact before submitting for validation."
             );
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // Gate: Check required fields exist in stageData before submit
+        // ════════════════════════════════════════════════════════════════
+        const requiredFields = STAGE_REQUIRED_FIELDS[currentStage];
+        if (requiredFields && requiredFields.length > 0) {
+            const missing = requiredFields.filter(f => !isFieldPresent(currentStageData?.[f.field], f.type));
+            if (missing.length > 0) {
+                const missingNames = missing.map(f => f.field);
+                console.warn(`[PAPER][submitForValidation] gate BLOCKED stage=${currentStage} missing=[${missingNames.join(",")}]`);
+                return {
+                    success: false,
+                    stage: currentStage,
+                    error: `Cannot submit: missing required fields: ${missingNames.join(", ")}. Call updateStageData to save these fields first.`,
+                    missingFields: missingNames,
+                };
+            }
         }
 
         console.info(`[PAPER][submitForValidation] stage=${currentStage} artifactId=${artifactId} → pending_validation`)

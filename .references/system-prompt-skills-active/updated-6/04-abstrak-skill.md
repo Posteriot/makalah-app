@@ -53,11 +53,12 @@ NEVER use the choice card for stage approval, artifact validation, or stage tran
 - Use workflowAction: "continue_discussion" only for intermediate exploration
 
 ## Output Contract
-Required:
-- ringkasanPenelitian
-- keywords
-Recommended:
-- wordCount
+Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
+- ringkasanPenelitian (string) — research summary text
+- keywords (array) — keyword list
+
+Additional data (save if available, not gate-checked):
+- wordCount (number) — abstract word count
 
 ## Guardrails
 Keep the abstract aligned with previously approved stage decisions.

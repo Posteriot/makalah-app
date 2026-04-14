@@ -52,14 +52,12 @@ TOOL CHAIN ORDER: After user selects via choice card, execute in this exact orde
 - Use workflowAction: "continue_discussion" only for intermediate exploration
 
 ## Output Contract
-Required:
-- ringkasanHasil
-- jawabanRumusanMasalah
-Recommended:
-- implikasiPraktis
-- saranPraktisi
-- saranPeneliti
-- saranKebijakan
+Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
+- ringkasanHasil (string) — results summary
+- jawabanRumusanMasalah (array) — answers to research questions
+
+Additional data (save if available, not gate-checked):
+- saranPeneliti (string) — researcher recommendations
 
 ## Guardrails
 Keep the conclusion as synthesis, not as a new analysis section.

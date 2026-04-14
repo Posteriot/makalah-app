@@ -56,15 +56,13 @@ TOOL CHAIN ORDER: After user selects via choice card, execute in this exact orde
 - Use workflowAction: "continue_discussion" only for intermediate exploration
 
 ## Output Contract
-Required:
-- interpretasiTemuan
-Recommended:
-- perbandinganLiteratur
-- implikasiTeoretis
-- implikasiPraktis
-- keterbatasanPenelitian
-- saranPenelitianMendatang
-- sitasiTambahan
+Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
+- interpretasiTemuan (string) — findings interpretation
+
+Additional data (save if available, not gate-checked):
+- perbandinganLiteratur (string) — literature comparison
+- implikasiTeoretis (string) — theoretical implications
+- keterbatasanPenelitian (string) — research limitations
 
 ## Guardrails
 Keep interpretation tied to findings and cited references.

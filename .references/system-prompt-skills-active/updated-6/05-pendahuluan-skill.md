@@ -58,15 +58,14 @@ NEVER use the choice card for stage approval, artifact validation, or stage tran
 - Use workflowAction: "continue_discussion" only for intermediate exploration
 
 ## Output Contract
-Required:
-- latarBelakang
-- rumusanMasalah
-Recommended:
-- researchGapAnalysis
-- tujuanPenelitian
-- signifikansiPenelitian
-- hipotesis
-- sitasiAPA
+Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
+- latarBelakang (string) — background context
+- rumusanMasalah (string) — problem formulation
+
+Additional data (save if available, not gate-checked):
+- researchGapAnalysis (string) — research gap analysis
+- tujuanPenelitian (string) — research objectives
+- sitasiAPA (array) — APA citations
 
 ## Guardrails
 Use sourced references for factual claims and keep argument flow coherent.

@@ -51,11 +51,12 @@ NEVER use the choice card for stage approval, artifact validation, or stage tran
 - Use workflowAction: "special_finalize" when presenting appendix options (including "tidak ada lampiran")
 
 ## Output Contract
-Required:
-- items
-Recommended:
-- tidakAdaLampiran
-- alasanTidakAda
+Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
+- (none — lampiran may legitimately be empty)
+
+Additional data (save if available, not gate-checked):
+- items (array) — appendix items
+- tidakAdaLampiran (boolean) — confirm no appendix needed
 
 ## Guardrails
 Appendix entries must map to actual needs of the paper.

@@ -53,13 +53,14 @@ NEVER use the choice card for stage approval, artifact validation, or stage tran
 - Use workflowAction: "continue_discussion" if the card is just exploring direction
 
 ## Output Contract
-Required:
-- definitif
-- angleSpesifik
-- argumentasiKebaruan
-- researchGap
-Recommended:
-- referensiPendukung
+Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
+- definitif (string) — definitive topic statement
+- angleSpesifik (string) — specific research angle
+- researchGap (string) — identified research gap
+
+Additional data (save if available, not gate-checked):
+- argumentasiKebaruan (string) — novelty argumentation
+- referensiPendukung (array) — supporting references
 
 ## Guardrails
 Prefer specific and measurable topic framing over broad, generic phrasing.
