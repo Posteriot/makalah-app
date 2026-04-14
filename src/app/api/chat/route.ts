@@ -1641,6 +1641,26 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                             }
                         }
 
+                        // Guard: block createArtifact when plan has incomplete tasks.
+                        // Model must complete all plan tasks before creating artifact.
+                        if (paperSession?.currentStage && paperSession.stageStatus === "drafting") {
+                            const stageDataMap = paperSession.stageData as Record<string, Record<string, unknown>> | undefined
+                            const currentPlan = stageDataMap?.[paperSession.currentStage]?._plan as { tasks?: { status?: string }[] } | undefined
+                            if (currentPlan?.tasks && Array.isArray(currentPlan.tasks) && currentPlan.tasks.length > 0) {
+                                const incompleteTasks = currentPlan.tasks.filter(t => t.status !== "complete")
+                                if (incompleteTasks.length > 0) {
+                                    console.warn(`[PLAN-GATE] createArtifact BLOCKED — ${incompleteTasks.length} incomplete plan tasks remaining (stage=${paperSession.currentStage})`)
+                                    return {
+                                        success: false,
+                                        errorCode: "PLAN_INCOMPLETE",
+                                        retryable: false,
+                                        error: `Cannot create artifact: ${incompleteTasks.length} plan tasks still incomplete. Complete all plan tasks via choice cards first, then create artifact on the final step.`,
+                                        nextAction: "Continue working through your plan tasks one at a time. Each task should end with a choice card. Only create artifact after ALL tasks are complete.",
+                                    }
+                                }
+                            }
+                        }
+
                         // Guard: block createArtifact when a valid artifact already exists (pending_validation OR revision).
                         // During revision, model should use updateArtifact to create v2/v3 — not createArtifact.
                         // createArtifact is only allowed as exceptional fallback when artifact is missing/invalidated.

@@ -48,6 +48,7 @@ interface UnifiedProcessCardProps {
 
 const STATUS_ICON: Record<string, string> = {
   complete: "✅",
+  "in-progress": "🔄",
   pending: "○",
 }
 
@@ -186,6 +187,7 @@ export function UnifiedProcessCard({
                       className={cn(
                         "flex items-center gap-2 py-0.5 text-xs font-mono",
                         task.status === "complete" && "text-[var(--chat-muted-foreground)]",
+                        task.status === "in-progress" && "text-[var(--chat-foreground)]",
                         task.status === "pending" && "text-[var(--chat-muted-foreground)] opacity-50"
                       )}
                     >

@@ -7,7 +7,7 @@ import {
 // TYPES
 // ============================================================================
 
-export type TaskStatus = "complete" | "pending"
+export type TaskStatus = "complete" | "in-progress" | "pending"
 
 export type TaskItem = {
   id: string
@@ -171,7 +171,9 @@ export function deriveTaskList(
         id: `${stageId}.plan-${i}`,
         label: t.label,
         field: `plan-${i}`,
-        status: t.status === "complete" ? ("complete" as const) : ("pending" as const),
+        status: t.status === "complete" ? ("complete" as const)
+          : t.status === "in-progress" ? ("in-progress" as const)
+          : ("pending" as const),
       }))
 
     if (tasks.length > 0) {

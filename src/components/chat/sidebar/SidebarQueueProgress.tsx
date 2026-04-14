@@ -90,6 +90,7 @@ function TaskListItem({ task }: { task: TaskItem }) {
         className={cn(
           "w-1.5 h-1.5 rounded-full shrink-0",
           task.status === "complete" && "bg-[oklch(0.777_0.152_181.912)]",
+          task.status === "in-progress" && "bg-[oklch(0.777_0.152_181.912)] animate-pulse",
           task.status === "pending" && "bg-[var(--chat-muted-foreground)] opacity-40"
         )}
       />
@@ -97,6 +98,7 @@ function TaskListItem({ task }: { task: TaskItem }) {
         className={cn(
           "text-[11px] font-sans",
           task.status === "complete" && "text-[var(--chat-muted-foreground)]",
+          task.status === "in-progress" && "text-[var(--chat-foreground)]",
           task.status === "pending" && "text-[var(--chat-muted-foreground)] opacity-60"
         )}
       >
