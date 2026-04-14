@@ -148,9 +148,23 @@ export async function POST(req: Request) {
                 : undefined
         const choiceInteractionEvent = parseOptionalChoiceInteractionEvent(body)
         if (choiceInteractionEvent) {
-            console.info(`[CHOICE-CARD][event-received] type=${choiceInteractionEvent.type} stage=${choiceInteractionEvent.stage} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
+            console.info(`[CHOICE-CARD][event-received] type=${choiceInteractionEvent.type} stage=${choiceInteractionEvent.stage} selected=${choiceInteractionEvent.selectedOptionIds.join(",")} workflowAction=${choiceInteractionEvent.workflowAction ?? "unknown"}`)
         }
         const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+
+        // Observability: log user input at request entry
+        {
+            const lastMsg = messages[messages.length - 1]
+            const userText = lastMsg?.role === "user"
+                ? (lastMsg.content || lastMsg.parts?.find((p: { type: string; text?: string }) => p.type === "text")?.text || "")
+                : ""
+            const truncated = typeof userText === "string" ? userText.slice(0, 120) : ""
+            if (choiceInteractionEvent) {
+                console.info(`[USER-INPUT] type=choice-selection stage=${choiceInteractionEvent.stage} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
+            } else if (truncated) {
+                console.info(`[USER-INPUT] type=prompt text="${truncated}${userText.length > 120 ? "..." : ""}"`)
+            }
+        }
 
         // 3. Get Convex User ID
         const userId = await retryQuery(

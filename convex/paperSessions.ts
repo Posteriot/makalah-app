@@ -1338,6 +1338,7 @@ export const approveStage = mutation({
         // never drift from the validated stageData.
         await rebuildNaskahSnapshot(ctx, args.sessionId);
 
+        console.info(`[USER-ACTION] type=approve stage=${currentStage} decision="${decisionText.slice(0, 80)}"`)
         console.info(`[PAPER][stage-transition] ${currentStage} → ${nextStage} (${nextStage === "completed" ? "session completed" : "drafting"})`);
 
         return {
@@ -1397,6 +1398,7 @@ export const requestRevision = mutation({
 
         // Observability: only emit panel event here. Model event is emitted by tool wrapper
         // (paper-tools.ts requestRevision tool) to avoid double-counting.
+        console.info(`[USER-ACTION] type=revise stage=${currentStage} trigger=${trigger} revision=${currentRevisionCount + 1} feedback="${args.feedback.slice(0, 80)}"`)
         if (trigger === "panel") {
             console.log(`[revision-triggered-by-panel] stage=${currentStage} trigger=${trigger} revisionCount=${currentRevisionCount + 1} previousStatus=${previousStatus}`);
         }
