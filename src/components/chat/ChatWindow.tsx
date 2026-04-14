@@ -850,6 +850,7 @@ export function ChatWindow({
 
   // 2. Initialize useChat with AI SDK v5/v6 API
   const editAndTruncate = useMutation(api.messages.editAndTruncateConversation)
+  const resetStageDataForEditResendMutation = useMutation(api.paperSessions.resetStageDataForEditResend)
 
   // Refs to always read latest attachment state at request time (bypasses useChat stale transport bug)
   const attachedFilesRef = useRef(attachedFiles)
@@ -2040,6 +2041,27 @@ export function ChatWindow({
       // 2. Mark stage as dirty in paper mode
       if (isPaperMode) {
         markStageAsDirty()
+      }
+
+      // Reset stageData on edit/resend when stage is incomplete (no artifact yet).
+      // Fires for ANY edit/resend mid-stage, not just choice card confirmations.
+      // This is intentional: edit/resend = "restart this stage from scratch".
+      if (isPaperMode && paperSession && userId) {
+          const currentStageData = stageData?.[paperSession.currentStage as string];
+          if (currentStageData && !currentStageData.artifactId) {
+              try {
+                  const resetResult = await resetStageDataForEditResendMutation({
+                      sessionId: paperSession._id,
+                      userId,
+                  });
+                  if (resetResult.reset) {
+                      console.info(`[PAPER][edit-resend-reset] Client: stage=${resetResult.stage} cleared=${resetResult.clearedFields?.length ?? 0} fields`);
+                  }
+              } catch (err) {
+                  console.warn("[PAPER][edit-resend-reset] Failed:", err);
+                  // Non-blocking — proceed with edit/resend even if reset fails
+              }
+          }
       }
 
       // 3. Truncate local messages to BEFORE the edited message
