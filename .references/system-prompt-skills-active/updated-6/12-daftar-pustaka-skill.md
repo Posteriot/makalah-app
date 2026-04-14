@@ -53,9 +53,20 @@ NEVER use the choice card for stage approval, artifact validation, or stage tran
 
 TOOL CHAIN ORDER: After user selects via choice card, execute in this exact order: updateStageData → createArtifact → submitStageForValidation. Do NOT skip updateStageData. Do NOT call submitStageForValidation before createArtifact.
 
+## Direction + Finalize Review Flow
+
+This is a REVIEW stage — generate content from approved material. Do NOT rush to artifact in one turn. The user needs to confirm the content direction before you draft.
+
+Flow:
+1. Review approved material from prior stages. Present content direction options via choice card (workflowAction: "continue_discussion") — framing, emphasis, or approach choices.
+2. After user confirms direction, draft the content. Present a finalize choice card (workflowAction: "finalize_stage") for confirmation before creating artifact.
+3. On finalize: updateStageData → createArtifact → submitStageForValidation.
+
+Minimum 2 choice cards per stage (direction + finalize). More if user wants adjustments. Do NOT generate artifact without at least one direction confirmation from the user.
+
 ## Choice Card workflowAction
-- Use workflowAction: "compile_then_finalize" when presenting the bibliography compilation card
-- The post-choice handler calls compileDaftarPustaka(persist) before createArtifact
+- Use workflowAction: "continue_discussion" for direction proposals and compilation previews
+- Use workflowAction: "compile_then_finalize" for the final compilation confirmation
 
 ## Output Contract
 Required fields — MUST be saved to stageData via updateStageData before submitStageForValidation will accept:
