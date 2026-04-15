@@ -2913,6 +2913,15 @@ Aturan:
                             .replace(/\n{3,}/g, "\n\n").trim()
 
                         // ──── Save assistant message ────
+                        const searchPlanSnapshot = result.capturedPlanSpec ?? getCurrentPlanSnapshot()
+
+                        // Observability: log what planSnapshot will be persisted (search path)
+                        if (searchPlanSnapshot && paperStageScope) {
+                            const snap = searchPlanSnapshot as PlanSpec
+                            const taskDetail = snap.tasks.map((t: { status: string; label: string }, i: number) => `${i}:${t.status}:${t.label.slice(0, 40)}`).join(", ")
+                            console.info(`[PLAN-SNAPSHOT][search] stage=${paperStageScope} tasks=${snap.tasks.length} detail=[${taskDetail}]`)
+                        }
+
                         await saveAssistantMessage(
                             searchText,
                             result.sources.length > 0 ? result.sources : undefined,
@@ -2920,7 +2929,7 @@ Aturan:
                             result.reasoningSnapshot,
                             result.capturedChoiceSpec ?? undefined,
                             undefined, // uiMessageId — not used in search path
-                            result.capturedPlanSpec ?? getCurrentPlanSnapshot(),
+                            searchPlanSnapshot,
                         )
 
                         // Auto-persist search references to paper stageData
@@ -3467,6 +3476,13 @@ Aturan:
                             const finalPrimarySnapshot = primaryPlanSnapshot
                                 ? autoCompletePlanOnValidation(primaryPlanSnapshot as PlanSpec, paperToolTracker.sawSubmitValidationSuccess)
                                 : undefined
+
+                            // Observability: log what planSnapshot will be persisted with this message
+                            if (finalPrimarySnapshot && paperStageScope) {
+                                const snap = finalPrimarySnapshot as PlanSpec
+                                const taskDetail = snap.tasks.map((t, i) => `${i}:${t.status}:${t.label.slice(0, 40)}`).join(", ")
+                                console.info(`[PLAN-SNAPSHOT] stage=${paperStageScope} tasks=${snap.tasks.length} autoCompleted=${paperToolTracker.sawSubmitValidationSuccess} detail=[${taskDetail}]`)
+                            }
 
                             await saveAssistantMessage(
                                 persistedContent,
@@ -4310,6 +4326,13 @@ Aturan:
                             const finalFallbackSnapshot = fallbackPlanSnapshot
                                 ? autoCompletePlanOnValidation(fallbackPlanSnapshot as PlanSpec, paperToolTracker.sawSubmitValidationSuccess)
                                 : undefined
+
+                            // Observability: log what planSnapshot will be persisted (fallback path)
+                            if (finalFallbackSnapshot && paperStageScope) {
+                                const snap = finalFallbackSnapshot as PlanSpec
+                                const taskDetail = snap.tasks.map((t, i) => `${i}:${t.status}:${t.label.slice(0, 40)}`).join(", ")
+                                console.info(`[PLAN-SNAPSHOT][fallback] stage=${paperStageScope} tasks=${snap.tasks.length} autoCompleted=${paperToolTracker.sawSubmitValidationSuccess} detail=[${taskDetail}]`)
+                            }
 
                             await saveAssistantMessage(
                                 persistedContent,
