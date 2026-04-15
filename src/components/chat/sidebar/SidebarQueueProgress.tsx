@@ -264,6 +264,8 @@ interface PhaseSectionProps {
   onStageClick: (stageId: PaperStageId, stageIndex: number) => void
   /** Whether this is the last phase group (affects last-stage line rendering) */
   isLastPhase: boolean
+  /** Latest assistant message's planSnapshot — overlay onto stageData for mirror behavior */
+  latestPlanSnapshot?: unknown
 }
 
 function PhaseSection({
@@ -274,6 +276,7 @@ function PhaseSection({
   stageData,
   onStageClick,
   isLastPhase,
+  latestPlanSnapshot,
 }: PhaseSectionProps) {
   const getMilestoneState = (stageId: PaperStageId): MilestoneState => {
     const stageIndex = STAGE_ORDER.indexOf(stageId)
@@ -297,14 +300,25 @@ function PhaseSection({
   const completedCount = phaseStates.filter((s) => s === "completed").length
   const totalCount = stages.length
 
-  // Derive sub-tasks for the active stage
+  // Derive sub-tasks for the active stage.
+  // Mirror the latest message's planSnapshot when available so sidebar matches
+  // the inline UnifiedProcessCard. Falls back to global stageData._plan during
+  // streaming or for legacy messages without snapshots.
   const activeStageId = hasCurrentStage
     ? stages[phaseStates.indexOf("current")]
     : undefined
   const subTaskSummary = useMemo(() => {
     if (!activeStageId || !stageData) return null
-    return deriveTaskList(activeStageId, stageData as Record<string, unknown>)
-  }, [activeStageId, stageData])
+    const sd = stageData as Record<string, Record<string, unknown>>
+    if (latestPlanSnapshot) {
+      const overlayStageData = {
+        ...sd,
+        [activeStageId]: { ...(sd[activeStageId] ?? {}), _plan: latestPlanSnapshot },
+      }
+      return deriveTaskList(activeStageId, overlayStageData)
+    }
+    return deriveTaskList(activeStageId, sd)
+  }, [activeStageId, stageData, latestPlanSnapshot])
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -398,6 +412,12 @@ export function SidebarQueueProgress({ conversationId }: SidebarQueueProgressPro
 
   const conversation = useQuery(
     api.conversations.getConversation,
+    conversationId ? { conversationId: conversationId as Id<"conversations"> } : "skip"
+  )
+
+  // Latest assistant message's planSnapshot — sidebar mirrors inline UnifiedProcessCard
+  const latestPlanSnapshot = useQuery(
+    api.messages.getLatestPlanSnapshot,
     conversationId ? { conversationId: conversationId as Id<"conversations"> } : "skip"
   )
 
@@ -543,6 +563,7 @@ export function SidebarQueueProgress({ conversationId }: SidebarQueueProgressPro
               stageData={stageData as Record<string, StageDataEntry> | undefined}
               onStageClick={handleStageClick}
               isLastPhase={phaseIdx === PHASE_GROUPS.length - 1}
+              latestPlanSnapshot={latestPlanSnapshot ?? undefined}
             />
           ))}
         </div>
