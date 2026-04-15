@@ -1,7 +1,6 @@
 import * as Sentry from "@sentry/nextjs"
-import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateText, Output, tool, type ToolSet, type ModelMessage, stepCountIs } from "ai"
+import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateText, Output, type ModelMessage } from "ai"
 import { z } from "zod"
-import type { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google"
 
 import { getSystemPrompt } from "@/lib/ai/chat-config"
 import { fetchQuery } from "convex/nextjs"
@@ -16,14 +15,12 @@ import {
     validateChoiceInteraction,
     resolveRunLane,
 } from "@/lib/chat-harness/entry"
-import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
-import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
-// isBlockedSourceDomain removed — blocklist enforcement via SKILL.md natural language
-// formatParagraphEndCitations now handled by orchestrator
-import { createPaperTools, createPaperToolTracker } from "@/lib/ai/paper-tools"
-import { checkSourceBodyParity } from "@/lib/ai/skills/web-search-quality/scripts/check-source-body-parity"
+// normalizeWebSearchUrl, enrichSourcesWithFetchedTitles → now in executor/build-on-finish-handler.ts
+// createPaperTools → now in executor/build-tool-registry.ts
+// checkSourceBodyParity → now in executor/build-tool-registry.ts
+import { createPaperToolTracker } from "@/lib/ai/paper-tools"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
-import { classifyRevisionIntent } from "@/lib/ai/classifiers/revision-intent-classifier"
+// classifyRevisionIntent → now in executor/build-on-finish-handler.ts
 import { ACTIVE_SEARCH_STAGES, PASSIVE_SEARCH_STAGES } from "@/lib/ai/stage-skill-contracts"
 import { getStageLabel, type PaperStageId } from "../../../../convex/paperSessions/constants"
 import {
@@ -43,25 +40,18 @@ import {
 } from "@/lib/billing/enforcement"
 import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
 import { getSearchSkill, composeSkillInstructions, type SkillContext } from "@/lib/ai/skills"
-import {
-    createCuratedTraceController,
-    type PersistedCuratedTraceSnapshot,
-    type ReasoningLiveDataPart,
-} from "@/lib/ai/curated-trace"
-import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
+// createCuratedTraceController, createReasoningLiveAccumulator → now in executor/build-step-stream.ts
+import type { PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 // buildUserFacingSearchPayload now handled by orchestrator
 import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
-import { pipeYamlRender } from "@json-render/yaml"
-import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
-import { PLAN_DATA_PART_TYPE, type PlanSpec, UNFENCED_PLAN_REGEX, planSpecSchema, autoCompletePlanOnValidation } from "@/lib/ai/harness/plan-spec"
-import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
-import type { Spec, JsonPatch } from "@json-render/core"
+// pipeYamlRender, pipePlanCapture, SPEC_DATA_PART_TYPE, applySpecPatch → now in executor/build-step-stream.ts
+// UNFENCED_PLAN_REGEX, planSpecSchema, autoCompletePlanOnValidation → now in executor/build-on-finish-handler.ts
+import { type PlanSpec } from "@/lib/ai/harness/plan-spec"
+import type { Spec } from "@json-render/core"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
-import {
-    shouldAttemptRescue,
-} from "@/lib/chat/choice-request"
+// shouldAttemptRescue → now in executor/build-on-finish-handler.ts
 import { compileChoiceSpec } from "@/lib/json-render/compile-choice-spec"
-import { sanitizeChoiceOutcome, paperRecoveryLeakagePattern } from "@/lib/chat/choice-outcome-guard"
+// sanitizeChoiceOutcome, paperRecoveryLeakagePattern → now in executor modules
 import {
     classifyAttachmentHealth,
     resolveAttachmentRuntimeEnv,
@@ -85,6 +75,7 @@ import {
     shouldIncludeRawSourcesContextForExactFollowup,
 } from "@/lib/ai/exact-source-guardrails"
 import { resolveExactSourceFollowup, type ExactSourceConversationMessage } from "@/lib/ai/exact-source-followup"
+import { buildToolRegistry, buildStepStream, saveAssistantMessage } from "@/lib/chat-harness/executor"
 
 export async function POST(req: Request) {
     try {
@@ -193,11 +184,7 @@ export async function POST(req: Request) {
             updateArtifactAtMs: null,
         }
 
-        const buildLeakageSnippet = (text: string, matchIndex: number, matchValue: string): string => {
-            const start = Math.max(0, matchIndex - 120)
-            const end = Math.min(text.length, matchIndex + matchValue.length + 120)
-            return text.slice(start, end).replace(/\s+/g, " ").trim()
-        }
+        // buildLeakageSnippet extracted to executor/build-step-stream.ts
 
         // Free-text context note: when user sends a regular message (no choice card),
         // inject stage-aware context so model quality approaches choice card level.
@@ -255,7 +242,7 @@ export async function POST(req: Request) {
         }
 
         // Run lane assembly (provisional run identity for Phase 6+ persistence)
-        const _lane = resolveRunLane({
+        const lane = resolveRunLane({
             requestId,
             conversationId: currentConversationId,
             isNewConversation: conversation.isNewConversation,
@@ -1116,786 +1103,64 @@ JSON schema:
             }
         }
 
-        // Helper for saving assistant message with dynamic model from config
-        const MAX_REASONING_TRACE_STEPS = 8
-        const MAX_REASONING_TEXT_LENGTH = 240
-        const ALLOWED_REASONING_STEP_KEYS = new Set([
-            "intent-analysis",
-            "paper-context-check",
-            "search-decision",
-            "source-validation",
-            "response-compose",
-            "tool-action",
-        ])
-        const ALLOWED_REASONING_STATUSES = new Set([
-            "pending",
-            "running",
-            "done",
-            "skipped",
-            "error",
-        ])
-        const FORBIDDEN_REASONING_PATTERNS = [
-            /system\s+prompt/i,
-            /developer\s+prompt/i,
-            /chain[-\s]?of[-\s]?thought/i,
-            /\bcot\b/i,
-            /api[\s_-]?key/i,
-            /bearer\s+[a-z0-9._-]+/i,
-            /\btoken\b/i,
-            /\bsecret\b/i,
-            /\bpassword\b/i,
-            /\bcredential\b/i,
-            /internal\s+policy/i,
-            /tool\s+schema/i,
-        ]
-
-        const truncateReasoningText = (value: string) => value.slice(0, MAX_REASONING_TEXT_LENGTH)
-        const collapseSpaces = (value: string) => value.replace(/\s+/g, " ").trim()
-
-        const containsForbiddenReasoningText = (value: string) =>
-            FORBIDDEN_REASONING_PATTERNS.some((pattern) => pattern.test(value))
-
-        const sanitizeReasoningText = (value: string, fallback: string) => {
-            const withoutCodeFence = value
-                .replace(/```[\s\S]*?```/g, " ")
-                .replace(/`([^`]+)`/g, "$1")
-            const cleaned = collapseSpaces(withoutCodeFence)
-            if (!cleaned) return fallback
-            if (containsForbiddenReasoningText(cleaned)) return fallback
-            return truncateReasoningText(cleaned)
-        }
-
-        const normalizeLegacyReasoningNote = (note: string) => {
-            const normalized = collapseSpaces(note).toLowerCase()
-            if (!normalized) return note
-
-            if (normalized === "web-search-enabled") return "Pencarian web diaktifkan untuk memperkuat jawaban."
-            if (normalized === "web-search-disabled") return "Pencarian web tidak diperlukan untuk turn ini."
-            if (normalized === "no-web-search") return "Langkah validasi sumber dilewati karena tanpa pencarian web."
-            if (normalized === "source-detected") return "Sumber terdeteksi dan sedang diverifikasi."
-            if (normalized === "sources-validated") return "Sumber yang dipakai sudah tervalidasi."
-            if (normalized === "no-sources-returned") return "Tidak ada sumber valid yang bisa dipakai."
-            if (normalized === "tool-running") return "Tool sedang dijalankan untuk membantu proses."
-            if (normalized === "tool-done" || normalized === "tool-completed") return "Tool selesai dijalankan."
-            if (normalized === "no-tool-detected-yet" || normalized === "no-tool-call") return "Tidak ada tool tambahan yang diperlukan."
-            if (normalized === "stream-error") return "Terjadi kendala pada aliran respons."
-            if (normalized === "stopped-by-user-or-stream-abort") return "Proses dihentikan sebelum jawaban selesai."
-
-            return note
-        }
-
-        const sanitizeReasoningMode = (mode: unknown): "normal" | "paper" | "websearch" | undefined => {
-            if (mode === "normal" || mode === "paper" || mode === "websearch") return mode
-            return undefined
-        }
-
-        const sanitizeReasoningStatus = (status: unknown): "pending" | "running" | "done" | "skipped" | "error" => {
-            if (typeof status === "string" && ALLOWED_REASONING_STATUSES.has(status)) {
-                return status as "pending" | "running" | "done" | "skipped" | "error"
-            }
-            return "pending"
-        }
-
-        const sanitizeReasoningTraceForPersistence = (
-            trace?: PersistedCuratedTraceSnapshot
-        ): PersistedCuratedTraceSnapshot | undefined => {
-            if (!trace || (trace.traceMode !== "curated" && trace.traceMode !== "transparent")) return undefined
-            const rawSteps = Array.isArray(trace.steps) ? trace.steps.slice(0, MAX_REASONING_TRACE_STEPS) : []
-            const steps = rawSteps
-                .map((step) => {
-                    if (!step || typeof step !== "object") return null
-                    if (typeof step.stepKey !== "string" || !ALLOWED_REASONING_STEP_KEYS.has(step.stepKey)) return null
-
-                    const sanitizedMeta = step.meta
-                        ? {
-                            ...(sanitizeReasoningMode(step.meta.mode)
-                                ? { mode: sanitizeReasoningMode(step.meta.mode) }
-                                : {}),
-                            ...(step.meta.stage
-                                ? { stage: sanitizeReasoningText(step.meta.stage, "Tahap tidak tersedia.") }
-                                : {}),
-                            ...(step.meta.note
-                                ? {
-                                    note: sanitizeReasoningText(
-                                        normalizeLegacyReasoningNote(step.meta.note),
-                                        "Detail aktivitas disederhanakan demi keamanan."
-                                    ),
-                                }
-                                : {}),
-                            ...(typeof step.meta.sourceCount === "number" && Number.isFinite(step.meta.sourceCount)
-                                ? { sourceCount: Math.max(0, Math.floor(step.meta.sourceCount)) }
-                                : {}),
-                            ...(step.meta.toolName
-                                ? {
-                                    toolName: sanitizeReasoningText(
-                                        step.meta.toolName.replace(/[^a-zA-Z0-9:_-]/g, " "),
-                                        "tool"
-                                    ),
-                                }
-                                : {}),
-                        }
-                        : undefined
-
-                    return {
-                        stepKey: step.stepKey,
-                        label: sanitizeReasoningText(step.label, "Langkah reasoning"),
-                        status: sanitizeReasoningStatus(step.status),
-                        ...(typeof step.progress === "number" && Number.isFinite(step.progress)
-                            ? { progress: Math.max(0, Math.min(100, step.progress)) }
-                            : {}),
-                        ts: Number.isFinite(step.ts) ? step.ts : Date.now(),
-                        ...(typeof step.thought === "string" && step.thought.trim()
-                            ? { thought: (() => { const t = step.thought.trim(); return sanitizeReasoningText(t.length > 600 ? t.slice(0, 597) + "..." : t, "Detail reasoning."); })() }
-                            : {}),
-                        ...(sanitizedMeta && Object.keys(sanitizedMeta).length > 0 ? { meta: sanitizedMeta } : {}),
-                    }
-                })
-                .filter((step): step is NonNullable<typeof step> => Boolean(step))
-            if (steps.length === 0) return undefined
-
-            return {
-                version: trace.version === 2 ? 2 : 1,
-                headline: sanitizeReasoningText(
-                    trace.headline || "",
-                    ""
-                ),
-                traceMode: trace.traceMode === "transparent" ? "transparent" : "curated",
-                completedAt: Number.isFinite(trace.completedAt) ? trace.completedAt : Date.now(),
-                ...(typeof trace.durationSeconds === "number" && Number.isFinite(trace.durationSeconds)
-                    ? { durationSeconds: trace.durationSeconds }
-                    : {}),
-                ...(typeof trace.rawReasoning === "string" && trace.rawReasoning.trim()
-                    ? { rawReasoning: trace.rawReasoning }
-                    : {}),
-                steps,
-            }
-        }
+        // Reasoning trace sanitization helpers extracted to:
+        // src/lib/chat-harness/executor/save-assistant-message.ts
 
         // Resolve current plan snapshot for message persistence.
         // Reads the latest _plan from the paper session's stageData for the active stage.
-        const getCurrentPlanSnapshot = () => {
+        const getCurrentPlanSnapshot = (): PlanSpec | undefined => {
             if (!paperSession?.stageData || !paperStageScope) return undefined
             const sd = paperSession.stageData as Record<string, Record<string, unknown>>
-            return sd[paperStageScope]?._plan ?? undefined
+            return (sd[paperStageScope]?._plan as PlanSpec | undefined) ?? undefined
         }
 
-        const saveAssistantMessage = async (
+        // saveAssistantMessage extracted to executor/save-assistant-message.ts
+        // Standalone calls (search path, unavailable response) use the imported version.
+        // The buildOnFinishHandler calls saveAssistantMessage internally for primary/fallback paths.
+        const saveAssistantMessageLocal = async (
             content: string,
             sources?: { url: string; title: string; publishedAt?: number | null }[],
-            usedModel?: string, // Model name from config (primary or fallback)
+            usedModel?: string,
             reasoningTrace?: PersistedCuratedTraceSnapshot,
             jsonRendererChoice?: JsonRendererChoicePayload | Spec,
             uiMessageId?: string,
             planSnapshot?: unknown,
         ) => {
-            const sanitizedReasoningTrace = sanitizeReasoningTraceForPersistence(reasoningTrace)
-            const normalizedSources = sources
-                ?.map((source) => ({
-                    url: source.url,
-                    title: source.title,
-                    ...(typeof source.publishedAt === "number" && Number.isFinite(source.publishedAt)
-                        ? { publishedAt: source.publishedAt }
-                        : {}),
-                }))
-                .filter((source) => source.url && source.title)
-            await retryMutation(
-                () => fetchMutationWithToken(api.messages.createMessage, {
-                    conversationId: currentConversationId as Id<"conversations">,
-                    role: "assistant",
-                    content: content,
-                    metadata: {
-                        model: usedModel ?? modelNames.primary.model, // From database config
-                        ...(uiMessageId ? { uiMessageId } : {}),
-                    },
-                    sources: normalizedSources && normalizedSources.length > 0 ? normalizedSources : undefined,
-                    reasoningTrace: sanitizedReasoningTrace,
-                    ...(jsonRendererChoice
-                        ? { jsonRendererChoice: JSON.stringify(jsonRendererChoice) }
-                        : {}),
-                    ...(uiMessageId ? { uiMessageId } : {}),
-                    ...(planSnapshot ? { planSnapshot } : {}),
-                }),
-                "messages.createMessage(assistant)"
-            )
+            await saveAssistantMessage({
+                conversationId: currentConversationId as Id<"conversations">,
+                content,
+                sources,
+                usedModel: usedModel ?? modelNames.primary.model,
+                reasoningTrace,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                jsonRendererChoice: jsonRendererChoice as any,
+                uiMessageId,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                planSnapshot: planSnapshot as any,
+                fetchMutationWithToken,
+            })
         }
 
         // ============================================================
-        // ARTIFACT TOOLS - Creates and updates standalone deliverable content
+        // TOOL REGISTRY — extracted to executor/build-tool-registry.ts
         // ============================================================
-        const tools = {
-            createArtifact: tool({
-                description: `Create a NEW artifact for standalone, non-conversational content that the user might want to edit, copy, or export.
-
-⚠️ PENTING: Jika artifact untuk stage/konten ini SUDAH ADA dan ditandai 'invalidated' (karena rewind), gunakan updateArtifact sebagai gantinya. JANGAN buat artifact baru untuk konten yang sudah punya artifact sebelumnya.
-
-USE THIS TOOL WHEN generating:
-✓ Paper outlines and structures (type: "outline")
-✓ Draft sections: Introduction, Methodology, Results, Discussion, Conclusion (type: "section")
-✓ Code snippets for data analysis in Python, R, JavaScript, TypeScript (type: "code")
-✓ Tables and formatted data (type: "table")
-✓ Bibliography entries and citations (type: "citation")
-✓ LaTeX mathematical formulas (type: "formula")
-✓ Research summaries and abstracts (type: "section")
-✓ Paraphrased paragraphs (type: "section")
-✓ Charts and graphs: bar, line, pie (type: "chart", format: "json")
-✓ Diagrams: flowchart, sequence, class, state, ER, gantt, mindmap, timeline, pie (type: "code", format: "markdown", content: raw mermaid syntax WITHOUT fences)
-
-DO NOT use this tool for:
-✗ Explanations and teaching
-✗ Discussions about concepts
-✗ Questions and clarifications
-✗ Suggestions and feedback
-✗ Meta-conversation about writing process
-✗ Short answers (less than 3 sentences)
-✗ Updating existing/invalidated artifacts (use updateArtifact instead)
-
-When using this tool, always provide a clear, descriptive title (max 50 chars).
-
-📊 CHARTS: For charts/graphs, use type "chart" with format "json". Content must be a valid JSON string.
-
-Bar chart example:
-{"chartType":"bar","title":"Publikasi per Tahun","xAxisLabel":"Tahun","yAxisLabel":"Jumlah","data":[{"name":"2020","value":150},{"name":"2021","value":200},{"name":"2022","value":280}],"series":[{"dataKey":"value","name":"Publikasi","color":"#f59e0b"}]}
-
-Line chart example:
-{"chartType":"line","title":"Tren Penelitian","xAxisLabel":"Tahun","yAxisLabel":"Jumlah","data":[{"name":"2020","value":50},{"name":"2021","value":80},{"name":"2022","value":120}],"series":[{"dataKey":"value","name":"Penelitian","color":"#0ea5e9"}]}
-
-Pie chart example:
-{"chartType":"pie","title":"Distribusi Metode","data":[{"name":"Kualitatif","value":35},{"name":"Kuantitatif","value":45},{"name":"Mixed","value":20}]}
-
-Rules: "data" is array of objects with "name" (label) + numeric field(s). "series" defines which numeric fields to plot (optional for pie, auto-detected if omitted). Content MUST be valid JSON — no comments, no trailing commas.
-
-📐 DIAGRAMS (Mermaid): For visual diagrams (flowcharts, sequence diagrams, class diagrams, etc.), use type "code" with format "markdown". Content is RAW mermaid syntax — NO \`\`\`mermaid fences, just the diagram code directly.
-
-Flowchart example:
-flowchart TD
-    A[Start] --> B{Decision}
-    B -->|Yes| C[Action 1]
-    B -->|No| D[Action 2]
-    C --> E[End]
-    D --> E
-
-Sequence diagram example:
-sequenceDiagram
-    participant U as User
-    participant S as Server
-    U->>S: Request
-    S-->>U: Response
-
-Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagram, gantt, mindmap, timeline, journey, gitgraph, quadrantChart, xychart, block-beta, sankey-beta.`,
-                inputSchema: z.object({
-                    type: z.enum(["code", "outline", "section", "table", "citation", "formula", "chart"])
-                        .describe("The type of artifact to create"),
-                    title: z.string().max(200)
-                        .describe("Short, descriptive title for the artifact (max 200 chars). Examples: 'Introduction Draft', 'Data Analysis Code', 'Research Outline'"),
-                    content: z.string().min(10)
-                        .describe("The actual content of the artifact"),
-                    format: z.enum(["markdown", "latex", "python", "r", "javascript", "typescript", "json"]).optional()
-                        .describe("Format of the content. Use 'markdown' for text, language name for code, 'json' for charts"),
-                    description: z.string().optional()
-                        .describe("Optional brief description of what the artifact contains"),
-                    sources: z.array(z.object({
-                        url: z.string(),
-                        title: z.string(),
-                        publishedAt: z.number().optional(),
-                    })).optional()
-                        .describe("Web sources from previous web search turn. Pass this if artifact content references web search results. Format: [{url, title, publishedAt?}]"),
-                }),
-                execute: async ({ type, title, content, format, description, sources }) => {
-                    try {
-                        // Guard: block duplicate createArtifact in the same turn.
-                        // Model sometimes retries after wrong tool ordering triggers auto-rescue.
-                        if (paperToolTracker?.sawCreateArtifactSuccess) {
-                            console.log(`[create-artifact-blocked-duplicate] stage=${paperSession?.currentStage} — artifact already created this turn`);
-                            return {
-                                success: false,
-                                errorCode: "CREATE_BLOCKED_DUPLICATE_TURN",
-                                retryable: false,
-                                error: "An artifact was already created in this turn. Use updateArtifact to make changes to the existing artifact.",
-                                nextAction: "Call updateArtifact if content needs changes, or submitStageForValidation if not yet submitted.",
-                            }
-                        }
-
-                        // Plan completion is enforced SOFTLY via prepareStep (plan gate
-                        // downgrades enforcer). No hard block here — plan tasks are
-                        // model-generated guidance, not hard requirements. The model may
-                        // finalize before all tasks are complete, especially when the user
-                        // explicitly clicks finalize_stage.
-
-                        // Guard: block createArtifact when a valid artifact already exists (pending_validation OR revision).
-                        // During revision, model should use updateArtifact to create v2/v3 — not createArtifact.
-                        // createArtifact is only allowed as exceptional fallback when artifact is missing/invalidated.
-                        if (paperSession?.stageStatus === "pending_validation" || paperSession?.stageStatus === "revision") {
-                            const currentStageData = (paperSession.stageData as Record<string, Record<string, unknown>>)?.[paperSession.currentStage];
-                            const existingArtifactId = currentStageData?.artifactId as string | undefined;
-
-                            let artifactIsValid = false;
-                            if (existingArtifactId) {
-                                try {
-                                    const existingArtifact = await fetchQueryWithToken(api.artifacts.get, {
-                                        artifactId: existingArtifactId as Id<"artifacts">,
-                                        userId: userId as Id<"users">,
-                                    });
-                                    artifactIsValid = !!existingArtifact && !existingArtifact.invalidatedAt;
-                                } catch {
-                                    artifactIsValid = false;
-                                }
-                            }
-
-                            if (artifactIsValid) {
-                                console.log(`[create-artifact-blocked-valid-exists] stage=${paperSession.currentStage} stageStatus=${paperSession.stageStatus} artifactId=${existingArtifactId}`);
-                                return {
-                                    success: false,
-                                    errorCode: "CREATE_BLOCKED_VALID_EXISTS",
-                                    retryable: false,
-                                    error: "A valid artifact already exists for this stage. Use updateArtifact to create a new version instead of createArtifact.",
-                                    nextAction: "Call updateArtifact with the revised content. Do NOT use createArtifact when a valid artifact exists.",
-                                }
-                            }
-
-                            // Artifact missing/invalidated/inaccessible — allow createArtifact as exceptional fallback.
-                            // Auto-rescue only for pending_validation (revision is already correct state).
-                            if (paperSession.stageStatus === "pending_validation") {
-                                try {
-                                    const rescueResult = await fetchMutationWithToken(api.paperSessions.autoRescueRevision, {
-                                        sessionId: paperSession._id,
-                                        userId: userId as Id<"users">,
-                                        source: "createArtifact",
-                                    });
-                                    if (rescueResult.rescued) {
-                                        console.log(`[create-artifact-fallback-no-valid] stage=${paperSession.currentStage} — auto-rescued, proceeding with createArtifact`);
-                                        const refreshed = await fetchQueryWithToken(api.paperSessions.getByConversation, {
-                                            conversationId: currentConversationId
-                                        });
-                                        if (refreshed) Object.assign(paperSession, refreshed);
-                                    }
-                                } catch (autoRescueError) {
-                                    console.error("[createArtifact] Auto-rescue failed:", autoRescueError);
-                                    return {
-                                        success: false,
-                                        errorCode: "AUTO_RESCUE_FAILED",
-                                        retryable: true,
-                                        error: "Failed to auto-transition stage to revision. Try calling requestRevision explicitly first.",
-                                        nextAction: "Call requestRevision(feedback) first, then retry createArtifact.",
-                                    };
-                                }
-                            }
-                        }
-
-                        const refValidation = skill.checkReferences({
-                            toolName: 'createArtifact',
-                            claimedSources: sources,
-                            availableSources: recentSourcesList,
-                            hasRecentSources: hasRecentSourcesInDb,
-                        })
-                        logAiTelemetry({
-                            token: convexToken,
-                            userId: userId as Id<"users">,
-                            conversationId: currentConversationId as Id<"conversations">,
-                            provider: modelNames.primary.provider as "vercel-gateway" | "openrouter",
-                            model: "tool-validation",
-                            isPrimaryProvider: true,
-                            failoverUsed: false,
-                            mode: isPaperMode ? "paper" : "normal",
-                            success: refValidation.valid,
-                            latencyMs: 0,
-                            searchSkillApplied: true,
-                            searchSkillName: "reference-integrity",
-                            searchSkillAction: refValidation.valid ? "validated" : "rejected",
-                            referencesClaimed: sources?.length ?? 0,
-                            referencesMatched: refValidation.valid ? (sources?.length ?? 0) : 0,
-                        })
-                        if (!refValidation.valid) {
-                            return {
-                                success: false,
-                                error: refValidation.error,
-                            }
-                        }
-
-                        // Source-body parity check: content reference inventory must match attached sources
-                        if (sources && sources.length > 0) {
-                            const parityCheck = checkSourceBodyParity({ content, sources })
-                            if (!parityCheck.valid) {
-                                console.warn(`[source-body-parity-rejected] tool=createArtifact level=${parityCheck.level} sources=${sources.length}`)
-                                return {
-                                    success: false,
-                                    errorCode: "SOURCE_BODY_PARITY_MISMATCH",
-                                    retryable: true,
-                                    error: parityCheck.error,
-                                    nextAction: "Fix the artifact content to match attached sources count, or add an explicit subset disclaimer.",
-                                }
-                            }
-                        }
-
-                        const result = await retryMutation(
-                            () => fetchMutationWithToken(api.artifacts.create, {
-                                conversationId: currentConversationId as Id<"conversations">,
-                                userId: userId as Id<"users">,
-                                type,
-                                title,
-                                content,
-                                format,
-                                description,
-                                sources,
-                            }),
-                            "artifacts.create"
-                        )
-
-                        // Auto-link artifactId to paper session stageData
-                        if (paperSession) {
-                            try {
-                                await fetchMutationWithToken(api.paperSessions.updateStageData, {
-                                    sessionId: paperSession._id,
-                                    stage: paperSession.currentStage,
-                                    data: { artifactId: result.artifactId },
-                                })
-                            } catch {
-                                // Non-critical: artifact exists but not linked to stage
-                                console.warn("[createArtifact] Auto-link artifactId to stageData failed")
-                            }
-                        }
-
-                        console.log("[F1-F6-TEST] createArtifact", { stage: paperSession?.currentStage, artifactId: result.artifactId, title })
-                        if (paperToolTracker) paperToolTracker.sawCreateArtifactSuccess = true
-                        paperTurnObservability.createArtifactAtMs = Date.now()
-                        console.info("[PAPER][artifact-tool-success]", {
-                            stage: paperSession?.currentStage,
-                            artifactId: result.artifactId,
-                            hadLeakageBeforeArtifact: paperTurnObservability.firstLeakageAtMs !== null,
-                            firstLeakageMatch: paperTurnObservability.firstLeakageMatch,
-                        })
-
-                        // Auto-submit: if model called submitStageForValidation before artifact existed
-                        // (wrong tool order), retry submit now that artifact is created.
-                        let autoSubmitted = false
-                        if (paperToolTracker?.sawSubmitValidationArtifactMissing && !paperToolTracker?.sawSubmitValidationSuccess) {
-                            try {
-                                await fetchMutationWithToken(api.paperSessions.submitForValidation, {
-                                    sessionId: paperSession!._id,
-                                })
-                                autoSubmitted = true
-                                paperToolTracker.sawSubmitValidationSuccess = true
-                                console.log("[createArtifact][auto-submit] submitStageForValidation retried after artifact creation — success")
-                            } catch (autoSubmitError) {
-                                console.warn("[createArtifact][auto-submit] submitStageForValidation retry failed:", autoSubmitError)
-                            }
-                        }
-
-                        return {
-                            success: true,
-                            artifactId: result.artifactId,
-                            title,
-                            message: autoSubmitted
-                                ? `Artifact "${title}" berhasil dibuat dan sudah disubmit untuk validasi.`
-                                : `Artifact "${title}" berhasil dibuat. User dapat melihatnya di panel artifact.`,
-                            nextAction: autoSubmitted
-                                ? "Artifact created and submitted for validation. Do NOT call submitStageForValidation again. Do NOT mention technical issues. Respond with MAX 2-3 sentences confirming the artifact is ready for review."
-                                : "⚠️ MANDATORY: Artifact is created successfully. Do NOT restate the draft content in chat. Do NOT output markdown headings, fenced code blocks, or paragraphs from the artifact. Do NOT mention technical issues, errors, partial saves, or source/title problems — the operation SUCCEEDED. Respond with MAX 2-3 sentences ONLY: (1) confirm artifact was created, (2) direct user to review in artifact panel, (3) call submitStageForValidation() NOW.",
-                        }
-                    } catch (error) {
-                        const errorMessage = error instanceof Error ? error.message : String(error)
-                        Sentry.captureException(error, { tags: { subsystem: "artifact" } })
-                        console.error("[createArtifact] Failed:", errorMessage)
-                        return {
-                            success: false,
-                            error: `Gagal membuat artifact: ${errorMessage}`,
-                        }
-                    }
-                },
-            }),
-            updateArtifact: tool({
-                description: `Update an existing artifact with new content, creating a new version.
-
-⚠️ WAJIB gunakan tool ini untuk artifact yang ditandai 'invalidated' (karena rewind).
-JANGAN gunakan createArtifact untuk artifact yang sudah ada - gunakan updateArtifact.
-
-USE THIS TOOL WHEN:
-✓ User meminta revisi artifact yang sudah ada
-✓ Artifact ditandai 'invalidated' setelah rewind ke stage sebelumnya
-✓ User ingin memperbaiki atau mengubah konten artifact sebelumnya
-✓ Perlu membuat versi baru dari artifact yang sudah ada
-
-Tool ini akan:
-1. Membuat versi baru dari artifact (immutable versioning)
-2. Versi baru otomatis bersih dari flag invalidation
-3. Versi lama tetap tersimpan sebagai history
-
-PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan AI sebelumnya.`,
-                inputSchema: z.object({
-                    artifactId: z.string()
-                        .describe("ID of the artifact to update. Must be an existing artifact."),
-                    content: z.string().min(10)
-                        .describe("New content for the artifact (replaces previous content)"),
-                    title: z.string().max(200).optional()
-                        .describe("New title (optional). If not provided, previous title is retained."),
-                    sources: z.array(z.object({
-                        url: z.string(),
-                        title: z.string(),
-                        publishedAt: z.number().optional(),
-                    })).optional()
-                        .describe("Web sources if update is based on web search. If not provided, sources from previous version are retained."),
-                }),
-                execute: async ({ artifactId: modelArtifactId, content, title, sources }) => {
-                    try {
-                        // Route-level auto-rescue for updateArtifact path.
-                        // convex/artifacts.ts:update does NOT go through paperSessions.updateStageData,
-                        // so the backend auto-rescue in updateStageData does not cover this path.
-                        // Uses autoRescueRevision (NOT requestRevision) to preserve trigger provenance.
-                        if (paperSession?.stageStatus === "pending_validation") {
-                            try {
-                                const rescueResult = await fetchMutationWithToken(api.paperSessions.autoRescueRevision, {
-                                    sessionId: paperSession._id,
-                                    userId: userId as Id<"users">,
-                                    source: "updateArtifact",
-                                });
-                                if (rescueResult.rescued) {
-                                    // Refresh paperSession reference so downstream code sees updated stageStatus
-                                    const refreshed = await fetchQueryWithToken(api.paperSessions.getByConversation, {
-                                        conversationId: currentConversationId
-                                    });
-                                    if (refreshed) Object.assign(paperSession, refreshed);
-                                }
-                            } catch (autoRescueError) {
-                                console.error("[updateArtifact] Auto-rescue failed:", autoRescueError);
-                                return {
-                                    success: false,
-                                    errorCode: "AUTO_RESCUE_FAILED",
-                                    retryable: true,
-                                    error: "Failed to auto-transition stage to revision. Try calling requestRevision explicitly first.",
-                                    nextAction: "Call requestRevision(feedback) first, then retry updateArtifact.",
-                                };
-                            }
-                        }
-
-                        // Auto-resolve artifactId from stage data when model supplies invalid ID
-                        let artifactId = modelArtifactId
-                        if (paperSession) {
-                            const stageDataMap = paperSession.stageData as Record<string, Record<string, unknown> | undefined> | undefined
-                            const stageArtifactId = stageDataMap?.[paperSession.currentStage]?.artifactId as string | undefined
-                            if (stageArtifactId && stageArtifactId !== modelArtifactId) {
-                                console.warn(`[updateArtifact] Auto-resolved artifactId: model supplied "${modelArtifactId}", using stage artifactId "${stageArtifactId}"`)
-                                artifactId = stageArtifactId
-                            }
-                        }
-
-                        const refValidation = skill.checkReferences({
-                            toolName: 'updateArtifact',
-                            claimedSources: sources,
-                            availableSources: recentSourcesList,
-                            hasRecentSources: hasRecentSourcesInDb,
-                        })
-                        logAiTelemetry({
-                            token: convexToken,
-                            userId: userId as Id<"users">,
-                            conversationId: currentConversationId as Id<"conversations">,
-                            provider: modelNames.primary.provider as "vercel-gateway" | "openrouter",
-                            model: "tool-validation",
-                            isPrimaryProvider: true,
-                            failoverUsed: false,
-                            mode: isPaperMode ? "paper" : "normal",
-                            success: refValidation.valid,
-                            latencyMs: 0,
-                            searchSkillApplied: true,
-                            searchSkillName: "reference-integrity",
-                            searchSkillAction: refValidation.valid ? "validated" : "rejected",
-                            referencesClaimed: sources?.length ?? 0,
-                            referencesMatched: refValidation.valid ? (sources?.length ?? 0) : 0,
-                        })
-                        if (!refValidation.valid) {
-                            console.warn(`[updateArtifact][ref-validation-rejected] stage=${paperSession?.currentStage} error=${refValidation.error}`)
-                            return {
-                                success: false,
-                                error: refValidation.error,
-                            }
-                        }
-
-                        // Source-body parity check: content reference inventory must match attached sources
-                        if (sources && sources.length > 0) {
-                            const parityCheck = checkSourceBodyParity({ content, sources })
-                            if (!parityCheck.valid) {
-                                console.warn(`[source-body-parity-rejected] tool=updateArtifact stage=${paperSession?.currentStage} level=${parityCheck.level} sources=${sources.length}`)
-                                return {
-                                    success: false,
-                                    errorCode: "SOURCE_BODY_PARITY_MISMATCH",
-                                    retryable: true,
-                                    error: parityCheck.error,
-                                    nextAction: "Fix the artifact content to match attached sources count, or add an explicit subset disclaimer.",
-                                }
-                            }
-                        }
-
-                        const result = await retryMutation(
-                            () => fetchMutationWithToken(api.artifacts.update, {
-                                artifactId: artifactId as Id<"artifacts">,
-                                userId: userId as Id<"users">,
-                                content,
-                                title,
-                                sources,
-                            }),
-                            "artifacts.update"
-                        )
-
-                        console.log("[F1-F6-TEST] updateArtifact", { stage: paperSession?.currentStage, artifactId })
-                        if (paperToolTracker) paperToolTracker.sawUpdateArtifactSuccess = true
-                        paperTurnObservability.updateArtifactAtMs = Date.now()
-                        console.info("[PAPER][artifact-tool-success]", {
-                            stage: paperSession?.currentStage,
-                            artifactId,
-                            mode: "update",
-                            hadLeakageBeforeArtifact: paperTurnObservability.firstLeakageAtMs !== null,
-                            firstLeakageMatch: paperTurnObservability.firstLeakageMatch,
-                        })
-                        return {
-                            success: true,
-                            newArtifactId: result.artifactId,
-                            oldArtifactId: artifactId,
-                            version: result.version,
-                            message: `Artifact berhasil di-update ke versi ${result.version}. User dapat melihat versi baru di panel artifact.`,
-                            nextAction: "⚠️ Artifact updated. Do NOT repeat the revised content in chat. Respond with MAX 2-3 sentences confirming the update and directing user to review in artifact panel.",
-                        }
-                    } catch (error) {
-                        const errorMessage = error instanceof Error ? error.message : String(error)
-                        Sentry.captureException(error, { tags: { subsystem: "artifact" } })
-                        console.error("[updateArtifact] Failed:", errorMessage)
-                        return {
-                            success: false,
-                            error: `Gagal update artifact: ${errorMessage}`,
-                        }
-                    }
-                },
-            }),
-            readArtifact: tool({
-                description: `Read the full content of an artifact by its ID. Use this tool when you need to reference complete artifact content rather than the truncated summaries in the system prompt.
-
-USE THIS TOOL WHEN:
-✓ You need to re-read a previous stage's artifact as reference material
-✓ The user asks about specific content within an artifact
-✓ You need to check full content before writing a revision or the next stage
-✓ You need to verify details that may be truncated in the artifact summary
-
-Returns: title, type, version, full content, and sources (if any).
-Artifact IDs are available from ARTIFACT SUMMARY in the system prompt or from getCurrentPaperState().`,
-                inputSchema: z.object({
-                    artifactId: z.string()
-                        .describe("The artifact ID to read."),
-                }),
-                execute: async ({ artifactId }) => {
-                    if (!artifactId?.trim()) {
-                        return { success: false, error: "artifactId must not be empty." }
-                    }
-                    try {
-                        const artifact = await fetchQueryWithToken(api.artifacts.get, {
-                            artifactId: artifactId as Id<"artifacts">,
-                            userId: userId as Id<"users">,
-                        })
-
-                        if (!artifact) {
-                            return {
-                                success: false,
-                                error: "Artifact tidak ditemukan atau tidak memiliki akses.",
-                            }
-                        }
-
-                        return {
-                            success: true,
-                            artifactId: artifact._id,
-                            title: artifact.title,
-                            type: artifact.type,
-                            version: artifact.version,
-                            content: artifact.content,
-                            format: artifact.format ?? null,
-                            sources: artifact.sources ?? [],
-                            createdAt: artifact.createdAt,
-                        }
-                    } catch (error) {
-                        const errorMessage = error instanceof Error ? error.message : String(error)
-                        Sentry.captureException(error, { tags: { subsystem: "artifact" } })
-                        console.error("[readArtifact] Failed:", errorMessage)
-                        return {
-                            success: false,
-                            error: `Gagal membaca artifact: ${errorMessage}`,
-                        }
-                    }
-                },
-            }),
-            renameConversationTitle: tool({
-                description: `Ganti judul conversation secara final ketika kamu benar-benar sudah yakin dengan tujuan utama user.
-
-Aturan:
-- Maksimal 2 kali update judul oleh AI per conversation.
-- Jangan panggil kalau user sudah mengganti judul sendiri.
-- Panggil ini hanya ketika kamu yakin judul finalnya stabil (tidak akan berubah lagi).
-- Judul maksimal 50 karakter.`,
-                inputSchema: z.object({
-                    title: z.string().min(3).max(50).describe("Judul final conversation (maks 50 karakter)"),
-                }),
-                execute: async ({ title }) => {
-                    try {
-                        const conversation = await fetchQueryWithToken(api.conversations.getConversation, {
-                            conversationId: currentConversationId as Id<"conversations">,
-                        })
-
-                        if (!conversation) {
-                            return { success: false, error: "Conversation tidak ditemukan" }
-                        }
-                        if (conversation.userId !== userId) {
-                            return { success: false, error: "Tidak memiliki akses" }
-                        }
-                        if (conversation.titleLocked) {
-                            return { success: false, error: "Judul sudah dikunci oleh user" }
-                        }
-
-                        const currentCount = conversation.titleUpdateCount ?? 0
-                        if (currentCount >= 2) {
-                            return { success: false, error: "Batas update judul AI sudah tercapai" }
-                        }
-                        if (currentCount < 1) {
-                            return { success: false, error: "Judul awal belum terbentuk" }
-                        }
-
-                        const minPairsForFinalTitle = Number.parseInt(
-                            process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
-                            10
-                        )
-                        const effectiveMinPairs = Number.isFinite(minPairsForFinalTitle)
-                            ? minPairsForFinalTitle
-                            : 3
-
-                        const counts = await fetchQueryWithToken(api.messages.countMessagePairsForConversation, {
-                            conversationId: currentConversationId as Id<"conversations">,
-                            userId,
-                        })
-
-                        if ((counts?.pairCount ?? 0) < effectiveMinPairs) {
-                            return {
-                                success: false,
-                                error: `Belum cukup putaran percakapan (butuh minimal ${effectiveMinPairs} pasang pesan)`,
-                            }
-                        }
-
-                        await fetchMutationWithToken(api.conversations.updateConversationTitleFromAI, {
-                            conversationId: currentConversationId as Id<"conversations">,
-                            userId,
-                            title,
-                            nextTitleUpdateCount: 2,
-                        })
-
-                        return { success: true, title: title.trim().slice(0, 50) }
-                    } catch (error) {
-                        console.error("Failed to rename conversation title:", error)
-                        return { success: false, error: "Gagal mengubah judul conversation" }
-                    }
-                },
-            }),
-            // Task Group 3: Paper Writing Workflow Tools
-            ...createPaperTools({
-                userId: userId as Id<"users">,
-                conversationId: currentConversationId as Id<"conversations">,
-                convexToken,
-                availableSources: recentSourcesList,
-                hasRecentSources: hasRecentSourcesInDb,
-                toolTracker: paperToolTracker,
-            }),
-        } satisfies ToolSet
+        const tools = buildToolRegistry({
+            conversationId: currentConversationId as Id<"conversations">,
+            userId: userId as Id<"users">,
+            paperSession,
+            paperStageScope,
+            paperToolTracker,
+            paperTurnObservability,
+            resolvedWorkflow,
+            fetchQueryWithToken,
+            fetchMutationWithToken,
+            skill,
+            recentSourcesList,
+            hasRecentSourcesInDb,
+            convexToken,
+            modelProvider: modelNames.primary.provider,
+            isPaperMode: !!paperModePrompt,
+        })
 
         // 7. Stream AI Response - Dual Provider with Fallback
         // Hoist enableWebSearch so it's accessible in catch block for fallback
@@ -1910,62 +1175,8 @@ Aturan:
             return "normal"
         }
 
-        const getToolNameFromChunk = (chunk: unknown): string | undefined => {
-            if (!chunk || typeof chunk !== "object" || !("type" in chunk)) return undefined
-            const maybeChunk = chunk as { type?: unknown; toolName?: unknown }
-            const type = typeof maybeChunk.type === "string" ? maybeChunk.type : ""
-            if (type === "tool-input-start" || type === "tool-call" || type === "tool-result") {
-                return typeof maybeChunk.toolName === "string" ? maybeChunk.toolName : undefined
-            }
-            return undefined
-        }
-
-        // Helper: accumulate reasoning deltas and emit progressive live reasoning events
-        function createReasoningAccumulator(opts: {
-            traceId: string
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            writer: { write: (data: any) => void }
-            ensureStart: () => void
-            enabled: boolean
-        }) {
-            const liveAccumulator = createReasoningLiveAccumulator({
-                traceId: opts.traceId,
-                enabled: opts.enabled,
-            })
-
-            const emitCompatThought = (part: ReasoningLiveDataPart) => {
-                opts.writer.write({
-                    type: "data-reasoning-thought",
-                    id: `${part.id}-compat`,
-                    data: {
-                        traceId: part.data.traceId,
-                        delta: part.data.text,
-                        ts: part.data.ts,
-                    },
-                })
-            }
-
-            return {
-                onReasoningDelta: (delta: string) => {
-                    const livePart = liveAccumulator.onReasoningDelta(delta)
-                    if (!livePart) return
-
-                    opts.ensureStart()
-                    opts.writer.write(livePart)
-                    emitCompatThought(livePart)
-                },
-                finalize: () => {
-                    const livePart = liveAccumulator.finalize()
-                    if (!livePart) return
-
-                    opts.ensureStart()
-                    opts.writer.write(livePart)
-                    emitCompatThought(livePart)
-                },
-                getFullReasoning: () => liveAccumulator.getFullReasoning(),
-                hasReasoning: () => liveAccumulator.hasReasoning(),
-            }
-        }
+        // getToolNameFromChunk and createReasoningAccumulator extracted to
+        // executor/build-step-stream.ts
 
         // Hoist for catch block accessibility (fallback provider needs these)
         let shouldForceGetCurrentPaperState = false
@@ -1979,7 +1190,7 @@ Aturan:
             provider?: "vercel-gateway" | "openrouter"
             telemetryFallbackReason?: string
         }) => {
-            await saveAssistantMessage(input.message, undefined, input.usedModel, undefined, undefined, undefined, getCurrentPlanSnapshot())
+            await saveAssistantMessageLocal(input.message, undefined, input.usedModel, undefined, undefined, undefined, getCurrentPlanSnapshot())
             const blockedTelemetryContext = {
                 ...skillTelemetryContext,
                 fallbackReason: input.telemetryFallbackReason ?? input.reasonCode,
@@ -2045,7 +1256,7 @@ Aturan:
                     title: item.title,
                 }))
 
-            await saveAssistantMessage(
+            await saveAssistantMessageLocal(
                 input.introText,
                 normalizedSources.length > 0 ? normalizedSources : undefined,
                 input.usedModel,
@@ -2604,14 +1815,7 @@ Aturan:
                     prepareStep: undefined,
                     maxToolSteps: undefined as number | undefined,
                 }
-            let primaryReasoningTraceController: ReturnType<typeof createCuratedTraceController> | null = null
-            let primaryReasoningTraceSnapshot: PersistedCuratedTraceSnapshot | undefined
-            let primaryReasoningSourceCount = 0
-
-            const capturePrimaryReasoningSnapshot = () => {
-                if (!primaryReasoningTraceController?.enabled) return
-                primaryReasoningTraceSnapshot = primaryReasoningTraceController.getPersistedSnapshot()
-            }
+            // Primary reasoning trace state — managed internally by buildStepStream
 
             // ════════════════════════════════════════════════════════════════
             // WEB SEARCH: Orchestrator-based two-pass flow
@@ -2718,7 +1922,7 @@ Aturan:
                             console.info(`[PLAN-SNAPSHOT][search] stage=${paperStageScope} tasks=${snap.tasks.length} detail=[${taskDetail}]`)
                         }
 
-                        await saveAssistantMessage(
+                        await saveAssistantMessageLocal(
                             searchText,
                             result.sources.length > 0 ? result.sources : undefined,
                             combinedModelName,
@@ -2811,915 +2015,97 @@ Aturan:
             }
 
             const primaryMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
-            let capturedChoiceSpec: Spec | null = null
-            let capturedPlanSpec: PlanSpec | null = null
-            // Shared: set by onFinish when outcome-gated guard replaces persisted content.
-            // Writer loop checks this before writing finish event to emit data-cited-text override.
-            let streamContentOverride: string | null = null
 
-            const result = streamText({
-                model,
-                messages: primaryExactSourceRoutePlan.messages,
-                tools,
-                ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
-                toolChoice: forcedToolChoice,
-                prepareStep: ((() => {
-                    const forceInspect = primaryExactSourceRoutePlan.prepareStep
-                    const chainedEnforcer = (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
-                        revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params) ?? universalReactiveEnforcer?.(params)
-                    // When force-inspect prepareStep exists, it takes priority over
-                    // chain enforcers. Force-inspect completes in steps 0-1
-                    // (tool call + text), so it never reaches later tool steps.
-                    if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer || universalReactiveEnforcer)) {
-                        return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
-                            forceInspect(params) ?? chainedEnforcer(params)
-                    }
-                    return chainedEnforcer ?? forceInspect ?? deterministicSyncPrepareStep
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                })()) as any,
-                stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
-                ...samplingOptions,
-                onFinish: async ({ text, steps, providerMetadata, usage }) => {
-                        // Log final step timing (prepareStep doesn't run after last step)
-                        if (paperStageScope && Array.isArray(steps) && steps.length > 0) {
-                            const lastIdx = steps.length - 1
-                            const lastTools = steps[lastIdx]?.toolCalls?.map((tc: { toolName: string }) => tc.toolName).join(",") ?? "text"
-                            console.info(`[STEP-TIMING] step=${lastIdx} stage=${paperStageScope} tools=[${lastTools}] elapsed=${Date.now() - enforcerStepStartTime}ms (final)`)
-                        }
+            // ── Primary stream: buildStepStream replaces inline streamText + createUIMessageStream ──
+            const primaryPrepareStep = (() => {
+                const forceInspect = primaryExactSourceRoutePlan.prepareStep
+                const chainedEnforcer = (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
+                    revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params) ?? universalReactiveEnforcer?.(params)
+                if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer || universalReactiveEnforcer)) {
+                    return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
+                        forceInspect(params) ?? chainedEnforcer(params)
+                }
+                return chainedEnforcer ?? forceInspect ?? deterministicSyncPrepareStep
+            })()
 
-                        // Tool chain ordering observability — log the actual tool call sequence
-                        // Deduplicate consecutive same-tool entries (retries after failure are valid)
-                        if (paperStageScope && Array.isArray(steps) && steps.length > 0) {
-                            const toolSequence = steps
-                                .flatMap((s: { toolCalls?: Array<{ toolName: string }> }, i: number) =>
-                                    (s.toolCalls ?? []).map(tc => `${i}:${tc.toolName}`)
-                                )
-                            // Skip log entirely for pure text/search turns (no tool calls)
-                            if (toolSequence.length > 0) {
-                                const finalizationTools = ["updateStageData", "createArtifact", "submitStageForValidation"]
-                                const expected = isCompileThenFinalize
-                                    ? ["compileDaftarPustaka", "updateStageData", "createArtifact", "submitStageForValidation"]
-                                    : ["updateStageData", "createArtifact", "submitStageForValidation"]
-                                const actualNames = toolSequence.map(t => t.split(":")[1])
-                                // Deduplicate consecutive retries: [updateStageData, createArtifact, createArtifact, submit] → [updateStageData, createArtifact, submit]
-                                const dedupedNames = actualNames.filter((name, i) => i === 0 || name !== actualNames[i - 1])
-                                const hasFinalizationTool = actualNames.some(name => finalizationTools.includes(name))
-                                if (hasFinalizationTool) {
-                                    const isCorrectOrder = expected.every((tool, idx) => dedupedNames[idx] === tool)
-                                    console.info(`[F1-F6-TEST] ToolChainOrder { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], expected: [${expected.join(", ")}], correct: ${isCorrectOrder} }`)
-                                } else {
-                                    console.info(`[F1-F6-TEST] ToolChainOrder { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], status: "not_applicable" }`)
-                                }
-                            }
-                        }
-
-                        let sources: { url: string; title: string; publishedAt?: number | null }[] | undefined
-
-                        const googleMetadata = providerMetadata?.google as unknown as GoogleGenerativeAIProviderMetadata | undefined
-                        const groundingMetadata = googleMetadata?.groundingMetadata
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        const chunks = (groundingMetadata as any)?.groundingChunks as any[] | undefined
-
-                        if (chunks) {
-                            sources = chunks
-                                .map((chunk) => {
-                                    if (chunk.web?.uri) {
-                                        const normalizedUrl = normalizeWebSearchUrl(chunk.web.uri)
-                                        return {
-                                            url: normalizedUrl,
-                                            title: chunk.web.title || normalizedUrl,
-                                        }
-                                    }
-                                    return null
-                                })
-                                .filter(Boolean) as { url: string; title: string; publishedAt?: number | null }[]
-                        }
-
-                        // Concatenate text from ALL steps for persistence.
-                        // `text` only contains the final step — multi-step pre-tool text would be lost.
-                        // `steps` is guaranteed complete here (onFinish fires after all steps resolve).
-                        const allStepsText = Array.isArray(steps) && steps.length > 1
-                            ? steps.map((s: { text?: string }) => typeof s.text === "string" ? s.text : "").filter((t) => t.trim().length > 0).join("\n\n").trim()
-                            : ""
-                        const rawText = (allStepsText || (typeof text === "string" ? text : "")).trim()
-                        // Strip yaml-spec and plan-spec fences from persisted text — pipeYamlRender/pipePlanCapture
-                        // strip them from the stream but onFinish receives raw model output
-                        const normalizedText = rawText.replace(
-                            /```yaml-spec[\s\S]*?```/g,
-                            ""
-                        ).replace(
-                            /```plan-spec[\s\S]*?```/g,
-                            ""
-                        ).replace(
-                            /(?:^|\n)stage:\s*\w+\s*\nsummary:\s*.+\ntasks:\s*\n(?:\s*-\s*label:\s*.+\n\s*status:\s*(?:complete|in-progress|pending)\s*\n?)+/g,
-                            ""
-                        ).replace(/\n{3,}/g, "\n\n").trim()
-                        const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
-                        let persistedContent = shouldPersistForcedSyncFallback
-                            ? buildForcedSyncStatusMessage(paperSession)
-                            : normalizedText
-
-                        // Hasil post-choice observability
-                        if (isHasilPostChoice && normalizedText.length > 0) {
-                            if (
-                                paperToolTracker.sawSubmitValidationArtifactMissing &&
-                                paperToolTracker.sawCreateArtifactSuccess &&
-                                !paperToolTracker.sawSubmitValidationSuccess
-                            ) {
-                                console.warn("[HASIL][ordering-bug] submitStageForValidation failed before artifact existed, createArtifact succeeded later, but submit was not retried.")
-                            }
-                            if (
-                                paperToolTracker.sawUpdateStageData &&
-                                !paperToolTracker.sawCreateArtifactSuccess &&
-                                !paperToolTracker.sawSubmitValidationSuccess
-                            ) {
-                                console.warn("[HASIL][partial-save-stall] updateStageData called but createArtifact and submitStageForValidation were not called. Tool chain incomplete.")
-                            }
-                            if (
-                                /panel validasi|approve|revisi/i.test(normalizedText) &&
-                                !paperToolTracker.sawSubmitValidationSuccess
-                            ) {
-                                console.warn("[HASIL][false-validation-claim] response mentioned validation flow without successful submitStageForValidation.")
-                            }
-                            if (
-                                /aku akan menyusun|draf ini akan|berikut adalah draf/i.test(normalizedText) &&
-                                !paperToolTracker.sawCreateArtifactSuccess
-                            ) {
-                                console.warn("[HASIL][prose-leakage] post-choice response previewed draft content in chat before artifact creation.")
-                            }
-                        }
-
-                        // Daftar pustaka observability
-                        if (paperStageScope === "daftar_pustaka" && normalizedText.length > 0) {
-                            if (
-                                paperToolTracker.sawCompileDaftarPustakaPersist &&
-                                !paperToolTracker.sawCreateArtifactSuccess &&
-                                !paperToolTracker.sawUpdateArtifactSuccess
-                            ) {
-                                console.warn("[DAFTAR_PUSTAKA][compiled-but-no-artifact] persist compilation succeeded but no artifact tool followed.")
-                            }
-                            if (
-                                /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki/i.test(normalizedText) &&
-                                (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess)
-                            ) {
-                                console.warn("[PAPER][nonfatal-error-leakage] response exposed internal failure narration even though artifact was created successfully.")
-                            }
-                            if (
-                                paperSession?.stageStatus === "revision" &&
-                                paperToolTracker.sawCreateArtifactSuccess &&
-                                !paperToolTracker.sawUpdateArtifactSuccess
-                            ) {
-                                console.warn("[DAFTAR_PUSTAKA][revision-create-instead-of-update] revision turn created new artifact instead of updating existing one.")
-                            }
-                            if (
-                                (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess) &&
-                                !paperToolTracker.sawSubmitValidationSuccess
-                            ) {
-                                console.warn("[DAFTAR_PUSTAKA][artifact-without-submit] artifact created/updated but submitStageForValidation was not called.")
-                            }
-                        }
-
-                        // Detect: model answered revision-like intent without calling any tools
-                        // Uses semantic classifier instead of regex (replaces REVISION_VERB_PATTERN)
-                        if (paperSession?.stageStatus === "pending_validation"
-                            && !paperToolTracker.sawRequestRevision
-                            && !paperToolTracker.sawUpdateStageData
-                            && !paperToolTracker.sawCreateArtifactSuccess
-                            && !paperToolTracker.sawUpdateArtifactSuccess
-                            && normalizedLastUserContent) {
-                            const revisionResult = await classifyRevisionIntent({
-                                lastUserContent: normalizedLastUserContent,
-                                model,
-                            })
-                            if (revisionResult?.output.hasRevisionIntent && revisionResult.output.confidence >= 0.6) {
-                                console.warn(
-                                    `[revision-intent-answered-without-tools] stage=${paperSession.currentStage} ` +
-                                    `confidence=${revisionResult.output.confidence} — model responded to apparent revision intent with prose only`
-                                )
-                            }
-                        }
-
-                        // Generic cross-stage partial-save-stall detection (post-choice commit point)
-                        if (choiceInteractionEvent && paperStageScope) {
-                            const wasCommitPoint = resolvedWorkflow?.action !== "continue_discussion"
-                            if (wasCommitPoint
-                                && paperToolTracker.sawUpdateStageData
-                                && !paperToolTracker.sawCreateArtifactSuccess
-                                && !paperToolTracker.sawUpdateArtifactSuccess
-                                && !paperToolTracker.sawSubmitValidationSuccess) {
-                                console.warn(`[CHOICE][partial-save-stall] stage=${paperStageScope} — commit-point choice resulted in updateStageData only, no artifact or submit`)
-                            }
-                        }
-
-                        // Outcome-gated persisted content: action-aware guard that handles both
-                        // false draft handoff (continue_discussion) and recovery leakage (finalize paths).
-                        if (paperStageScope && normalizedText.length > 0) {
-                            const guardResult = sanitizeChoiceOutcome({
-                                action: resolvedWorkflow?.action ?? "finalize_stage",
-                                text: normalizedText,
-                                hasArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess,
-                                submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
-                            })
-                            if (guardResult.wasModified) {
-                                persistedContent = guardResult.text
-                                streamContentOverride = guardResult.text
-                                console.info(`[PAPER][outcome-guard] stage=${paperStageScope} violation=${guardResult.violationType} action=${resolvedWorkflow?.action ?? "unknown"} contract=${resolvedWorkflow?.contractVersion ?? "legacy"}`)
-                            }
-                        }
-
-                        // System-owned closing message for completed session
-                        if (
-                            paperSession?.currentStage === "completed" &&
-                            normalizedText.length > 0 &&
-                            /tool_code|sekarang kita masuk ke tahap|yaml-spec|plan-spec|```yaml/i.test(normalizedText)
-                        ) {
-                            persistedContent = "Semua tahap penyusunan makalah sudah selesai dan disetujui.\n\nRiwayat percakapan di sidebar menyimpan artifact dari setiap tahap, mulai dari gagasan awal sampai pemilihan judul. Linimasa progres juga sudah penuh, menandakan seluruh tahapan penyusunan makalah telah terlewati."
-                            console.info("[PAPER][completed-guard] replaced corrupt/off-context model output with system-owned closing message")
-                        }
-
-                        // Server-owned fallback: lampiran "tidak ada" path
-                        // If model failed to create placeholder artifact, server does it
-                        const NO_APPENDIX_IDS = new Set(["tidak-ada-lampiran", "option-tidak-ada-lampiran", "no-appendix"])
-                        const lampiranRescueCheck = resolvedWorkflow ? shouldAttemptRescue({
-                            resolvedWorkflow,
-                            paperToolTracker,
-                        }) : { shouldRescue: true, reason: "legacy_no_resolver" }
-                        if (
-                            paperStageScope === "lampiran" &&
-                            lampiranRescueCheck.shouldRescue &&
-                            choiceInteractionEvent?.stage === "lampiran" &&
-                            choiceInteractionEvent.selectedOptionIds.some(id => NO_APPENDIX_IDS.has(id.trim().toLowerCase())) &&
-                            paperToolTracker.sawUpdateStageData &&
-                            !paperToolTracker.sawCreateArtifactSuccess &&
-                            !paperToolTracker.sawUpdateArtifactSuccess
-                        ) {
-                            console.info(`[PAPER][rescue] stage=lampiran reason=${lampiranRescueCheck.reason} fallbackPolicy=${resolvedWorkflow?.fallbackPolicy ?? "legacy"}`)
-                            try {
-                                // Read alasanTidakAda from stageData if available
-                                const lampiranStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["lampiran"]
-                                const alasan = typeof lampiranStageData?.alasanTidakAda === "string" ? lampiranStageData.alasanTidakAda : ""
-                                const placeholderContent = alasan
-                                    ? `Tidak ada lampiran.\n\nAlasan: ${alasan}`
-                                    : "Tidak ada lampiran."
-
-                                const placeholderResult = await retryMutation(
-                                    () => fetchMutationWithToken(api.artifacts.create, {
-                                        conversationId: currentConversationId as Id<"conversations">,
-                                        userId: userId as Id<"users">,
-                                        type: "section",
-                                        title: "Lampiran",
-                                        content: placeholderContent,
-                                    }),
-                                    "artifacts.create(lampiran-placeholder)"
-                                ) as { artifactId: string }
-
-                                // Link artifact to stage
-                                try {
-                                    await retryMutation(
-                                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
-                                            sessionId: paperSession!._id,
-                                            stage: "lampiran",
-                                            data: { artifactId: placeholderResult.artifactId },
-                                        }),
-                                        "paperSessions.updateStageData(lampiran-link)"
-                                    )
-                                } catch { /* non-critical */ }
-
-                                // Submit for validation
-                                await retryMutation(
-                                    () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
-                                        sessionId: paperSession!._id,
-                                    }),
-                                    "paperSessions.submitForValidation(lampiran)"
-                                )
-                                paperToolTracker.sawCreateArtifactSuccess = true
-                                paperToolTracker.sawSubmitValidationSuccess = true
-                                persistedContent = "Tidak ada lampiran untuk paper ini. Silakan review di panel validasi."
-                                console.info("[LAMPIRAN][server-fallback] placeholder artifact created and submitted for validation")
-                            } catch (fallbackErr) {
-                                console.error("[LAMPIRAN][server-fallback] failed:", fallbackErr)
-                            }
-                        }
-
-                        // Server-owned fallback: judul title selection
-                        const judulRescueCheck = resolvedWorkflow ? shouldAttemptRescue({
-                            resolvedWorkflow,
-                            paperToolTracker,
-                        }) : { shouldRescue: true, reason: "legacy_no_resolver" }
-                        if (
-                            paperStageScope === "judul" &&
-                            judulRescueCheck.shouldRescue &&
-                            choiceInteractionEvent?.stage === "judul" &&
-                            !paperToolTracker.sawUpdateStageData &&
-                            !paperToolTracker.sawCreateArtifactSuccess &&
-                            !paperToolTracker.sawUpdateArtifactSuccess &&
-                            normalizedText.length > 0
-                        ) {
-                            console.info(`[PAPER][rescue] stage=judul reason=${judulRescueCheck.reason} fallbackPolicy=${resolvedWorkflow?.fallbackPolicy ?? "legacy"}`)
-                            try {
-                                // Deterministic title resolution from choice card payload
-                                let selectedTitle: string | undefined
-                                try {
-                                    const sourceMsg = await retryQuery(
-                                        () => fetchQueryWithToken(api.messages.getMessageByUiMessageId, {
-                                            uiMessageId: choiceInteractionEvent.sourceMessageId,
-                                            conversationId: currentConversationId as Id<"conversations">,
-                                        }),
-                                        "messages.getMessageByUiMessageId(judul-source)"
-                                    ) as { jsonRendererChoice?: string } | null
-                                    if (sourceMsg?.jsonRendererChoice) {
-                                        const spec = JSON.parse(sourceMsg.jsonRendererChoice)
-                                        const selectedId = choiceInteractionEvent.selectedOptionIds[0]
-                                        // Search elements for matching optionId
-                                        const elements = spec?.elements ?? {}
-                                        for (const el of Object.values(elements) as Array<{ type?: string; props?: { optionId?: string; label?: string } }>) {
-                                            if (el?.type === "ChoiceOptionButton" && el?.props?.optionId === selectedId && el?.props?.label) {
-                                                selectedTitle = el.props.label
-                                                break
-                                            }
-                                        }
-                                        if (selectedTitle) {
-                                            console.info(`[JUDUL][server-fallback] resolved title from choice payload: "${selectedTitle}"`)
-                                        } else {
-                                            console.warn(`[JUDUL][server-fallback][selected-option-unresolved] option ${selectedId} not found in spec elements`)
-                                        }
-                                    } else {
-                                        console.warn("[JUDUL][server-fallback][source-message-missing-choice-payload] no jsonRendererChoice in source message")
-                                    }
-                                } catch (resolveErr) {
-                                    console.warn("[JUDUL][server-fallback] choice payload resolution failed, falling back to text extraction:", resolveErr)
-                                }
-                                // Fallback: extract from model text if deterministic resolution failed
-                                if (!selectedTitle) {
-                                    const titleMatch = normalizedText.match(/judulTerpilih["\s:]*"([^"]+)"/i)
-                                        ?? normalizedText.match(/judul[^"]*"([^"]{20,})"/)
-                                        ?? normalizedText.match(/["""]([^"""]{20,})["""]/)
-                                    selectedTitle = titleMatch?.[1]?.trim()
-                                }
-
-                                if (selectedTitle) {
-                                    await retryMutation(
-                                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
-                                            sessionId: paperSession!._id,
-                                            stage: "judul",
-                                            data: { judulTerpilih: selectedTitle, alasanPemilihan: "Dipilih oleh user via choice card." },
-                                        }),
-                                        "paperSessions.updateStageData(judul-fallback)"
-                                    )
-
-                                    // Revision-aware: updateArtifact if exists, createArtifact if not
-                                    const judulStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["judul"]
-                                    const existingJudulArtifactId = judulStageData?.artifactId as string | undefined
-
-                                    if (existingJudulArtifactId) {
-                                        await retryMutation(
-                                            () => fetchMutationWithToken(api.artifacts.update, {
-                                                artifactId: existingJudulArtifactId as Id<"artifacts">,
-                                                userId: userId as Id<"users">,
-                                                content: `Judul Terpilih:\n\n${selectedTitle}`,
-                                                title: "Pemilihan Judul",
-                                            }),
-                                            "artifacts.update(judul-fallback)"
-                                        )
-                                        paperToolTracker.sawUpdateArtifactSuccess = true
-                                    } else {
-                                        const judulArtifact = await retryMutation(
-                                            () => fetchMutationWithToken(api.artifacts.create, {
-                                                conversationId: currentConversationId as Id<"conversations">,
-                                                userId: userId as Id<"users">,
-                                                type: "section",
-                                                title: "Pemilihan Judul",
-                                                content: `Judul Terpilih:\n\n${selectedTitle}`,
-                                            }),
-                                            "artifacts.create(judul-fallback)"
-                                        ) as { artifactId: string }
-
-                                        try {
-                                            await retryMutation(
-                                                () => fetchMutationWithToken(api.paperSessions.updateStageData, {
-                                                    sessionId: paperSession!._id,
-                                                    stage: "judul",
-                                                    data: { artifactId: judulArtifact.artifactId },
-                                                }),
-                                                "paperSessions.updateStageData(judul-link)"
-                                            )
-                                        } catch { /* non-critical */ }
-                                    }
-
-                                    await retryMutation(
-                                        () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
-                                            sessionId: paperSession!._id,
-                                        }),
-                                        "paperSessions.submitForValidation(judul-fallback)"
-                                    )
-                                    paperToolTracker.sawCreateArtifactSuccess = true
-                                    paperToolTracker.sawSubmitValidationSuccess = true
-                                    persistedContent = `Judul "${selectedTitle}" sudah dipilih. Silakan review di panel validasi.`
-                                    console.info("[JUDUL][server-fallback] title saved, artifact created, submitted for validation")
-                                } else {
-                                    console.warn("[JUDUL][server-fallback] could not extract title from model response")
-                                }
-                            } catch (fallbackErr) {
-                                console.error("[JUDUL][server-fallback] failed:", fallbackErr)
-                            }
-                        }
-
-                        if (normalizedText.length > 0 && sources && sources.length > 0) {
-                            sources = await enrichSourcesWithFetchedTitles(sources, {
-                                concurrency: 4,
-                                timeoutMs: 5000,
-                            })
-                        }
-
-                        // ── Harness chain completion: model started tool chain but didn't finish ──
-                        // AI SDK loop terminates when model produces text, even if prepareStep
-                        // requested another tool. If model called updateStageData but abandoned
-                        // chain before createArtifact, harness completes it programmatically.
-                        if (
-                            paperStageScope &&
-                            paperSession?._id &&
-                            isDraftingStage &&
-                            paperToolTracker.sawUpdateStageData &&
-                            !paperToolTracker.sawCreateArtifactSuccess &&
-                            !paperToolTracker.sawUpdateArtifactSuccess &&
-                            !paperToolTracker.sawSubmitValidationSuccess
-                        ) {
-                            const chainStartTime = Date.now()
-                            try {
-                                const artifactContent = normalizedText.trim() || persistedContent.trim() || "Draft content"
-                                const artifactTitle = getStageLabel(paperStageScope)
-
-                                console.info(`[CHAIN-COMPLETION] stage=${paperStageScope} starting: createArtifact + submitForValidation (model abandoned chain after updateStageData)`)
-
-                                // 1. Create artifact
-                                const artifactResult = await retryMutation(
-                                    () => fetchMutationWithToken(api.artifacts.create, {
-                                        conversationId: currentConversationId as Id<"conversations">,
-                                        userId: userId as Id<"users">,
-                                        type: "section",
-                                        title: artifactTitle,
-                                        content: artifactContent,
-                                        format: "markdown",
-                                    }),
-                                    "artifacts.create(chain-completion)"
-                                ) as { artifactId: string }
-
-                                // 2. Link artifact to stageData
-                                await retryMutation(
-                                    () => fetchMutationWithToken(api.paperSessions.updateStageData, {
-                                        sessionId: paperSession!._id,
-                                        stage: paperStageScope,
-                                        data: { artifactId: artifactResult.artifactId },
-                                    }),
-                                    "paperSessions.updateStageData(chain-completion-link)"
-                                )
-
-                                // 3. Submit for validation
-                                await retryMutation(
-                                    () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
-                                        sessionId: paperSession!._id,
-                                    }),
-                                    "paperSessions.submitForValidation(chain-completion)"
-                                )
-
-                                paperToolTracker.sawCreateArtifactSuccess = true
-                                paperToolTracker.sawSubmitValidationSuccess = true
-
-                                console.info(`[CHAIN-COMPLETION] stage=${paperStageScope} success: artifactId=${artifactResult.artifactId} elapsed=${Date.now() - chainStartTime}ms`)
-                            } catch (chainErr) {
-                                console.error(`[CHAIN-COMPLETION] stage=${paperStageScope} failed after ${Date.now() - chainStartTime}ms:`, chainErr)
-                            }
-                        }
-
-                        // Empty response recovery: if model produced nothing during a drafting stage,
-                        // inject a recovery message so user isn't stranded without interaction.
-                        if (
-                            persistedContent.length === 0 &&
-                            paperStageScope &&
-                            paperSession?.stageStatus === "drafting" &&
-                            !paperToolTracker?.sawSubmitValidationSuccess
-                        ) {
-                            persistedContent = "Please select the next step to continue."
-                            console.info(`[EMPTY-RESPONSE][recovery] stage=${paperStageScope} injecting recovery message + fallback choice card`)
-                        }
-
-                        if (persistedContent.length > 0) {
-                            const persistedReasoningTrace = (() => {
-                                if (!reasoningTraceEnabled) return undefined
-                                if (!primaryReasoningTraceController?.enabled) return undefined
-                                if (!primaryReasoningTraceSnapshot) {
-                                    primaryReasoningTraceController.finalize({
-                                        outcome: "done",
-                                        sourceCount: primaryReasoningSourceCount,
-                                    })
-                                }
-                                capturePrimaryReasoningSnapshot()
-                                return primaryReasoningTraceSnapshot
-                            })()
-
-
-
-                            // Fallback choice card: if model didn't emit a choice card during
-                            // a drafting stage response and didn't finalize, inject a default
-                            // so user isn't stranded without interaction options.
-                            // Convex reactivity will render it on the client after message persists.
-                            if (
-                                !(capturedChoiceSpec && capturedChoiceSpec.root) &&
-                                paperStageScope &&
-                                paperSession?.stageStatus === "drafting" &&
-                                !paperToolTracker?.sawSubmitValidationSuccess
-                            ) {
-                                const { spec: fallbackSpec } = compileChoiceSpec({
-                                    stage: paperStageScope,
-                                    kind: "single-select",
-                                    title: "Apa langkah selanjutnya?",
-                                    options: [
-                                        { id: "lanjutkan-diskusi", label: "Lanjutkan diskusi" },
-                                    ],
-                                    recommendedId: "lanjutkan-diskusi",
-                                    appendValidationOption: true,
-                                })
-                                capturedChoiceSpec = fallbackSpec as typeof capturedChoiceSpec
-                                console.info(`[CHOICE-CARD][fallback-injected] stage=${paperStageScope} reason=model_did_not_emit_choice_card`)
-                            }
-
-                            // Auto-complete plan when validation succeeded — all tasks done by definition
-                            const primaryPlanSnapshot = capturedPlanSpec ?? getCurrentPlanSnapshot()
-                            const finalPrimarySnapshot = primaryPlanSnapshot
-                                ? autoCompletePlanOnValidation(primaryPlanSnapshot as PlanSpec, paperToolTracker.sawSubmitValidationSuccess)
-                                : undefined
-
-                            // Observability: log what planSnapshot will be persisted with this message
-                            if (finalPrimarySnapshot && paperStageScope) {
-                                const snap = finalPrimarySnapshot as PlanSpec
-                                const taskDetail = snap.tasks.map((t, i) => `${i}:${t.status}:${t.label.slice(0, 40)}`).join(", ")
-                                console.info(`[PLAN-SNAPSHOT] stage=${paperStageScope} tasks=${snap.tasks.length} autoCompleted=${paperToolTracker.sawSubmitValidationSuccess} detail=[${taskDetail}]`)
-                            }
-
-                            await saveAssistantMessage(
-                                persistedContent,
-                                normalizedText.length > 0 ? sources : undefined,
-                                modelNames.primary.model,
-                                persistedReasoningTrace,
-                                capturedChoiceSpec && capturedChoiceSpec.root ? capturedChoiceSpec : undefined,
-                                primaryMessageId,
-                                finalPrimarySnapshot,
-                            )
-                        }
-
-                        // Persist captured plan to stageData
-                        if (!capturedPlanSpec && paperStageScope) {
-                            // Fallback: extract unfenced plan-spec from rawText
-                            // (same pattern as search path in orchestrator.ts:974-991)
-                            const localPlanRegex = new RegExp(UNFENCED_PLAN_REGEX.source, UNFENCED_PLAN_REGEX.flags)
-                            const unfencedMatch = localPlanRegex.exec(rawText)
-                            if (unfencedMatch) {
-                                try {
-                                    const { default: yaml } = await import("js-yaml")
-                                    const parsed = yaml.load(unfencedMatch[1])
-                                    const result = planSpecSchema.safeParse(parsed)
-                                    if (result.success) {
-                                        capturedPlanSpec = result.data
-                                        console.info(`[PLAN-CAPTURE] fallback extracted from rawText (tools path) stage=${paperStageScope} tasks=${result.data.tasks.length}`)
-                                    }
-                                } catch { /* yaml parse fail — ignore */ }
-                            }
-                            if (!capturedPlanSpec) {
-                                const planProbe = rawText.substring(0, 500).replace(/\n/g, "\\n")
-                                const hasFenced = rawText.includes("```plan-spec")
-                                const hasUnfenced = /stage:\s*\w+\s*\nsummary:/.test(rawText)
-                                console.info(`[PLAN-CAPTURE] no plan-spec detected in response (stage=${paperStageScope}) hasFenced=${hasFenced} hasUnfenced=${hasUnfenced} rawTextLen=${rawText.length} probe=${planProbe}`)
-                            }
-                        }
-                        // Full-replace semantics: model is authoritative, harness only validates schema
-                        // Auto-complete on validation: if submitStageForValidation succeeded, all tasks are done
-                        if (capturedPlanSpec && paperSession?._id && paperStageScope) {
-                            const finalPlan = autoCompletePlanOnValidation(capturedPlanSpec, paperToolTracker.sawSubmitValidationSuccess)
-                            try {
-                                await fetchMutationWithToken(api.paperSessions.updatePlan, {
-                                    sessionId: paperSession._id,
-                                    stage: paperStageScope,
-                                    plan: finalPlan,
-                                })
-                                console.info(`[PLAN-CAPTURE] persisted stage=${paperStageScope} tasks=${finalPlan.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
-                            } catch (e) {
-                                console.warn(`[PLAN-CAPTURE] persist failed:`, e)
-                            }
-                        }
-
-                        // ═══ BILLING: Record token usage ═══
-                        if (usage) {
-                            await recordUsageAfterOperation({
-                                userId: billingContext.userId,
-                                conversationId: currentConversationId as Id<"conversations">,
-                                sessionId: paperSession?._id,
-                                inputTokens: usage.inputTokens ?? 0,
-                                outputTokens: usage.outputTokens ?? 0,
-                                totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
-                                model: modelNames.primary.model,
-                                operationType: billingContext.operationType,
-                                convexToken,
-                            }).catch(err => Sentry.captureException(err, { tags: { subsystem: "billing" } }))
-                        }
-                        // ═══════════════════════════════════
-
-                        // ═══ TELEMETRY: Primary non-websearch success ═══
-                        logAiTelemetry({
-                            token: convexToken,
-                            userId: userId as Id<"users">,
-                            conversationId: currentConversationId as Id<"conversations">,
-                            provider: modelNames.primary.provider as "vercel-gateway" | "openrouter",
-                            model: modelNames.primary.model,
-                            isPrimaryProvider: true,
-                            failoverUsed: false,
-                            toolUsed: forcedToolTelemetryName,
-                            mode: isPaperMode ? "paper" : "normal",
-                            success: true,
-                            latencyMs: Date.now() - telemetryStartTime,
-                            inputTokens: usage?.inputTokens,
-                            outputTokens: usage?.outputTokens,
-                            ...telemetrySkillContext,
-                        })
-                        // ═════════════════════════════════════════════════
-
-                        if (normalizedText.length > 0) {
-                            const minPairsForFinalTitle = Number.parseInt(
-                                process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
-                                10
-                            )
-                            await maybeUpdateTitleFromAI({
-                                assistantText: normalizedText,
-                                minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
-                                    ? minPairsForFinalTitle
-                                    : 3,
-                            })
-                        }
+            return buildStepStream({
+                executionConfig: {
+                    model,
+                    messages: primaryExactSourceRoutePlan.messages,
+                    tools,
+                    prepareStep: primaryPrepareStep,
+                    stopWhen: undefined, // buildStepStream uses stepCountIs internally
+                    maxSteps: primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps,
+                    modelName: modelNames.primary.model,
+                    toolChoice: forcedToolChoice,
+                    providerOptions: primaryReasoningProviderOptions,
+                    samplingOptions,
+                },
+                onFinishConfig: {
+                    conversationId: currentConversationId as Id<"conversations">,
+                    userId: userId as Id<"users">,
+                    modelName: modelNames.primary.model,
+                    model,
+                    requestId,
+                    convexToken,
+                    billingContext,
+                    paperSession,
+                    paperStageScope,
+                    paperToolTracker,
+                    paperTurnObservability,
+                    resolvedWorkflow,
+                    choiceInteractionEvent,
+                    isCompileThenFinalize,
+                    normalizedLastUserContent,
+                    lane,
+                    maybeUpdateTitleFromAI,
+                    fetchQueryWithToken,
+                    fetchMutationWithToken,
+                    requestStartedAt,
+                    isDraftingStage,
+                    isHasilPostChoice,
+                    buildLeakageSnippet: (text: string, matchIndex: number, matchValue: string) => {
+                        const start = Math.max(0, matchIndex - 120)
+                        const end = Math.min(text.length, matchIndex + matchValue.length + 120)
+                        return text.slice(start, end).replace(/\s+/g, " ").trim()
                     },
+                    // Primary-only feature flags: all enabled
+                    enableGroundingExtraction: true,
+                    enableSourceTitleEnrichment: true,
+                    enableRevisionClassifier: true,
+                    enablePlanSpecFallbackExtraction: true,
+                },
+                streamContext: {
+                    messageId: primaryMessageId,
+                    reasoningTrace: {
+                        enabled: reasoningTraceEnabled,
+                        controller: null,
+                        snapshot: undefined,
+                        sourceCount: 0,
+                        captureSnapshot: () => {},
+                    },
+                    telemetry: {
+                        provider: modelNames.primary.provider,
+                        model: modelNames.primary.model,
+                        isPrimaryProvider: true,
+                        failoverUsed: false,
+                        toolUsed: forcedToolTelemetryName,
+                        mode: isPaperMode ? "paper" : "normal",
+                        startTime: telemetryStartTime,
+                        skillContext: telemetrySkillContext,
+                    },
+                    shouldForceGetCurrentPaperState,
+                    buildForcedSyncStatusMessage,
+                    getCurrentPlanSnapshot,
+                    enforcerStepStartTime,
+                },
+                reasoningTraceEnabled,
+                enablePlanCapture: !!paperStageScope,
+                enableYamlRender: isDraftingStage,
+                transparentReasoningEnabled: isTransparentReasoning,
+                traceMode: getTraceModeLabel(!!paperModePrompt, false),
+                logTag: "",
             })
-
-            {
-                const messageId = primaryMessageId
-                const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
-                const reasoningTrace = createCuratedTraceController({
-                    enabled: reasoningTraceEnabled,
-                    traceId,
-                    mode: getTraceModeLabel(!!paperModePrompt, false),
-                    stage: currentStage && currentStage !== "completed" ? currentStage : undefined,
-                    webSearchEnabled: false,
-                    startedAt: requestStartedAt,
-                })
-                primaryReasoningTraceController = reasoningTrace
-
-                const stream = createUIMessageStream({
-                    execute: async ({ writer }) => {
-                        let started = false
-                        let sourceCount = 0
-                        // Accumulate ALL streamed text deltas for outcome-gated guard.
-                        // onFinish text only has final step — this captures full stream.
-                        let accumulatedStreamText = ""
-
-                        const ensureStart = () => {
-                            if (started) return
-                            started = true
-                            writer.write({ type: "start", messageId })
-                        }
-
-                        const emitTrace = (events: ReturnType<typeof reasoningTrace.markToolRunning>) => {
-                            if (!reasoningTrace.enabled) return
-                            capturePrimaryReasoningSnapshot()
-                            if (events.length === 0) return
-                            ensureStart()
-                            for (const event of events) {
-                                writer.write(event)
-                            }
-                        }
-
-                        const emitDurationPart = () => {
-                            if (!reasoningTrace.enabled) return
-                            const snapshot = reasoningTrace.getPersistedSnapshot()
-                            if (typeof snapshot.durationSeconds !== "number" || !Number.isFinite(snapshot.durationSeconds)) return
-                            ensureStart()
-                            writer.write({
-                                type: "data-reasoning-duration",
-                                id: `${traceId}-duration`,
-                                data: {
-                                    traceId,
-                                    seconds: snapshot.durationSeconds,
-                                },
-                            })
-                        }
-
-                        const reasoningAccumulator = createReasoningAccumulator({
-                            traceId,
-                            writer,
-                            ensureStart,
-                            enabled: isTransparentReasoning,
-                        })
-
-                        emitTrace(reasoningTrace.initialEvents)
-
-                        const uiStream = result.toUIMessageStream({
-                            sendStart: false,
-                            generateMessageId: () => messageId,
-                            sendReasoning: isTransparentReasoning,
-                        })
-                        // pipePlanCapture BEFORE pipeYamlRender: plan-spec stripping works
-                        // with AI SDK's textDelta format. pipeYamlRender then transforms
-                        // the clean text into @json-render format for the client.
-                        const hasPaperStage = !!paperStageScope
-                        const planTransformedStream = hasPaperStage
-                            ? pipePlanCapture(uiStream) as typeof uiStream
-                            : uiStream
-
-                        const yamlTransformedStream = isDraftingStage
-                            ? pipeYamlRender(planTransformedStream)
-                            : planTransformedStream
-
-                        // ReadableStream from pipeYamlRender may not have [Symbol.asyncIterator]
-                        // in all runtimes, so use a reader-based async generator
-                        async function* iterateStream<T>(stream: ReadableStream<T>): AsyncGenerator<T> {
-                            const reader = stream.getReader()
-                            try {
-                                while (true) {
-                                    const { done, value } = await reader.read()
-                                    if (done) break
-                                    yield value
-                                }
-                            } finally {
-                                reader.releaseLock()
-                            }
-                        }
-
-                        for await (const chunk of iterateStream(yamlTransformedStream)) {
-                            // Capture data-spec parts emitted by pipeYamlRender for DB persistence
-                            if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
-                                try {
-                                    const data = (chunk as { data?: { type?: string; patch?: JsonPatch; spec?: Spec } }).data
-                                    if (data?.type === "patch" && data.patch) {
-                                        // Accumulate patches into a running spec
-                                        if (!capturedChoiceSpec) {
-                                            capturedChoiceSpec = { root: "", elements: {} } as Spec
-                                        }
-                                        applySpecPatch(capturedChoiceSpec, data.patch)
-                                    } else if (data?.type === "flat" && data.spec) {
-                                        // If a flat spec is emitted, use it directly
-                                        capturedChoiceSpec = data.spec
-                                    }
-                                } catch { /* spec capture error — non-critical */ }
-                            }
-
-                            // Capture plan-spec parts emitted by pipePlanCapture for DB persistence.
-                            // These are internal-only — do NOT forward to client.
-                            if ((chunk as { type?: string }).type === PLAN_DATA_PART_TYPE) {
-                                try {
-                                    const data = (chunk as { data?: { spec?: PlanSpec } }).data
-                                    if (data?.spec) {
-                                        capturedPlanSpec = data.spec
-                                    }
-                                } catch { /* plan capture error — non-critical */ }
-                                continue
-                            }
-
-                            if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
-                                if (chunk.type === "reasoning-delta") {
-                                    reasoningAccumulator.onReasoningDelta(
-                                        typeof (chunk as { delta?: unknown }).delta === "string"
-                                            ? (chunk as { delta?: unknown }).delta as string
-                                            : ""
-                                    )
-                                }
-                                continue
-                            }
-
-                            if (chunk.type === "source-url") {
-                                sourceCount += 1
-                                primaryReasoningSourceCount = sourceCount
-                                emitTrace(reasoningTrace.markSourceDetected())
-                            }
-
-                            if (chunk.type === "tool-input-start") {
-                                const toolName = getToolNameFromChunk(chunk)
-                                emitTrace(reasoningTrace.markToolRunning(toolName))
-                            }
-
-
-                            if (chunk.type === "finish") {
-                                // Log captured YAML spec for persistence
-                                if (capturedChoiceSpec && capturedChoiceSpec.root) {
-                                    const elementTypes = Object.entries(capturedChoiceSpec.elements || {}).map(([id, el]) => `${id}:${(el as {type?:string}).type ?? '?'}`).join(", ")
-                                    const hasSubmitBtn = Object.values(capturedChoiceSpec.elements || {}).some((el) => (el as {type?:string}).type === "ChoiceSubmitButton")
-                                    console.info(`[CHOICE-CARD][yaml-capture] primary stage=${paperStageScope} specKeys=${Object.keys(capturedChoiceSpec).join(",")}`)
-                                    console.info(`[F1-F6-TEST] ChoiceCardSpec { elements: "${elementTypes}", hasSubmitButton: ${hasSubmitBtn} }`)
-                                }
-
-                                // Outcome-gated stream override: action-aware guard on full accumulated stream text
-                                if (!streamContentOverride && accumulatedStreamText.length > 0) {
-                                    const streamGuardResult = sanitizeChoiceOutcome({
-                                        action: resolvedWorkflow?.action ?? "finalize_stage",
-                                        text: accumulatedStreamText,
-                                        hasArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess,
-                                        submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
-                                    })
-                                    if (streamGuardResult.wasModified) {
-                                        streamContentOverride = streamGuardResult.text
-                                        console.info(
-                                            `[PAPER][outcome-guard-stream] stage=${paperStageScope} ` +
-                                            `violation=${streamGuardResult.violationType} action=${resolvedWorkflow?.action ?? "unknown"} ` +
-                                            `accumulatedLen=${accumulatedStreamText.length}`
-                                        )
-                                        console.info("[PAPER][outcome-guard-stream][details]", {
-                                            stage: paperStageScope,
-                                            firstLeakageMatch: paperTurnObservability.firstLeakageMatch,
-                                            firstLeakageAtMs: paperTurnObservability.firstLeakageAtMs,
-                                            firstLeakageSnippet: paperTurnObservability.firstLeakageSnippet,
-                                            createArtifactAtMs: paperTurnObservability.createArtifactAtMs,
-                                            updateArtifactAtMs: paperTurnObservability.updateArtifactAtMs,
-                                            sawCreateArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess,
-                                            sawUpdateArtifactSuccess: paperToolTracker.sawUpdateArtifactSuccess,
-                                            sawSubmitValidationSuccess: paperToolTracker.sawSubmitValidationSuccess,
-                                        })
-                                    }
-                                }
-
-                                if (streamContentOverride) {
-                                    const overrideId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-override`
-                                    writer.write({
-                                        type: "data-cited-text",
-                                        id: overrideId,
-                                        data: { text: streamContentOverride },
-                                    } as Parameters<typeof writer.write>[0])
-                                    console.info("[PAPER][outcome-gated] emitted data-cited-text stream override")
-                                }
-
-                                if (reasoningAccumulator.hasReasoning()) {
-                                    emitTrace(reasoningTrace.populateFromReasoning(
-                                        reasoningAccumulator.getFullReasoning()
-                                    ))
-                                }
-                                reasoningAccumulator.finalize()
-                                emitTrace(reasoningTrace.finalize({
-                                    outcome: "done",
-                                    sourceCount,
-                                }))
-                                emitDurationPart()
-                                writer.write(chunk)
-                                break
-                            }
-
-                            if (chunk.type === "error") {
-                                reasoningAccumulator.finalize()
-                                emitTrace(reasoningTrace.finalize({
-                                    outcome: "error",
-                                    sourceCount,
-                                    errorNote: "primary-stream-error",
-                                }))
-                                emitDurationPart()
-                                writer.write(chunk)
-                                break
-                            }
-
-                            if (chunk.type === "abort") {
-                                reasoningAccumulator.finalize()
-                                emitTrace(reasoningTrace.finalize({
-                                    outcome: "stopped",
-                                    sourceCount,
-                                }))
-                                emitDurationPart()
-                                writer.write(chunk)
-                                break
-                            }
-
-                            // Accumulate text deltas for outcome-gated full-stream guard
-                            if (chunk.type === "text-delta" && typeof (chunk as { delta?: unknown }).delta === "string") {
-                                const delta = (chunk as { delta: string }).delta
-                                accumulatedStreamText += delta
-                                if (!paperTurnObservability.firstLeakageMatch) {
-                                    const match = paperRecoveryLeakagePattern.exec(accumulatedStreamText)
-                                    if (match && typeof match.index === "number") {
-                                        paperTurnObservability.firstLeakageMatch = match[0]
-                                        paperTurnObservability.firstLeakageAtMs = Date.now()
-                                        paperTurnObservability.firstLeakageSnippet = buildLeakageSnippet(accumulatedStreamText, match.index, match[0])
-                                        console.warn("[PAPER][recovery-leakage-first-detected]", {
-                                            stage: paperStageScope,
-                                            match: paperTurnObservability.firstLeakageMatch,
-                                            snippet: paperTurnObservability.firstLeakageSnippet,
-                                            sawUpdateStageData: paperToolTracker.sawUpdateStageData,
-                                            sawCreateArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess,
-                                            sawUpdateArtifactSuccess: paperToolTracker.sawUpdateArtifactSuccess,
-                                            sawSubmitValidationSuccess: paperToolTracker.sawSubmitValidationSuccess,
-                                        })
-                                    }
-                                }
-                            }
-
-                            ensureStart()
-                            writer.write(chunk)
-                        }
-                    },
-                })
-
-                return createUIMessageStreamResponse({ stream })
-            }
         } catch (error) {
             console.error("Gateway stream failed, trying fallback:", error)
             Sentry.addBreadcrumb({
@@ -3761,19 +2147,8 @@ Aturan:
                 profile: "narrative",
             })
 
-            // Task 2.6: Helper to run fallback WITHOUT web search (for error recovery)
+            // Fallback WITHOUT web search — extracted to buildStepStream
             const runFallbackWithoutSearch = async () => {
-                let fallbackReasoningTraceController: ReturnType<typeof createCuratedTraceController> | null = null
-                let fallbackReasoningTraceSnapshot: PersistedCuratedTraceSnapshot | undefined
-                let fallbackReasoningSourceCount = 0
-                let fallbackCapturedChoiceSpec: Spec | null = null
-                let fallbackCapturedPlanSpec: PlanSpec | null = null
-                let fallbackStreamContentOverride: string | null = null
-                const captureFallbackReasoningSnapshot = () => {
-                    if (!fallbackReasoningTraceController?.enabled) return
-                    fallbackReasoningTraceSnapshot = fallbackReasoningTraceController.getPersistedSnapshot()
-                }
-
                 const fallbackModel = await getOpenRouterModel({ enableWebSearch: false })
                 const fallbackForcedToolChoice = shouldForceSubmitValidation
                     ? ({ type: "tool", toolName: "submitStageForValidation" } as const)
@@ -3787,14 +2162,12 @@ Aturan:
                                 activeTools: ["getCurrentPaperState"] as string[],
                             }
                         }
-
                         if (stepNumber === 1) {
                             return {
                                 toolChoice: "none" as const,
                                 activeTools: [] as string[],
                             }
                         }
-
                         return undefined
                     }
                     : undefined
@@ -3826,772 +2199,97 @@ Aturan:
                         maxToolSteps: undefined as number | undefined,
                     }
 
-                const result = streamText({
-                    model: fallbackModel,
-                    messages: fallbackExactSourceRoutePlan.messages,
-                    tools,
-                    ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
-                    toolChoice: fallbackForcedToolChoice,
-                    prepareStep: ((() => {
-                        const forceInspect = fallbackExactSourceRoutePlan.prepareStep
-                        const chainedEnforcer = (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
-                            revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params) ?? universalReactiveEnforcer?.(params)
-                        if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer || universalReactiveEnforcer)) {
-                            return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
-                                forceInspect(params) ?? chainedEnforcer(params)
-                        }
-                        return chainedEnforcer ?? forceInspect ?? fallbackDeterministicSyncPrepareStep
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    })()) as any,
-                    stopWhen: stepCountIs(fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps),
-                    ...samplingOptions,
-                    onFinish: async ({ text, steps, usage }) => {
-                        // Tool chain ordering observability (fallback path)
-                        // Deduplicate consecutive same-tool entries (retries after failure are valid)
-                        if (paperStageScope && Array.isArray(steps) && steps.length > 0) {
-                            const toolSequence = steps
-                                .flatMap((s: { toolCalls?: Array<{ toolName: string }> }, i: number) =>
-                                    (s.toolCalls ?? []).map(tc => `${i}:${tc.toolName}`)
-                                )
-                            // Skip log entirely for pure text/search turns (no tool calls)
-                            if (toolSequence.length > 0) {
-                                const finalizationTools = ["updateStageData", "createArtifact", "submitStageForValidation"]
-                                const expected = ["updateStageData", "createArtifact", "submitStageForValidation"]
-                                const actualNames = toolSequence.map(t => t.split(":")[1])
-                                const dedupedNames = actualNames.filter((name, i) => i === 0 || name !== actualNames[i - 1])
-                                const hasFinalizationTool = actualNames.some(name => finalizationTools.includes(name))
-                                if (hasFinalizationTool) {
-                                    const isCorrectOrder = expected.every((tool, idx) => dedupedNames[idx] === tool)
-                                    console.info(`[F1-F6-TEST] ToolChainOrder[fallback] { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], correct: ${isCorrectOrder} }`)
-                                } else {
-                                    console.info(`[F1-F6-TEST] ToolChainOrder[fallback] { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], status: "not_applicable" }`)
-                                }
-                            }
-                        }
+                const fallbackPrepareStep = (() => {
+                    const forceInspect = fallbackExactSourceRoutePlan.prepareStep
+                    const chainedEnforcer = (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
+                        revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params) ?? universalReactiveEnforcer?.(params)
+                    if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer || universalReactiveEnforcer)) {
+                        return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
+                            forceInspect(params) ?? chainedEnforcer(params)
+                    }
+                    return chainedEnforcer ?? forceInspect ?? fallbackDeterministicSyncPrepareStep
+                })()
 
-                        // Concatenate text from ALL steps for persistence (same as primary path)
-                        const allStepsText = Array.isArray(steps) && steps.length > 1
-                            ? steps.map((s: { text?: string }) => typeof s.text === "string" ? s.text : "").filter((t) => t.trim().length > 0).join("\n\n").trim()
-                            : ""
-                        const rawText = (allStepsText || (typeof text === "string" ? text : "")).trim()
-                        // Strip yaml-spec and plan-spec fences from persisted text — pipeYamlRender/pipePlanCapture
-                        // strip them from the stream but onFinish receives raw model output
-                        const normalizedText = rawText.replace(
-                            /```yaml-spec[\s\S]*?```/g,
-                            ""
-                        ).replace(
-                            /```plan-spec[\s\S]*?```/g,
-                            ""
-                        ).replace(
-                            /(?:^|\n)stage:\s*\w+\s*\nsummary:\s*.+\ntasks:\s*\n(?:\s*-\s*label:\s*.+\n\s*status:\s*(?:complete|in-progress|pending)\s*\n?)+/g,
-                            ""
-                        ).replace(/\n{3,}/g, "\n\n").trim()
-                        const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
-                        let persistedContent = shouldPersistForcedSyncFallback
-                            ? buildForcedSyncStatusMessage(paperSession)
-                            : normalizedText
+                const fallbackTransparent = isTransparentReasoning && reasoningSettings.fallback.supported
 
-                        // Hasil post-choice observability (fallback path — parity with primary)
-                        if (isHasilPostChoice && normalizedText.length > 0) {
-                            if (
-                                paperToolTracker.sawSubmitValidationArtifactMissing &&
-                                paperToolTracker.sawCreateArtifactSuccess &&
-                                !paperToolTracker.sawSubmitValidationSuccess
-                            ) {
-                                console.warn("[HASIL][ordering-bug][fallback] submitStageForValidation failed before artifact existed, createArtifact succeeded later, but submit was not retried.")
-                            }
-                            if (
-                                paperToolTracker.sawUpdateStageData &&
-                                !paperToolTracker.sawCreateArtifactSuccess &&
-                                !paperToolTracker.sawSubmitValidationSuccess
-                            ) {
-                                console.warn("[HASIL][partial-save-stall][fallback] updateStageData called but createArtifact and submitStageForValidation were not called. Tool chain incomplete.")
-                            }
-                            if (
-                                /panel validasi|approve|revisi/i.test(normalizedText) &&
-                                !paperToolTracker.sawSubmitValidationSuccess
-                            ) {
-                                console.warn("[HASIL][false-validation-claim][fallback] response mentioned validation flow without successful submitStageForValidation.")
-                            }
-                            if (
-                                /aku akan menyusun|draf ini akan|berikut adalah draf/i.test(normalizedText) &&
-                                !paperToolTracker.sawCreateArtifactSuccess
-                            ) {
-                                console.warn("[HASIL][prose-leakage][fallback] post-choice response previewed draft content in chat before artifact creation.")
-                            }
-                        }
-
-                        // Daftar pustaka observability (fallback path)
-                        if (paperStageScope === "daftar_pustaka" && normalizedText.length > 0) {
-                            if (
-                                paperToolTracker.sawCompileDaftarPustakaPersist &&
-                                !paperToolTracker.sawCreateArtifactSuccess &&
-                                !paperToolTracker.sawUpdateArtifactSuccess
-                            ) {
-                                console.warn("[DAFTAR_PUSTAKA][compiled-but-no-artifact][fallback] persist compilation succeeded but no artifact tool followed.")
-                            }
-                            if (
-                                /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki/i.test(normalizedText) &&
-                                (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess)
-                            ) {
-                                console.warn("[PAPER][nonfatal-error-leakage][fallback] response exposed internal failure narration even though artifact was created successfully.")
-                            }
-                            if (
-                                paperSession?.stageStatus === "revision" &&
-                                paperToolTracker.sawCreateArtifactSuccess &&
-                                !paperToolTracker.sawUpdateArtifactSuccess
-                            ) {
-                                console.warn("[DAFTAR_PUSTAKA][revision-create-instead-of-update][fallback] revision turn created new artifact instead of updating existing one.")
-                            }
-                            if (
-                                (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess) &&
-                                !paperToolTracker.sawSubmitValidationSuccess
-                            ) {
-                                console.warn("[DAFTAR_PUSTAKA][artifact-without-submit][fallback] artifact created/updated but submitStageForValidation was not called.")
-                            }
-                        }
-
-                        // System-owned closing message for completed session (fallback parity)
-                        if (
-                            paperSession?.currentStage === "completed" &&
-                            normalizedText.length > 0 &&
-                            /tool_code|sekarang kita masuk ke tahap|yaml-spec|plan-spec|```yaml/i.test(normalizedText)
-                        ) {
-                            persistedContent = "Semua tahap penyusunan makalah sudah selesai dan disetujui.\n\nRiwayat percakapan di sidebar menyimpan artifact dari setiap tahap, mulai dari gagasan awal sampai pemilihan judul. Linimasa progres juga sudah penuh, menandakan seluruh tahapan penyusunan makalah telah terlewati."
-                            console.info("[PAPER][completed-guard][fallback] replaced corrupt/off-context model output with system-owned closing message")
-                        }
-
-                        // Server-owned fallback: lampiran "tidak ada" path (fallback parity)
-                        const FALLBACK_NO_APPENDIX_IDS = new Set(["tidak-ada-lampiran", "option-tidak-ada-lampiran", "no-appendix"])
-                        const lampiranRescueCheckFb = resolvedWorkflow ? shouldAttemptRescue({
-                            resolvedWorkflow,
-                            paperToolTracker,
-                        }) : { shouldRescue: true, reason: "legacy_no_resolver" }
-                        if (
-                            paperStageScope === "lampiran" &&
-                            lampiranRescueCheckFb.shouldRescue &&
-                            choiceInteractionEvent?.stage === "lampiran" &&
-                            choiceInteractionEvent.selectedOptionIds.some(id => FALLBACK_NO_APPENDIX_IDS.has(id.trim().toLowerCase())) &&
-                            paperToolTracker.sawUpdateStageData &&
-                            !paperToolTracker.sawCreateArtifactSuccess &&
-                            !paperToolTracker.sawUpdateArtifactSuccess
-                        ) {
-                            console.info(`[PAPER][rescue] stage=lampiran reason=${lampiranRescueCheckFb.reason} fallbackPolicy=${resolvedWorkflow?.fallbackPolicy ?? "legacy"} path=fallback`)
-                            try {
-                                const lampiranStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["lampiran"]
-                                const alasan = typeof lampiranStageData?.alasanTidakAda === "string" ? lampiranStageData.alasanTidakAda : ""
-                                const placeholderContent = alasan
-                                    ? `Tidak ada lampiran.\n\nAlasan: ${alasan}`
-                                    : "Tidak ada lampiran."
-
-                                const placeholderResult = await retryMutation(
-                                    () => fetchMutationWithToken(api.artifacts.create, {
-                                        conversationId: currentConversationId as Id<"conversations">,
-                                        userId: userId as Id<"users">,
-                                        type: "section",
-                                        title: "Lampiran",
-                                        content: placeholderContent,
-                                    }),
-                                    "artifacts.create(lampiran-placeholder-fallback)"
-                                ) as { artifactId: string }
-
-                                try {
-                                    await retryMutation(
-                                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
-                                            sessionId: paperSession!._id,
-                                            stage: "lampiran",
-                                            data: { artifactId: placeholderResult.artifactId },
-                                        }),
-                                        "paperSessions.updateStageData(lampiran-link-fallback)"
-                                    )
-                                } catch { /* non-critical */ }
-
-                                await retryMutation(
-                                    () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
-                                        sessionId: paperSession!._id,
-                                    }),
-                                    "paperSessions.submitForValidation(lampiran-fallback)"
-                                )
-                                paperToolTracker.sawCreateArtifactSuccess = true
-                                paperToolTracker.sawSubmitValidationSuccess = true
-                                persistedContent = "Tidak ada lampiran untuk paper ini. Silakan review di panel validasi."
-                                console.info("[LAMPIRAN][server-fallback][fallback] placeholder artifact created and submitted for validation")
-                            } catch (fallbackErr) {
-                                console.error("[LAMPIRAN][server-fallback][fallback] failed:", fallbackErr)
-                            }
-                        }
-
-                        // Server-owned fallback: judul (fallback path parity)
-                        const judulRescueCheckFb = resolvedWorkflow ? shouldAttemptRescue({
-                            resolvedWorkflow,
-                            paperToolTracker,
-                        }) : { shouldRescue: true, reason: "legacy_no_resolver" }
-                        if (
-                            paperStageScope === "judul" &&
-                            judulRescueCheckFb.shouldRescue &&
-                            choiceInteractionEvent?.stage === "judul" &&
-                            !paperToolTracker.sawUpdateStageData &&
-                            !paperToolTracker.sawCreateArtifactSuccess &&
-                            !paperToolTracker.sawUpdateArtifactSuccess &&
-                            normalizedText.length > 0
-                        ) {
-                            console.info(`[PAPER][rescue] stage=judul reason=${judulRescueCheckFb.reason} fallbackPolicy=${resolvedWorkflow?.fallbackPolicy ?? "legacy"} path=fallback`)
-                            try {
-                                // Deterministic title resolution from choice card payload (fallback path)
-                                let selectedTitle: string | undefined
-                                try {
-                                    const sourceMsg = await retryQuery(
-                                        () => fetchQueryWithToken(api.messages.getMessageByUiMessageId, {
-                                            uiMessageId: choiceInteractionEvent.sourceMessageId,
-                                            conversationId: currentConversationId as Id<"conversations">,
-                                        }),
-                                        "messages.getMessageByUiMessageId(judul-source-fb)"
-                                    ) as { jsonRendererChoice?: string } | null
-                                    if (sourceMsg?.jsonRendererChoice) {
-                                        const spec = JSON.parse(sourceMsg.jsonRendererChoice)
-                                        const selectedId = choiceInteractionEvent.selectedOptionIds[0]
-                                        const elements = spec?.elements ?? {}
-                                        for (const el of Object.values(elements) as Array<{ type?: string; props?: { optionId?: string; label?: string } }>) {
-                                            if (el?.type === "ChoiceOptionButton" && el?.props?.optionId === selectedId && el?.props?.label) {
-                                                selectedTitle = el.props.label
-                                                break
-                                            }
-                                        }
-                                        if (selectedTitle) {
-                                            console.info(`[JUDUL][server-fallback][fallback] resolved title from choice payload: "${selectedTitle}"`)
-                                        } else {
-                                            console.warn(`[JUDUL][server-fallback][fallback][selected-option-unresolved] option ${selectedId} not found in spec elements`)
-                                        }
-                                    } else {
-                                        console.warn("[JUDUL][server-fallback][fallback][source-message-missing-choice-payload] no jsonRendererChoice in source message")
-                                    }
-                                } catch (resolveErr) {
-                                    console.warn("[JUDUL][server-fallback][fallback] choice payload resolution failed:", resolveErr)
-                                }
-                                if (!selectedTitle) {
-                                    const titleMatch = normalizedText.match(/judulTerpilih["\s:]*"([^"]+)"/i)
-                                        ?? normalizedText.match(/judul[^"]*"([^"]{20,})"/)
-                                        ?? normalizedText.match(/["""]([^"""]{20,})["""]/)
-                                    selectedTitle = titleMatch?.[1]?.trim()
-                                }
-
-                                if (selectedTitle) {
-                                    await retryMutation(
-                                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
-                                            sessionId: paperSession!._id,
-                                            stage: "judul",
-                                            data: { judulTerpilih: selectedTitle, alasanPemilihan: "Dipilih oleh user via choice card." },
-                                        }),
-                                        "paperSessions.updateStageData(judul-fallback-fb)"
-                                    )
-
-                                    const judulStageDataFb = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["judul"]
-                                    const existingJudulArtifactIdFb = judulStageDataFb?.artifactId as string | undefined
-
-                                    if (existingJudulArtifactIdFb) {
-                                        await retryMutation(
-                                            () => fetchMutationWithToken(api.artifacts.update, {
-                                                artifactId: existingJudulArtifactIdFb as Id<"artifacts">,
-                                                userId: userId as Id<"users">,
-                                                content: `Judul Terpilih:\n\n${selectedTitle}`,
-                                                title: "Pemilihan Judul",
-                                            }),
-                                            "artifacts.update(judul-fallback-fb)"
-                                        )
-                                        paperToolTracker.sawUpdateArtifactSuccess = true
-                                    } else {
-                                        const judulArtifact = await retryMutation(
-                                            () => fetchMutationWithToken(api.artifacts.create, {
-                                                conversationId: currentConversationId as Id<"conversations">,
-                                                userId: userId as Id<"users">,
-                                                type: "section",
-                                                title: "Pemilihan Judul",
-                                                content: `Judul Terpilih:\n\n${selectedTitle}`,
-                                            }),
-                                            "artifacts.create(judul-fallback-fb)"
-                                        ) as { artifactId: string }
-
-                                        try {
-                                            await retryMutation(
-                                                () => fetchMutationWithToken(api.paperSessions.updateStageData, {
-                                                    sessionId: paperSession!._id,
-                                                    stage: "judul",
-                                                    data: { artifactId: judulArtifact.artifactId },
-                                                }),
-                                                "paperSessions.updateStageData(judul-link-fb)"
-                                            )
-                                        } catch { /* non-critical */ }
-                                    }
-
-                                    await retryMutation(
-                                        () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
-                                            sessionId: paperSession!._id,
-                                        }),
-                                        "paperSessions.submitForValidation(judul-fallback-fb)"
-                                    )
-                                    paperToolTracker.sawCreateArtifactSuccess = true
-                                    paperToolTracker.sawSubmitValidationSuccess = true
-                                    persistedContent = `Judul "${selectedTitle}" sudah dipilih. Silakan review di panel validasi.`
-                                    console.info("[JUDUL][server-fallback][fallback] title saved, artifact created, submitted for validation")
-                                } else {
-                                    console.warn("[JUDUL][server-fallback][fallback] could not extract title from model response")
-                                }
-                            } catch (fallbackErr) {
-                                console.error("[JUDUL][server-fallback][fallback] failed:", fallbackErr)
-                            }
-                        }
-
-                        // Outcome-gated persisted content (fallback path) — action-aware guard
-                        if (paperStageScope && normalizedText.length > 0) {
-                            const guardResult = sanitizeChoiceOutcome({
-                                action: resolvedWorkflow?.action ?? "finalize_stage",
-                                text: normalizedText,
-                                hasArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess,
-                                submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
-                            })
-                            if (guardResult.wasModified) {
-                                persistedContent = guardResult.text
-                                fallbackStreamContentOverride = guardResult.text
-                                console.info(`[PAPER][outcome-guard][fallback] stage=${paperStageScope} violation=${guardResult.violationType} action=${resolvedWorkflow?.action ?? "unknown"} contract=${resolvedWorkflow?.contractVersion ?? "legacy"}`)
-                            }
-                        }
-
-                        // ── Harness chain completion (fallback path) ──
-                        // Must run BEFORE empty response recovery to avoid using placeholder text as artifact content.
-                        if (
-                            paperStageScope &&
-                            paperSession?._id &&
-                            isDraftingStage &&
-                            paperToolTracker.sawUpdateStageData &&
-                            !paperToolTracker.sawCreateArtifactSuccess &&
-                            !paperToolTracker.sawUpdateArtifactSuccess &&
-                            !paperToolTracker.sawSubmitValidationSuccess
-                        ) {
-                            const chainStartTime = Date.now()
-                            try {
-                                const artifactContent = normalizedText.trim() || persistedContent.trim() || "Draft content"
-                                const artifactTitle = getStageLabel(paperStageScope)
-
-                                    console.info(`[CHAIN-COMPLETION][fallback] stage=${paperStageScope} starting: createArtifact + submitForValidation`)
-
-                                    const artifactResult = await retryMutation(
-                                        () => fetchMutationWithToken(api.artifacts.create, {
-                                            conversationId: currentConversationId as Id<"conversations">,
-                                            userId: userId as Id<"users">,
-                                            type: "section",
-                                            title: artifactTitle,
-                                            content: artifactContent,
-                                            format: "markdown",
-                                        }),
-                                        "artifacts.create(chain-completion-fallback)"
-                                    ) as { artifactId: string }
-
-                                    await retryMutation(
-                                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
-                                            sessionId: paperSession!._id,
-                                            stage: paperStageScope,
-                                            data: { artifactId: artifactResult.artifactId },
-                                        }),
-                                        "paperSessions.updateStageData(chain-completion-fallback-link)"
-                                    )
-
-                                    await retryMutation(
-                                        () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
-                                            sessionId: paperSession!._id,
-                                        }),
-                                        "paperSessions.submitForValidation(chain-completion-fallback)"
-                                    )
-
-                                paperToolTracker.sawCreateArtifactSuccess = true
-                                paperToolTracker.sawSubmitValidationSuccess = true
-                                console.info(`[CHAIN-COMPLETION][fallback] stage=${paperStageScope} success: artifactId=${artifactResult.artifactId} elapsed=${Date.now() - chainStartTime}ms`)
-                            } catch (chainErr) {
-                                console.error(`[CHAIN-COMPLETION][fallback] stage=${paperStageScope} failed after ${Date.now() - chainStartTime}ms:`, chainErr)
-                            }
-                        }
-
-                        // Empty response recovery (same as primary path)
-                        if (
-                            persistedContent.length === 0 &&
-                            paperStageScope &&
-                            paperSession?.stageStatus === "drafting" &&
-                            !paperToolTracker?.sawSubmitValidationSuccess
-                        ) {
-                            persistedContent = "Please select the next step to continue."
-                            console.info(`[EMPTY-RESPONSE][recovery][fallback] stage=${paperStageScope} injecting recovery message + fallback choice card`)
-                        }
-
-                        if (persistedContent.length > 0) {
-                            const persistedReasoningTrace = (() => {
-                                if (!reasoningTraceEnabled) return undefined
-                                if (!fallbackReasoningTraceController?.enabled) return undefined
-                                if (!fallbackReasoningTraceSnapshot) {
-                                    fallbackReasoningTraceController.finalize({
-                                        outcome: "done",
-                                        sourceCount: fallbackReasoningSourceCount,
-                                    })
-                                }
-                                captureFallbackReasoningSnapshot()
-                                return fallbackReasoningTraceSnapshot
-                            })()
-
-                            // Fallback choice card (same as primary path)
-                            if (
-                                !(fallbackCapturedChoiceSpec && fallbackCapturedChoiceSpec.root) &&
-                                paperStageScope &&
-                                paperSession?.stageStatus === "drafting" &&
-                                !paperToolTracker?.sawSubmitValidationSuccess
-                            ) {
-                                const { spec: injectedSpec } = compileChoiceSpec({
-                                    stage: paperStageScope,
-                                    kind: "single-select",
-                                    title: "Apa langkah selanjutnya?",
-                                    options: [
-                                        { id: "lanjutkan-diskusi", label: "Lanjutkan diskusi" },
-                                    ],
-                                    recommendedId: "lanjutkan-diskusi",
-                                    appendValidationOption: true,
-                                })
-                                fallbackCapturedChoiceSpec = injectedSpec as typeof fallbackCapturedChoiceSpec
-                                console.info(`[CHOICE-CARD][fallback-injected] stage=${paperStageScope} reason=model_did_not_emit_choice_card (fallback model)`)
-                            }
-
-                            // Auto-complete plan when validation succeeded (fallback path)
-                            const fallbackPlanSnapshot = fallbackCapturedPlanSpec ?? getCurrentPlanSnapshot()
-                            const finalFallbackSnapshot = fallbackPlanSnapshot
-                                ? autoCompletePlanOnValidation(fallbackPlanSnapshot as PlanSpec, paperToolTracker.sawSubmitValidationSuccess)
-                                : undefined
-
-                            // Observability: log what planSnapshot will be persisted (fallback path)
-                            if (finalFallbackSnapshot && paperStageScope) {
-                                const snap = finalFallbackSnapshot as PlanSpec
-                                const taskDetail = snap.tasks.map((t, i) => `${i}:${t.status}:${t.label.slice(0, 40)}`).join(", ")
-                                console.info(`[PLAN-SNAPSHOT][fallback] stage=${paperStageScope} tasks=${snap.tasks.length} autoCompleted=${paperToolTracker.sawSubmitValidationSuccess} detail=[${taskDetail}]`)
-                            }
-
-                            await saveAssistantMessage(
-                                persistedContent,
-                                undefined,
-                                modelNames.fallback.model,
-                                persistedReasoningTrace,
-                                fallbackCapturedChoiceSpec && fallbackCapturedChoiceSpec.root ? fallbackCapturedChoiceSpec : undefined,
-                                fallbackMessageId,
-                                finalFallbackSnapshot,
-                            )
-                        }
-                        if (normalizedText.length > 0) {
-                            const minPairsForFinalTitle = Number.parseInt(
-                                process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
-                                10
-                            )
-                            await maybeUpdateTitleFromAI({
-                                assistantText: normalizedText,
-                                minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
-                                    ? minPairsForFinalTitle
-                                    : 3,
-                            })
-                        }
-
-                        // Persist captured plan to stageData (fallback path)
-                        // Full-replace semantics + auto-complete on validation
-                        if (fallbackCapturedPlanSpec && paperSession?._id && paperStageScope) {
-                            const finalFallbackPlan = autoCompletePlanOnValidation(fallbackCapturedPlanSpec, paperToolTracker.sawSubmitValidationSuccess)
-                            try {
-                                await fetchMutationWithToken(api.paperSessions.updatePlan, {
-                                    sessionId: paperSession._id,
-                                    stage: paperStageScope,
-                                    plan: finalFallbackPlan,
-                                })
-                                console.info(`[PLAN-CAPTURE] persisted (fallback) stage=${paperStageScope} tasks=${finalFallbackPlan.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
-                            } catch (e) {
-                                console.warn(`[PLAN-CAPTURE] fallback persist failed:`, e)
-                            }
-                        }
-
-                        // ═══ BILLING: Record token usage (fallback) ═══
-                        if (usage) {
-                            await recordUsageAfterOperation({
-                                userId: billingContext.userId,
-                                conversationId: currentConversationId as Id<"conversations">,
-                                sessionId: paperSession?._id,
-                                inputTokens: usage.inputTokens ?? 0,
-                                outputTokens: usage.outputTokens ?? 0,
-                                totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
-                                model: modelNames.fallback.model,
-                                operationType: billingContext.operationType,
-                                convexToken,
-                            }).catch(err => Sentry.captureException(err, { tags: { subsystem: "billing" } }))
-                        }
-                        // ═══════════════════════════════════════════════
-
-                        // ═══ TELEMETRY: Fallback non-websearch success ═══
-                        logAiTelemetry({
-                            token: convexToken,
-                            userId: userId as Id<"users">,
-                            conversationId: currentConversationId as Id<"conversations">,
-                            provider: modelNames.fallback.provider as "vercel-gateway" | "openrouter",
+                return buildStepStream({
+                    executionConfig: {
+                        model: fallbackModel,
+                        messages: fallbackExactSourceRoutePlan.messages,
+                        tools,
+                        prepareStep: fallbackPrepareStep,
+                        stopWhen: undefined,
+                        maxSteps: fallbackExactSourceRoutePlan.maxToolSteps ?? fallbackMaxToolSteps,
+                        modelName: modelNames.fallback.model,
+                        toolChoice: fallbackForcedToolChoice,
+                        providerOptions: fallbackReasoningProviderOptions,
+                        samplingOptions,
+                    },
+                    onFinishConfig: {
+                        conversationId: currentConversationId as Id<"conversations">,
+                        userId: userId as Id<"users">,
+                        modelName: modelNames.fallback.model,
+                        model: fallbackModel,
+                        requestId,
+                        convexToken,
+                        billingContext,
+                        paperSession,
+                        paperStageScope,
+                        paperToolTracker,
+                        paperTurnObservability,
+                        resolvedWorkflow,
+                        choiceInteractionEvent,
+                        isCompileThenFinalize,
+                        normalizedLastUserContent,
+                        lane,
+                        maybeUpdateTitleFromAI,
+                        fetchQueryWithToken,
+                        fetchMutationWithToken,
+                        requestStartedAt,
+                        isDraftingStage,
+                        isHasilPostChoice,
+                        buildLeakageSnippet: (text: string, matchIndex: number, matchValue: string) => {
+                            const start = Math.max(0, matchIndex - 120)
+                            const end = Math.min(text.length, matchIndex + matchValue.length + 120)
+                            return text.slice(start, end).replace(/\s+/g, " ").trim()
+                        },
+                        // Fallback: all primary-only feature flags disabled
+                        enableGroundingExtraction: false,
+                        enableSourceTitleEnrichment: false,
+                        enableRevisionClassifier: false,
+                        enablePlanSpecFallbackExtraction: false,
+                    },
+                    streamContext: {
+                        messageId: fallbackMessageId,
+                        reasoningTrace: {
+                            enabled: reasoningTraceEnabled,
+                            controller: null,
+                            snapshot: undefined,
+                            sourceCount: 0,
+                            captureSnapshot: () => {},
+                        },
+                        telemetry: {
+                            provider: modelNames.fallback.provider,
                             model: modelNames.fallback.model,
                             isPrimaryProvider: false,
                             failoverUsed: true,
                             toolUsed: undefined,
                             mode: isPaperMode ? "paper" : "normal",
-                            success: true,
-                            latencyMs: Date.now() - telemetryStartTime,
-                            inputTokens: usage?.inputTokens,
-                            outputTokens: usage?.outputTokens,
-                            ...fallbackTelemetryContext,
-                        })
-                        // ═════════════════════════════════════════════════
+                            startTime: telemetryStartTime,
+                            skillContext: fallbackTelemetryContext,
+                        },
+                        shouldForceGetCurrentPaperState,
+                        buildForcedSyncStatusMessage,
+                        getCurrentPlanSnapshot,
+                        enforcerStepStartTime: undefined,
                     },
+                    reasoningTraceEnabled,
+                    enablePlanCapture: !!paperStageScope,
+                    enableYamlRender: isDraftingStage,
+                    transparentReasoningEnabled: fallbackTransparent,
+                    traceMode: getTraceModeLabel(!!paperModePrompt, false),
+                    logTag: "[fallback]",
                 })
-                const messageId = fallbackMessageId
-                const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
-                const reasoningTrace = createCuratedTraceController({
-                    enabled: reasoningTraceEnabled,
-                    traceId,
-                    mode: getTraceModeLabel(!!paperModePrompt, false),
-                    stage: paperSession?.currentStage && paperSession.currentStage !== "completed"
-                        ? paperSession.currentStage
-                        : undefined,
-                    webSearchEnabled: false,
-                    startedAt: requestStartedAt,
-                })
-                fallbackReasoningTraceController = reasoningTrace
-
-                const stream = createUIMessageStream({
-                    execute: async ({ writer }) => {
-                        let started = false
-                        let sourceCount = 0
-                        let accumulatedStreamText = ""
-
-                        const ensureStart = () => {
-                            if (started) return
-                            started = true
-                            writer.write({ type: "start", messageId })
-                        }
-
-                        const emitTrace = (events: ReturnType<typeof reasoningTrace.markToolRunning>) => {
-                            if (!reasoningTrace.enabled) return
-                            captureFallbackReasoningSnapshot()
-                            if (events.length === 0) return
-                            ensureStart()
-                            for (const event of events) {
-                                writer.write(event)
-                            }
-                        }
-
-                        const emitDurationPart = () => {
-                            if (!reasoningTrace.enabled) return
-                            const snapshot = reasoningTrace.getPersistedSnapshot()
-                            if (typeof snapshot.durationSeconds !== "number" || !Number.isFinite(snapshot.durationSeconds)) return
-                            ensureStart()
-                            writer.write({
-                                type: "data-reasoning-duration",
-                                id: `${traceId}-duration`,
-                                data: {
-                                    traceId,
-                                    seconds: snapshot.durationSeconds,
-                                },
-                            })
-                        }
-
-                        const fallbackTransparent = isTransparentReasoning && reasoningSettings.fallback.supported
-                        const reasoningAccumulator = createReasoningAccumulator({
-                            traceId,
-                            writer,
-                            ensureStart,
-                            enabled: fallbackTransparent,
-                        })
-
-                        emitTrace(reasoningTrace.initialEvents)
-
-                        const fallbackUiStream = result.toUIMessageStream({
-                            sendStart: false,
-                            generateMessageId: () => messageId,
-                            sendReasoning: fallbackTransparent,
-                        })
-                        // pipePlanCapture BEFORE pipeYamlRender (same as primary path)
-                        const fallbackPlanStream = !!paperStageScope
-                            ? pipePlanCapture(fallbackUiStream) as typeof fallbackUiStream
-                            : fallbackUiStream
-
-                        const fallbackYamlStream = isDraftingStage
-                            ? pipeYamlRender(fallbackPlanStream)
-                            : fallbackPlanStream
-
-                        // ReadableStream from pipeYamlRender may not have [Symbol.asyncIterator]
-                        async function* iterateFallbackStream<T>(stream: ReadableStream<T>): AsyncGenerator<T> {
-                            const reader = stream.getReader()
-                            try {
-                                while (true) {
-                                    const { done, value } = await reader.read()
-                                    if (done) break
-                                    yield value
-                                }
-                            } finally {
-                                reader.releaseLock()
-                            }
-                        }
-
-                        for await (const chunk of iterateFallbackStream(fallbackYamlStream)) {
-                            // Capture data-spec parts emitted by pipeYamlRender for DB persistence
-                            if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
-                                try {
-                                    const data = (chunk as { data?: { type?: string; patch?: JsonPatch; spec?: Spec } }).data
-                                    if (data?.type === "patch" && data.patch) {
-                                        if (!fallbackCapturedChoiceSpec) {
-                                            fallbackCapturedChoiceSpec = { root: "", elements: {} } as Spec
-                                        }
-                                        applySpecPatch(fallbackCapturedChoiceSpec, data.patch)
-                                    } else if (data?.type === "flat" && data.spec) {
-                                        fallbackCapturedChoiceSpec = data.spec
-                                    }
-                                } catch { /* spec capture error — non-critical */ }
-                            }
-
-                            // Capture plan-spec parts — internal only, do NOT forward to client.
-                            if ((chunk as { type?: string }).type === PLAN_DATA_PART_TYPE) {
-                                try {
-                                    const data = (chunk as { data?: { spec?: PlanSpec } }).data
-                                    if (data?.spec) {
-                                        fallbackCapturedPlanSpec = data.spec
-                                    }
-                                } catch { /* plan capture error — non-critical */ }
-                                continue
-                            }
-
-                            if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
-                                if (chunk.type === "reasoning-delta") {
-                                    reasoningAccumulator.onReasoningDelta(
-                                        typeof (chunk as { delta?: unknown }).delta === "string"
-                                            ? (chunk as { delta?: unknown }).delta as string
-                                            : ""
-                                    )
-                                }
-                                continue
-                            }
-
-                            if (chunk.type === "source-url") {
-                                sourceCount += 1
-                                fallbackReasoningSourceCount = sourceCount
-                                emitTrace(reasoningTrace.markSourceDetected())
-                            }
-
-                            if (chunk.type === "tool-input-start") {
-                                const toolName = getToolNameFromChunk(chunk)
-                                emitTrace(reasoningTrace.markToolRunning(toolName))
-                            }
-
-
-                            if (chunk.type === "finish") {
-                                // Log captured YAML spec for persistence
-                                if (fallbackCapturedChoiceSpec && fallbackCapturedChoiceSpec.root) {
-                                    console.info(`[CHOICE-CARD][yaml-capture] fallback stage=${paperStageScope} specKeys=${Object.keys(fallbackCapturedChoiceSpec).join(",")}`)
-                                }
-
-                                // Full-stream outcome guard (fallback path) — action-aware
-                                if (!fallbackStreamContentOverride && accumulatedStreamText.length > 0) {
-                                    const streamGuardResult = sanitizeChoiceOutcome({
-                                        action: resolvedWorkflow?.action ?? "finalize_stage",
-                                        text: accumulatedStreamText,
-                                        hasArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess,
-                                        submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
-                                    })
-                                    if (streamGuardResult.wasModified) {
-                                        fallbackStreamContentOverride = streamGuardResult.text
-                                        console.info(`[PAPER][outcome-guard-stream][fallback] stage=${paperStageScope} violation=${streamGuardResult.violationType} action=${resolvedWorkflow?.action ?? "unknown"} accumulatedLen=${accumulatedStreamText.length}`)
-                                        console.info("[PAPER][outcome-guard-stream][fallback][details]", {
-                                            stage: paperStageScope,
-                                            firstLeakageMatch: paperTurnObservability.firstLeakageMatch,
-                                            firstLeakageAtMs: paperTurnObservability.firstLeakageAtMs,
-                                            firstLeakageSnippet: paperTurnObservability.firstLeakageSnippet,
-                                            createArtifactAtMs: paperTurnObservability.createArtifactAtMs,
-                                            updateArtifactAtMs: paperTurnObservability.updateArtifactAtMs,
-                                            sawCreateArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess,
-                                            sawUpdateArtifactSuccess: paperToolTracker.sawUpdateArtifactSuccess,
-                                            sawSubmitValidationSuccess: paperToolTracker.sawSubmitValidationSuccess,
-                                        })
-                                    }
-                                }
-
-                                // Outcome-gated stream override (fallback path)
-                                if (fallbackStreamContentOverride) {
-                                    const overrideId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-override`
-                                    writer.write({
-                                        type: "data-cited-text",
-                                        id: overrideId,
-                                        data: { text: fallbackStreamContentOverride },
-                                    } as Parameters<typeof writer.write>[0])
-                                    console.info("[PAPER][outcome-gated][fallback] emitted data-cited-text stream override")
-                                }
-
-                                if (reasoningAccumulator.hasReasoning()) {
-                                    emitTrace(reasoningTrace.populateFromReasoning(
-                                        reasoningAccumulator.getFullReasoning()
-                                    ))
-                                }
-                                reasoningAccumulator.finalize()
-                                emitTrace(reasoningTrace.finalize({
-                                    outcome: "done",
-                                    sourceCount,
-                                }))
-                                emitDurationPart()
-                                writer.write(chunk)
-                                break
-                            }
-
-                            if (chunk.type === "error") {
-                                reasoningAccumulator.finalize()
-                                emitTrace(reasoningTrace.finalize({
-                                    outcome: "error",
-                                    sourceCount,
-                                    errorNote: "fallback-stream-error",
-                                }))
-                                emitDurationPart()
-                                writer.write(chunk)
-                                break
-                            }
-
-                            if (chunk.type === "abort") {
-                                reasoningAccumulator.finalize()
-                                emitTrace(reasoningTrace.finalize({
-                                    outcome: "stopped",
-                                    sourceCount,
-                                }))
-                                emitDurationPart()
-                                writer.write(chunk)
-                                break
-                            }
-
-                            if (chunk.type === "text-delta" && typeof (chunk as { delta?: unknown }).delta === "string") {
-                                const delta = (chunk as { delta: string }).delta
-                                accumulatedStreamText += delta
-                                if (!paperTurnObservability.firstLeakageMatch) {
-                                    const match = paperRecoveryLeakagePattern.exec(accumulatedStreamText)
-                                    if (match && typeof match.index === "number") {
-                                        paperTurnObservability.firstLeakageMatch = match[0]
-                                        paperTurnObservability.firstLeakageAtMs = Date.now()
-                                        paperTurnObservability.firstLeakageSnippet = buildLeakageSnippet(accumulatedStreamText, match.index, match[0])
-                                        console.warn("[PAPER][recovery-leakage-first-detected][fallback]", {
-                                            stage: paperStageScope,
-                                            match: paperTurnObservability.firstLeakageMatch,
-                                            snippet: paperTurnObservability.firstLeakageSnippet,
-                                            sawUpdateStageData: paperToolTracker.sawUpdateStageData,
-                                            sawCreateArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess,
-                                            sawUpdateArtifactSuccess: paperToolTracker.sawUpdateArtifactSuccess,
-                                            sawSubmitValidationSuccess: paperToolTracker.sawSubmitValidationSuccess,
-                                        })
-                                    }
-                                }
-                            }
-
-                            ensureStart()
-                            writer.write(chunk)
-                        }
-                    },
-                })
-
-                return createUIMessageStreamResponse({ stream })
             }
 
             // Fallback always runs without web search
