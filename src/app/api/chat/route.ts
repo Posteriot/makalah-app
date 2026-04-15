@@ -3132,14 +3132,23 @@ Aturan:
                                 .flatMap((s: { toolCalls?: Array<{ toolName: string }> }, i: number) =>
                                     (s.toolCalls ?? []).map(tc => `${i}:${tc.toolName}`)
                                 )
-                            const expected = isCompileThenFinalize
-                                ? ["compileDaftarPustaka", "updateStageData", "createArtifact", "submitStageForValidation"]
-                                : ["updateStageData", "createArtifact", "submitStageForValidation"]
-                            const actualNames = toolSequence.map(t => t.split(":")[1])
-                            // Deduplicate consecutive retries: [updateStageData, createArtifact, createArtifact, submit] → [updateStageData, createArtifact, submit]
-                            const dedupedNames = actualNames.filter((name, i) => i === 0 || name !== actualNames[i - 1])
-                            const isCorrectOrder = expected.every((tool, idx) => dedupedNames[idx] === tool)
-                            console.info(`[F1-F6-TEST] ToolChainOrder { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], expected: [${expected.join(", ")}], correct: ${isCorrectOrder} }`)
+                            // Skip log entirely for pure text/search turns (no tool calls)
+                            if (toolSequence.length > 0) {
+                                const finalizationTools = ["updateStageData", "createArtifact", "submitStageForValidation"]
+                                const expected = isCompileThenFinalize
+                                    ? ["compileDaftarPustaka", "updateStageData", "createArtifact", "submitStageForValidation"]
+                                    : ["updateStageData", "createArtifact", "submitStageForValidation"]
+                                const actualNames = toolSequence.map(t => t.split(":")[1])
+                                // Deduplicate consecutive retries: [updateStageData, createArtifact, createArtifact, submit] → [updateStageData, createArtifact, submit]
+                                const dedupedNames = actualNames.filter((name, i) => i === 0 || name !== actualNames[i - 1])
+                                const hasFinalizationTool = actualNames.some(name => finalizationTools.includes(name))
+                                if (hasFinalizationTool) {
+                                    const isCorrectOrder = expected.every((tool, idx) => dedupedNames[idx] === tool)
+                                    console.info(`[F1-F6-TEST] ToolChainOrder { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], expected: [${expected.join(", ")}], correct: ${isCorrectOrder} }`)
+                                } else {
+                                    console.info(`[F1-F6-TEST] ToolChainOrder { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], status: "not_applicable" }`)
+                                }
+                            }
                         }
 
                         let sources: { url: string; title: string; publishedAt?: number | null }[] | undefined
@@ -4122,11 +4131,20 @@ Aturan:
                                 .flatMap((s: { toolCalls?: Array<{ toolName: string }> }, i: number) =>
                                     (s.toolCalls ?? []).map(tc => `${i}:${tc.toolName}`)
                                 )
-                            const expected = ["updateStageData", "createArtifact", "submitStageForValidation"]
-                            const actualNames = toolSequence.map(t => t.split(":")[1])
-                            const dedupedNames = actualNames.filter((name, i) => i === 0 || name !== actualNames[i - 1])
-                            const isCorrectOrder = expected.every((tool, idx) => dedupedNames[idx] === tool)
-                            console.info(`[F1-F6-TEST] ToolChainOrder[fallback] { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], correct: ${isCorrectOrder} }`)
+                            // Skip log entirely for pure text/search turns (no tool calls)
+                            if (toolSequence.length > 0) {
+                                const finalizationTools = ["updateStageData", "createArtifact", "submitStageForValidation"]
+                                const expected = ["updateStageData", "createArtifact", "submitStageForValidation"]
+                                const actualNames = toolSequence.map(t => t.split(":")[1])
+                                const dedupedNames = actualNames.filter((name, i) => i === 0 || name !== actualNames[i - 1])
+                                const hasFinalizationTool = actualNames.some(name => finalizationTools.includes(name))
+                                if (hasFinalizationTool) {
+                                    const isCorrectOrder = expected.every((tool, idx) => dedupedNames[idx] === tool)
+                                    console.info(`[F1-F6-TEST] ToolChainOrder[fallback] { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], correct: ${isCorrectOrder} }`)
+                                } else {
+                                    console.info(`[F1-F6-TEST] ToolChainOrder[fallback] { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], status: "not_applicable" }`)
+                                }
+                            }
                         }
 
                         // Concatenate text from ALL steps for persistence (same as primary path)

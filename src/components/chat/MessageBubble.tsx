@@ -602,10 +602,10 @@ export function MessageBubble({
         }
 
         if (!spec) {
-            // Check: does this message have parts at all? And do any look like spec parts?
-            const partTypes = (uiMessage.parts ?? []).map(p => (p as {type?:string})?.type).filter(Boolean)
-            if (partTypes.length > 0) {
-                console.log("[F1-F6-TEST] extractChoiceSpec: no spec found", { messageId: uiMessage.id, partTypes: partTypes.join(",") })
+            // Only log when spec-related parts exist but parsing failed (indicates a real problem)
+            const hasSpecParts = (uiMessage.parts ?? []).some(p => (p as {type?:string})?.type === SPEC_DATA_PART_TYPE)
+            if (hasSpecParts) {
+                console.log("[F1-F6-TEST] extractChoiceSpec: no spec found", { messageId: uiMessage.id })
             }
             return null
         }
