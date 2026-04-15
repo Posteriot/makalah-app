@@ -170,14 +170,19 @@ export const getPaperModeSystemPrompt = async (
                 return allArtifacts;
             })(),
 
-            // 3. Get invalidated artifacts
+            // 3. Get invalidated artifacts (5s timeout — non-critical, fail-open to empty)
             (async () => {
                 const start = Date.now();
-                const invalidated = await fetchQuery(
-                    api.artifacts.getInvalidatedByConversation,
-                    { conversationId, userId: session.userId },
-                    convexOptions
-                );
+                const invalidated = await Promise.race([
+                    fetchQuery(
+                        api.artifacts.getInvalidatedByConversation,
+                        { conversationId, userId: session.userId },
+                        convexOptions
+                    ),
+                    new Promise<never>((_, reject) =>
+                        setTimeout(() => reject(new Error("invalidated artifacts fetch timed out (5s)")), 5000)
+                    ),
+                ]);
                 logPaperPromptLatency("paperPrompt.getInvalidatedArtifacts", start, {
                     count: Array.isArray(invalidated) ? invalidated.length : 0,
                 });
@@ -302,16 +307,16 @@ Use updateArtifact with the FULL revised content based on user feedback. Do NOT 
             console.error("Error fetching artifacts:", (artifactsResult as PromiseRejectedResult).reason);
         }
 
-        // Invalidated artifacts: non-critical — empty string on failure
+        // Invalidated artifacts: non-critical — empty string on failure (fail-open)
         let invalidatedArtifactsContext = "";
         if (invalidatedResult.status === "fulfilled") {
             try {
                 invalidatedArtifactsContext = getInvalidatedArtifactsContext(invalidatedResult.value);
             } catch (err) {
-                console.error("Error processing invalidated artifacts:", err);
+                console.warn("[PAPER][prompt] invalidated artifacts processing failed (non-critical, skipped):", err);
             }
         } else {
-            console.error("Error fetching invalidated artifacts:", (invalidatedResult as PromiseRejectedResult).reason);
+            console.warn("[PAPER][prompt] invalidated artifacts fetch failed (non-critical, skipped):", (invalidatedResult as PromiseRejectedResult).reason);
         }
 
         // Inline revision context

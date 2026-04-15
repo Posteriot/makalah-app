@@ -111,9 +111,6 @@ function formatPlanContext(stageData: Record<string, unknown>, currentStage: str
         lines.push(
             "No plan yet. You MUST emit a ```plan-spec``` block in this response",
             "to define your task plan for this stage.",
-            "",
-            "Once emitted, the task list is LOCKED. You may only change task STATUS",
-            "(pending → in-progress → complete), never add, remove, or rename tasks.",
         )
         lines.push("═══════════════════════════════════════")
         return lines.join("\n")
@@ -149,10 +146,10 @@ function formatPlanContext(stageData: Record<string, unknown>, currentStage: str
 
     lines.push("")
     lines.push("PLAN RULES:")
-    lines.push("- This plan is YOUR binding execution contract. Work through tasks in order.")
+    lines.push("- This plan is YOUR execution contract. Work through tasks in order.")
     lines.push("- Focus on the CURRENT TASK only. Do not skip ahead.")
-    lines.push("- In your plan-spec block, change ONLY the status field (pending → in-progress → complete).")
-    lines.push("- Do NOT add new tasks. Do NOT remove tasks. Do NOT rename tasks. Task count is LOCKED.")
+    lines.push("- Update task statuses to reflect actual progress (pending → in-progress → complete).")
+    lines.push("- You may add, remove, or reorder tasks as the work evolves — the plan is full-replace each response.")
     lines.push("- Finalize (createArtifact) ONLY when ALL tasks are complete.")
     lines.push("═══════════════════════════════════════")
 

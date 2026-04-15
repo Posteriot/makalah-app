@@ -657,7 +657,13 @@ export const ensurePaperSessionExists = mutation({
     },
     handler: async (ctx, { userId, conversationId }) => {
         await requireAuthUserId(ctx, userId);
-        const { conversation } = await requireConversationOwner(ctx, conversationId);
+        // Defensive: conversation may not exist yet on first-turn race (UI hook fires
+        // before API route creates conversation). Return null instead of throwing.
+        const conversation = await ctx.db.get(conversationId);
+        if (!conversation) {
+            console.warn(`[PAPER][ensure-session] Conversation ${conversationId} not found — skipping (likely first-turn race)`);
+            return null;
+        }
         if (conversation.userId !== userId) {
             throw new Error("Unauthorized");
         }

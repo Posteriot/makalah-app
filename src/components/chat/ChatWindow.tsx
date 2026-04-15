@@ -2507,15 +2507,22 @@ export function ChatWindow({
                 <Skeleton className="h-24 w-[70%] rounded-action" />
               </div>
             </div>
+          ) : messages.length === 0 && conversationId ? (
+            // Existing conversation but messages not yet loaded — show skeleton, not TemplateGrid
+            <div className="space-y-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
+              <div className="flex justify-start">
+                <Skeleton className="h-12 w-[60%] rounded-action" />
+              </div>
+              <div className="flex justify-end">
+                <Skeleton className="h-12 w-[60%] rounded-action" />
+              </div>
+              <div className="flex justify-start">
+                <Skeleton className="h-24 w-[70%] rounded-action" />
+              </div>
+            </div>
           ) : messages.length === 0 ? (
-            // Empty state with horizontal boundary in sync with ChatInput
+            // True empty state — no conversation, show TemplateGrid
             <div className="flex flex-col items-center justify-center h-full" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
-              {(() => {
-                if (process.env.NODE_ENV !== "production" && conversationId) {
-                  console.warn("[CHAT-VIEW] TemplateGrid shown IN CONVERSATION VIEW — this is the bug", { conversationId, isAwaitingAssistantStart })
-                }
-                return null
-              })()}
               <TemplateGrid
                 onTemplateSelect={handleTemplateSelect}
                 onSidebarLinkClick={handleSidebarLinkClick}
