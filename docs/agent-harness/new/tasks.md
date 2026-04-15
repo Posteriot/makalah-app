@@ -748,7 +748,9 @@ try {
 
 ## Phase 3: Extract Prompt and Context Assembler Boundary
 
-**Scope:** Lines 598–3097 of `route.ts` — everything between entry (Phase 1) and executor (Phase 2). This is the largest extraction phase (~2500 lines) covering: file context assembly, message conversion, system prompt stacking, context budget/compaction, search decision/execution, and exact-source routing.
+**Scope:** Lines 277–2060 of `route.ts` (2309 lines total) — everything between entry boundary aliases and the executor calls. This is the largest extraction phase covering: file context assembly, message conversion, system prompt stacking, context budget/compaction, search decision/execution, and exact-source routing.
+
+> **Line number note (post-Phase 2):** Phases 1+2 removed ~2580 lines from route.ts (4889 → 2309). Line shifts are NON-UNIFORM: low-range code shifted by ~-291, high-range code (post-executor-block) shifted by ~-1075. All line numbers in this phase reflect the current file state.
 
 **Goal:** Make the instruction stack explicit and inspectable. Route.ts should call a context assembler that returns a `ResolvedStepContext` containing: messages (with all system notes injected), tool config, search results, exact-source routing decisions, and budget status.
 
@@ -811,9 +813,9 @@ try {
 **Create:** `src/lib/chat-harness/context/assemble-file-context.ts`
 
 **What to extract from `route.ts`:**
-- File content fetching with pending-extraction wait loop (lines 622–644)
-- Per-file context assembly with budget cap and truncation (lines 651–718)
-- Attachment health classification and telemetry (lines 720–765)
+- File content fetching with pending-extraction wait loop (lines 337–353)
+- Per-file context assembly with budget cap and truncation (lines 355–428)
+- Attachment health classification and telemetry (lines 429–474)
 
 **Function signature:**
 ```typescript
@@ -848,7 +850,7 @@ export async function assembleFileContext(params: {
 **Create:** `src/lib/chat-harness/context/resolve-instruction-stack.ts`
 
 **What to extract from `route.ts`:**
-- The `fullMessagesBase` array assembly (lines 913–1001) — 13+ conditional system message injections in specific order
+- The `fullMessagesBase` array assembly (lines 622–710) — 13+ conditional system message injections in specific order
 
 **Function signature:**
 ```typescript
@@ -895,11 +897,11 @@ export function resolveInstructionStack(params: {
 **Create:** `src/lib/chat-harness/context/apply-context-budget.ts`
 
 **What to extract from `route.ts`:**
-- Budget estimation helper `estimateModelMessageChars` (lines 1027–1034)
-- `checkContextBudget` call and logging (lines 1036–1043)
-- Compaction chain invocation (lines 1045–1076)
-- Brute prune safety net (lines 1078–1091)
-- Budget warning log (lines 1093–1096)
+- Budget estimation helper `estimateModelMessageChars` (lines 736–743)
+- `checkContextBudget` call and logging (lines 745–751)
+- Compaction chain invocation (lines 754–785)
+- Brute prune safety net (lines 787–800)
+- Budget warning log (lines 802–806)
 
 **Function signature:**
 ```typescript
@@ -929,10 +931,10 @@ export async function applyContextBudget(params: {
 **Create:** `src/lib/chat-harness/context/resolve-exact-source-followup.ts`
 
 **What to extract from `route.ts`:**
-- Exact source resolution (lines 891–908): `resolveExactSourceFollowup` call
-- Exact source routing flags (lines 899–905)
+- Exact source resolution (lines 600–617): `resolveExactSourceFollowup` call
+- Exact source routing flags (lines 608–617)
 
-**Execution order note:** In the actual code, exact source resolution runs BEFORE the search decision (line 892 is before line 2616). The search decision then checks `exactSourceResolution.mode === "force-inspect"` at line 2598 as a pre-router guardrail. This means this task MUST execute before Task 3.6.
+**Execution order note:** In the actual code, exact source resolution runs BEFORE the search decision (line 600 is before line 1540). The search decision then checks `exactSourceResolution.mode === "force-inspect"` at line 1530 as a pre-router guardrail. This means this task MUST execute before Task 3.6.
 
 **Function signature:**
 ```typescript
@@ -965,13 +967,13 @@ export async function resolveExactSourceFollowup(params: {
 **Create:** `src/lib/chat-harness/context/resolve-search-decision.ts`
 
 **What to extract from `route.ts`:**
-- `decideWebSearchMode` function (lines 1230–1395)
-- Pre-router guardrails (lines 2579–2605): gagasan first turn guard, exact-source force-inspect guard
-- LLM router invocation (lines 2606–2693)
-- Search execution mode resolution (lines 2695–2741)
-- Reference inventory short-circuit (lines 2743–2768)
-- Search unavailability handling (lines 2770–2807)
-- Forced sync/submit flag computation (lines 2779–2806)
+- `decideWebSearchMode` function (lines 939–1104)
+- Pre-router guardrails (lines 1517–1538): gagasan first turn guard, exact-source force-inspect guard
+- LLM router invocation (lines 1540–1626)
+- Search execution mode resolution (lines 1628–1665)
+- Reference inventory short-circuit (lines 1676–1701)
+- Search unavailability handling (lines 1703–1732)
+- Forced sync/submit flag computation (lines 1712–1732)
 
 **Function signature:**
 ```typescript
@@ -998,7 +1000,7 @@ export async function resolveSearchDecision(params: {
 
 **Note:** If `earlyResponse` is non-undefined, the caller must return it immediately (reference inventory or search unavailability short-circuit).
 
-**Pre-router guardrails included:** Lines 2579–2605 contain `isGagasanFirstTurn` guard and `exactSourceResolution.mode === "force-inspect"` guard. These run BEFORE the LLM router and can short-circuit search to disabled. They MUST be inside this function, not left in route.ts.
+**Pre-router guardrails included:** Lines 1517–1538 contain `isGagasanFirstTurn` guard and `exactSourceResolution.mode === "force-inspect"` guard. These run BEFORE the LLM router and can short-circuit search to disabled. They MUST be inside this function, not left in route.ts.
 
 **Acceptance criteria:**
 - LLM router prompt text unchanged
@@ -1019,8 +1021,10 @@ export async function resolveSearchDecision(params: {
 **Create:** `src/lib/chat-harness/context/build-exact-source-routing.ts`
 
 **What to extract from `route.ts`:**
-- Deterministic exact source prepareStep build (lines 2862–2882)
+- Deterministic exact source prepareStep build (lines 1795–1817)
 - Exact source router note injection
+
+**Fallback path note:** There is an identical exact-source routing block for the fallback path at lines 2174–2200. This task must extract both instances into the same function, called once per path.
 
 This runs AFTER the search decision because it needs `enableWebSearch`, `forcedSyncPrepareStep`, and `forcedToolChoice` from Task 3.6.
 
@@ -1050,11 +1054,11 @@ export function buildExactSourceRouting(params: {
 **Create:** `src/lib/chat-harness/context/fetch-and-assemble-sources.ts`
 
 **What to extract from `route.ts`:**
-- Recent sources fetch from DB (lines 845–875)
-- Exact sources inventory fetch (lines 877–890)
-- Source inventory context build (line 905)
+- Recent sources fetch from DB (lines 554–584)
+- Exact sources inventory fetch (lines 586–599)
+- Source inventory context build (line 614)
 
-**Note:** This function FETCHES from DB and then BUILDS context strings. The previous task design incorrectly took `availableExactSources` and `recentSourcesList` as inputs — those are the outputs of the DB fetches at lines 860 and 878.
+**Note:** This function FETCHES from DB and then BUILDS context strings. The previous task design incorrectly took `availableExactSources` and `recentSourcesList` as inputs — those are the outputs of the DB fetches at lines 554–584 and 586–599.
 
 **Function signature:**
 ```typescript
@@ -1092,10 +1096,10 @@ export async function fetchAndAssembleSourcesContext(params: {
 **Create:** `src/lib/chat-harness/context/convert-messages.ts`
 
 **What to extract from `route.ts`:**
-- `convertToModelMessages` call (line 767)
-- Message sanitization/filtering loop (lines 769–816)
-- Paper mode message trimming (lines 818–839)
-- Recent conversation messages extraction for exact source (lines 554–576)
+- `convertToModelMessages` call (line 476)
+- Message sanitization/filtering loop (lines 478–525)
+- Paper mode message trimming (lines 527–548)
+- Recent conversation messages extraction for exact source (lines 277–300)
 
 **Function signature:**
 ```typescript
@@ -1125,24 +1129,22 @@ export function convertAndSanitizeMessages(params: {
 **Create:** `src/lib/chat-harness/context/search-evidence-helpers.ts`
 
 **What to extract from `route.ts`:**
-- `getSearchEvidenceFromStageData` (lines 1099–1127)
-- `hasStageArtifact` (lines 1129–1137)
-- `buildForcedSyncStatusMessage` (lines 1139–1174)
-- `hasPreviousSearchResults` (lines 1176–1228)
+- `getSearchEvidenceFromStageData` (lines 808–836)
+- `hasStageArtifact` (lines 838–846)
+- `buildForcedSyncStatusMessage` (lines 848–883)
+- `hasPreviousSearchResults` (lines 892–937)
 
 **Create:** `src/lib/chat-harness/shared/reasoning-sanitization.ts`
 
-**What to extract from `route.ts`:**
-- All reasoning text sanitization helpers (lines 1397–1550): `truncateReasoningText`, `collapseSpaces`, `containsForbiddenReasoningText`, `sanitizeReasoningText`, `normalizeLegacyReasoningNote`, `sanitizeReasoningMode`, `sanitizeReasoningStatus`, `sanitizeReasoningTraceForPersistence`
-- Constants: `MAX_REASONING_TRACE_STEPS`, `MAX_REASONING_TEXT_LENGTH`, `ALLOWED_REASONING_STEP_KEYS`, `ALLOWED_REASONING_STATUSES`, `FORBIDDEN_REASONING_PATTERNS`
+**Already extracted (Phase 2):** Reasoning sanitization helpers were extracted to `src/lib/chat-harness/executor/save-assistant-message.ts` during Phase 2 (Task 2.2). To move them to `shared/reasoning-sanitization.ts` as planned, re-extract from save-assistant-message.ts (not from route.ts).
 
 **Why `shared/` not `context/` or `executor/`:** These helpers are consumed by both `saveAssistantMessage` (Phase 2 executor) and the context/response factories. Placing them in a shared location avoids circular imports between `context/` and `executor/`.
 
 **Create:** `src/lib/chat-harness/context/response-factories.ts`
 
 **What to extract from `route.ts`:**
-- `createSearchUnavailableResponse` (lines 2253–2306)
-- `createStoredReferenceInventoryResponse` (lines 2308–2369)
+- `createSearchUnavailableResponse` (lines 1186–1239)
+- `createStoredReferenceInventoryResponse` (lines 1241–1302)
 
 **Closure-to-parameter conversion:** Both functions close over route-level variables: `currentConversationId`, `userId`, `convexToken`, `modelNames`, `telemetryStartTime`, `skillTelemetryContext`. These must become explicit parameters. Both also call `saveAssistantMessage` (Phase 2) and `logAiTelemetry` — these become imports from `executor/` and `@/lib/ai/telemetry` respectively.
 
@@ -1161,7 +1163,7 @@ export function convertAndSanitizeMessages(params: {
 **Create:** `src/lib/chat-harness/context/execute-web-search-path.ts`
 
 **What to extract from `route.ts`:**
-- The `if (enableWebSearch)` block (lines 2899–3089) including:
+- The `if (enableWebSearch)` block (lines 1825–1980) including:
   - Retriever chain validation
   - Fallback compose model acquisition
   - `executeWebSearch()` call with full inline onFinish handler
@@ -1212,14 +1214,14 @@ Returns `Response` if web search path was taken (caller returns it immediately).
 
 **Modify:** `src/app/api/chat/route.ts`
 
-**Dynamic imports ownership:** The dynamic import block at route.ts:1003–1022 (which produces `getGatewayModel`, `getOpenRouterModel`, `modelNames`, `webSearchConfig`, `samplingOptions`, `reasoningSettings`, `providerSettings`) is loaded inside `assembleStepContext`. The orchestrator calls the imports, materializes the model instance, and passes it to sub-tasks that need it (3.5, 3.6). The model and config are also returned in `ResolvedStepContext` for Phase 2 (executor) consumption.
+**Dynamic imports ownership:** The dynamic import block at route.ts:712–731 (which produces `getGatewayModel`, `getOpenRouterModel`, `modelNames`, `webSearchConfig`, `samplingOptions`, `reasoningSettings`, `providerSettings`) is loaded inside `assembleStepContext`. The orchestrator calls the imports, materializes the model instance, and passes it to sub-tasks that need it (3.5, 3.6). The model and config are also returned in `ResolvedStepContext` for Phase 2 (executor) consumption.
 
 **`assembleStepContext` orchestration sequence:**
 ```
 1. convertAndSanitizeMessages (Task 3.8)
 2. assembleFileContext (Task 3.2)  [parallel with 1]
 3. fetchAndAssembleSourcesContext (Task 3.7)  [parallel with 1, 2]
-4. Dynamic imports + model loading (route.ts:1003-1022)
+4. Dynamic imports + model loading (route.ts:712-731)
 5. resolveExactSourceFollowup (Task 3.5)  [needs 3.availableExactSources + 4.model]
 6. resolveSearchDecision (Task 3.6)  [needs 5.exactSourceResolution + 4.model]
 7. buildExactSourceRouting (Task 3.6b)  [needs 5 + 6]
