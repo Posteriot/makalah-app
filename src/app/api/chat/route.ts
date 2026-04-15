@@ -3500,6 +3500,66 @@ Aturan:
                             })
                         }
 
+                        // ── Harness chain completion: model started tool chain but didn't finish ──
+                        // AI SDK loop terminates when model produces text, even if prepareStep
+                        // requested another tool. If model called updateStageData but abandoned
+                        // chain before createArtifact, harness completes it programmatically.
+                        if (
+                            paperStageScope &&
+                            paperSession?._id &&
+                            isDraftingStage &&
+                            paperToolTracker.sawUpdateStageData &&
+                            !paperToolTracker.sawCreateArtifactSuccess &&
+                            !paperToolTracker.sawUpdateArtifactSuccess &&
+                            !paperToolTracker.sawSubmitValidationSuccess
+                        ) {
+                            const chainStartTime = Date.now()
+                            try {
+                                const artifactContent = normalizedText.trim() || persistedContent.trim() || "Draft content"
+                                const artifactTitle = getStageLabel(paperStageScope)
+
+                                console.info(`[CHAIN-COMPLETION] stage=${paperStageScope} starting: createArtifact + submitForValidation (model abandoned chain after updateStageData)`)
+
+                                // 1. Create artifact
+                                const artifactResult = await retryMutation(
+                                    () => fetchMutationWithToken(api.artifacts.create, {
+                                        conversationId: currentConversationId as Id<"conversations">,
+                                        userId: userId as Id<"users">,
+                                        type: "section",
+                                        title: artifactTitle,
+                                        content: artifactContent,
+                                        format: "markdown",
+                                    }),
+                                    "artifacts.create(chain-completion)"
+                                ) as { artifactId: string }
+
+                                // 2. Link artifact to stageData
+                                await retryMutation(
+                                    () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                        sessionId: paperSession!._id,
+                                        stage: paperStageScope,
+                                        data: { artifactId: artifactResult.artifactId },
+                                    }),
+                                    "paperSessions.updateStageData(chain-completion-link)"
+                                )
+
+                                // 3. Submit for validation
+                                await retryMutation(
+                                    () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                                        sessionId: paperSession!._id,
+                                    }),
+                                    "paperSessions.submitForValidation(chain-completion)"
+                                )
+
+                                paperToolTracker.sawCreateArtifactSuccess = true
+                                paperToolTracker.sawSubmitValidationSuccess = true
+
+                                console.info(`[CHAIN-COMPLETION] stage=${paperStageScope} success: artifactId=${artifactResult.artifactId} elapsed=${Date.now() - chainStartTime}ms`)
+                            } catch (chainErr) {
+                                console.error(`[CHAIN-COMPLETION] stage=${paperStageScope} failed after ${Date.now() - chainStartTime}ms:`, chainErr)
+                            }
+                        }
+
                         // Empty response recovery: if model produced nothing during a drafting stage,
                         // inject a recovery message so user isn't stranded without interaction.
                         if (
@@ -4353,6 +4413,60 @@ Aturan:
                                 persistedContent = guardResult.text
                                 fallbackStreamContentOverride = guardResult.text
                                 console.info(`[PAPER][outcome-guard][fallback] stage=${paperStageScope} violation=${guardResult.violationType} action=${resolvedWorkflow?.action ?? "unknown"} contract=${resolvedWorkflow?.contractVersion ?? "legacy"}`)
+                            }
+                        }
+
+                        // ── Harness chain completion (fallback path) ──
+                        // Must run BEFORE empty response recovery to avoid using placeholder text as artifact content.
+                        if (
+                            paperStageScope &&
+                            paperSession?._id &&
+                            isDraftingStage &&
+                            paperToolTracker.sawUpdateStageData &&
+                            !paperToolTracker.sawCreateArtifactSuccess &&
+                            !paperToolTracker.sawUpdateArtifactSuccess &&
+                            !paperToolTracker.sawSubmitValidationSuccess
+                        ) {
+                            const chainStartTime = Date.now()
+                            try {
+                                const artifactContent = normalizedText.trim() || persistedContent.trim() || "Draft content"
+                                const artifactTitle = getStageLabel(paperStageScope)
+
+                                    console.info(`[CHAIN-COMPLETION][fallback] stage=${paperStageScope} starting: createArtifact + submitForValidation`)
+
+                                    const artifactResult = await retryMutation(
+                                        () => fetchMutationWithToken(api.artifacts.create, {
+                                            conversationId: currentConversationId as Id<"conversations">,
+                                            userId: userId as Id<"users">,
+                                            type: "section",
+                                            title: artifactTitle,
+                                            content: artifactContent,
+                                            format: "markdown",
+                                        }),
+                                        "artifacts.create(chain-completion-fallback)"
+                                    ) as { artifactId: string }
+
+                                    await retryMutation(
+                                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                            sessionId: paperSession!._id,
+                                            stage: paperStageScope,
+                                            data: { artifactId: artifactResult.artifactId },
+                                        }),
+                                        "paperSessions.updateStageData(chain-completion-fallback-link)"
+                                    )
+
+                                    await retryMutation(
+                                        () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                                            sessionId: paperSession!._id,
+                                        }),
+                                        "paperSessions.submitForValidation(chain-completion-fallback)"
+                                    )
+
+                                paperToolTracker.sawCreateArtifactSuccess = true
+                                paperToolTracker.sawSubmitValidationSuccess = true
+                                console.info(`[CHAIN-COMPLETION][fallback] stage=${paperStageScope} success: artifactId=${artifactResult.artifactId} elapsed=${Date.now() - chainStartTime}ms`)
+                            } catch (chainErr) {
+                                console.error(`[CHAIN-COMPLETION][fallback] stage=${paperStageScope} failed after ${Date.now() - chainStartTime}ms:`, chainErr)
                             }
                         }
 
