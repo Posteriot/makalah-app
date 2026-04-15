@@ -142,7 +142,7 @@ export interface SaveAssistantMessageParams {
     conversationId: Id<"conversations">
     content: string
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    sources: any[]
+    sources: any[] | undefined
     usedModel: string
     reasoningTrace: PersistedCuratedTraceSnapshot | undefined
     jsonRendererChoice: JsonRendererChoicePayload | undefined

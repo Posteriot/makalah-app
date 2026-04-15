@@ -1,0 +1,746 @@
+import * as Sentry from "@sentry/nextjs"
+import type { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google"
+import type { Spec } from "@json-render/core"
+import type { PlanSpec } from "@/lib/ai/harness/plan-spec"
+import type { PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
+import type { PaperStageId } from "../../../../convex/paperSessions/constants"
+import type { Id } from "../../../../convex/_generated/dataModel"
+import { api } from "../../../../convex/_generated/api"
+import { retryMutation, retryQuery } from "@/lib/convex/retry"
+import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
+import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
+import { classifyRevisionIntent } from "@/lib/ai/classifiers/revision-intent-classifier"
+import { logAiTelemetry } from "@/lib/ai/telemetry"
+import { recordUsageAfterOperation, type OperationType } from "@/lib/billing/enforcement"
+import { sanitizeChoiceOutcome } from "@/lib/chat/choice-outcome-guard"
+import { UNFENCED_PLAN_REGEX, planSpecSchema, autoCompletePlanOnValidation } from "@/lib/ai/harness/plan-spec"
+import { compileChoiceSpec } from "@/lib/json-render/compile-choice-spec"
+import { getStageLabel } from "../../../../convex/paperSessions/constants"
+import { shouldAttemptRescue } from "@/lib/chat/choice-request"
+import { saveAssistantMessage } from "./save-assistant-message"
+import type {
+    OnFinishConfig,
+    PaperSessionForExecutor,
+} from "./types"
+
+// ────────────────────────────────────────────────────────────────
+// Types for buildOnFinishHandler
+// ────────────────────────────────────────────────────────────────
+
+/** Reasoning trace closure — shared mutable state between stream writer and onFinish. */
+export interface ReasoningTraceContext {
+    enabled: boolean
+    controller: { enabled: boolean; finalize: (opts: { outcome: string; sourceCount: number }) => void; getPersistedSnapshot: () => PersistedCuratedTraceSnapshot | undefined } | null
+    snapshot: PersistedCuratedTraceSnapshot | undefined
+    sourceCount: number
+    captureSnapshot: () => void
+}
+
+/** Telemetry context passed to logAiTelemetry. */
+export interface TelemetryContext {
+    provider: string
+    model: string
+    isPrimaryProvider: boolean
+    failoverUsed: boolean
+    toolUsed: string | undefined
+    mode: "paper" | "normal"
+    startTime: number
+    skillContext: Record<string, unknown>
+}
+
+/** Per-stream-call context that changes between primary/fallback invocations. */
+export interface OnFinishStreamContext {
+    messageId: string
+    reasoningTrace: ReasoningTraceContext
+    telemetry: TelemetryContext
+    /** Whether this particular stream is forced-sync (model was forced to getCurrentPaperState). */
+    shouldForceGetCurrentPaperState: boolean
+    /** Builds the forced-sync status message from session state. */
+    buildForcedSyncStatusMessage: (session: PaperSessionForExecutor | null) => string
+    /** Returns the current plan snapshot from the stream pipeline capture layer. */
+    getCurrentPlanSnapshot: () => PlanSpec | undefined
+    /** Elapsed ms ref for step timing (primary only). */
+    enforcerStepStartTime: number | undefined
+}
+
+/** Result from buildOnFinishHandler. */
+export interface OnFinishHandlerResult {
+    handler: (result: {
+        text: string
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        steps: any[]
+        providerMetadata?: unknown
+        usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
+    }) => Promise<void>
+    streamContentOverrideRef: { current: string | null }
+    capturedSpecRef: { current: Spec | null }
+    capturedPlanSpecRef: { current: PlanSpec | null }
+}
+
+// ────────────────────────────────────────────────────────────────
+// buildOnFinishHandler
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * Build a unified onFinish handler for streamText.
+ *
+ * The 5 primary-only behaviors are gated by feature flags in `OnFinishConfig`:
+ *   1. enableGroundingExtraction — Google grounding metadata → sources
+ *   2. enableSourceTitleEnrichment — enrichSourcesWithFetchedTitles
+ *   3. enableRevisionClassifier — classifyRevisionIntent
+ *   4. isCompileThenFinalize — tool chain expected order includes compileDaftarPustaka
+ *   5. enablePlanSpecFallbackExtraction — UNFENCED_PLAN_REGEX + YAML fallback
+ *
+ * Returns mutable refs so the stream writer (buildStepStream) can share state.
+ */
+export function buildOnFinishHandler(
+    config: OnFinishConfig,
+    streamCtx: OnFinishStreamContext,
+): OnFinishHandlerResult {
+    // Mutable refs shared with stream writer
+    const streamContentOverrideRef: { current: string | null } = { current: null }
+    const capturedSpecRef: { current: Spec | null } = { current: null }
+    const capturedPlanSpecRef: { current: PlanSpec | null } = { current: null }
+
+    const {
+        conversationId,
+        userId,
+        modelName,
+        model,
+        convexToken,
+        billingContext,
+        paperSession,
+        paperStageScope,
+        paperToolTracker,
+        resolvedWorkflow,
+        choiceInteractionEvent,
+        isCompileThenFinalize,
+        normalizedLastUserContent,
+        maybeUpdateTitleFromAI,
+        fetchQueryWithToken,
+        fetchMutationWithToken,
+        requestStartedAt,
+        isDraftingStage,
+        isHasilPostChoice,
+        enableGroundingExtraction,
+        enableSourceTitleEnrichment,
+        enableRevisionClassifier,
+        enablePlanSpecFallbackExtraction,
+    } = config
+
+    const logTag = streamCtx.telemetry.failoverUsed ? "[fallback]" : ""
+
+    const handler = async (result: {
+        text: string
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        steps: any[]
+        providerMetadata?: unknown
+        usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
+    }): Promise<void> => {
+        const { text, steps, providerMetadata, usage } = result
+
+        // ── Step timing log (primary only, when enforcerStepStartTime provided) ──
+        if (streamCtx.enforcerStepStartTime && paperStageScope && Array.isArray(steps) && steps.length > 0) {
+            const lastIdx = steps.length - 1
+            const lastTools = steps[lastIdx]?.toolCalls?.map((tc: { toolName: string }) => tc.toolName).join(",") ?? "text"
+            console.info(`[STEP-TIMING] step=${lastIdx} stage=${paperStageScope} tools=[${lastTools}] elapsed=${Date.now() - streamCtx.enforcerStepStartTime}ms (final)`)
+        }
+
+        // ── Tool chain ordering observability ──
+        if (paperStageScope && Array.isArray(steps) && steps.length > 0) {
+            const toolSequence = steps
+                .flatMap((s: { toolCalls?: Array<{ toolName: string }> }, i: number) =>
+                    (s.toolCalls ?? []).map(tc => `${i}:${tc.toolName}`)
+                )
+            if (toolSequence.length > 0) {
+                const finalizationTools = ["updateStageData", "createArtifact", "submitStageForValidation"]
+                // Feature flag #4: isCompileThenFinalize changes expected sequence
+                const expected = isCompileThenFinalize
+                    ? ["compileDaftarPustaka", "updateStageData", "createArtifact", "submitStageForValidation"]
+                    : ["updateStageData", "createArtifact", "submitStageForValidation"]
+                const actualNames = toolSequence.map(t => t.split(":")[1])
+                const dedupedNames = actualNames.filter((name, i) => i === 0 || name !== actualNames[i - 1])
+                const hasFinalizationTool = actualNames.some(name => finalizationTools.includes(name))
+                if (hasFinalizationTool) {
+                    const isCorrectOrder = expected.every((tool, idx) => dedupedNames[idx] === tool)
+                    console.info(`[F1-F6-TEST] ToolChainOrder${logTag} { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], expected: [${expected.join(", ")}], correct: ${isCorrectOrder} }`)
+                } else {
+                    console.info(`[F1-F6-TEST] ToolChainOrder${logTag} { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], status: "not_applicable" }`)
+                }
+            }
+        }
+
+        // ── Feature flag #1: Grounding extraction (primary only) ──
+        let sources: { url: string; title: string; publishedAt?: number | null }[] | undefined
+
+        if (enableGroundingExtraction && providerMetadata) {
+            const googleMetadata = (providerMetadata as Record<string, unknown>)?.google as unknown as GoogleGenerativeAIProviderMetadata | undefined
+            const groundingMetadata = googleMetadata?.groundingMetadata
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const chunks = (groundingMetadata as any)?.groundingChunks as any[] | undefined
+
+            if (chunks) {
+                sources = chunks
+                    .map((chunk) => {
+                        if (chunk.web?.uri) {
+                            const normalizedUrl = normalizeWebSearchUrl(chunk.web.uri)
+                            return {
+                                url: normalizedUrl,
+                                title: chunk.web.title || normalizedUrl,
+                            }
+                        }
+                        return null
+                    })
+                    .filter(Boolean) as { url: string; title: string; publishedAt?: number | null }[]
+            }
+        }
+
+        // ── Concatenate + normalize text ──
+        const allStepsText = Array.isArray(steps) && steps.length > 1
+            ? steps.map((s: { text?: string }) => typeof s.text === "string" ? s.text : "").filter((t) => t.trim().length > 0).join("\n\n").trim()
+            : ""
+        const rawText = (allStepsText || (typeof text === "string" ? text : "")).trim()
+        const normalizedText = rawText.replace(
+            /```yaml-spec[\s\S]*?```/g,
+            ""
+        ).replace(
+            /```plan-spec[\s\S]*?```/g,
+            ""
+        ).replace(
+            /(?:^|\n)stage:\s*\w+\s*\nsummary:\s*.+\ntasks:\s*\n(?:\s*-\s*label:\s*.+\n\s*status:\s*(?:complete|in-progress|pending)\s*\n?)+/g,
+            ""
+        ).replace(/\n{3,}/g, "\n\n").trim()
+
+        const shouldPersistForcedSyncFallback = streamCtx.shouldForceGetCurrentPaperState && normalizedText.length === 0
+        let persistedContent = shouldPersistForcedSyncFallback
+            ? streamCtx.buildForcedSyncStatusMessage(paperSession)
+            : normalizedText
+
+        // ── Hasil post-choice observability ──
+        if (isHasilPostChoice && normalizedText.length > 0) {
+            if (
+                paperToolTracker.sawSubmitValidationArtifactMissing &&
+                paperToolTracker.sawCreateArtifactSuccess &&
+                !paperToolTracker.sawSubmitValidationSuccess
+            ) {
+                console.warn(`[HASIL][ordering-bug]${logTag} submitStageForValidation failed before artifact existed, createArtifact succeeded later, but submit was not retried.`)
+            }
+            if (
+                paperToolTracker.sawUpdateStageData &&
+                !paperToolTracker.sawCreateArtifactSuccess &&
+                !paperToolTracker.sawSubmitValidationSuccess
+            ) {
+                console.warn(`[HASIL][partial-save-stall]${logTag} updateStageData called but createArtifact and submitStageForValidation were not called. Tool chain incomplete.`)
+            }
+            if (
+                /panel validasi|approve|revisi/i.test(normalizedText) &&
+                !paperToolTracker.sawSubmitValidationSuccess
+            ) {
+                console.warn(`[HASIL][false-validation-claim]${logTag} response mentioned validation flow without successful submitStageForValidation.`)
+            }
+            if (
+                /aku akan menyusun|draf ini akan|berikut adalah draf/i.test(normalizedText) &&
+                !paperToolTracker.sawCreateArtifactSuccess
+            ) {
+                console.warn(`[HASIL][prose-leakage]${logTag} post-choice response previewed draft content in chat before artifact creation.`)
+            }
+        }
+
+        // ── Daftar pustaka observability ──
+        if (paperStageScope === "daftar_pustaka" && normalizedText.length > 0) {
+            if (
+                paperToolTracker.sawCompileDaftarPustakaPersist &&
+                !paperToolTracker.sawCreateArtifactSuccess &&
+                !paperToolTracker.sawUpdateArtifactSuccess
+            ) {
+                console.warn(`[DAFTAR_PUSTAKA][compiled-but-no-artifact]${logTag} persist compilation succeeded but no artifact tool followed.`)
+            }
+            if (
+                /kesalahan teknis|maafkan aku|saya akan coba|memperbaiki/i.test(normalizedText) &&
+                (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess)
+            ) {
+                console.warn(`[PAPER][nonfatal-error-leakage]${logTag} response exposed internal failure narration even though artifact was created successfully.`)
+            }
+            if (
+                paperSession?.stageStatus === "revision" &&
+                paperToolTracker.sawCreateArtifactSuccess &&
+                !paperToolTracker.sawUpdateArtifactSuccess
+            ) {
+                console.warn(`[DAFTAR_PUSTAKA][revision-create-instead-of-update]${logTag} revision turn created new artifact instead of updating existing one.`)
+            }
+            if (
+                (paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess) &&
+                !paperToolTracker.sawSubmitValidationSuccess
+            ) {
+                console.warn(`[DAFTAR_PUSTAKA][artifact-without-submit]${logTag} artifact created/updated but submitStageForValidation was not called.`)
+            }
+        }
+
+        // ── Feature flag #3: Revision classifier (primary only) ──
+        if (enableRevisionClassifier
+            && paperSession?.stageStatus === "pending_validation"
+            && !paperToolTracker.sawRequestRevision
+            && !paperToolTracker.sawUpdateStageData
+            && !paperToolTracker.sawCreateArtifactSuccess
+            && !paperToolTracker.sawUpdateArtifactSuccess
+            && normalizedLastUserContent
+            && model) {
+            const revisionResult = await classifyRevisionIntent({
+                lastUserContent: normalizedLastUserContent,
+                model,
+            })
+            if (revisionResult?.output.hasRevisionIntent && revisionResult.output.confidence >= 0.6) {
+                console.warn(
+                    `[revision-intent-answered-without-tools] stage=${paperSession.currentStage} ` +
+                    `confidence=${revisionResult.output.confidence} — model responded to apparent revision intent with prose only`
+                )
+            }
+        }
+
+        // ── Generic cross-stage partial-save-stall detection ──
+        if (choiceInteractionEvent && paperStageScope) {
+            const wasCommitPoint = resolvedWorkflow?.action !== "continue_discussion"
+            if (wasCommitPoint
+                && paperToolTracker.sawUpdateStageData
+                && !paperToolTracker.sawCreateArtifactSuccess
+                && !paperToolTracker.sawUpdateArtifactSuccess
+                && !paperToolTracker.sawSubmitValidationSuccess) {
+                console.warn(`[CHOICE][partial-save-stall] stage=${paperStageScope} — commit-point choice resulted in updateStageData only, no artifact or submit`)
+            }
+        }
+
+        // ── Outcome-gated persisted content ──
+        if (paperStageScope && normalizedText.length > 0) {
+            const guardResult = sanitizeChoiceOutcome({
+                action: resolvedWorkflow?.action ?? "finalize_stage",
+                text: normalizedText,
+                hasArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess,
+                submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
+            })
+            if (guardResult.wasModified) {
+                persistedContent = guardResult.text
+                streamContentOverrideRef.current = guardResult.text
+                console.info(`[PAPER][outcome-guard]${logTag} stage=${paperStageScope} violation=${guardResult.violationType} action=${resolvedWorkflow?.action ?? "unknown"} contract=${resolvedWorkflow?.contractVersion ?? "legacy"}`)
+            }
+        }
+
+        // ── System-owned closing message for completed session ──
+        if (
+            paperSession?.currentStage === "completed" &&
+            normalizedText.length > 0 &&
+            /tool_code|sekarang kita masuk ke tahap|yaml-spec|plan-spec|```yaml/i.test(normalizedText)
+        ) {
+            persistedContent = "Semua tahap penyusunan makalah sudah selesai dan disetujui.\n\nRiwayat percakapan di sidebar menyimpan artifact dari setiap tahap, mulai dari gagasan awal sampai pemilihan judul. Linimasa progres juga sudah penuh, menandakan seluruh tahapan penyusunan makalah telah terlewati."
+            console.info(`[PAPER][completed-guard]${logTag} replaced corrupt/off-context model output with system-owned closing message`)
+        }
+
+        // ── Server-owned fallback: lampiran "tidak ada" path ──
+        const NO_APPENDIX_IDS = new Set(["tidak-ada-lampiran", "option-tidak-ada-lampiran", "no-appendix"])
+        const lampiranRescueCheck = resolvedWorkflow ? shouldAttemptRescue({
+            resolvedWorkflow,
+            paperToolTracker,
+        }) : { shouldRescue: true, reason: "legacy_no_resolver" }
+        if (
+            paperStageScope === "lampiran" &&
+            lampiranRescueCheck.shouldRescue &&
+            choiceInteractionEvent?.stage === "lampiran" &&
+            choiceInteractionEvent.selectedOptionIds.some(id => NO_APPENDIX_IDS.has(id.trim().toLowerCase())) &&
+            paperToolTracker.sawUpdateStageData &&
+            !paperToolTracker.sawCreateArtifactSuccess &&
+            !paperToolTracker.sawUpdateArtifactSuccess
+        ) {
+            console.info(`[PAPER][rescue] stage=lampiran reason=${lampiranRescueCheck.reason} fallbackPolicy=${resolvedWorkflow?.fallbackPolicy ?? "legacy"}${logTag ? ` path=fallback` : ""}`)
+            try {
+                const lampiranStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["lampiran"]
+                const alasan = typeof lampiranStageData?.alasanTidakAda === "string" ? lampiranStageData.alasanTidakAda : ""
+                const placeholderContent = alasan
+                    ? `Tidak ada lampiran.\n\nAlasan: ${alasan}`
+                    : "Tidak ada lampiran."
+
+                const placeholderResult = await retryMutation(
+                    () => fetchMutationWithToken(api.artifacts.create, {
+                        conversationId,
+                        userId,
+                        type: "section",
+                        title: "Lampiran",
+                        content: placeholderContent,
+                    }),
+                    `artifacts.create(lampiran-placeholder${logTag ? "-fallback" : ""})`
+                ) as { artifactId: string }
+
+                try {
+                    await retryMutation(
+                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                            sessionId: paperSession!._id,
+                            stage: "lampiran",
+                            data: { artifactId: placeholderResult.artifactId },
+                        }),
+                        `paperSessions.updateStageData(lampiran-link${logTag ? "-fallback" : ""})`
+                    )
+                } catch { /* non-critical */ }
+
+                await retryMutation(
+                    () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                        sessionId: paperSession!._id,
+                    }),
+                    `paperSessions.submitForValidation(lampiran${logTag ? "-fallback" : ""})`
+                )
+                paperToolTracker.sawCreateArtifactSuccess = true
+                paperToolTracker.sawSubmitValidationSuccess = true
+                persistedContent = "Tidak ada lampiran untuk paper ini. Silakan review di panel validasi."
+                console.info(`[LAMPIRAN][server-fallback]${logTag} placeholder artifact created and submitted for validation`)
+            } catch (fallbackErr) {
+                console.error(`[LAMPIRAN][server-fallback]${logTag} failed:`, fallbackErr)
+            }
+        }
+
+        // ── Server-owned fallback: judul title selection ──
+        const judulRescueCheck = resolvedWorkflow ? shouldAttemptRescue({
+            resolvedWorkflow,
+            paperToolTracker,
+        }) : { shouldRescue: true, reason: "legacy_no_resolver" }
+        if (
+            paperStageScope === "judul" &&
+            judulRescueCheck.shouldRescue &&
+            choiceInteractionEvent?.stage === "judul" &&
+            !paperToolTracker.sawUpdateStageData &&
+            !paperToolTracker.sawCreateArtifactSuccess &&
+            !paperToolTracker.sawUpdateArtifactSuccess &&
+            normalizedText.length > 0
+        ) {
+            console.info(`[PAPER][rescue] stage=judul reason=${judulRescueCheck.reason} fallbackPolicy=${resolvedWorkflow?.fallbackPolicy ?? "legacy"}${logTag ? ` path=fallback` : ""}`)
+            try {
+                let selectedTitle: string | undefined
+                try {
+                    const sourceMsg = await retryQuery(
+                        () => fetchQueryWithToken(api.messages.getMessageByUiMessageId, {
+                            uiMessageId: choiceInteractionEvent.sourceMessageId,
+                            conversationId,
+                        }),
+                        `messages.getMessageByUiMessageId(judul-source${logTag ? "-fb" : ""})`
+                    ) as { jsonRendererChoice?: string } | null
+                    if (sourceMsg?.jsonRendererChoice) {
+                        const spec = JSON.parse(sourceMsg.jsonRendererChoice)
+                        const selectedId = choiceInteractionEvent.selectedOptionIds[0]
+                        const elements = spec?.elements ?? {}
+                        for (const el of Object.values(elements) as Array<{ type?: string; props?: { optionId?: string; label?: string } }>) {
+                            if (el?.type === "ChoiceOptionButton" && el?.props?.optionId === selectedId && el?.props?.label) {
+                                selectedTitle = el.props.label
+                                break
+                            }
+                        }
+                        if (selectedTitle) {
+                            console.info(`[JUDUL][server-fallback]${logTag} resolved title from choice payload: "${selectedTitle}"`)
+                        } else {
+                            console.warn(`[JUDUL][server-fallback]${logTag}[selected-option-unresolved] option ${selectedId} not found in spec elements`)
+                        }
+                    } else {
+                        console.warn(`[JUDUL][server-fallback]${logTag}[source-message-missing-choice-payload] no jsonRendererChoice in source message`)
+                    }
+                } catch (resolveErr) {
+                    console.warn(`[JUDUL][server-fallback]${logTag} choice payload resolution failed:`, resolveErr)
+                }
+                if (!selectedTitle) {
+                    const titleMatch = normalizedText.match(/judulTerpilih["\s:]*"([^"]+)"/i)
+                        ?? normalizedText.match(/judul[^"]*"([^"]{20,})"/)
+                        ?? normalizedText.match(/["""]([^"""]{20,})["""]/)
+                    selectedTitle = titleMatch?.[1]?.trim()
+                }
+
+                if (selectedTitle) {
+                    await retryMutation(
+                        () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                            sessionId: paperSession!._id,
+                            stage: "judul",
+                            data: { judulTerpilih: selectedTitle, alasanPemilihan: "Dipilih oleh user via choice card." },
+                        }),
+                        `paperSessions.updateStageData(judul-fallback${logTag ? "-fb" : ""})`
+                    )
+
+                    const judulStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["judul"]
+                    const existingJudulArtifactId = judulStageData?.artifactId as string | undefined
+
+                    if (existingJudulArtifactId) {
+                        await retryMutation(
+                            () => fetchMutationWithToken(api.artifacts.update, {
+                                artifactId: existingJudulArtifactId as Id<"artifacts">,
+                                userId,
+                                content: `Judul Terpilih:\n\n${selectedTitle}`,
+                                title: "Pemilihan Judul",
+                            }),
+                            `artifacts.update(judul-fallback${logTag ? "-fb" : ""})`
+                        )
+                        paperToolTracker.sawUpdateArtifactSuccess = true
+                    } else {
+                        const judulArtifact = await retryMutation(
+                            () => fetchMutationWithToken(api.artifacts.create, {
+                                conversationId,
+                                userId,
+                                type: "section",
+                                title: "Pemilihan Judul",
+                                content: `Judul Terpilih:\n\n${selectedTitle}`,
+                            }),
+                            `artifacts.create(judul-fallback${logTag ? "-fb" : ""})`
+                        ) as { artifactId: string }
+
+                        try {
+                            await retryMutation(
+                                () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                    sessionId: paperSession!._id,
+                                    stage: "judul",
+                                    data: { artifactId: judulArtifact.artifactId },
+                                }),
+                                `paperSessions.updateStageData(judul-link${logTag ? "-fb" : ""})`
+                            )
+                        } catch { /* non-critical */ }
+                    }
+
+                    await retryMutation(
+                        () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                            sessionId: paperSession!._id,
+                        }),
+                        `paperSessions.submitForValidation(judul-fallback${logTag ? "-fb" : ""})`
+                    )
+                    paperToolTracker.sawCreateArtifactSuccess = true
+                    paperToolTracker.sawSubmitValidationSuccess = true
+                    persistedContent = `Judul "${selectedTitle}" sudah dipilih. Silakan review di panel validasi.`
+                    console.info(`[JUDUL][server-fallback]${logTag} title saved, artifact created, submitted for validation`)
+                } else {
+                    console.warn(`[JUDUL][server-fallback]${logTag} could not extract title from model response`)
+                }
+            } catch (fallbackErr) {
+                console.error(`[JUDUL][server-fallback]${logTag} failed:`, fallbackErr)
+            }
+        }
+
+        // ── Feature flag #2: Source title enrichment (primary only) ──
+        if (enableSourceTitleEnrichment && normalizedText.length > 0 && sources && sources.length > 0) {
+            sources = await enrichSourcesWithFetchedTitles(sources, {
+                concurrency: 4,
+                timeoutMs: 5000,
+            })
+        }
+
+        // ── Harness chain completion ──
+        if (
+            paperStageScope &&
+            paperSession?._id &&
+            isDraftingStage &&
+            paperToolTracker.sawUpdateStageData &&
+            !paperToolTracker.sawCreateArtifactSuccess &&
+            !paperToolTracker.sawUpdateArtifactSuccess &&
+            !paperToolTracker.sawSubmitValidationSuccess
+        ) {
+            const chainStartTime = Date.now()
+            try {
+                const artifactContent = normalizedText.trim() || persistedContent.trim() || "Draft content"
+                const artifactTitle = getStageLabel(paperStageScope as PaperStageId)
+
+                console.info(`[CHAIN-COMPLETION]${logTag} stage=${paperStageScope} starting: createArtifact + submitForValidation (model abandoned chain after updateStageData)`)
+
+                const artifactResult = await retryMutation(
+                    () => fetchMutationWithToken(api.artifacts.create, {
+                        conversationId,
+                        userId,
+                        type: "section",
+                        title: artifactTitle,
+                        content: artifactContent,
+                        format: "markdown",
+                    }),
+                    `artifacts.create(chain-completion${logTag ? "-fallback" : ""})`
+                ) as { artifactId: string }
+
+                await retryMutation(
+                    () => fetchMutationWithToken(api.paperSessions.updateStageData, {
+                        sessionId: paperSession!._id,
+                        stage: paperStageScope,
+                        data: { artifactId: artifactResult.artifactId },
+                    }),
+                    `paperSessions.updateStageData(chain-completion${logTag ? "-fallback" : ""}-link)`
+                )
+
+                await retryMutation(
+                    () => fetchMutationWithToken(api.paperSessions.submitForValidation, {
+                        sessionId: paperSession!._id,
+                    }),
+                    `paperSessions.submitForValidation(chain-completion${logTag ? "-fallback" : ""})`
+                )
+
+                paperToolTracker.sawCreateArtifactSuccess = true
+                paperToolTracker.sawSubmitValidationSuccess = true
+
+                console.info(`[CHAIN-COMPLETION]${logTag} stage=${paperStageScope} success: artifactId=${artifactResult.artifactId} elapsed=${Date.now() - chainStartTime}ms`)
+            } catch (chainErr) {
+                console.error(`[CHAIN-COMPLETION]${logTag} stage=${paperStageScope} failed after ${Date.now() - chainStartTime}ms:`, chainErr)
+            }
+        }
+
+        // ── Empty response recovery ──
+        if (
+            persistedContent.length === 0 &&
+            paperStageScope &&
+            paperSession?.stageStatus === "drafting" &&
+            !paperToolTracker?.sawSubmitValidationSuccess
+        ) {
+            persistedContent = "Please select the next step to continue."
+            console.info(`[EMPTY-RESPONSE][recovery]${logTag} stage=${paperStageScope} injecting recovery message + fallback choice card`)
+        }
+
+        // ── Message persistence ──
+        if (persistedContent.length > 0) {
+            const persistedReasoningTrace = (() => {
+                if (!streamCtx.reasoningTrace.enabled) return undefined
+                if (!streamCtx.reasoningTrace.controller?.enabled) return undefined
+                if (!streamCtx.reasoningTrace.snapshot) {
+                    streamCtx.reasoningTrace.controller.finalize({
+                        outcome: "done",
+                        sourceCount: streamCtx.reasoningTrace.sourceCount,
+                    })
+                }
+                streamCtx.reasoningTrace.captureSnapshot()
+                return streamCtx.reasoningTrace.snapshot
+            })()
+
+            // Fallback choice card injection
+            if (
+                !(capturedSpecRef.current && capturedSpecRef.current.root) &&
+                paperStageScope &&
+                paperSession?.stageStatus === "drafting" &&
+                !paperToolTracker?.sawSubmitValidationSuccess
+            ) {
+                const { spec: fallbackSpec } = compileChoiceSpec({
+                    stage: paperStageScope,
+                    kind: "single-select",
+                    title: "Apa langkah selanjutnya?",
+                    options: [
+                        { id: "lanjutkan-diskusi", label: "Lanjutkan diskusi" },
+                    ],
+                    recommendedId: "lanjutkan-diskusi",
+                    appendValidationOption: true,
+                })
+                capturedSpecRef.current = fallbackSpec as Spec
+                console.info(`[CHOICE-CARD][fallback-injected] stage=${paperStageScope} reason=model_did_not_emit_choice_card${logTag ? " (fallback model)" : ""}`)
+            }
+
+            // Auto-complete plan when validation succeeded
+            const planSnapshot = capturedPlanSpecRef.current ?? streamCtx.getCurrentPlanSnapshot()
+            const finalSnapshot = planSnapshot
+                ? autoCompletePlanOnValidation(planSnapshot as PlanSpec, paperToolTracker.sawSubmitValidationSuccess)
+                : undefined
+
+            // Observability: log persisted planSnapshot
+            if (finalSnapshot && paperStageScope) {
+                const snap = finalSnapshot as PlanSpec
+                const taskDetail = snap.tasks.map((t, i) => `${i}:${t.status}:${t.label.slice(0, 40)}`).join(", ")
+                console.info(`[PLAN-SNAPSHOT]${logTag} stage=${paperStageScope} tasks=${snap.tasks.length} autoCompleted=${paperToolTracker.sawSubmitValidationSuccess} detail=[${taskDetail}]`)
+            }
+
+            await saveAssistantMessage({
+                conversationId,
+                content: persistedContent,
+                sources: normalizedText.length > 0 ? sources : undefined,
+                usedModel: modelName,
+                reasoningTrace: persistedReasoningTrace,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                jsonRendererChoice: capturedSpecRef.current && capturedSpecRef.current.root ? capturedSpecRef.current as any : undefined,
+                uiMessageId: streamCtx.messageId,
+                planSnapshot: finalSnapshot,
+                fetchMutationWithToken,
+            })
+        }
+
+        // ── Feature flag #5: Plan spec fallback extraction (primary only) ──
+        if (!capturedPlanSpecRef.current && paperStageScope) {
+            if (enablePlanSpecFallbackExtraction) {
+                const localPlanRegex = new RegExp(UNFENCED_PLAN_REGEX.source, UNFENCED_PLAN_REGEX.flags)
+                const unfencedMatch = localPlanRegex.exec(rawText)
+                if (unfencedMatch) {
+                    try {
+                        const { default: yaml } = await import("js-yaml")
+                        const parsed = yaml.load(unfencedMatch[1])
+                        const parseResult = planSpecSchema.safeParse(parsed)
+                        if (parseResult.success) {
+                            capturedPlanSpecRef.current = parseResult.data
+                            console.info(`[PLAN-CAPTURE] fallback extracted from rawText (tools path) stage=${paperStageScope} tasks=${parseResult.data.tasks.length}`)
+                        }
+                    } catch { /* yaml parse fail — ignore */ }
+                }
+            }
+            if (!capturedPlanSpecRef.current) {
+                const planProbe = rawText.substring(0, 500).replace(/\n/g, "\\n")
+                const hasFenced = rawText.includes("```plan-spec")
+                const hasUnfenced = /stage:\s*\w+\s*\nsummary:/.test(rawText)
+                console.info(`[PLAN-CAPTURE] no plan-spec detected in response (stage=${paperStageScope}) hasFenced=${hasFenced} hasUnfenced=${hasUnfenced} rawTextLen=${rawText.length} probe=${planProbe}`)
+            }
+        }
+
+        // ── Persist captured plan to stageData ──
+        if (capturedPlanSpecRef.current && paperSession?._id && paperStageScope) {
+            const finalPlan = autoCompletePlanOnValidation(capturedPlanSpecRef.current, paperToolTracker.sawSubmitValidationSuccess)
+            try {
+                await fetchMutationWithToken(api.paperSessions.updatePlan, {
+                    sessionId: paperSession._id,
+                    stage: paperStageScope,
+                    plan: finalPlan,
+                })
+                console.info(`[PLAN-CAPTURE] persisted${logTag ? " (fallback)" : ""} stage=${paperStageScope} tasks=${finalPlan.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
+            } catch (e) {
+                console.warn(`[PLAN-CAPTURE]${logTag ? " fallback" : ""} persist failed:`, e)
+            }
+        }
+
+        // ── Billing: record token usage ──
+        if (usage) {
+            await recordUsageAfterOperation({
+                userId: billingContext.userId,
+                conversationId,
+                sessionId: paperSession?._id,
+                inputTokens: usage.inputTokens ?? 0,
+                outputTokens: usage.outputTokens ?? 0,
+                totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+                model: modelName,
+                operationType: billingContext.operationType as OperationType,
+                convexToken,
+            }).catch(err => Sentry.captureException(err, { tags: { subsystem: "billing" } }))
+        }
+
+        // ── Telemetry ──
+        logAiTelemetry({
+            token: convexToken,
+            userId,
+            conversationId,
+            provider: streamCtx.telemetry.provider as "vercel-gateway" | "openrouter",
+            model: streamCtx.telemetry.model,
+            isPrimaryProvider: streamCtx.telemetry.isPrimaryProvider,
+            failoverUsed: streamCtx.telemetry.failoverUsed,
+            toolUsed: streamCtx.telemetry.toolUsed,
+            mode: streamCtx.telemetry.mode,
+            success: true,
+            latencyMs: Date.now() - streamCtx.telemetry.startTime,
+            inputTokens: usage?.inputTokens,
+            outputTokens: usage?.outputTokens,
+            ...streamCtx.telemetry.skillContext,
+        })
+
+        // ── Title update ──
+        if (normalizedText.length > 0) {
+            const minPairsForFinalTitle = Number.parseInt(
+                process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
+                10
+            )
+            await maybeUpdateTitleFromAI({
+                assistantText: normalizedText,
+                minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
+                    ? minPairsForFinalTitle
+                    : 3,
+            })
+        }
+    }
+
+    return {
+        handler,
+        streamContentOverrideRef,
+        capturedSpecRef,
+        capturedPlanSpecRef,
+    }
+}
