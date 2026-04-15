@@ -1265,6 +1265,604 @@ Returns `Response` on early-return paths (web search result, reference inventory
 
 ---
 
+## Phase 4: Extract Runtime Policy Layer
+
+**Scope:** Enforcer definitions (lines 2371–2523), enforcer composition into `prepareStep` (lines 3104–3117, 4113–4123), deterministic sync/submit forced routing (lines 2779–2843), auto-rescue policy inside tool definitions (lines 1735–1759, 1921–1945), and choice workflow resolution semantics.
+
+**Goal:** Turn scattered execution law into one runtime-visible policy layer. After this phase, route.ts has NO inline policy decisions — all enforcement and approval logic lives in `src/lib/chat-harness/policy/`.
+
+**Runtime namespace:** `src/lib/chat-harness/policy/`
+
+---
+
+### Task 4.1: Define policy types
+
+**Create:** `src/lib/chat-harness/policy/types.ts`
+
+**What to define:**
+- `RuntimePolicyDecision` — the full policy result for one execution step:
+  - `prepareStep: PrepareStepFunction | undefined`
+  - `forcedToolChoice: ToolChoice | undefined`
+  - `maxSteps: number`
+  - `requiresApproval: boolean`
+  - `pauseReason: string | undefined`
+  - `allowedToolNames: string[] | undefined`
+  - `executionBoundary: "normal" | "forced-sync" | "forced-submit" | "exact-source" | "revision-chain"`
+  - `policyDecisionSummary: string` (human-readable trace for observability)
+- `EnforcerContext` — shared state that enforcers read:
+  - `paperSession: PaperSession | null`
+  - `paperStageScope: PaperStageId | undefined`
+  - `paperToolTracker: PaperToolTracker`
+  - `resolvedWorkflow: ResolvedChoiceWorkflow | undefined`
+  - `choiceInteractionEvent: ChoiceInteractionEvent | null`
+  - `isCompileThenFinalize: boolean`
+  - `shouldEnforceArtifactChain: boolean`
+  - `planHasIncompleteTasks: boolean`
+  - `stepTimingRef: { current: number }` — mutable ref for `enforcerStepStartTime` (route.ts:2483). Written by universal reactive enforcer on each prepareStep call, read by onFinish handler for step timing telemetry. Must be a ref object so both enforcer and onFinish share the same mutable state.
+- `AutoRescueResult`:
+  - `rescued: boolean`
+  - `refreshedSession: PaperSession | undefined`
+  - `error: string | undefined`
+
+**Acceptance criteria:**
+- Types compile
+- `RuntimePolicyDecision` captures all 6 policy outputs from the plan
+
+**Test:** `npx tsc --noEmit`
+
+---
+
+### Task 4.2: Extract enforcers
+
+**Create:** `src/lib/chat-harness/policy/enforcers.ts`
+
+**What to extract from `route.ts`:**
+- Revision chain enforcer (lines 2371–2414)
+- Drafting choice artifact enforcer (lines 2435–2476)
+- Universal reactive enforcer (lines 2484–2523)
+
+**Function signatures:**
+```typescript
+export function createRevisionChainEnforcer(ctx: EnforcerContext): PrepareStepFunction | undefined
+export function createDraftingChoiceArtifactEnforcer(ctx: EnforcerContext): PrepareStepFunction | undefined
+export function createUniversalReactiveEnforcer(ctx: EnforcerContext): PrepareStepFunction | undefined
+```
+
+Each returns `undefined` when its activation condition is not met (e.g., not in revision status, not drafting, no choice event).
+
+**Closure-to-parameter conversion:** All three enforcers currently close over route-level variables (`paperSession`, `paperToolTracker`, `paperStageScope`, `resolvedWorkflow`, etc.). These become fields on `EnforcerContext`.
+
+**Acceptance criteria:**
+- All three enforcers produce identical `prepareStep` behavior
+- Revision chain: step 0 forced during revision, free during pending_validation
+- Drafting choice: respects `isCompileThenFinalize`, `shouldEnforceArtifactChain`, `planHasIncompleteTasks`
+- Universal reactive: step 0 free, then forces chain after `updateStageData`
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 4.3: Extract enforcer composition
+
+**Create:** `src/lib/chat-harness/policy/compose-prepare-step.ts`
+
+**What to extract from `route.ts`:**
+- Primary enforcer composition IIFE (lines 3104–3117)
+- Fallback enforcer composition IIFE (lines 4113–4123)
+
+**Function signature:**
+```typescript
+export function composePrepareStep(params: {
+  exactSourcePrepareStep: PrepareStepFunction | undefined;
+  revisionChainEnforcer: PrepareStepFunction | undefined;
+  draftingChoiceArtifactEnforcer: PrepareStepFunction | undefined;
+  universalReactiveEnforcer: PrepareStepFunction | undefined;
+  deterministicSyncPrepareStep: PrepareStepFunction | undefined;
+}): PrepareStepFunction | undefined
+```
+
+**Priority chain (preserved exactly):**
+1. Exact source force-inspect (from Phase 3)
+2. Revision chain > Drafting choice > Universal reactive (null-coalescing)
+3. Deterministic sync (fallback)
+
+**Acceptance criteria:**
+- Composition logic identical to current IIFE
+- Priority order preserved
+- Both primary and fallback paths use this same function (different inputs)
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 4.4: Extract auto-rescue policy
+
+**Create:** `src/lib/chat-harness/shared/auto-rescue-policy.ts` (NOT `policy/` — see below)
+
+**What to extract from `route.ts`:**
+- Auto-rescue block in `createArtifact` (lines 1735–1759)
+- Auto-rescue block in `updateArtifact` (lines 1921–1945)
+
+**Why `shared/` not `policy/`:** This function is called from inside the artifact tools (Task 2.5, `buildToolRegistry` in `executor/`). If it lived in `policy/`, the import graph becomes `executor/ → policy/`, which creates a circular dependency risk since `policy/` types reference `PaperToolTracker` (produced by executor-adjacent code). Placing auto-rescue in `shared/` (alongside `reasoning-sanitization.ts` from Task 3.9) keeps the import graph acyclic: both `executor/` and `policy/` can import from `shared/`, but neither imports from each other.
+
+**Function signature:**
+```typescript
+export async function executeAutoRescue(params: {
+  paperSession: PaperSession;
+  source: "createArtifact" | "updateArtifact";
+  fetchMutationWithToken: ConvexFetchMutation;
+  fetchQueryWithToken: ConvexFetchQuery;
+  conversationId: Id<"conversations">;
+}): Promise<AutoRescueResult>
+```
+
+**Acceptance criteria:**
+- Auto-rescue transitions from `pending_validation` to `revision` preserved
+- Session refresh after rescue preserved
+- Error message with `nextAction` guidance preserved
+- Import path is `shared/auto-rescue-policy` — no `executor/ → policy/` back-edge
+
+**Test:** `npx tsc --noEmit` + baseline (especially `paperSessions.test.ts`)
+
+---
+
+### Task 4.4b: Extract execution boundary classifier
+
+**Create:** `src/lib/chat-harness/policy/build-tool-boundary-policy.ts`
+
+**What this does:** Derives the `executionBoundary` field of `RuntimePolicyDecision` from the combination of active policy signals. This is the plan's "execution-boundary classification for mutation-capable actions."
+
+**Function signature:**
+```typescript
+export function classifyExecutionBoundary(params: {
+  forcedSyncPrepareStep: PrepareStepFunction | undefined;
+  forcedToolChoice: ToolChoice | undefined;
+  exactSourceRouting: ExactSourceRoutingResult;
+  revisionChainEnforcer: PrepareStepFunction | undefined;
+}): RuntimePolicyDecision["executionBoundary"]
+```
+
+**Derivation logic:**
+- If `forcedSyncPrepareStep` → `"forced-sync"`
+- If `forcedToolChoice` (submitStageForValidation) → `"forced-submit"`
+- If `exactSourceRouting.mode === "force-inspect"` → `"exact-source"`
+- If `revisionChainEnforcer` → `"revision-chain"`
+- Otherwise → `"normal"`
+
+**Plan deviation note:** Plan names this file `build-tool-boundary-policy.ts`. Task 4.3 was renamed from `build-prepare-step-policy.ts` to `compose-prepare-step.ts` — this is a naming deviation from the plan, documented here for traceability.
+
+**Acceptance criteria:**
+- All 5 boundary classifications correctly derived
+- Priority order matches the policy composition order
+
+**Test:** `npx tsc --noEmit`
+
+---
+
+### Task 4.5: Extract policy evaluator and wire into route.ts
+
+**Create:** `src/lib/chat-harness/policy/evaluate-runtime-policy.ts`
+**Create:** `src/lib/chat-harness/policy/index.ts` (barrel export)
+
+**Modify:** `src/app/api/chat/route.ts`
+
+**`evaluateRuntimePolicy` orchestrates Tasks 4.2–4.3:**
+```typescript
+export function evaluateRuntimePolicy(params: {
+  enforcerContext: EnforcerContext;
+  exactSourceRouting: ExactSourceRoutingResult;
+  searchDecision: SearchDecision & { forcedSyncPrepareStep, forcedToolChoice, missingArtifactNote };
+}): RuntimePolicyDecision
+```
+
+**What stays in route.ts after this:**
+- `paperSession` fetch (Phase 7)
+- Executor call (Phase 2)
+- Error recovery / fallback (Phase 2)
+
+**Acceptance criteria:**
+- Route.ts has NO inline enforcer definitions
+- Route.ts has NO inline `prepareStep` composition
+- `RuntimePolicyDecision` produces correct `prepareStep` for all paths: revision, drafting finalize, exact-source, sync, normal
+- All 7 baseline tests pass
+- `npx tsc --noEmit` passes
+- Build passes
+
+**Test:** Full baseline + type check + build
+
+---
+
+### Task 4.6: Post-phase review checkpoint
+
+**Action:** Dispatch agent reviewer to audit Phase 4 extraction against:
+- Plan policy outputs: `requiresApproval`, `pauseReason`, `allowedToolNames`, `forcedToolChoice`, `executionBoundary`, `policyDecisionSummary`
+- Enforcer composition priority preserved
+- Auto-rescue policy correctly callable from tool definitions
+- No circular dependencies: auto-rescue lives in `shared/`, not `policy/` — `executor/` imports from `shared/`, not `policy/`
+- prepareStep outcomes match current behavior on all 4 paths
+
+**Output:** Review report → fix gaps → report to user → wait for validation.
+
+---
+
+## Phase 5: Extract Verification Layer
+
+**Scope:** Outcome guards, stream content validation, artifact-chain completeness checks, plan completion gates, and source/body parity — all currently embedded in onFinish handlers and stream writer loops.
+
+**Goal:** Make "can continue / must pause / can complete" a visible harness boundary with a canonical `VerificationResult` shape.
+
+**Runtime namespace:** `src/lib/chat-harness/verification/`
+
+---
+
+### Task 5.1: Define verification types
+
+**Create:** `src/lib/chat-harness/verification/types.ts`
+
+**What to define:**
+- `StepVerificationResult`:
+  - `canContinue: boolean`
+  - `mustPause: boolean`
+  - `pauseReason: string | undefined`
+  - `canComplete: boolean`
+  - `completionBlockers: string[]`
+  - `leakageDetected: boolean`
+  - `leakageDetails: { match: string; snippet: string } | undefined`
+  - `artifactChainComplete: boolean`
+  - `planComplete: boolean`
+  - `sourceBodyParity: "pass" | "fail" | "skipped"`
+  - `streamContentOverride: string | undefined` (replacement text if outcome guard triggers)
+- `RunReadinessResult`:
+  - `ready: boolean`
+  - `blockers: string[]`
+
+**Acceptance criteria:**
+- Types compile
+- `StepVerificationResult` captures all verification concerns currently scattered across onFinish handlers
+
+**Test:** `npx tsc --noEmit`
+
+---
+
+### Task 5.2: Extract step outcome verification
+
+**Create:** `src/lib/chat-harness/verification/verify-step-outcome.ts`
+
+**What to extract from `route.ts`:**
+- Outcome guard evaluation: `sanitizeChoiceOutcome` call and its result processing (route.ts:3294-3306, 4432-4434)
+- Artifact-chain completeness checks (tool tracker flag verification in onFinish: route.ts:3201-3250, 4173-4227)
+- Plan completion gate: `autoCompletePlanOnValidation` (route.ts:3620-3636)
+- Source/body parity check: `checkSourceBodyParity` call (route.ts:3477-3503)
+- Leakage detection: `paperRecoveryLeakagePattern` matching (route.ts:3230-3248)
+- Stream guard content accumulation (route.ts:3893-3930, 4770-4826)
+
+**Function signature:**
+```typescript
+export function verifyStepOutcome(params: {
+  text: string;
+  steps: StepResult[];
+  paperToolTracker: PaperToolTracker;
+  paperTurnObservability: PaperTurnObservability;
+  resolvedWorkflow: ResolvedChoiceWorkflow | undefined;
+  choiceInteractionEvent: ChoiceInteractionEvent | null;
+  paperSession: PaperSession | null;
+  paperStageScope: PaperStageId | undefined;
+}): StepVerificationResult
+```
+
+**Stream guard placement note:** The stream guard content accumulation (route.ts:3893-3930, 4770-4826) happens inside the `createUIMessageStream` writer's `finish` chunk handler. Per Phase 2's shared-closure constraint, `buildStepStream` owns both the stream writer and `streamContentOverride`. Therefore: `verifyStepOutcome` is called FROM INSIDE `buildStepStream`'s stream writer `finish` handler (where accumulated text is available), NOT from `onFinish`. The function receives the accumulated `text` as a plain param and returns `StepVerificationResult` including `streamContentOverride`. The stream writer then uses `streamContentOverride` to replace content before `writer.write()`. This keeps the verification logic in a separate testable function while respecting the shared-closure constraint.
+
+**Acceptance criteria:**
+- `sanitizeChoiceOutcome` call preserved (stays wrapped, not rewritten)
+- `checkSourceBodyParity` call preserved
+- Leakage pattern matching preserved
+- `streamContentOverride` produced when outcome guard triggers
+- Called from inside `buildStepStream` stream writer, NOT from `onFinish`
+- All completeness checks produce same results
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 5.3: Extract run readiness verification
+
+**Create:** `src/lib/chat-harness/verification/verify-run-readiness.ts`
+
+**What to extract:** Completion-readiness logic — the decision of whether a run can be considered complete. Currently this is implicit in onFinish handlers (checking tool tracker, plan state, stage status).
+
+**Function signature:**
+```typescript
+export function verifyRunReadiness(params: {
+  stepVerification: StepVerificationResult;
+  paperSession: PaperSession | null;
+  paperStageScope: PaperStageId | undefined;
+}): RunReadinessResult
+```
+
+**Acceptance criteria:**
+- Run readiness correctly blocks when verification fails
+- Run readiness correctly passes when all checks pass
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 5.4: Wire verification into executor and route.ts
+
+**Create:** `src/lib/chat-harness/verification/index.ts` (barrel export)
+
+**Modify:** `src/lib/chat-harness/executor/build-on-finish-handler.ts` (Task 2.3) — onFinish handler now calls `verifyStepOutcome` instead of inline guard logic
+
+**Modify:** `src/lib/chat-harness/executor/build-step-stream.ts` (Task 2.4) — stream writer uses `StepVerificationResult.streamContentOverride`
+
+**Acceptance criteria:**
+- onFinish handler no longer contains inline verification logic
+- Stream writer uses structured verification result
+- All 7 baseline tests pass
+- `npx tsc --noEmit` passes
+- Build passes
+
+**Test:** Full baseline + type check + build
+
+---
+
+### Task 5.5: Post-phase review checkpoint
+
+**Action:** Dispatch agent reviewer to audit Phase 5 against:
+- Plan requirements (completion explainable from structured verification result)
+- Route no longer hardcodes completion/leakage guard logic inline
+- Verification result shape captures all current inline checks
+
+**Output:** Review report → fix gaps → report to user → wait for validation.
+
+---
+
+## Phase 6: Add Explicit Run, Step, Decision, Policy, and Event Persistence
+
+**Scope:** New Convex tables (`harnessRuns`, `harnessRunSteps`, `harnessEvents`) and persistence adapters. This is the first phase that adds new data models.
+
+**Goal:** Persist harness runtime facts without corrupting existing domain models (`paperSessions`, `artifacts`).
+
+**Runtime namespace:** `src/lib/chat-harness/persistence/`, `convex/harness*.ts`
+
+---
+
+### Task 6.1: Define Convex schema for harness tables
+
+**Modify:** `convex/schema.ts`
+
+**New tables:**
+- `harnessRuns` with fields: `conversationId`, `paperSessionId?`, `status`, `activeLaneKey`, `workflowStage`, `workflowStatus`, `pendingDecision`, `policyState`, `startedAt`, `updatedAt`, `completedAt?`
+- `harnessRunSteps` with fields: `runId`, `stepIndex`, `status`, `executorResultSummary`, `verificationSummary`, `toolCalls`, `startedAt`, `completedAt?`
+- `harnessEvents` with canonical event envelope. Fields:
+  - `runId: Id<"harnessRuns">`
+  - `stepIndex: number | undefined` (null for run-level events)
+  - `eventType: string` (e.g., "run.started", "step.completed", "policy.decided", "verification.completed", "run.paused", "run.resumed")
+  - `payload: Record<string, unknown>` (event-specific data)
+  - `timestamp: number`
+  - Reference: `.references/agent-harness/research/2026-04-15-makalahapp-harness-v1-event-model-and-data-contracts.md`
+
+**Acceptance criteria:**
+- Schema compiles
+- `npx convex dev` accepts the new tables
+- No changes to existing tables
+- `paperSessions` and `artifacts` untouched
+
+**Test:** `npx tsc --noEmit` + Convex schema validation
+
+---
+
+### Task 6.2: Create harness persistence mutations
+
+**Create:** `convex/harnessRuns.ts`
+**Create:** `convex/harnessRunSteps.ts`
+**Create:** `convex/harnessEvents.ts`
+
+**What to implement:**
+- `harnessRuns`: `createRun`, `updateRunStatus`, `completeRun`, `getRunByConversation`
+- `harnessRunSteps`: `createStep`, `completeStep`, `getStepsByRun`
+- `harnessEvents`: `emitEvent`, `getEventsByRun`
+
+**Acceptance criteria:**
+- All mutations compile and are accessible via `api.*`
+- CRUD operations work for all three tables
+- No coupling to `paperSessions` internals
+
+**Test:** `npx tsc --noEmit` + new test file for harness persistence
+
+---
+
+### Task 6.3: Create persistence adapters
+
+**Create:** `src/lib/chat-harness/persistence/run-store.ts`
+**Create:** `src/lib/chat-harness/persistence/event-store.ts`
+
+**What to implement:**
+- `RunStore` — thin wrapper that calls harness Convex mutations
+- `EventStore` — emits events with canonical envelope
+
+**Acceptance criteria:**
+- Adapters callable from harness modules
+- One synchronous request produces traceable run + step + event records
+
+**Test:** `npx tsc --noEmit` + new persistence tests
+
+---
+
+### Task 6.4: Wire persistence into harness and verify
+
+**Modify:** Relevant harness modules to call persistence adapters at key moments:
+- Run creation at entry (Phase 1)
+- Step recording at executor (Phase 2)
+- Policy decision recording (Phase 4)
+- Verification result recording (Phase 5)
+- Event emission at significant state transitions
+
+**Acceptance criteria:**
+- One synchronous request can be replayed from run + step + event records
+- `paperSessions` and `artifacts` remain authoritative for domain truth
+- All 7 baseline tests still pass
+- New persistence tests pass
+- Build passes
+
+**Test:** Full baseline + new persistence tests + type check + build
+
+---
+
+### Task 6.5: Post-phase review checkpoint
+
+**Action:** Dispatch agent reviewer to audit Phase 6 against:
+- Plan persistence shape matches spec
+- No corruption of existing domain models
+- Event envelope matches research doc spec
+- Persistence adapters are thin (no business logic)
+
+**Output:** Review report → fix gaps → report to user → wait for validation.
+
+---
+
+## Phase 7: Thin `route.ts` into a Chat Harness Adapter
+
+**Scope:** Final assembly — `route.ts` becomes a thin HTTP adapter that calls the harness runtime.
+
+**Goal:** `route.ts` responsibility = auth → call harness → return response → fatal error handling. Everything else lives behind `runChatHarness()`.
+
+**Runtime namespace:** `src/lib/chat-harness/runtime/`
+
+---
+
+### Task 7.1: Create harness runtime orchestrator
+
+**Create:** `src/lib/chat-harness/runtime/run-chat-harness.ts`
+**Create:** `src/lib/chat-harness/runtime/orchestrate-sync-run.ts`
+
+**`runChatHarness` sequence:**
+1. Accept request (Phase 1: `acceptChatRequest`)
+2. Resolve conversation (Phase 1: `resolveConversation`)
+3. Resolve attachments (Phase 1: `resolveAttachments`)
+4. Persist user message (Phase 1: `persistUserMessage`)
+5. Fetch `paperSession` + `paperModePrompt` (currently in route.ts)
+6. Validate choice interaction (Phase 1: `validateChoiceInteraction`)
+7. Assemble step context (Phase 3: `assembleStepContext`)
+8. Evaluate runtime policy (Phase 4: `evaluateRuntimePolicy`)
+9. Build tool registry (Phase 2: `buildToolRegistry`)
+10. Build step stream + execute (Phase 2: `buildStepStream`)
+11. On error: classify + fallback execution
+12. Return Response
+
+**Acceptance criteria:**
+- `route.ts` shrinks to ~50-80 lines
+- `route.ts` only does: auth/token → `runChatHarness(req)` → return response → catch fatal
+- All harness logic is behind the adapter boundary
+- **Zero behavior change**
+- All baseline tests pass + build passes
+
+**Test:** Full baseline + type check + build
+
+---
+
+### Task 7.2: Thin route.ts
+
+**Modify:** `src/app/api/chat/route.ts`
+
+**Target shape:**
+```typescript
+export async function POST(req: Request) {
+  try {
+    const response = await runChatHarness(req)
+    return response
+  } catch (error) {
+    Sentry.captureException(error)
+    return new Response("Internal error", { status: 500 })
+  }
+}
+```
+
+**What moves behind `runChatHarness`:**
+- `paperSession` fetch (the last remaining inline code)
+- `freeTextContextNote` construction
+- `billingContext` mutation
+- All orchestration sequencing
+
+**Acceptance criteria:**
+- `route.ts` is structurally small enough to read in one screen
+- All runtime law is visible through harness modules
+- All baseline tests pass + build passes
+
+**Test:** Full baseline + type check + build
+
+---
+
+### Task 7.3: Post-phase review checkpoint
+
+**Action:** Dispatch agent reviewer to audit Phase 7 against:
+- `route.ts` is a thin adapter (no business logic)
+- All harness boundaries are correctly composed in `runChatHarness`
+- No missing orchestration steps
+- Fallback/error recovery path preserved
+
+**Output:** Review report → fix gaps → report to user → wait for validation.
+
+---
+
+## Phase 8: Prepare Durable Continuation Path
+
+**Scope:** Add pause/resume semantics backed by persisted run status. Bridge toward true durable orchestration.
+
+**Goal:** Support approval/user-decision resume off persisted pending state. DO NOT build: subagents, multi-lane durable worker farm, or paper workflow redesign.
+
+**Runtime namespace:** `src/lib/chat-harness/runtime/` (extends Phase 7)
+
+---
+
+### Task 8.1: Add pause/resume semantics to run orchestrator
+
+**Modify:** `src/lib/chat-harness/runtime/orchestrate-sync-run.ts`
+**Modify:** `convex/harnessRuns.ts`
+
+**What to add:**
+- `pauseRun(runId, reason, pendingDecision)` — sets run status to `paused`, records pending decision
+- `resumeRun(runId, decision)` — resumes from persisted pending state
+- Orchestrator checks for `RuntimePolicyDecision.requiresApproval` and pauses if true
+
+**Acceptance criteria:**
+- Run can be paused when approval is required
+- Run can be resumed with user decision
+- Resume re-enters orchestration at the correct point
+- No changes to `paperSessions` workflow
+
+**Test:** `npx tsc --noEmit` + new pause/resume test
+
+---
+
+### Task 8.2: Connect approval UI to resume path
+
+**Modify:** Relevant frontend/API to call `resumeRun` when user approves/rejects in validation panel
+
+**Scope note:** This task's scope depends on the current approval UI implementation. It may be as simple as wiring `approveStage` → `resumeRun`, or it may require a new API endpoint.
+
+**Acceptance criteria:**
+- User approval in validation panel resumes the run
+- User rejection triggers revision flow via run resume
+- Existing approval UI behavior preserved
+
+**Test:** `npx tsc --noEmit` + baseline + manual verification
+
+---
+
+### Task 8.3: Post-phase review checkpoint
+
+**Action:** Dispatch agent reviewer to audit Phase 8 against:
+- Pause/resume semantics correct
+- No v1 subagents
+- No multi-lane durable worker farm
+- No paper workflow redesign
+- `paperSessions` remains authoritative
+
+**Output:** Review report → fix gaps → report to user → FINAL validation.
+
+---
+
 ## Execution Protocol (applies to all phases)
 
 Each task follows this loop:
