@@ -50,7 +50,7 @@ import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
 import { pipeYamlRender } from "@json-render/yaml"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
-import { PLAN_DATA_PART_TYPE, type PlanSpec, UNFENCED_PLAN_REGEX, planSpecSchema } from "@/lib/ai/harness/plan-spec"
+import { PLAN_DATA_PART_TYPE, type PlanSpec, UNFENCED_PLAN_REGEX, planSpecSchema, autoCompletePlanOnValidation } from "@/lib/ai/harness/plan-spec"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
@@ -3462,6 +3462,12 @@ Aturan:
                                 console.info(`[CHOICE-CARD][fallback-injected] stage=${paperStageScope} reason=model_did_not_emit_choice_card`)
                             }
 
+                            // Auto-complete plan when validation succeeded — all tasks done by definition
+                            const primaryPlanSnapshot = capturedPlanSpec ?? getCurrentPlanSnapshot()
+                            const finalPrimarySnapshot = primaryPlanSnapshot
+                                ? autoCompletePlanOnValidation(primaryPlanSnapshot as PlanSpec, paperToolTracker.sawSubmitValidationSuccess)
+                                : undefined
+
                             await saveAssistantMessage(
                                 persistedContent,
                                 normalizedText.length > 0 ? sources : undefined,
@@ -3469,7 +3475,7 @@ Aturan:
                                 persistedReasoningTrace,
                                 capturedChoiceSpec && capturedChoiceSpec.root ? capturedChoiceSpec : undefined,
                                 primaryMessageId,
-                                capturedPlanSpec ?? getCurrentPlanSnapshot(),
+                                finalPrimarySnapshot,
                             )
                         }
 
@@ -3498,14 +3504,16 @@ Aturan:
                             }
                         }
                         // Full-replace semantics: model is authoritative, harness only validates schema
+                        // Auto-complete on validation: if submitStageForValidation succeeded, all tasks are done
                         if (capturedPlanSpec && paperSession?._id && paperStageScope) {
+                            const finalPlan = autoCompletePlanOnValidation(capturedPlanSpec, paperToolTracker.sawSubmitValidationSuccess)
                             try {
                                 await fetchMutationWithToken(api.paperSessions.updatePlan, {
                                     sessionId: paperSession._id,
                                     stage: paperStageScope,
-                                    plan: capturedPlanSpec,
+                                    plan: finalPlan,
                                 })
-                                console.info(`[PLAN-CAPTURE] persisted stage=${paperStageScope} tasks=${capturedPlanSpec.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
+                                console.info(`[PLAN-CAPTURE] persisted stage=${paperStageScope} tasks=${finalPlan.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
                             } catch (e) {
                                 console.warn(`[PLAN-CAPTURE] persist failed:`, e)
                             }
@@ -4297,6 +4305,12 @@ Aturan:
                                 console.info(`[CHOICE-CARD][fallback-injected] stage=${paperStageScope} reason=model_did_not_emit_choice_card (fallback model)`)
                             }
 
+                            // Auto-complete plan when validation succeeded (fallback path)
+                            const fallbackPlanSnapshot = fallbackCapturedPlanSpec ?? getCurrentPlanSnapshot()
+                            const finalFallbackSnapshot = fallbackPlanSnapshot
+                                ? autoCompletePlanOnValidation(fallbackPlanSnapshot as PlanSpec, paperToolTracker.sawSubmitValidationSuccess)
+                                : undefined
+
                             await saveAssistantMessage(
                                 persistedContent,
                                 undefined,
@@ -4304,7 +4318,7 @@ Aturan:
                                 persistedReasoningTrace,
                                 fallbackCapturedChoiceSpec && fallbackCapturedChoiceSpec.root ? fallbackCapturedChoiceSpec : undefined,
                                 fallbackMessageId,
-                                fallbackCapturedPlanSpec ?? getCurrentPlanSnapshot(),
+                                finalFallbackSnapshot,
                             )
                         }
                         if (normalizedText.length > 0) {
@@ -4321,15 +4335,16 @@ Aturan:
                         }
 
                         // Persist captured plan to stageData (fallback path)
-                        // Full-replace semantics: model is authoritative, harness only validates schema
+                        // Full-replace semantics + auto-complete on validation
                         if (fallbackCapturedPlanSpec && paperSession?._id && paperStageScope) {
+                            const finalFallbackPlan = autoCompletePlanOnValidation(fallbackCapturedPlanSpec, paperToolTracker.sawSubmitValidationSuccess)
                             try {
                                 await fetchMutationWithToken(api.paperSessions.updatePlan, {
                                     sessionId: paperSession._id,
                                     stage: paperStageScope,
-                                    plan: fallbackCapturedPlanSpec,
+                                    plan: finalFallbackPlan,
                                 })
-                                console.info(`[PLAN-CAPTURE] persisted (fallback) stage=${paperStageScope} tasks=${fallbackCapturedPlanSpec.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
+                                console.info(`[PLAN-CAPTURE] persisted (fallback) stage=${paperStageScope} tasks=${finalFallbackPlan.tasks.length} elapsed=${requestStartedAt ? Date.now() - requestStartedAt : '?'}ms`)
                             } catch (e) {
                                 console.warn(`[PLAN-CAPTURE] fallback persist failed:`, e)
                             }

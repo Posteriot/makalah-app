@@ -41,3 +41,20 @@ export type PlanDataPart = {
   data: { spec: PlanSpec }
 }
 
+/**
+ * Auto-complete all plan tasks when stage validation succeeds.
+ * If submitStageForValidation returned pending_validation, all work is
+ * done by definition — mark every task as complete so the UI shows
+ * honest final state instead of a stale "pending" leftover.
+ */
+export function autoCompletePlanOnValidation(
+  plan: PlanSpec,
+  validationSubmitted: boolean,
+): PlanSpec {
+  if (!validationSubmitted) return plan
+  return {
+    ...plan,
+    tasks: plan.tasks.map(t => ({ ...t, status: "complete" as const })),
+  }
+}
+
