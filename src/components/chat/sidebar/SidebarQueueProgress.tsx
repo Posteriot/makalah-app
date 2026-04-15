@@ -313,14 +313,17 @@ function PhaseSection({
     const sd = stageData as Record<string, Record<string, unknown>>
     // Only overlay if snapshot's stage matches current active stage.
     // PlanSpec has a `stage` field — use it to prevent cross-stage contamination on rewind.
-    const snap = latestPlanSnapshot as { stage?: string } | undefined
+    const snap = latestPlanSnapshot as { stage?: string; tasks?: unknown[] } | undefined
     if (snap?.stage && snap.stage === activeStageId) {
       const overlayStageData = {
         ...sd,
         [activeStageId]: { ...(sd[activeStageId] ?? {}), _plan: latestPlanSnapshot },
       }
+      console.info(`[SIDEBAR-MIRROR] stage=${activeStageId} source=message-snapshot tasks=${snap.tasks?.length ?? "?"}`)
       return deriveTaskList(activeStageId, overlayStageData)
     }
+    const globalPlan = sd[activeStageId]?._plan as { tasks?: unknown[] } | undefined
+    console.info(`[SIDEBAR-MIRROR] stage=${activeStageId} source=${snap ? "stage-mismatch-fallback" : "global-stageData"} tasks=${globalPlan?.tasks?.length ?? "?"}`)
     return deriveTaskList(activeStageId, sd)
   }, [activeStageId, stageData, latestPlanSnapshot])
 

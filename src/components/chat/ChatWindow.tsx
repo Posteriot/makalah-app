@@ -2511,7 +2511,11 @@ export function ChatWindow({
             </div>
           ) : messages.length === 0 && conversationId ? (
             // Existing conversation but messages not yet loaded — show skeleton, not TemplateGrid
-            <div className="space-y-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
+            <div className="space-y-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }} ref={() => {
+              if (process.env.NODE_ENV !== "production") {
+                console.info("[CHAT-VIEW] conversation-skeleton — messages not loaded yet, blocking TemplateGrid", { conversationId })
+              }
+            }}>
               <div className="flex justify-start">
                 <Skeleton className="h-12 w-[60%] rounded-action" />
               </div>
