@@ -303,14 +303,18 @@ function PhaseSection({
   // Derive sub-tasks for the active stage.
   // Mirror the latest message's planSnapshot when available so sidebar matches
   // the inline UnifiedProcessCard. Falls back to global stageData._plan during
-  // streaming or for legacy messages without snapshots.
+  // streaming, legacy messages without snapshots, or when the snapshot belongs
+  // to a different stage (e.g., after rewind).
   const activeStageId = hasCurrentStage
     ? stages[phaseStates.indexOf("current")]
     : undefined
   const subTaskSummary = useMemo(() => {
     if (!activeStageId || !stageData) return null
     const sd = stageData as Record<string, Record<string, unknown>>
-    if (latestPlanSnapshot) {
+    // Only overlay if snapshot's stage matches current active stage.
+    // PlanSpec has a `stage` field — use it to prevent cross-stage contamination on rewind.
+    const snap = latestPlanSnapshot as { stage?: string } | undefined
+    if (snap?.stage && snap.stage === activeStageId) {
       const overlayStageData = {
         ...sd,
         [activeStageId]: { ...(sd[activeStageId] ?? {}), _plan: latestPlanSnapshot },
