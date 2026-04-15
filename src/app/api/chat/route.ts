@@ -2475,12 +2475,13 @@ Aturan:
                   }
                 : undefined
 
-        // Free-text reactive enforcer: when model voluntarily starts tool chain
-        // from a free-text message (no choice card interaction), force completion.
+        // Universal reactive enforcer: when model voluntarily starts tool chain
+        // (from ANY turn — choice card or free-text), force chain completion.
         // Step 0 is free — model decides whether to discuss or finalize.
         // After model calls updateStageData, chain is forced: createArtifact → submit.
-        const freeTextReactiveEnforcer =
-            !choiceInteractionEvent && paperStageScope && paperSession?.stageStatus === "drafting"
+        // This closes the gap where continue_discussion + updateStageData left chain incomplete.
+        const universalReactiveEnforcer =
+            paperStageScope && paperSession?.stageStatus === "drafting"
                 ? ({ steps, stepNumber }: {
                     steps: Array<{ toolCalls?: Array<{ toolName: string }> }>;
                     stepNumber: number;
@@ -2499,12 +2500,12 @@ Aturan:
                     const sawArtifact = sawCreateArtifact || sawUpdateArtifact
 
                     if (!sawArtifact) {
-                        console.info(`[FREETEXT][reactive-enforcer] step=${stepNumber} stage=${paperStageScope} → createArtifact`)
+                        console.info(`[REACTIVE-ENFORCER] step=${stepNumber} stage=${paperStageScope} → createArtifact`)
                         return { toolChoice: { type: "tool", toolName: "createArtifact" } as const }
                     }
 
                     if (!sawSubmit) {
-                        console.info(`[FREETEXT][reactive-enforcer] step=${stepNumber} stage=${paperStageScope} → submitStageForValidation`)
+                        console.info(`[REACTIVE-ENFORCER] step=${stepNumber} stage=${paperStageScope} → submitStageForValidation`)
                         return { toolChoice: { type: "tool", toolName: "submitStageForValidation" } as const }
                     }
 
@@ -3094,11 +3095,11 @@ Aturan:
                 prepareStep: ((() => {
                     const forceInspect = primaryExactSourceRoutePlan.prepareStep
                     const chainedEnforcer = (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
-                        revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params) ?? freeTextReactiveEnforcer?.(params)
+                        revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params) ?? universalReactiveEnforcer?.(params)
                     // When force-inspect prepareStep exists, it takes priority over
                     // chain enforcers. Force-inspect completes in steps 0-1
                     // (tool call + text), so it never reaches later tool steps.
-                    if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer || freeTextReactiveEnforcer)) {
+                    if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer || universalReactiveEnforcer)) {
                         return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
                             forceInspect(params) ?? chainedEnforcer(params)
                     }
@@ -4027,8 +4028,8 @@ Aturan:
                     prepareStep: ((() => {
                         const forceInspect = fallbackExactSourceRoutePlan.prepareStep
                         const chainedEnforcer = (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
-                            revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params) ?? freeTextReactiveEnforcer?.(params)
-                        if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer || freeTextReactiveEnforcer)) {
+                            revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params) ?? universalReactiveEnforcer?.(params)
+                        if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer || universalReactiveEnforcer)) {
                             return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
                                 forceInspect(params) ?? chainedEnforcer(params)
                         }
