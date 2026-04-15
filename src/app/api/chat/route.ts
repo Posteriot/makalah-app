@@ -2216,7 +2216,7 @@ Aturan:
             provider?: "vercel-gateway" | "openrouter"
             telemetryFallbackReason?: string
         }) => {
-            await saveAssistantMessage(input.message, undefined, input.usedModel)
+            await saveAssistantMessage(input.message, undefined, input.usedModel, undefined, undefined, undefined, getCurrentPlanSnapshot())
             const blockedTelemetryContext = {
                 ...skillTelemetryContext,
                 fallbackReason: input.telemetryFallbackReason ?? input.reasonCode,
@@ -2286,6 +2286,8 @@ Aturan:
                 input.introText,
                 normalizedSources.length > 0 ? normalizedSources : undefined,
                 input.usedModel,
+                undefined, undefined, undefined,
+                getCurrentPlanSnapshot(),
             )
 
             const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
