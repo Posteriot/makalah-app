@@ -390,7 +390,9 @@ npx tsc --noEmit && npx vitest run convex/paperSessions.test.ts src/lib/ai/paper
 
 ## Phase 2: Extract One-Step Agent Executor Boundary
 
-**Scope:** The two stream pipelines in `route.ts` — primary (lines 3098–3999) and fallback (lines 4043–4873) — plus their shared dependencies: tool registry (lines 1603–2176), `saveAssistantMessage` (lines 1560–1598), model/provider config, and stream transforms.
+**Scope:** The two stream pipelines in `route.ts` — primary (lines 2820–3721) and fallback (lines 3765–4595) — plus their shared dependencies: tool registry (lines 1325–1898), `saveAssistantMessage` (lines 1282–1320), model/provider config, and stream transforms.
+
+> **Line number note (post-Phase 1):** Phase 1 extraction removed 278 lines from route.ts. All line numbers in this phase reflect the current file state. Uniform delta: OLD − 278 = NEW.
 
 **Goal:** Make `route.ts` call a single executor function that handles model invocation, stream setup, onFinish persistence, and stream transforms — instead of having two near-duplicate ~800-line pipelines inline.
 
@@ -415,7 +417,7 @@ npx tsc --noEmit && npx vitest run convex/paperSessions.test.ts src/lib/ai/paper
   - `stopWhen: StopCondition | undefined`
   - `maxSteps: number`
   - `modelName: string` (for telemetry/persistence)
-  - `toolChoice: ToolChoice | undefined` (forced tool choice — `route.ts:3103`, `4112`)
+  - `toolChoice: ToolChoice | undefined` (forced tool choice — `route.ts:2825`, `3834`)
   - `providerOptions: Record<string, unknown> | undefined`
   - `samplingOptions: { temperature?: number; topP?: number } | undefined`
 - `StepExecutionResult` — output of the executor:
@@ -452,9 +454,9 @@ npx tsc --noEmit && npx vitest run convex/paperSessions.test.ts src/lib/ai/paper
 **Create:** `src/lib/chat-harness/executor/save-assistant-message.ts`
 
 **What to extract from `route.ts`:**
-- `saveAssistantMessage` function (lines 1560–1598)
+- `saveAssistantMessage` function (lines 1282–1320)
 
-**Closure-to-parameter conversion note:** The current function closes over `currentConversationId` (line 1580) and uses `modelNames.primary.model` as default for `usedModel` (line 1585). In the extracted version, `conversationId` becomes an explicit required parameter, and `usedModel` becomes required (no default — caller always provides it). These are intentional changes from closure-based to parameter-based.
+**Closure-to-parameter conversion note:** The current function closes over `currentConversationId` (line 1302) and uses `modelNames.primary.model` as default for `usedModel` (line 1307). In the extracted version, `conversationId` becomes an explicit required parameter, and `usedModel` becomes required (no default — caller always provides it). These are intentional changes from closure-based to parameter-based.
 
 **Function signature:**
 ```typescript
@@ -486,17 +488,19 @@ export async function saveAssistantMessage(params: {
 **Create:** `src/lib/chat-harness/executor/build-on-finish-handler.ts`
 
 **What to extract from `route.ts`:**
-- Primary onFinish handler (lines 3120–3735)
-- Fallback onFinish handler (lines 4126–4623)
+- Primary onFinish handler (lines 2842–3457)
+- Fallback onFinish handler (lines 3848–4345)
 
 **Important:** This function is called internally by `buildStepStream` (Task 2.4), NOT by route.ts directly. This is because `onFinish` needs shared closure scope with the stream writer for `streamContentOverride`.
 
 **Documented differences between primary and fallback onFinish:**
-1. **Google grounding metadata** (route.ts:3156-3174): Primary extracts `groundingChunks` from `providerMetadata`. Fallback does not destructure `providerMetadata` at all.
-2. **`enrichSourcesWithFetchedTitles`** (route.ts:3505-3509): Primary enriches source titles. Fallback does not.
-3. **`classifyRevisionIntent`** (route.ts:3262-3278): Primary invokes async classifier with the model instance. Fallback does not.
-4. **`isCompileThenFinalize` in ToolChainOrder** (route.ts:3138-3140): Primary uses this flag for expected tool chain log. Fallback always uses non-compile sequence.
-5. **Unfenced plan-spec extraction** (route.ts:3648-3670): Primary has regex+yaml fallback for plan extraction. Fallback does not.
+1. **Google grounding metadata** (route.ts:2878-2896): Primary extracts `groundingChunks` from `providerMetadata`. Fallback does not destructure `providerMetadata` at all.
+2. **`enrichSourcesWithFetchedTitles`** (route.ts:3227-3231): Primary enriches source titles. Fallback does not.
+3. **`classifyRevisionIntent`** (route.ts:2984-3000): Primary invokes async classifier with the model instance. Fallback does not.
+4. **`isCompileThenFinalize` in ToolChainOrder** (route.ts:2860-2862): Primary uses this flag for expected tool chain log. Fallback always uses non-compile sequence.
+5. **Unfenced plan-spec extraction** (route.ts:3370-3392): Primary has regex+yaml fallback for plan extraction. Fallback does not.
+
+**Implementation note:** The fallback path uses a separate `fallbackStreamContentOverride` variable (declared at line 3771), distinct from primary's `streamContentOverride` (line 2818). Both follow the same pattern but are independent mutable refs — the unified `buildStepStream` must create its own instance internally.
 
 These differences must be controlled by config flags (e.g., `enableGroundingExtraction`, `enableRevisionClassifier`, `enablePlanSpecFallback`), not by duplicating the handler.
 
@@ -559,15 +563,15 @@ export type OnFinishConfig = {
 **Create:** `src/lib/chat-harness/executor/build-step-stream.ts`
 
 **What to extract from `route.ts`:**
-- Primary stream creation (lines 3751–3999): `createUIMessageStream` + `execute` block + stream transforms
-- Fallback stream creation (lines 4639–4872): same pattern
-- Reasoning trace controller setup (lines 3741–3749 primary, 4627–4637 fallback)
-- Stream transform application: `pipePlanCapture` (lines 3809, 4693) + `pipeYamlRender` (lines 3813, 4697)
-- Spec/plan-spec part capture (lines 3832–3851 primary, 4715–4734 fallback)
+- Primary stream creation (lines 3473–3721): `createUIMessageStream` + `execute` block + stream transforms
+- Fallback stream creation (lines 4361–4594): same pattern
+- Reasoning trace controller setup (lines 3463–3471 primary, 4349–4359 fallback)
+- Stream transform application: `pipePlanCapture` (lines 3531, 4415) + `pipeYamlRender` (lines 3535, 4419)
+- Spec/plan-spec part capture (lines 3554–3573 primary, 4437–4456 fallback)
 
 **Architecture decision: `onFinish` must be built INSIDE `buildStepStream`, not passed in.**
 
-The current code has shared mutable state (`streamContentOverride` / `fallbackStreamContentOverride`) that is written by `onFinish` (route.ts:3302-3304) and read by the stream writer loop (route.ts:3893-3930). This requires `onFinish` and the stream writer to share closure scope. If `onFinish` is built externally (Task 2.3) and passed in, there is no shared scope for `streamContentOverride` to live in.
+The current code has shared mutable state (`streamContentOverride` / `fallbackStreamContentOverride`) that is written by `onFinish` (route.ts:3024-3026) and read by the stream writer loop (route.ts:3615-3652). This requires `onFinish` and the stream writer to share closure scope. If `onFinish` is built externally (Task 2.3) and passed in, there is no shared scope for `streamContentOverride` to live in.
 
 **Resolution:** `buildStepStream` takes the onFinish _config_ (not a pre-built handler) and constructs both the `onFinish` handler and the stream writer internally, giving them shared access to `streamContentOverride`. Task 2.3 (`buildOnFinishHandler`) becomes a helper that `buildStepStream` calls internally, not something the route calls directly.
 
@@ -598,7 +602,7 @@ Returns `Response` directly (`createUIMessageStreamResponse` called internally).
 - `streamContentOverride` shared state works correctly between onFinish and stream writer
 - Stream transforms applied in correct order (pipePlanCapture → pipeYamlRender)
 - Reasoning trace accumulator correctly wired
-- Outcome guard behavior preserved (route.ts:3893-3930, 4770-4826)
+- Outcome guard behavior preserved (route.ts:3615-3652, 4492-4548)
 
 **Test:** `npx tsc --noEmit` + baseline
 
@@ -609,9 +613,9 @@ Returns `Response` directly (`createUIMessageStreamResponse` called internally).
 **Create:** `src/lib/chat-harness/executor/build-tool-registry.ts`
 
 **What to extract from `route.ts`:**
-- Inline artifact tool definitions: `createArtifact` (lines 1604–1997), `updateArtifact` (lines 1998–2120), `readArtifact` (lines 2121–2138), `renameConversationTitle` (lines 2139–2166)
-- Paper tools spread (line 2168–2175)
-- The `tools` composition at lines 1603–2176
+- Inline artifact tool definitions: `createArtifact` (lines 1326–1604), `updateArtifact` (lines 1605–1765), `readArtifact` (lines 1766–1818), `renameConversationTitle` (lines 1820–1893)
+- Paper tools spread (line 1894–1897)
+- The `tools` composition at lines 1325–1898
 
 **Function signature:**
 ```typescript
@@ -630,7 +634,7 @@ export function buildToolRegistry(params: {
 
 **Important:** The inline artifact tools (`createArtifact`, `updateArtifact`) contain significant business logic (auto-rescue, reference validation, parity checks). This task moves them out of route.ts but does NOT refactor their internals. Extract as-is.
 
-**Scope clarification:** `isCompileThenFinalize` (route.ts:2416) is NOT part of the tool registry — it belongs to the enforcer composition section (lines 2371-2523) which stays in route.ts as Phase 4 scope. Do not extract it here. It is passed into `OnFinishConfig` (Task 2.3) from route.ts.
+**Scope clarification:** `isCompileThenFinalize` (route.ts:2138) is NOT part of the tool registry — it belongs to the enforcer composition section (lines 2093-2245) which stays in route.ts as Phase 4 scope. Do not extract it here. It is passed into `OnFinishConfig` (Task 2.3) from route.ts.
 
 **Acceptance criteria:**
 - `tools` object identical to current composition
@@ -652,7 +656,7 @@ export function buildToolRegistry(params: {
 - Replace the two inline stream pipelines with calls to the extracted functions:
 
 ```
-// === Tool registry (was lines 1603-2176) ===
+// === Tool registry (was lines 1325-1898) ===
 const tools = buildToolRegistry({ ... })
 
 // === Primary execution ===
@@ -678,7 +682,7 @@ try {
     enableYamlRender: true,
   })
 } catch (error) {
-  // === Error classification + telemetry (was route.ts:4001-4028) ===
+  // === Error classification + telemetry (was route.ts:3723-3750) ===
   const errorInfo = classifyError(error)
   logAiTelemetry({ ...primaryFailureTelemetry })
   Sentry.addBreadcrumb({ ... })
@@ -712,9 +716,9 @@ try {
 **Catch block ownership:** The error classification + telemetry logic at route.ts:4001-4028 (`classifyError`, `logAiTelemetry`, `Sentry.addBreadcrumb`) stays in `route.ts` as the orchestration-level error recovery decision. It is NOT inside `buildStepStream` — it decides whether to invoke fallback, which is a routing concern.
 
 **What stays in route.ts for now:**
-- `prepareStep` enforcer composition (lines 2371–2523) — Phase 4 scope
-- Search/exact-source routing (lines 2525–3087) — Phase 3 scope
-- Model loading (lines 2526, 4055) — stays until Phase 7
+- `prepareStep` enforcer composition (lines 2093–2245) — Phase 4 scope
+- Search/exact-source routing (lines 2247–2809) — Phase 3 scope
+- Model loading (lines 2248, 3777) — stays until Phase 7
 
 **Acceptance criteria:**
 - `route.ts` loses ~2400 lines (two stream pipelines + tool registry + saveAssistantMessage)
