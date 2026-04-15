@@ -134,6 +134,7 @@ export const createMessage = mutation({
         // Legacy V1 (backward compat)
         jsonRendererRecommendation: v.optional(v.string()),
         uiMessageId: v.optional(v.string()),
+        planSnapshot: v.optional(v.any()),
     },
     handler: async (ctx, args) => {
         await requireConversationOwner(ctx, args.conversationId)

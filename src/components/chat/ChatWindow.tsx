@@ -773,6 +773,8 @@ export function ChatWindow({
     return historyMessages.map((msg) => ({
       createdAt: msg.createdAt ?? 0,
       role: msg.role,
+      // Per-message plan snapshot for UnifiedProcessCard (historical plan state)
+      ...(msg.planSnapshot ? { planSnapshot: msg.planSnapshot } : {}),
     }))
   }, [historyMessages])
 

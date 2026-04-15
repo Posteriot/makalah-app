@@ -177,6 +177,10 @@ export default defineSchema({
     jsonRendererRecommendation: v.optional(v.string()),
     // UI message ID for history rehydration
     uiMessageId: v.optional(v.string()),
+    // Per-message plan snapshot: captures _plan state at the time this message was generated.
+    // Allows UnifiedProcessCard to show historical plan progress per message instead of
+    // retroactively reflecting the latest plan state.
+    planSnapshot: v.optional(v.any()),
   })
     .index("by_conversation", ["conversationId", "createdAt"])
     .index("by_conversation_role", ["conversationId", "role", "createdAt"]),

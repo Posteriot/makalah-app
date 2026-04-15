@@ -1508,13 +1508,22 @@ JSON schema:
             }
         }
 
+        // Resolve current plan snapshot for message persistence.
+        // Reads the latest _plan from the paper session's stageData for the active stage.
+        const getCurrentPlanSnapshot = () => {
+            if (!paperSession?.stageData || !paperStageScope) return undefined
+            const sd = paperSession.stageData as Record<string, Record<string, unknown>>
+            return sd[paperStageScope]?._plan ?? undefined
+        }
+
         const saveAssistantMessage = async (
             content: string,
             sources?: { url: string; title: string; publishedAt?: number | null }[],
             usedModel?: string, // Model name from config (primary or fallback)
             reasoningTrace?: PersistedCuratedTraceSnapshot,
             jsonRendererChoice?: JsonRendererChoicePayload | Spec,
-            uiMessageId?: string
+            uiMessageId?: string,
+            planSnapshot?: unknown,
         ) => {
             const sanitizedReasoningTrace = sanitizeReasoningTraceForPersistence(reasoningTrace)
             const normalizedSources = sources
@@ -1541,6 +1550,7 @@ JSON schema:
                         ? { jsonRendererChoice: JSON.stringify(jsonRendererChoice) }
                         : {}),
                     ...(uiMessageId ? { uiMessageId } : {}),
+                    ...(planSnapshot ? { planSnapshot } : {}),
                 }),
                 "messages.createMessage(assistant)"
             )
@@ -2907,6 +2917,8 @@ Aturan:
                             combinedModelName,
                             result.reasoningSnapshot,
                             result.capturedChoiceSpec ?? undefined,
+                            undefined, // uiMessageId — not used in search path
+                            result.capturedPlanSpec ?? getCurrentPlanSnapshot(),
                         )
 
                         // Auto-persist search references to paper stageData
@@ -3454,7 +3466,8 @@ Aturan:
                                 modelNames.primary.model,
                                 persistedReasoningTrace,
                                 capturedChoiceSpec && capturedChoiceSpec.root ? capturedChoiceSpec : undefined,
-                                primaryMessageId
+                                primaryMessageId,
+                                capturedPlanSpec ?? getCurrentPlanSnapshot(),
                             )
                         }
 
@@ -4288,7 +4301,8 @@ Aturan:
                                 modelNames.fallback.model,
                                 persistedReasoningTrace,
                                 fallbackCapturedChoiceSpec && fallbackCapturedChoiceSpec.root ? fallbackCapturedChoiceSpec : undefined,
-                                fallbackMessageId
+                                fallbackMessageId,
+                                fallbackCapturedPlanSpec ?? getCurrentPlanSnapshot(),
                             )
                         }
                         if (normalizedText.length > 0) {

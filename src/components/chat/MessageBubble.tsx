@@ -263,7 +263,8 @@ export function MessageBubble({
         })
     }, [message.role, allMessages, messageIndex, isPaperMode, currentStageStartIndex, stageData])
 
-    // Derive task summary for UnifiedProcessCard — use per-message stage, not global currentStage
+    // Derive task summary for UnifiedProcessCard — use per-message plan snapshot when available,
+    // falling back to global stageData._plan for messages without snapshot (backward compat).
     const taskSummary = useMemo(() => {
         if (!isPaperMode || !stageData || !currentStage || currentStage === "completed") return null
 
@@ -273,8 +274,21 @@ export function MessageBubble({
             ? getMessageStage(messageCreatedAt, stageData)
             : currentStage  // Streaming message (no createdAt yet) → use current stage
 
-        const result = deriveTaskList(messageStage as PaperStageId, stageData)
-        return result
+        // Per-message plan snapshot: if this message has a planSnapshot, overlay it onto
+        // stageData so deriveTaskList reads the historical plan, not the latest global one.
+        const msgPlanSnapshot = allMessages[messageIndex]?.planSnapshot
+        if (msgPlanSnapshot) {
+            const overlayStageData = {
+                ...stageData,
+                [messageStage]: {
+                    ...(stageData[messageStage] ?? {}),
+                    _plan: msgPlanSnapshot,
+                },
+            }
+            return deriveTaskList(messageStage as PaperStageId, overlayStageData)
+        }
+
+        return deriveTaskList(messageStage as PaperStageId, stageData)
     }, [isPaperMode, stageData, currentStage, allMessages, messageIndex])
 
 
