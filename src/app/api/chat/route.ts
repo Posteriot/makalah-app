@@ -2480,12 +2480,21 @@ Aturan:
         // Step 0 is free — model decides whether to discuss or finalize.
         // After model calls updateStageData, chain is forced: createArtifact → submit.
         // This closes the gap where continue_discussion + updateStageData left chain incomplete.
+        let enforcerStepStartTime = Date.now()
         const universalReactiveEnforcer =
             paperStageScope && paperSession?.stageStatus === "drafting"
                 ? ({ steps, stepNumber }: {
                     steps: Array<{ toolCalls?: Array<{ toolName: string }> }>;
                     stepNumber: number;
                   }) => {
+                    // Log elapsed time for previous step (step N prepareStep tells us step N-1 duration)
+                    if (stepNumber > 0) {
+                        const prevStepTools = steps[stepNumber - 1]?.toolCalls?.map(tc => tc.toolName).join(",") ?? "text"
+                        const elapsed = Date.now() - enforcerStepStartTime
+                        console.info(`[STEP-TIMING] step=${stepNumber - 1} stage=${paperStageScope} tools=[${prevStepTools}] elapsed=${elapsed}ms`)
+                    }
+                    enforcerStepStartTime = Date.now()
+
                     if (stepNumber === 0) return undefined
 
                     const allPrevToolNames = steps.flatMap(s => s.toolCalls?.map(tc => tc.toolName) ?? [])
@@ -3109,6 +3118,13 @@ Aturan:
                 stopWhen: stepCountIs(primaryExactSourceRoutePlan.maxToolSteps ?? maxToolSteps),
                 ...samplingOptions,
                 onFinish: async ({ text, steps, providerMetadata, usage }) => {
+                        // Log final step timing (prepareStep doesn't run after last step)
+                        if (paperStageScope && Array.isArray(steps) && steps.length > 0) {
+                            const lastIdx = steps.length - 1
+                            const lastTools = steps[lastIdx]?.toolCalls?.map((tc: { toolName: string }) => tc.toolName).join(",") ?? "text"
+                            console.info(`[STEP-TIMING] step=${lastIdx} stage=${paperStageScope} tools=[${lastTools}] elapsed=${Date.now() - enforcerStepStartTime}ms (final)`)
+                        }
+
                         // Tool chain ordering observability — log the actual tool call sequence
                         // Deduplicate consecutive same-tool entries (retries after failure are valid)
                         if (paperStageScope && Array.isArray(steps) && steps.length > 0) {
