@@ -99,6 +99,11 @@ IMPORTANT — TOOL CALLS:
 - Saving data (updateStageData, createArtifact) happens in a SUBSEQUENT turn when tools are available.
 - Simply present the results and discuss with the user. The save step comes next.
 
+TASK PLAN (plan-spec):
+- You MUST emit a \`\`\`plan-spec\`\`\` block in this response, same as every other response.
+- Update task statuses to reflect that search is now complete.
+- This is metadata, NOT a tool call — it is always required regardless of phase.
+
 The search results below are your source material. Use them.
 ═══════════════════════════════════════════════════════════════════
 `.trim()
@@ -816,6 +821,20 @@ export async function executeWebSearch(
         }
 
         if (chunk.type === "finish") {
+          // ── Empty-compose failover: model finished normally but produced zero text ──
+          // This catches "silent empty finish" where model returns no text/reasoning
+          // but doesn't error. Without this, COMPOSE-GUARD fires but no real recovery happens.
+          if (textChunkCount === 0 && sourceCount > 0 && canFailover) {
+            console.warn(`[COMPOSE-DIAG][${reqId}] empty compose detected at finish (textChunks=0, sources=${sourceCount}) — triggering failover`)
+            emitTransparentReasoningResetForRetry({
+              isTransparentReasoning: config.isTransparentReasoning,
+              hasReasoning: liveReasoningAccumulator.hasReasoning(),
+              traceId: reasoningTraceId,
+              writer,
+            })
+            return "retry"
+          }
+
           try {
             // Await parallel proxy resolution for remaining sources (started alongside compose)
             const remainingResolved = await proxyResolvePromise
