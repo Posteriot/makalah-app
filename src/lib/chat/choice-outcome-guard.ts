@@ -53,14 +53,15 @@ export function sanitizeChoiceOutcome(
 ): SanitizeChoiceOutcomeResult {
   const normalized = input.text.replace(/\n{3,}/g, "\n\n").trim()
 
+  // Recovery leakage check runs FIRST on ALL actions — internal error text
+  // must never leak to user regardless of workflow action.
+  if (input.hasArtifactSuccess && RECOVERY_LEAKAGE_PATTERNS.test(normalized)) {
+    return sanitizeRecoveryLeakage(normalized, input.submittedForValidation)
+  }
+
   // Case 1: continue_discussion — strip false draft handoff phrasing
   if (input.action === "continue_discussion") {
     return sanitizeFalseDraftHandoff(normalized)
-  }
-
-  // Case 2: finalize actions — strip recovery leakage (only when artifact succeeded)
-  if (input.hasArtifactSuccess && RECOVERY_LEAKAGE_PATTERNS.test(normalized)) {
-    return sanitizeRecoveryLeakage(normalized, input.submittedForValidation)
   }
 
   // No violation

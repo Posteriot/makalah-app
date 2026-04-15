@@ -3022,6 +3022,7 @@ Aturan:
                 ...samplingOptions,
                 onFinish: async ({ text, steps, providerMetadata, usage }) => {
                         // Tool chain ordering observability — log the actual tool call sequence
+                        // Deduplicate consecutive same-tool entries (retries after failure are valid)
                         if (paperStageScope && Array.isArray(steps) && steps.length > 0) {
                             const toolSequence = steps
                                 .flatMap((s: { toolCalls?: Array<{ toolName: string }> }, i: number) =>
@@ -3031,7 +3032,9 @@ Aturan:
                                 ? ["compileDaftarPustaka", "updateStageData", "createArtifact", "submitStageForValidation"]
                                 : ["updateStageData", "createArtifact", "submitStageForValidation"]
                             const actualNames = toolSequence.map(t => t.split(":")[1])
-                            const isCorrectOrder = expected.every((tool, idx) => actualNames[idx] === tool)
+                            // Deduplicate consecutive retries: [updateStageData, createArtifact, createArtifact, submit] → [updateStageData, createArtifact, submit]
+                            const dedupedNames = actualNames.filter((name, i) => i === 0 || name !== actualNames[i - 1])
+                            const isCorrectOrder = expected.every((tool, idx) => dedupedNames[idx] === tool)
                             console.info(`[F1-F6-TEST] ToolChainOrder { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], expected: [${expected.join(", ")}], correct: ${isCorrectOrder} }`)
                         }
 
@@ -3933,6 +3936,7 @@ Aturan:
                     ...samplingOptions,
                     onFinish: async ({ text, steps, usage }) => {
                         // Tool chain ordering observability (fallback path)
+                        // Deduplicate consecutive same-tool entries (retries after failure are valid)
                         if (paperStageScope && Array.isArray(steps) && steps.length > 0) {
                             const toolSequence = steps
                                 .flatMap((s: { toolCalls?: Array<{ toolName: string }> }, i: number) =>
@@ -3940,7 +3944,8 @@ Aturan:
                                 )
                             const expected = ["updateStageData", "createArtifact", "submitStageForValidation"]
                             const actualNames = toolSequence.map(t => t.split(":")[1])
-                            const isCorrectOrder = expected.every((tool, idx) => actualNames[idx] === tool)
+                            const dedupedNames = actualNames.filter((name, i) => i === 0 || name !== actualNames[i - 1])
+                            const isCorrectOrder = expected.every((tool, idx) => dedupedNames[idx] === tool)
                             console.info(`[F1-F6-TEST] ToolChainOrder[fallback] { stage: "${paperStageScope}", sequence: [${toolSequence.join(", ")}], correct: ${isCorrectOrder} }`)
                         }
 
