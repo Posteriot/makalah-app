@@ -128,6 +128,7 @@ export interface OnFinishConfig {
 
 /** Narrow paper session type for executor scope. */
 export interface PaperSessionForExecutor {
+    _id: Id<"paperSessions">
     currentStage: string
     stageStatus?: string
     stageData?: unknown
