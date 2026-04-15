@@ -67,7 +67,14 @@ describe("submitForValidation — artifact guard", () => {
 
   it("succeeds when artifactId exists", async () => {
     const session = makeSession({
-      stageData: { gagasan: { artifactId: "artifact_123" } },
+      stageData: {
+        gagasan: {
+          artifactId: "artifact_123",
+          ideKasar: "Ide tentang AI",
+          analisis: "Analisis kelayakan",
+          angle: "Perspektif teknis",
+        },
+      },
     });
     mockedRequirePaperSessionOwner.mockResolvedValue({ session } as never);
     const { ctx, patches } = makeMockCtx();

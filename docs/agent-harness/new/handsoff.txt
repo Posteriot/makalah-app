@@ -1,0 +1,228 @@
+Perhatikan konteks ini. Sebelum sesi ini, aku telah memberikan perintah ini: "Kita lanjutkan pekerjaan agent harness documentation-to-planning di repo
+    worktree ini:
+
+    `/Users/eriksupit/Desktop/makalahapp/.worktrees/agent-harness`
+
+    Bahasa komunikasi tetap Jakarta-style Indonesian dengan gue–lo pronouns.
+
+    Konteks penting:
+    - Isi worktree ini 1:1 dengan worktree sebelumnya:
+      - `/Users/eriksupit/Desktop/makalahapp/.worktrees/chat-naskah-pages-
+    enforcement`
+    - Jadi lo harus menganggap seluruh hasil audit dokumen di bawah ini SUDAH
+  ada
+    dan SUDAH dipatch langsung ke file masing-masing.
+    - Fokus sesi baru BUKAN mengulang audit dari nol, tapi melanjutkan ke
+  sintesis
+    arsitektur final dan implementation plan yang grounded ke repo.
+
+    Baseline dan referensi utama:
+    - Baseline utama:
+      - `.references/agent-harness/anatomy/anatomy-agent-harness.md`
+    - Referensi implementasi yang dipakai:
+      - `vercel-labs/open-agents`
+      - `https://github.com/openai/codex`
+      - `https://github.com/anthropics/claude-code`
+
+    Dokumen research yang sudah diaudit ulang dan dipatch:
+    - `.references/agent-harness/research/2026-04-15-open-agents-component-deep-
+    dive.md`
+    - `.references/agent-harness/research/2026-04-15-makalahapp-harness-v1-v2-
+    priority-matrix.md`
+    - `.references/agent-harness/research/2026-04-15-makalahapp-harness-v1-
+    blueprint.md`
+    - `.references/agent-harness/research/2026-04-15-makalahapp-harness-v1-
+    component-contracts.md`
+    - `.references/agent-harness/research/2026-04-15-makalahapp-harness-v1-
+  state-
+    machine.md`
+    - `.references/agent-harness/research/2026-04-15-makalahapp-harness-v1-
+  event-
+    model-and-data-contracts.md`
+    - `.references/agent-harness/research/2026-04-15-makalahapp-repo-
+    implementation-mapping.md`
+
+    Hasil penting yang SUDAH final dari sesi sebelumnya:
+    1. `output parsing` dan `basic error handling` adalah capability v1 yang
+    embedded, bukan subsystem besar terpisah.
+    2. `workflow stage` sudah dipisahkan tegas dari `run/workflow status`.
+    3. `run_completed` bukan workflow stage.
+    4. `Durable Run Orchestrator` di repo mapping = `Partial`, bukan `Missing`.
+    5. `Event Model` di repo mapping = `Partial`, bukan `Missing`.
+    6. Setelah dibandingkan dengan `Codex` dan `Claude Code`, semua dokumen
+  sudah
+    diluruskan bahwa:
+       - `instruction precedence` harus eksplisit, bukan implisit
+       - `approval posture` dan `execution boundary` adalah bagian runtime law
+  v1,
+    bukan detail belakangan
+       - `policyState`, event policy, dan pause path karena approval sudah masuk
+    konsisten di blueprint, contracts, state machine, event model, dan repo
+  mapping
+    7. Komponen v1 yang sekarang harus dianggap final secara desain mencakup:
+       - Chat Entry and Run Ownership
+       - Durable Run Orchestrator
+       - One-Step Agent Executor
+       - Prompt and Context Assembler
+       - Thin Tool Registry
+       - Approval and Execution Boundary Policy
+       - Structured Workflow State
+       - Artifact State
+       - Human Input and Approval Interface
+       - Verification Engine
+       - Persistence Layer
+       - Observability Layer
+       - Memory dalam bentuk tipis/embedded
+       - Event Model + Data Contracts
+    8. `Subagents` tetap bukan prioritas v1.
+
+    Kesimpulan arsitektur yang harus lo pegang:
+    - Repo ini sudah punya domain workflow backbone yang kuat.
+    - Yang lemah bukan product logic, tapi bentuk harness-nya:
+      - terlalu banyak orchestration di `src/app/api/chat/route.ts`
+      - policy/runtime guard tersebar
+      - event/state boundary belum eksplisit sebagai harness
+    - Domain anchor yang harus dipertahankan:
+      - `convex/paperSessions.ts`
+      - `convex/paperSessions/constants.ts`
+      - `convex/paperSessions/types.ts`
+      - `convex/artifacts.ts`
+      - `src/lib/ai/paper-mode-prompt.ts`
+      - `src/lib/ai/stage-skill-resolver.ts`
+      - `src/lib/ai/paper-tools.ts`
+      - `src/lib/naskah/compiler.ts`
+      - `src/lib/json-render/*`
+      - `src/lib/ai/context-budget.ts`
+      - `src/lib/ai/context-compaction.ts`
+      - `src/lib/ai/exact-source-guardrails.ts`
+      - `src/lib/ai/artifact-sources-policy.ts`
+
+    Yang belum dikerjakan:
+    - belum ada implementation plan tertulis berbasis repo
+    - belum ada breakdown sequence refactor yang aman
+    - belum ada pemetaan change set per file/module untuk memulai coding
+
+    Tujuan sesi baru:
+    1. Baca hasil dokumen research yang sudah dipatch di atas, tapi jangan audit
+    ulang dari nol.
+    2. Sintesis keputusan arsitektur final v1 yang sekarang stabil.
+    3. Turunkan itu menjadi implementation plan yang konkret, repo-specific, dan
+    aman untuk dieksekusi bertahap.
+    4. Plan harus fokus pada refactor/migration path, bukan redesign liar.
+    5. Jangan langsung coding. Berhenti di implementation plan yang kuat.
+
+    Kriteria implementation plan yang gue mau:
+    - grounded ke codebase aktual worktree ini
+    - menjaga domain logic yang sudah kuat
+    - mengekstrak harness boundary secara bertahap
+    - jelas urutan fase
+    - jelas file/module anchor
+    - jelas dependency antar langkah
+    - jelas risiko dan checkpoint verifikasi
+    - membedakan:
+      - apa yang cukup diekstrak
+      - apa yang perlu dibungkus
+      - apa yang benar-benar perlu ditambahkan baru
+
+    Arah plan yang diharapkan:
+    - kemungkinan besar dimulai dari:
+      1. extract run ownership boundary
+      2. extract one-step executor boundary
+      3. extract prompt/context assembler boundary
+      4. extract runtime policy layer
+      5. extract verification layer
+      6. define explicit run/step/decision/policy/event persistence
+      7. baru siapkan jalur durable orchestration yang mengurangi beban `src/
+  app/
+    api/chat/route.ts`
+    - tapi lo harus verifikasi ini terhadap codebase, jangan telan mentah.
+
+    Instruksi kerja:
+    - Gunakan Jakarta-style Indonesian dengan gue–lo pronouns.
+    - Jangan bikin dokumen baru kalau belum perlu.
+    - Kalau implementation plan paling tepat ditulis ke dokumen yang sudah ada,
+    tentukan dokumen terbaik dan patch langsung di sana.
+    - Kalau lebih tepat bikin dokumen plan terpisah, lo harus punya alasan kuat.
+    - Tunjukkan reasoning yang ketat, jangan overclaim.
+    - Kalau ada mismatch antara dokumen research dan codebase aktual worktree
+  baru
+    ini, sebutkan dengan jelas.
+
+    Checklist status yang harus lo bawa di sesi baru:
+    - `done` audit seluruh 7 dokumen research terhadap anatomy + open-agents +
+    codex + claude-code
+    - `done` patch seluruh 7 dokumen research langsung di file masing-masing
+    - `pending` sintesis final arsitektur v1
+    - `pending` implementation plan repo-specific
+
+    Mulai dari:
+    - baca lagi dokumen ini dulu sebagai pintu masuk:
+      - `.references/agent-harness/research/2026-04-15-makalahapp-repo-
+    implementation-mapping.md`
+    - lalu baca silang seperlunya:
+      - `2026-04-15-makalahapp-harness-v1-blueprint.md`
+      - `2026-04-15-makalahapp-harness-v1-component-contracts.md`
+      - `2026-04-15-makalahapp-harness-v1-state-machine.md`
+      - `2026-04-15-makalahapp-harness-v1-event-model-and-data-contracts.md`
+    - setelah itu, lanjutkan sampai menghasilkan implementation plan yang kuat.
+
+    Checklist status saat ini:
+
+    - done semua 7 dokumen research udah diaudit dan dipatch
+    - done pembandingan anatomy + open-agents + Codex + Claude Code
+    - pending sintesis arsitektur final v1
+    - pending implementation plan repo-specific".
+
+Lalu implementation plan sudah dibuat di `.worktrees/agent-harness/docs/agent-harness/new/2026-04-16-agent-harness-v1-repo-implementation-plan.md`.
+
+Lalu: "File plan-nya sudah gue pindahin ke docs/agent-harness/new/2026-04-16-agent-
+  harness-v1-repo-implementation-plan.md:1, dan isinya gue audit ulang terhadap
+  dokumen research utama di .references/agent-harness/research. Gue juga patch
+  isinya supaya konsisten dengan klarifikasi lo soal docs/ sebagai development-
+  only surface, plus gue ubah rekomendasi namespace runtime dari src/lib/agent-
+  harness/* jadi src/lib/chat-harness/*.
+
+  Hasil auditnya: setelah patch, plan ini sudah compliant dengan garis besar
+  research docs. Yang gue cek silang dan tetap konsisten:
+
+  - bukan coding-agent harness, tapi artifact/workflow harness
+  - durable orchestration tetap bukan langkah pertama
+  - instruction precedence tetap eksplisit
+  - approval posture dan execution boundary tetap diperlakukan sebagai runtime
+    law v1
+  - paperSessions tetap workflow truth, bukan generic run ledger
+  - explicit run/step/event persistence tetap datang setelah executor/context/
+    policy/verification boundary stabil
+
+  Rekomendasi naming terbaik sebelum coding mulai: pakai src/lib/chat-harness/*,
+  jangan src/lib/agent-harness/*. Alasannya sederhana: istilah arsitekturnya
+  tetap “harness”, jadi itu nggak bertabrakan dengan research docs, tapi
+  namespace kode perlu scoped ke entrypoint nyata repo ini, yaitu chat runtime.
+  agent-harness di level folder terlalu gampang kebaca sebagai generic reusable
+  agent framework, padahal implementasi yang lo bangun di repo ini spesifik ke
+  chat/artifact/workflow runtime. Jadi chat-harness lebih presisi dan lebih aman
+  secara naming boundary.
+
+  Verifikasi yang gue jalanin:
+
+  - Markdown lint untuk dokumen baru: pass
+  - scan struktur/dependency: pass
+  - subset test relevan: 7 file pass, 1 fail pre-existing
+
+  Failure yang muncul:
+
+  - convex/paperSessions.test.ts:77
+  - test: submitForValidation — artifact guard > succeeds when artifactId exists
+  - actual: expected patch count 1, received 0
+  - dari log-nya, mutation ke-block karena required fields stage masih kurang,
+    jadi ini kelihatan seperti drift test fixture terhadap guard sekarang, bukan
+    akibat perubahan dokumen
+
+  Satu catatan workspace: git status sekarang memang sudah menunjukkan state docs
+  yang nggak bersih di docs/agent-harness/ (D untuk file lama dan ?? untuk old/
+  dan new/). Gue nggak sentuh file-file lama itu selain dokumen plan yang lo
+  minta pindahkan, tapi state itu perlu lo anggap sebagai kondisi branch yang
+  memang sudah ada saat ini.
+".
+
+Yang aku inginkan dari kamu adalah menjawab pertanyaan: Ini "subset test relevan: 7 file pass, 1 fail pre-existing" apa yang gagal?

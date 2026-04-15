@@ -1,0 +1,1280 @@
+# Agent Harness V1 — Task Breakdown
+
+> Companion to `2026-04-16-agent-harness-v1-repo-implementation-plan.md`.
+> Tasks are written just-in-time per phase. Each phase is appended after user validates the previous one.
+
+---
+
+## Phase 1: Extract Chat Entry and Run Ownership Boundary
+
+**Scope:** Lines 93–522 of `src/app/api/chat/route.ts` (plus lines 587–593 for attachment awareness instruction) — everything from `POST()` entry through choice interaction resolution, before prompt/context assembly begins. Note: `paperSession` fetch (lines 369–456) stays in `route.ts` for Phase 3, but choice validation (lines 460–522) depends on it and is wired accordingly in Task 1.8.
+
+**Goal:** Make `route.ts` call a small set of entry functions that return typed results instead of doing auth, parsing, conversation resolution, billing, message persistence, and choice validation inline.
+
+**Runtime namespace:** `src/lib/chat-harness/entry/`
+
+---
+
+### Task 1.1: Define harness runtime types
+
+**Create:** `src/lib/chat-harness/types/runtime.ts`
+
+**What to define:**
+- `AcceptedChatRequest` — the typed result of a successful chat entry acceptance. Fields:
+  - `requestId: string`
+  - `userId: Id<"users">`
+  - `convexToken: string`
+  - `messages: UIMessage[]` (raw AI SDK messages, not re-parsed)
+  - `lastUserContent: string` (normalized, trimmed)
+  - `firstUserContent: string`
+  - `requestStartedAt: number | undefined`
+  - `billingContext: { userId: Id<"users">; quotaWarning: string | undefined; operationType: OperationType }`
+  - `choiceInteractionEvent: ChoiceInteractionEvent | null`
+  - `fetchQueryWithToken: ConvexFetchQuery`
+  - `fetchMutationWithToken: ConvexFetchMutation`
+- `ConvexFetchQuery` and `ConvexFetchMutation` — typed wrappers for the token-bound Convex fetch helpers. Use `(ref: any, args: any) => Promise<any>` initially (matching the existing `eslint-disable` pattern at `route.ts:127-130`). These can be tightened later, but the priority is extraction parity, not type strictness. Do NOT attempt to type them against Convex generics in this phase.
+- `RunLane` — identity for the execution attempt:
+  - `requestId: string`
+  - `conversationId: Id<"conversations">`
+  - `mode: RunStartMode`
+- `RunStartMode` — `"start" | "resume_candidate"`
+
+**Forward-compatibility constraint (from plan):** `RunLane` fields must not use request-only ephemeral values as IDs that cannot later be backed by a persisted run row. `requestId` serves as the provisional run identity. The interface must avoid closures or non-serializable values — keep `RunLane` a plain data object.
+
+**Acceptance criteria:**
+- Types compile without error
+- No runtime code — types only
+- `RunLane` is a plain serializable data type (no functions, no closures)
+- Exported from barrel `src/lib/chat-harness/types/index.ts`
+
+**Test:** `npx tsc --noEmit`
+
+---
+
+### Task 1.2: Extract request acceptance function
+
+**Create:** `src/lib/chat-harness/entry/accept-chat-request.ts`
+
+**What to extract from `route.ts`:**
+- Auth check (lines 95–98)
+- Convex token acquisition with retry (lines 101–126)
+- Token-bound fetch helper creation (lines 127–130)
+- Request body parsing (lines 132–154)
+- User input observability log (lines 156–168)
+- Convex user ID fetch (lines 170–177)
+- First user content extraction (lines 183–186) — this is physically interleaved with conversation ID init at lines 179–181, but `firstUserContent` is a pure derivation from `messages` and belongs in request acceptance. The `currentConversationId` and `isNewConversation` variables at lines 179–181 are NOT extracted here — they belong to Task 1.3 (`resolveConversation`).
+- Billing pre-flight quota check (lines 190–224)
+
+**Boundary note:** This function stops at line 224. Lines 179–181 (`currentConversationId`, `isNewConversation`) stay in `route.ts` as inputs to `resolveConversation` (Task 1.3).
+
+**Function signature:**
+```typescript
+export async function acceptChatRequest(req: Request): Promise<AcceptedChatRequest | Response>
+```
+
+Returns `Response` directly on auth failure (401) or quota exceeded. Caller checks `instanceof Response`.
+
+**Acceptance criteria:**
+- Auth failure returns 401 Response
+- Token retry logic preserved exactly (3 attempts, 150ms increments)
+- Billing quota check preserved exactly
+- `requestId` generation preserved
+- `firstUserContent` extracted from messages (lines 183–186)
+- Observability log preserved
+- No behavior change
+
+**Test:** `npx tsc --noEmit` + existing test baseline still passes
+
+---
+
+### Task 1.3: Extract conversation resolution
+
+**Create:** `src/lib/chat-harness/entry/resolve-conversation.ts`
+
+**What to extract from `route.ts`:**
+- Conversation creation if no ID provided (lines 227–239)
+- Background title generation fire-and-forget (lines 282–293)
+- `maybeUpdateTitleFromAI` helper closure (lines 296–333)
+
+**Function signature:**
+```typescript
+export async function resolveConversation(params: {
+  conversationId: Id<"conversations"> | undefined;
+  userId: Id<"users">;
+  firstUserContent: string;
+  fetchQueryWithToken: ConvexFetchQuery;
+  fetchMutationWithToken: ConvexFetchMutation;
+}): Promise<{
+  conversationId: Id<"conversations">;
+  isNewConversation: boolean;
+  maybeUpdateTitleFromAI: (opts: { assistantText: string; minPairsForFinalTitle: number }) => Promise<void>;
+}>
+```
+
+**Acceptance criteria:**
+- Conversation creation logic preserved exactly
+- Title generation still fire-and-forget (no await on the happy path)
+- `maybeUpdateTitleFromAI` closure still works with conversation-scoped state
+- Placeholder title "Percakapan baru" unchanged
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 1.4: Extract attachment resolution
+
+**Create:** `src/lib/chat-harness/entry/resolve-attachments.ts`
+
+**What to extract from `route.ts`:**
+- Attachment context fetch (lines 241–246)
+- Effective file ID resolution (lines 248–256)
+- Attachment mode normalization (lines 257–263)
+- Attachment context clear/upsert mutations (lines 265–280)
+- Attachment awareness instruction generation (lines 587–593)
+
+**Scope note:** The attachment awareness instruction at lines 587–593 uses `userMessageCount`, which in the current code is computed at line 578 (after the Phase 1 boundary). This function must receive `messages` and compute `userMessageCount` internally (`messages.filter(m => m.role === "user").length`), rather than taking it as a parameter. This avoids reaching past the Phase 1 extraction boundary.
+
+**Function signature:**
+```typescript
+export async function resolveAttachments(params: {
+  conversationId: Id<"conversations">;
+  messages: UIMessage[];
+  requestFileIds: unknown[];
+  requestedAttachmentMode: unknown;
+  replaceAttachmentContext: boolean | undefined;
+  inheritAttachmentContext: boolean | undefined;
+  clearAttachmentContext: boolean | undefined;
+  fetchQueryWithToken: ConvexFetchQuery;
+  fetchMutationWithToken: ConvexFetchMutation;
+}): Promise<{
+  effectiveFileIds: Id<"files">[];
+  attachmentResolution: EffectiveFileIdResult;
+  attachmentMode: string;
+  hasAttachmentSignal: boolean;
+  attachmentAwarenessInstruction: string;
+}>
+```
+
+**Acceptance criteria:**
+- Attachment resolution logic preserved exactly
+- Attachment awareness directive text unchanged (both first-turn and subsequent-turn variants)
+- `userMessageCount` computed internally from `messages`, not taken as external param
+- Context clear/upsert mutations fire in same conditions
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 1.5: Extract user message persistence
+
+**Create:** `src/lib/chat-harness/entry/persist-user-message.ts`
+
+**What to extract from `route.ts`:**
+- User message content extraction (lines 335–343)
+- Empty-content-with-attachment guard (lines 345–347)
+- Message creation mutation (lines 349–365)
+
+**Function signature:**
+```typescript
+export async function persistUserMessage(params: {
+  messages: UIMessage[];
+  conversationId: Id<"conversations">;
+  effectiveFileIds: Id<"files">[];
+  requestedAttachmentMode: unknown;
+  attachmentResolution: EffectiveFileIdResult;
+  fetchMutationWithToken: ConvexFetchMutation;
+}): Promise<void | Response>
+```
+
+Returns `Response` (400) if empty content with attachment. Otherwise void.
+
+**Acceptance criteria:**
+- Empty-content guard still returns 400 with same message
+- Message persisted with same fields (content, fileIds, attachmentMode, uiMessageId)
+- No change in when/what gets persisted
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 1.6: Extract choice interaction validation
+
+**Create:** `src/lib/chat-harness/entry/validate-choice-interaction.ts`
+
+**What to extract from `route.ts`:**
+- Choice validation with stale-state 409 response (lines 460–484)
+- Choice workflow resolution (lines 485–509)
+- Choice context note build (lines 499–502)
+- Choice observability logs (lines 504–522)
+
+Note: choice event parsing (`parseOptionalChoiceInteractionEvent`) already lives in `src/lib/chat/choice-request.ts`. This task extracts the validation/resolution orchestration from route.ts, not the parsing logic.
+
+**Function signature:**
+```typescript
+export async function validateChoiceInteraction(params: {
+  choiceInteractionEvent: ChoiceInteractionEvent | null;
+  conversationId: Id<"conversations">;
+  paperSession: PaperSession | null;
+  paperStageScope: PaperStageId | undefined;
+  paperModePrompt: string | null;
+}): Promise<{
+  resolvedWorkflow: ResolvedChoiceWorkflow | undefined;
+  choiceContextNote: string | undefined;
+} | Response>
+```
+
+Returns `Response` (409) on stale-state rejection. Caller checks `instanceof Response`.
+
+**Acceptance criteria:**
+- Stale state detection preserved exactly (409 with JSON body, same error shape)
+- Workflow resolution calls same `resolveChoiceWorkflow` with same params
+- Context note and observability logs unchanged
+- Non-stale validation errors still re-thrown
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 1.7: Assemble RunLane
+
+**Create:** `src/lib/chat-harness/entry/resolve-run-lane.ts`
+
+**What this does:**
+Assembles a `RunLane` from the results of previous tasks. This is the explicit "run ownership" contract that the plan requires (`resolve-run-lane.ts` at plan line 192).
+
+**Function signature:**
+```typescript
+export function resolveRunLane(params: {
+  requestId: string;
+  conversationId: Id<"conversations">;
+  isNewConversation: boolean;
+}): RunLane
+```
+
+**Logic:**
+- `mode` = `isNewConversation ? "start" : "resume_candidate"`
+- Returns a plain data object (no closures, no functions — per forward-compat constraint in Task 1.1)
+
+**Why this is a separate function (not inline):**
+- The plan explicitly names this file
+- `RunLane` is the harness's provisional run identity — it must be a first-class value, not an ad-hoc object literal in route.ts
+- When Phase 6 adds durable persistence, `resolveRunLane` becomes the seam where a persisted run row gets created or resumed
+
+**Acceptance criteria:**
+- Returns `RunLane` plain data object
+- `mode` correctly derived from `isNewConversation`
+- No side effects, no async, no closures
+
+**Test:** `npx tsc --noEmit`
+
+---
+
+### Task 1.8: Compose entry barrel and wire into route.ts
+
+**Create:** `src/lib/chat-harness/entry/index.ts` (barrel export)
+
+**Modify:** `src/app/api/chat/route.ts`
+
+**What happens:**
+- Replace lines 93–522 entry section with calls to the extracted functions
+- `route.ts` POST handler becomes:
+
+```
+// === Entry boundary (Phase 1) ===
+1. const accepted = await acceptChatRequest(req)
+   → if Response, return it (401 or quota exceeded)
+
+2. const conversation = await resolveConversation({
+     conversationId: body.conversationId,  // from accepted
+     userId: accepted.userId,
+     firstUserContent: accepted.firstUserContent,
+     fetchQueryWithToken: accepted.fetchQueryWithToken,
+     fetchMutationWithToken: accepted.fetchMutationWithToken,
+   })
+
+3. const attachments = await resolveAttachments({
+     conversationId: conversation.conversationId,
+     messages: accepted.messages,
+     ...body attachment fields,
+     fetchQueryWithToken: accepted.fetchQueryWithToken,
+     fetchMutationWithToken: accepted.fetchMutationWithToken,
+   })
+
+4. const msgResult = await persistUserMessage({
+     messages: accepted.messages,
+     conversationId: conversation.conversationId,
+     effectiveFileIds: attachments.effectiveFileIds,
+     ...
+   })
+   → if Response, return it (400)
+
+// === Context assembly (stays in route.ts, Phase 3 scope) ===
+5. paperSession fetch + paperModePrompt resolution (lines 369–456)
+   → produces: paperSession, paperModePrompt, paperStageScope,
+     isDraftingStage, freeTextContextNote, etc.
+
+// === billingContext mutation (must happen after paperSession) ===
+6. if (paperSession) { accepted.billingContext.operationType = "paper_generation" }
+   → This line currently at route.ts:525-527 MUST be preserved here.
+     Without it, paper sessions are always billed as "chat_message".
+
+// === Choice validation (depends on paperSession from step 5) ===
+7. const choiceResult = await validateChoiceInteraction({
+     choiceInteractionEvent: accepted.choiceInteractionEvent,
+     conversationId: conversation.conversationId,
+     paperSession,
+     paperStageScope,
+     paperModePrompt,
+   })
+   → if Response, return it (409 stale state)
+
+// === Run lane assembly ===
+8. const lane = resolveRunLane({
+     requestId: accepted.requestId,
+     conversationId: conversation.conversationId,
+     isNewConversation: conversation.isNewConversation,
+   })
+
+// === Continue with executor/stream setup ===
+```
+
+**Dependency ordering note:** Steps 5-7 are NOT a flat sequence — `validateChoiceInteraction` (step 7) depends on `paperSession` (step 5). The `billingContext` mutation (step 6) also depends on `paperSession`. This ordering is non-negotiable. Do NOT rearrange.
+
+**What stays in route.ts (Phase 3 scope):**
+- `paperSession` fetch and `paperModePrompt` resolution (lines 369–456)
+- `freeTextContextNote` construction (lines 419–456)
+- `stageSearchPolicy` helper (line 594+)
+- `recentConversationMessagesForExactSource` (line 554+)
+
+**Acceptance criteria:**
+- `route.ts` entry section shrinks from ~430 lines to ~40-50 lines of orchestration calls
+- **Zero behavior change** — same HTTP responses, same Convex mutations, same observability logs
+- `billingContext.operationType` correctly mutated to `"paper_generation"` when `paperSession` exists
+- All 7 baseline test files still pass
+- `npx tsc --noEmit` passes
+- Build passes
+
+**Test:** Full baseline test suite + type check + build:
+```bash
+npx tsc --noEmit && npx vitest run convex/paperSessions.test.ts src/lib/ai/paper-tools.compileDaftarPustaka.test.ts src/lib/ai/paper-tools.inspect-source.test.ts src/lib/ai/chat-exact-source-guardrails.test.ts src/lib/ai/artifact-sources-policy.test.ts __tests__/context-budget.test.ts __tests__/context-compaction.test.ts
+```
+
+---
+
+### Task 1.9: Post-phase review checkpoint
+
+**Action:** Dispatch agent reviewer to audit the implemented Phase 1 extraction against:
+- Plan requirements (entry boundary is explicit, `RunLane` instantiated, run ownership types exist)
+- No behavior regression
+- Type safety (no `any` leaks across boundary)
+- No leaked implementation details across boundary
+- Clean imports (no circular dependencies)
+- Commit history is clean and scoped
+
+**Output:** Review report with gaps (if any) → fix gaps → report to user → wait for user validation.
+
+---
+
+## Phase 2: Extract One-Step Agent Executor Boundary
+
+**Scope:** The two stream pipelines in `route.ts` — primary (lines 3098–3999) and fallback (lines 4043–4873) — plus their shared dependencies: tool registry (lines 1603–2176), `saveAssistantMessage` (lines 1560–1598), model/provider config, and stream transforms.
+
+**Goal:** Make `route.ts` call a single executor function that handles model invocation, stream setup, onFinish persistence, and stream transforms — instead of having two near-duplicate ~800-line pipelines inline.
+
+**Runtime namespace:** `src/lib/chat-harness/executor/`
+
+**Key insight:** Primary and fallback pipelines share ~80% of their logic. The real differences are: model provider, `toolChoice` override, `providerOptions`/`samplingOptions`, search context in messages, and error recovery path. The executor should accept these as configuration, not duplicate the pipeline.
+
+**Plan deviation note:** The plan lists both `build-step-stream.ts` and `build-fallback-step-stream.ts` as separate files. This task breakdown deliberately unifies them into a single `build-step-stream.ts` because the two pipelines differ only in configuration, not structure. A single function with config params is more maintainable than two near-identical files.
+
+---
+
+### Task 2.1: Define executor types
+
+**Create:** `src/lib/chat-harness/executor/types.ts`
+
+**What to define:**
+- `StepExecutionConfig` — input to the executor:
+  - `model: LanguageModel`
+  - `messages: ModelMessage[]`
+  - `tools: ToolSet`
+  - `prepareStep: PrepareStepFunction | undefined`
+  - `stopWhen: StopCondition | undefined`
+  - `maxSteps: number`
+  - `modelName: string` (for telemetry/persistence)
+  - `toolChoice: ToolChoice | undefined` (forced tool choice — `route.ts:3103`, `4112`)
+  - `providerOptions: Record<string, unknown> | undefined`
+  - `samplingOptions: { temperature?: number; topP?: number } | undefined`
+- `StepExecutionResult` — output of the executor:
+  - `text: string`
+  - `steps: StepResult[]`
+  - `usage: TokenUsage`
+  - `providerMetadata: unknown`
+  - `finishReason: string`
+  - `toolCalls: ToolCallSummary[]`
+- `StreamPipelineConfig` — stream transform + persistence config:
+  - `onFinish: OnFinishHandler`
+  - `reasoningTraceEnabled: boolean`
+  - `planCaptureEnabled: boolean`
+  - `yamlRenderEnabled: boolean`
+- `OnFinishContext` — normalized data passed to the onFinish handler:
+  - `text: string`
+  - `steps: StepResult[]`
+  - `usage: TokenUsage`
+  - `providerMetadata: unknown`
+  - `toolChainOrder: string[]`
+  - `modelName: string`
+
+**Acceptance criteria:**
+- Types compile
+- No runtime code
+- Compatible with AI SDK's `streamText` return shape
+
+**Test:** `npx tsc --noEmit`
+
+---
+
+### Task 2.2: Extract saveAssistantMessage
+
+**Create:** `src/lib/chat-harness/executor/save-assistant-message.ts`
+
+**What to extract from `route.ts`:**
+- `saveAssistantMessage` function (lines 1560–1598)
+
+**Closure-to-parameter conversion note:** The current function closes over `currentConversationId` (line 1580) and uses `modelNames.primary.model` as default for `usedModel` (line 1585). In the extracted version, `conversationId` becomes an explicit required parameter, and `usedModel` becomes required (no default — caller always provides it). These are intentional changes from closure-based to parameter-based.
+
+**Function signature:**
+```typescript
+export async function saveAssistantMessage(params: {
+  conversationId: Id<"conversations">;
+  content: string;
+  sources: NormalizedSource[];
+  usedModel: string;
+  reasoningTrace: CuratedTraceSnapshot | undefined;
+  jsonRendererChoice: JsonRendererChoicePayload | undefined;
+  uiMessageId: string | undefined;
+  planSnapshot: PlanSpec | undefined;
+  fetchMutationWithToken: ConvexFetchMutation;
+}): Promise<void>
+```
+
+**Acceptance criteria:**
+- Reasoning trace sanitization preserved
+- Source normalization preserved
+- All fields passed to `api.messages.createMessage` unchanged
+- `conversationId` and `usedModel` are explicit params (no closure capture)
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 2.3: Extract onFinish handler builder (internal helper for buildStepStream)
+
+**Create:** `src/lib/chat-harness/executor/build-on-finish-handler.ts`
+
+**What to extract from `route.ts`:**
+- Primary onFinish handler (lines 3120–3735)
+- Fallback onFinish handler (lines 4126–4623)
+
+**Important:** This function is called internally by `buildStepStream` (Task 2.4), NOT by route.ts directly. This is because `onFinish` needs shared closure scope with the stream writer for `streamContentOverride`.
+
+**Documented differences between primary and fallback onFinish:**
+1. **Google grounding metadata** (route.ts:3156-3174): Primary extracts `groundingChunks` from `providerMetadata`. Fallback does not destructure `providerMetadata` at all.
+2. **`enrichSourcesWithFetchedTitles`** (route.ts:3505-3509): Primary enriches source titles. Fallback does not.
+3. **`classifyRevisionIntent`** (route.ts:3262-3278): Primary invokes async classifier with the model instance. Fallback does not.
+4. **`isCompileThenFinalize` in ToolChainOrder** (route.ts:3138-3140): Primary uses this flag for expected tool chain log. Fallback always uses non-compile sequence.
+5. **Unfenced plan-spec extraction** (route.ts:3648-3670): Primary has regex+yaml fallback for plan extraction. Fallback does not.
+
+These differences must be controlled by config flags (e.g., `enableGroundingExtraction`, `enableRevisionClassifier`, `enablePlanSpecFallback`), not by duplicating the handler.
+
+**Function signature (OnFinishConfig — used by buildStepStream internally):**
+```typescript
+export type OnFinishConfig = {
+  conversationId: Id<"conversations">;
+  userId: Id<"users">;
+  modelName: string;
+  model: LanguageModel | undefined;  // needed for classifyRevisionIntent (primary only)
+  requestId: string;
+  convexToken: string;  // needed for telemetry and billing
+  billingContext: BillingContext;
+  paperSession: PaperSession | null;
+  paperStageScope: PaperStageId | undefined;
+  paperToolTracker: PaperToolTracker;
+  paperTurnObservability: PaperTurnObservability;
+  resolvedWorkflow: ResolvedChoiceWorkflow | undefined;
+  choiceInteractionEvent: ChoiceInteractionEvent | null;
+  isCompileThenFinalize: boolean;
+  normalizedLastUserContent: string;  // needed for revision classifier
+  lane: RunLane;
+  maybeUpdateTitleFromAI: TitleUpdateFn;
+  fetchQueryWithToken: ConvexFetchQuery;
+  fetchMutationWithToken: ConvexFetchMutation;
+  // Feature flags for primary-only behaviors:
+  enableGroundingExtraction: boolean;
+  enableSourceTitleEnrichment: boolean;
+  enableRevisionClassifier: boolean;
+  enablePlanSpecFallbackExtraction: boolean;
+}
+```
+
+**What the handler does (shared core):**
+- Tool chain ordering observability + validation
+- Text normalization (whitespace, leakage detection)
+- Choice outcome sanitization → sets `streamContentOverride` (shared with stream writer)
+- Source/body parity check
+- Assistant message persistence (calls `saveAssistantMessage`)
+- Plan capture persistence
+- Billing usage recording
+- Telemetry logging
+- Title update trigger
+
+**Acceptance criteria:**
+- Single config-driven function replaces both primary and fallback onFinish handlers
+- All 5 primary-only behaviors correctly gated by config flags
+- `convexToken` available for telemetry and billing calls
+- All observability logs preserved
+- All persistence calls preserved
+- Leakage detection logic preserved
+- Plan capture logic preserved
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 2.4: Extract stream pipeline builder
+
+**Create:** `src/lib/chat-harness/executor/build-step-stream.ts`
+
+**What to extract from `route.ts`:**
+- Primary stream creation (lines 3751–3999): `createUIMessageStream` + `execute` block + stream transforms
+- Fallback stream creation (lines 4639–4872): same pattern
+- Reasoning trace controller setup (lines 3741–3749 primary, 4627–4637 fallback)
+- Stream transform application: `pipePlanCapture` (lines 3809, 4693) + `pipeYamlRender` (lines 3813, 4697)
+- Spec/plan-spec part capture (lines 3832–3851 primary, 4715–4734 fallback)
+
+**Architecture decision: `onFinish` must be built INSIDE `buildStepStream`, not passed in.**
+
+The current code has shared mutable state (`streamContentOverride` / `fallbackStreamContentOverride`) that is written by `onFinish` (route.ts:3302-3304) and read by the stream writer loop (route.ts:3893-3930). This requires `onFinish` and the stream writer to share closure scope. If `onFinish` is built externally (Task 2.3) and passed in, there is no shared scope for `streamContentOverride` to live in.
+
+**Resolution:** `buildStepStream` takes the onFinish _config_ (not a pre-built handler) and constructs both the `onFinish` handler and the stream writer internally, giving them shared access to `streamContentOverride`. Task 2.3 (`buildOnFinishHandler`) becomes a helper that `buildStepStream` calls internally, not something the route calls directly.
+
+**Function signature:**
+```typescript
+export function buildStepStream(params: {
+  executionConfig: StepExecutionConfig;
+  onFinishConfig: OnFinishConfig;  // config, not a pre-built handler
+  reasoningTraceEnabled: boolean;
+  enablePlanCapture: boolean;
+  enableYamlRender: boolean;
+}): Response
+```
+
+Returns `Response` directly (`createUIMessageStreamResponse` called internally). The caller does `return buildStepStream(...)`.
+
+**What this unifies:**
+- Single function replaces both primary and fallback `createUIMessageStream` blocks
+- `streamText` call happens inside this function
+- `onFinish` handler constructed inside (shared scope with stream writer for `streamContentOverride`)
+- Stream transforms applied inside this function
+- Reasoning trace controller created inside this function
+- Outcome guard / stream content override logic stays inside (same closure scope)
+
+**Acceptance criteria:**
+- Both primary and fallback paths can call this function with different configs
+- Returns `Response` directly (not `{ stream, response }`)
+- `streamContentOverride` shared state works correctly between onFinish and stream writer
+- Stream transforms applied in correct order (pipePlanCapture → pipeYamlRender)
+- Reasoning trace accumulator correctly wired
+- Outcome guard behavior preserved (route.ts:3893-3930, 4770-4826)
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 2.5: Extract tool registry builder
+
+**Create:** `src/lib/chat-harness/executor/build-tool-registry.ts`
+
+**What to extract from `route.ts`:**
+- Inline artifact tool definitions: `createArtifact` (lines 1604–1997), `updateArtifact` (lines 1998–2120), `readArtifact` (lines 2121–2138), `renameConversationTitle` (lines 2139–2166)
+- Paper tools spread (line 2168–2175)
+- The `tools` composition at lines 1603–2176
+
+**Function signature:**
+```typescript
+export function buildToolRegistry(params: {
+  conversationId: Id<"conversations">;
+  userId: Id<"users">;
+  paperSession: PaperSession | null;
+  paperStageScope: PaperStageId | undefined;
+  paperToolTracker: PaperToolTracker;
+  paperTurnObservability: PaperTurnObservability;
+  resolvedWorkflow: ResolvedChoiceWorkflow | undefined;
+  fetchQueryWithToken: ConvexFetchQuery;
+  fetchMutationWithToken: ConvexFetchMutation;
+}): ToolSet
+```
+
+**Important:** The inline artifact tools (`createArtifact`, `updateArtifact`) contain significant business logic (auto-rescue, reference validation, parity checks). This task moves them out of route.ts but does NOT refactor their internals. Extract as-is.
+
+**Scope clarification:** `isCompileThenFinalize` (route.ts:2416) is NOT part of the tool registry — it belongs to the enforcer composition section (lines 2371-2523) which stays in route.ts as Phase 4 scope. Do not extract it here. It is passed into `OnFinishConfig` (Task 2.3) from route.ts.
+
+**Acceptance criteria:**
+- `tools` object identical to current composition
+- Artifact tool business logic unchanged
+- Paper tools spread unchanged
+- All tool closures still have access to required scope (conversationId, paperSession, etc.)
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 2.6: Wire executor into route.ts
+
+**Modify:** `src/app/api/chat/route.ts`
+
+**Create:** `src/lib/chat-harness/executor/index.ts` (barrel export)
+
+**What happens:**
+- Replace the two inline stream pipelines with calls to the extracted functions:
+
+```
+// === Tool registry (was lines 1603-2176) ===
+const tools = buildToolRegistry({ ... })
+
+// === Primary execution ===
+try {
+  return buildStepStream({
+    executionConfig: {
+      model, messages, tools, prepareStep, stopWhen, maxSteps,
+      modelName: modelNames.primary.model,
+      toolChoice: forcedToolChoice,
+      providerOptions, samplingOptions,
+    },
+    onFinishConfig: {
+      ...sharedOnFinishConfig,
+      modelName: modelNames.primary.model,
+      model,  // for classifyRevisionIntent
+      enableGroundingExtraction: true,
+      enableSourceTitleEnrichment: true,
+      enableRevisionClassifier: true,
+      enablePlanSpecFallbackExtraction: true,
+    },
+    reasoningTraceEnabled: true,
+    enablePlanCapture: true,
+    enableYamlRender: true,
+  })
+} catch (error) {
+  // === Error classification + telemetry (was route.ts:4001-4028) ===
+  const errorInfo = classifyError(error)
+  logAiTelemetry({ ...primaryFailureTelemetry })
+  Sentry.addBreadcrumb({ ... })
+
+  // === Fallback execution ===
+  const fallbackModel = await getOpenRouterModel({ enableWebSearch: false })
+  return buildStepStream({
+    executionConfig: {
+      model: fallbackModel, messages: fallbackMessages, tools,
+      prepareStep: fallbackPrepareStep, stopWhen, maxSteps,
+      modelName: modelNames.fallback.model,
+      toolChoice: fallbackForcedToolChoice,
+      providerOptions: fallbackProviderOptions, samplingOptions,
+    },
+    onFinishConfig: {
+      ...sharedOnFinishConfig,
+      modelName: modelNames.fallback.model,
+      model: undefined,  // no revision classifier in fallback
+      enableGroundingExtraction: false,
+      enableSourceTitleEnrichment: false,
+      enableRevisionClassifier: false,
+      enablePlanSpecFallbackExtraction: false,
+    },
+    reasoningTraceEnabled: true,
+    enablePlanCapture: true,
+    enableYamlRender: true,
+  })
+}
+```
+
+**Catch block ownership:** The error classification + telemetry logic at route.ts:4001-4028 (`classifyError`, `logAiTelemetry`, `Sentry.addBreadcrumb`) stays in `route.ts` as the orchestration-level error recovery decision. It is NOT inside `buildStepStream` — it decides whether to invoke fallback, which is a routing concern.
+
+**What stays in route.ts for now:**
+- `prepareStep` enforcer composition (lines 2371–2523) — Phase 4 scope
+- Search/exact-source routing (lines 2525–3087) — Phase 3 scope
+- Model loading (lines 2526, 4055) — stays until Phase 7
+
+**Acceptance criteria:**
+- `route.ts` loses ~2400 lines (two stream pipelines + tool registry + saveAssistantMessage)
+- **Zero behavior change**
+- Primary and fallback still produce identical stream format
+- All 7 baseline tests pass
+- `npx tsc --noEmit` passes
+- Build passes
+
+**Test:** Full baseline + type check + build
+
+---
+
+### Task 2.7: Post-phase review checkpoint
+
+**Action:** Dispatch agent reviewer to audit Phase 2 extraction against:
+- Plan requirements (one-step executor is a callable boundary)
+- Primary/fallback unification is correct (no subtle behavioral differences lost)
+- onFinish handler produces same persistence and telemetry
+- Stream transforms applied in correct order
+- Tool registry composition unchanged
+- No circular dependencies between `executor/` and `entry/`
+
+**Output:** Review report → fix gaps → report to user → wait for validation.
+
+---
+
+## Phase 3: Extract Prompt and Context Assembler Boundary
+
+**Scope:** Lines 598–3097 of `route.ts` — everything between entry (Phase 1) and executor (Phase 2). This is the largest extraction phase (~2500 lines) covering: file context assembly, message conversion, system prompt stacking, context budget/compaction, search decision/execution, and exact-source routing.
+
+**Goal:** Make the instruction stack explicit and inspectable. Route.ts should call a context assembler that returns a `ResolvedStepContext` containing: messages (with all system notes injected), tool config, search results, exact-source routing decisions, and budget status.
+
+**Runtime namespace:** `src/lib/chat-harness/context/`
+
+**Plan note:** The implementation plan says "a narrow Phase 3 cut that only centralizes instruction-stack assembly" is the recommended first execution slice. The full Phase 3 below is the complete extraction; during execution, the team may choose to implement only Tasks 3.1–3.4 first (the narrow cut) and defer 3.5–3.7 (search/routing) to a later pass.
+
+---
+
+### Task 3.1: Define context assembler types
+
+**Create:** `src/lib/chat-harness/context/types.ts`
+
+**What to define:**
+- `ResolvedStepContext` — the final assembled context for one execution step:
+  - `messages: ModelMessage[]` (system notes + conversation, post-compaction)
+  - `toolChoice: ToolChoice | undefined`
+  - `maxSteps: number`
+  - `samplingOptions: SamplingOptions`
+  - `providerOptions: Record<string, unknown> | undefined`
+  - `budgetStatus: BudgetStatus`
+  - `searchDecision: SearchDecision`
+  - `exactSourceRouting: ExactSourceRoutingResult`
+  - `skillTelemetryContext: SkillTelemetryContext`
+- `BudgetStatus`:
+  - `totalChars: number`
+  - `contextWindow: number`
+  - `didCompact: boolean`
+  - `resolvedAtPriority: string | null`
+  - `didPrune: boolean`
+- `SearchDecision`:
+  - `enableWebSearch: boolean`
+  - `executionMode: SearchExecutionMode`
+  - `intentType: string`
+  - `confidence: number`
+  - `reason: string`
+- `ExactSourceRoutingResult`:
+  - `mode: "force-inspect" | "clarify" | "none"`
+  - `matchedSourceId: string | undefined`
+  - `prepareStep: PrepareStepFunction | undefined`
+- `InstructionStackEntry` — one item in the stacking order:
+  - `role: "system"`
+  - `content: string`
+  - `source: string` (trace label: "base-prompt", "paper-mode", "file-context", "attachment-awareness", etc.)
+- `ResolvedInstructionStack`:
+  - `entries: InstructionStackEntry[]`
+  - `conversationMessages: ModelMessage[]`
+
+**Acceptance criteria:**
+- Types compile
+- No runtime code
+- `InstructionStackEntry.source` provides full traceability of what's in the instruction stack
+
+**Test:** `npx tsc --noEmit`
+
+---
+
+### Task 3.2: Extract file context assembly
+
+**Create:** `src/lib/chat-harness/context/assemble-file-context.ts`
+
+**What to extract from `route.ts`:**
+- File content fetching with pending-extraction wait loop (lines 622–644)
+- Per-file context assembly with budget cap and truncation (lines 651–718)
+- Attachment health classification and telemetry (lines 720–765)
+
+**Function signature:**
+```typescript
+export async function assembleFileContext(params: {
+  effectiveFileIds: Id<"files">[];
+  isPaperMode: boolean;
+  conversationId: Id<"conversations">;
+  fetchQueryWithToken: ConvexFetchQuery;
+}): Promise<{
+  fileContext: string;
+  docFileCount: number;
+  docExtractionSuccessCount: number;
+  docExtractionFailedCount: number;
+  omittedFileNames: string[];
+}>
+```
+
+**Constants to co-locate:** `MAX_FILE_CONTEXT_CHARS_PER_FILE` (80K), `MAX_FILE_CONTEXT_CHARS_TOTAL` (240K)
+
+**Acceptance criteria:**
+- Pending extraction wait loop preserved (max 8s, 500ms polls)
+- Per-file truncation logic preserved (80K per file, remaining budget check)
+- Truncation marker text unchanged
+- Attachment health telemetry fire-and-forget preserved
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 3.3: Extract instruction stack resolver
+
+**Create:** `src/lib/chat-harness/context/resolve-instruction-stack.ts`
+
+**What to extract from `route.ts`:**
+- The `fullMessagesBase` array assembly (lines 913–1001) — 13+ conditional system message injections in specific order
+
+**Function signature:**
+```typescript
+export function resolveInstructionStack(params: {
+  systemPrompt: string;
+  paperModePrompt: string | null;
+  fileContext: string;
+  attachmentAwarenessInstruction: string;
+  sourcesContext: string;
+  sourceInventoryContext: string;
+  exactSourceResolution: ExactSourceFollowupResult;
+  skillInstructions: string;
+  choiceContextNote: string | undefined;
+  freeTextContextNote: string | undefined;
+  isDraftingStage: boolean;
+  paperStageScope: PaperStageId | undefined;
+  paperSession: PaperSession | null;
+  conversationMessages: ModelMessage[];
+}): ResolvedInstructionStack
+```
+
+**Critical:** The ordering of system messages must be preserved exactly. Each entry gets a `source` label for traceability. The current implicit ordering in route.ts becomes an explicit, inspectable array.
+
+**Acceptance criteria:**
+- All 13+ conditional system notes injected in same order
+- Each entry has a `source` trace label
+- `CHOICE_YAML_SYSTEM_PROMPT` injected only when `isDraftingStage`
+- Workflow discipline notes injected for correct stages
+- Completed session override note injected when paper completed
+- Conversation messages appended after all system notes
+
+**Test:** `npx tsc --noEmit` + baseline
+
+**Dependencies:**
+- Task 3.2 → `fileContext`, `attachmentAwarenessInstruction`
+- Task 3.5 → `exactSourceResolution` (for system message injection flags)
+- Task 3.6 → `searchDecision` (for skill instructions conditional)
+- Task 3.7 → `sourcesContext`, `sourceInventoryContext`, `hasRecentSourcesInDb`
+
+---
+
+### Task 3.4: Extract context budget and compaction
+
+**Create:** `src/lib/chat-harness/context/apply-context-budget.ts`
+
+**What to extract from `route.ts`:**
+- Budget estimation helper `estimateModelMessageChars` (lines 1027–1034)
+- `checkContextBudget` call and logging (lines 1036–1043)
+- Compaction chain invocation (lines 1045–1076)
+- Brute prune safety net (lines 1078–1091)
+- Budget warning log (lines 1093–1096)
+
+**Function signature:**
+```typescript
+export async function applyContextBudget(params: {
+  messages: ModelMessage[];
+  contextWindow: number;
+  isPaperMode: boolean;
+  paperStageScope: PaperStageId | undefined;
+}): Promise<{
+  messages: ModelMessage[];
+  budgetStatus: BudgetStatus;
+}>
+```
+
+**Acceptance criteria:**
+- Compaction chain invocation preserved (calls `runCompactionChain` from existing module)
+- Brute prune safety net preserved (last 50 conversation messages)
+- Budget logging preserved
+- Existing compaction tests still pass (`__tests__/context-compaction.test.ts`, `__tests__/context-budget.test.ts`)
+
+**Test:** `npx tsc --noEmit` + full baseline (especially context-budget and context-compaction tests)
+
+---
+
+### Task 3.5: Extract exact-source followup resolution (early pass)
+
+**Create:** `src/lib/chat-harness/context/resolve-exact-source-followup.ts`
+
+**What to extract from `route.ts`:**
+- Exact source resolution (lines 891–908): `resolveExactSourceFollowup` call
+- Exact source routing flags (lines 899–905)
+
+**Execution order note:** In the actual code, exact source resolution runs BEFORE the search decision (line 892 is before line 2616). The search decision then checks `exactSourceResolution.mode === "force-inspect"` at line 2598 as a pre-router guardrail. This means this task MUST execute before Task 3.6.
+
+**Function signature:**
+```typescript
+export async function resolveExactSourceFollowup(params: {
+  model: LanguageModel;
+  lastUserContent: string;
+  recentConversationMessages: ExactSourceConversationMessage[];
+  availableExactSources: ExactSourceSummary[];
+}): Promise<{
+  resolution: ExactSourceFollowupResult;
+  shouldIncludeRawSourcesContext: boolean;
+  shouldIncludeExactInspectionSystemMessage: boolean;
+  shouldIncludeRecentSourceSkillInstructions: boolean;
+}>
+```
+
+**Acceptance criteria:**
+- `resolveExactSourceFollowup` call preserved with same params
+- Routing flags correctly derived from resolution mode
+- No dependency on search decision output
+
+**Test:** `npx tsc --noEmit` + baseline (especially `chat-exact-source-guardrails.test.ts`)
+
+**Dependency:** Task 3.7 (needs `availableExactSources`)
+
+---
+
+### Task 3.6: Extract search decision
+
+**Create:** `src/lib/chat-harness/context/resolve-search-decision.ts`
+
+**What to extract from `route.ts`:**
+- `decideWebSearchMode` function (lines 1230–1395)
+- Pre-router guardrails (lines 2579–2605): gagasan first turn guard, exact-source force-inspect guard
+- LLM router invocation (lines 2606–2693)
+- Search execution mode resolution (lines 2695–2741)
+- Reference inventory short-circuit (lines 2743–2768)
+- Search unavailability handling (lines 2770–2807)
+- Forced sync/submit flag computation (lines 2779–2806)
+
+**Function signature:**
+```typescript
+export async function resolveSearchDecision(params: {
+  model: LanguageModel;
+  messages: ModelMessage[];
+  lastUserContent: string;
+  paperSession: PaperSession | null;
+  paperStageScope: PaperStageId | undefined;
+  isDraftingStage: boolean;
+  stageSearchPolicy: string;
+  exactSourceResolution: ExactSourceFollowupResult;  // from Task 3.5
+  choiceInteractionEvent: ChoiceInteractionEvent | null;
+  availableExactSources: ExactSourceSummary[];
+  webSearchConfig: WebSearchConfig;
+  fetchQueryWithToken: ConvexFetchQuery;
+}): Promise<SearchDecision & {
+  forcedSyncPrepareStep: PrepareStepFunction | undefined;
+  forcedToolChoice: ToolChoice | undefined;
+  missingArtifactNote: string | undefined;
+  earlyResponse: Response | undefined;
+}>
+```
+
+**Note:** If `earlyResponse` is non-undefined, the caller must return it immediately (reference inventory or search unavailability short-circuit).
+
+**Pre-router guardrails included:** Lines 2579–2605 contain `isGagasanFirstTurn` guard and `exactSourceResolution.mode === "force-inspect"` guard. These run BEFORE the LLM router and can short-circuit search to disabled. They MUST be inside this function, not left in route.ts.
+
+**Acceptance criteria:**
+- LLM router prompt text unchanged
+- Pre-router guardrails preserved (gagasan first turn, exact source force-inspect)
+- Intent classification (sync, compile, save_submit, search, discussion) preserved
+- Post-decision note injection preserved
+- Reference inventory short-circuit preserved
+- Forced sync/submit flags preserved
+
+**Test:** `npx tsc --noEmit` + baseline
+
+**Dependency:** Task 3.5 (needs `exactSourceResolution`)
+
+---
+
+### Task 3.6b: Extract exact-source routing build (late pass)
+
+**Create:** `src/lib/chat-harness/context/build-exact-source-routing.ts`
+
+**What to extract from `route.ts`:**
+- Deterministic exact source prepareStep build (lines 2862–2882)
+- Exact source router note injection
+
+This runs AFTER the search decision because it needs `enableWebSearch`, `forcedSyncPrepareStep`, and `forcedToolChoice` from Task 3.6.
+
+**Function signature:**
+```typescript
+export function buildExactSourceRouting(params: {
+  exactSourceResolution: ExactSourceFollowupResult;  // from Task 3.5
+  enableWebSearch: boolean;  // from Task 3.6
+  forcedSyncPrepareStep: PrepareStepFunction | undefined;  // from Task 3.6
+  forcedToolChoice: ToolChoice | undefined;  // from Task 3.6
+  availableExactSources: ExactSourceSummary[];
+}): ExactSourceRoutingResult
+```
+
+**Acceptance criteria:**
+- `buildDeterministicExactSourcePrepareStep` call preserved
+- Routing correctly gated by `enableWebSearch`, `forcedSyncPrepareStep`, `forcedToolChoice`
+
+**Test:** `npx tsc --noEmit` + baseline
+
+**Dependency:** Task 3.5 + Task 3.6
+
+---
+
+### Task 3.7: Extract sources fetch and context assembly
+
+**Create:** `src/lib/chat-harness/context/fetch-and-assemble-sources.ts`
+
+**What to extract from `route.ts`:**
+- Recent sources fetch from DB (lines 845–875)
+- Exact sources inventory fetch (lines 877–890)
+- Source inventory context build (line 905)
+
+**Note:** This function FETCHES from DB and then BUILDS context strings. The previous task design incorrectly took `availableExactSources` and `recentSourcesList` as inputs — those are the outputs of the DB fetches at lines 860 and 878.
+
+**Function signature:**
+```typescript
+export async function fetchAndAssembleSourcesContext(params: {
+  conversationId: Id<"conversations">;
+  fetchQueryWithToken: ConvexFetchQuery;
+}): Promise<{
+  recentSourcesList: RecentSource[];
+  availableExactSources: ExactSourceSummary[];
+  hasRecentSourcesInDb: boolean;
+  sourcesContext: string;
+  sourceInventoryContext: string;
+}>
+```
+
+**Output note:** `recentSourcesList`, `availableExactSources`, and `hasRecentSourcesInDb` are consumed by downstream tasks:
+- `availableExactSources` → Task 3.5 (exact source followup) and Task 3.6 (search decision)
+- `hasRecentSourcesInDb` → Task 3.3 (instruction stack: skill instructions conditional)
+- `sourcesContext` and `sourceInventoryContext` → Task 3.3 (instruction stack)
+
+**Acceptance criteria:**
+- DB fetches for recent sources and exact sources preserved
+- Source inventory context format unchanged
+- Error handling (non-blocking) preserved
+- All 5 outputs correctly produced
+
+**Test:** `npx tsc --noEmit` + baseline
+
+**Dependency:** None (runs early, produces data for 3.3, 3.5, 3.6)
+
+---
+
+### Task 3.8: Extract message conversion and sanitization
+
+**Create:** `src/lib/chat-harness/context/convert-messages.ts`
+
+**What to extract from `route.ts`:**
+- `convertToModelMessages` call (line 767)
+- Message sanitization/filtering loop (lines 769–816)
+- Paper mode message trimming (lines 818–839)
+- Recent conversation messages extraction for exact source (lines 554–576)
+
+**Function signature:**
+```typescript
+export function convertAndSanitizeMessages(params: {
+  messages: UIMessage[];
+  isPaperMode: boolean;
+}): {
+  modelMessages: ModelMessage[];
+  recentConversationMessagesForExactSource: ExactSourceConversationMessage[];
+  userMessageCount: number;
+}
+```
+
+**Acceptance criteria:**
+- `convertToModelMessages` call preserved
+- Role filtering preserved (user, assistant, system only)
+- Content sanitization preserved (invalid tool calls filtered)
+- Paper mode trimming preserved (max 40 messages)
+- Recent conversation messages for exact source correctly extracted
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 3.9: Extract helper functions (search evidence, reasoning sanitization)
+
+**Create:** `src/lib/chat-harness/context/search-evidence-helpers.ts`
+
+**What to extract from `route.ts`:**
+- `getSearchEvidenceFromStageData` (lines 1099–1127)
+- `hasStageArtifact` (lines 1129–1137)
+- `buildForcedSyncStatusMessage` (lines 1139–1174)
+- `hasPreviousSearchResults` (lines 1176–1228)
+
+**Create:** `src/lib/chat-harness/shared/reasoning-sanitization.ts`
+
+**What to extract from `route.ts`:**
+- All reasoning text sanitization helpers (lines 1397–1550): `truncateReasoningText`, `collapseSpaces`, `containsForbiddenReasoningText`, `sanitizeReasoningText`, `normalizeLegacyReasoningNote`, `sanitizeReasoningMode`, `sanitizeReasoningStatus`, `sanitizeReasoningTraceForPersistence`
+- Constants: `MAX_REASONING_TRACE_STEPS`, `MAX_REASONING_TEXT_LENGTH`, `ALLOWED_REASONING_STEP_KEYS`, `ALLOWED_REASONING_STATUSES`, `FORBIDDEN_REASONING_PATTERNS`
+
+**Why `shared/` not `context/` or `executor/`:** These helpers are consumed by both `saveAssistantMessage` (Phase 2 executor) and the context/response factories. Placing them in a shared location avoids circular imports between `context/` and `executor/`.
+
+**Create:** `src/lib/chat-harness/context/response-factories.ts`
+
+**What to extract from `route.ts`:**
+- `createSearchUnavailableResponse` (lines 2253–2306)
+- `createStoredReferenceInventoryResponse` (lines 2308–2369)
+
+**Closure-to-parameter conversion:** Both functions close over route-level variables: `currentConversationId`, `userId`, `convexToken`, `modelNames`, `telemetryStartTime`, `skillTelemetryContext`. These must become explicit parameters. Both also call `saveAssistantMessage` (Phase 2) and `logAiTelemetry` — these become imports from `executor/` and `@/lib/ai/telemetry` respectively.
+
+**Acceptance criteria:**
+- All search evidence helpers preserved as-is
+- All reasoning sanitization helpers preserved as-is
+- Response factories produce same HTTP response shape
+- Response factory closure variables converted to explicit params
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 3.9b: Extract web search execution block
+
+**Create:** `src/lib/chat-harness/context/execute-web-search-path.ts`
+
+**What to extract from `route.ts`:**
+- The `if (enableWebSearch)` block (lines 2899–3089) including:
+  - Retriever chain validation
+  - Fallback compose model acquisition
+  - `executeWebSearch()` call with full inline onFinish handler
+  - onFinish handler internals: plan persistence, plan-spec text stripping, fallback choice card injection, `saveAssistantMessage`, `appendSearchReferences` mutation, `maybeUpdateTitleFromAI`, billing, telemetry
+
+**Function signature:**
+```typescript
+export async function executeWebSearchPath(params: {
+  enableWebSearch: boolean;
+  retrieverChain: RetrieverChain;
+  messages: ModelMessage[];
+  systemPrompt: string;
+  paperModePrompt: string | null;
+  fileContext: string;
+  samplingOptions: SamplingOptions;
+  reasoningSettings: ReasoningSettings;
+  conversationId: Id<"conversations">;
+  userId: Id<"users">;
+  convexToken: string;
+  modelNames: ModelNames;
+  paperSession: PaperSession | null;
+  paperStageScope: PaperStageId | undefined;
+  billingContext: BillingContext;
+  skillTelemetryContext: SkillTelemetryContext;
+  maybeUpdateTitleFromAI: TitleUpdateFn;
+  fetchQueryWithToken: ConvexFetchQuery;
+  fetchMutationWithToken: ConvexFetchMutation;
+}): Promise<Response | undefined>
+```
+
+Returns `Response` if web search path was taken (caller returns it immediately). Returns `undefined` if `enableWebSearch` is false (caller continues to normal executor path).
+
+**Acceptance criteria:**
+- `executeWebSearch` call preserved with all params
+- onFinish handler preserved: plan persistence, message persistence, billing, telemetry
+- `appendSearchReferences` mutation preserved
+- Choice card fallback injection preserved
+- Returns complete `Response` (not partial data)
+
+**Test:** `npx tsc --noEmit` + baseline
+
+---
+
+### Task 3.10: Compose context assembler and wire into route.ts
+
+**Create:** `src/lib/chat-harness/context/assemble-step-context.ts` (orchestrator)
+**Create:** `src/lib/chat-harness/context/index.ts` (barrel export)
+
+**Modify:** `src/app/api/chat/route.ts`
+
+**Dynamic imports ownership:** The dynamic import block at route.ts:1003–1022 (which produces `getGatewayModel`, `getOpenRouterModel`, `modelNames`, `webSearchConfig`, `samplingOptions`, `reasoningSettings`, `providerSettings`) is loaded inside `assembleStepContext`. The orchestrator calls the imports, materializes the model instance, and passes it to sub-tasks that need it (3.5, 3.6). The model and config are also returned in `ResolvedStepContext` for Phase 2 (executor) consumption.
+
+**`assembleStepContext` orchestration sequence:**
+```
+1. convertAndSanitizeMessages (Task 3.8)
+2. assembleFileContext (Task 3.2)  [parallel with 1]
+3. fetchAndAssembleSourcesContext (Task 3.7)  [parallel with 1, 2]
+4. Dynamic imports + model loading (route.ts:1003-1022)
+5. resolveExactSourceFollowup (Task 3.5)  [needs 3.availableExactSources + 4.model]
+6. resolveSearchDecision (Task 3.6)  [needs 5.exactSourceResolution + 4.model]
+7. buildExactSourceRouting (Task 3.6b)  [needs 5 + 6]
+8. resolveInstructionStack (Task 3.3)  [needs 2, 3, 5, 6 outputs]
+9. applyContextBudget (Task 3.4)  [needs 8.messages]
+10. executeWebSearchPath (Task 3.9b)  [if enableWebSearch → early return Response]
+11. Return ResolvedStepContext
+```
+
+**Function signature:**
+```typescript
+export async function assembleStepContext(params: {
+  accepted: AcceptedChatRequest;
+  conversation: ResolvedConversation;
+  attachments: ResolvedAttachments;
+  paperSession: PaperSession | null;
+  paperModePrompt: string | null;
+  paperStageScope: PaperStageId | undefined;
+  isDraftingStage: boolean;
+  choiceContextNote: string | undefined;
+  freeTextContextNote: string | undefined;
+  resolvedWorkflow: ResolvedChoiceWorkflow | undefined;
+}): Promise<ResolvedStepContext | Response>
+```
+
+Returns `Response` on early-return paths (web search result, reference inventory, search unavailability).
+
+**What stays in route.ts after this:**
+- `paperSession` fetch (stays until Phase 7)
+- Enforcer setup (Phase 4)
+- Executor call (Phase 2)
+- Error recovery / fallback (Phase 2)
+
+**Acceptance criteria:**
+- Route.ts context assembly section shrinks from ~2500 lines to one `assembleStepContext` call
+- Model loading happens inside the orchestrator (not in route.ts)
+- Instruction stack is traceable (each system note has a source label)
+- Task execution order respects dependency graph (no circular dependencies)
+- **Zero behavior change**
+- All 7 baseline tests pass
+- `npx tsc --noEmit` passes
+- Build passes
+
+**Test:** Full baseline + type check + build
+
+---
+
+### Task 3.11: Post-phase review checkpoint
+
+**Action:** Dispatch agent reviewer to audit Phase 3 extraction against:
+- Plan requirements (instruction precedence is explicit, context assembly is inspectable)
+- Instruction stack ordering matches current route.ts exactly
+- Context budget/compaction behavior unchanged
+- Search decision logic unchanged
+- Exact-source routing preserved
+- Reasoning sanitization helpers accessible from both `context/` and `executor/` via `shared/`
+- No circular dependencies between `context/`, `entry/`, `executor/`, and `shared/`
+
+**Output:** Review report → fix gaps → report to user → wait for validation.
+
+---
+
+## Execution Protocol (applies to all phases)
+
+Each task follows this loop:
+
+1. **Execute** — write/modify code
+2. **Test** — `npx tsc --noEmit` + relevant test files
+3. **Commit** — scoped commit per task (e.g., `refactor(harness): extract acceptChatRequest from route.ts`)
+4. **Review** — dispatch agent reviewer after final task of each phase
+5. **Fix** — patch any gaps found by reviewer
+6. **Report** — show user what changed, what was reviewed, what passed
+7. **Validate** — wait for user approval before next phase
+
+Build verification runs at phase completion (Task X.7), not per-task, to avoid unnecessary build overhead on intermediate steps.
