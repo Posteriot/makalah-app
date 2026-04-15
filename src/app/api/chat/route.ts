@@ -416,6 +416,44 @@ export async function POST(req: Request) {
             return text.slice(start, end).replace(/\s+/g, " ").trim()
         }
 
+        // Free-text context note: when user sends a regular message (no choice card),
+        // inject stage-aware context so model quality approaches choice card level.
+        let freeTextContextNote: string | undefined
+        if (!choiceInteractionEvent && paperStageScope && isDraftingStage) {
+            const sd = (paperSession?.stageData as Record<string, Record<string, unknown>> | undefined)?.[paperStageScope]
+            const plan = sd?._plan as { tasks?: { label: string; status: string }[] } | undefined
+            const hasArtifact = !!sd?.artifactId
+            const completedTasks = plan?.tasks?.filter(t => t.status === "complete").length ?? 0
+            const totalTasks = plan?.tasks?.length ?? 0
+            const allTasksComplete = totalTasks > 0 && completedTasks === totalTasks
+
+            const lines: string[] = [
+                `═══ FREE-TEXT TURN CONTEXT ═══`,
+                `Stage: ${paperStageScope} | Status: drafting | Plan: ${totalTasks === 0 ? "not yet generated" : `${completedTasks}/${totalTasks} tasks complete`}`,
+                ``,
+                `The user is responding via free text, not a choice card button.`,
+                `Interpret their message as a direction choice — they may be:`,
+                `- Selecting a direction from your previous suggestions`,
+                `- Asking to continue discussion on a specific aspect`,
+                `- Requesting to finalize the stage`,
+                ``,
+                `Respond as if they selected the most relevant option from your last response.`,
+                `Do NOT ask them to use a button or re-present the same options.`,
+            ]
+
+            if (allTasksComplete && !hasArtifact) {
+                lines.push(
+                    ``,
+                    `NOTE: All plan tasks are complete but no artifact has been created yet.`,
+                    `If the user's message indicates agreement or readiness to proceed,`,
+                    `treat it as a finalize signal: updateStageData → createArtifact → submitStageForValidation.`,
+                )
+            }
+
+            lines.push(`═══════════════════════════════`)
+            freeTextContextNote = lines.join("\n")
+        }
+
         let choiceContextNote: string | undefined
         let resolvedWorkflow: ResolvedChoiceWorkflow | undefined
         if (choiceInteractionEvent) {
@@ -902,7 +940,9 @@ ${sourcesJson}`
             })(),
             ...(choiceContextNote
                 ? [{ role: "system" as const, content: choiceContextNote }]
-                : []),
+                : freeTextContextNote
+                    ? [{ role: "system" as const, content: freeTextContextNote }]
+                    : []),
             ...(isDraftingStage
                 ? [{ role: "system" as const, content: CHOICE_YAML_SYSTEM_PROMPT }]
                 : []),
