@@ -104,6 +104,11 @@ TASK PLAN (plan-spec):
 - Update task statuses to reflect that search is now complete.
 - This is metadata, NOT a tool call — it is always required regardless of phase.
 
+CHOICE CARD (yaml-spec):
+- You MUST end your response with a \`\`\`yaml-spec\`\`\` choice card presenting 2-3 next-step options.
+- This is NOT optional. Every search response must give the user clear options to continue.
+- Do NOT end with an open question like "Bagaimana menurutmu?" without a choice card — the user needs buttons to interact.
+
 The search results below are your source material. Use them.
 ═══════════════════════════════════════════════════════════════════
 `.trim()
