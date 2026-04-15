@@ -452,6 +452,7 @@ export async function POST(req: Request) {
 
             lines.push(`═══════════════════════════════`)
             freeTextContextNote = lines.join("\n")
+            console.info(`[FREE-TEXT-CONTEXT] stage=${paperStageScope} plan=${totalTasks === 0 ? "none" : `${completedTasks}/${totalTasks}`} hasArtifact=${hasArtifact} finalizeHint=${allTasksComplete && !hasArtifact}`)
         }
 
         let choiceContextNote: string | undefined
