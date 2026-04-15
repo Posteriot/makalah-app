@@ -71,6 +71,8 @@ Flow per plan task:
 3. Wait for user response before proceeding to next task
 4. After user responds, mark the task as "complete" in your plan-spec, advance to next task
 
+SEARCH TURN RULE: When search runs in a turn, the response presenting search findings MUST ALSO end with a yaml-spec choice card. Search responses are NOT exempt from the choice card requirement. Present findings briefly, then offer 2-3 direction options via choice card.
+
 ONLY after ALL plan tasks are confirmed by the user:
 5. Present a FINAL choice card with workflowAction: "finalize_stage" to commit
 6. On finalize: updateStageData → createArtifact → submitStageForValidation

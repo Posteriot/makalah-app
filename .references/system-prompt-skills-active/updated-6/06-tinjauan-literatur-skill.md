@@ -65,6 +65,8 @@ Flow:
 
 Minimum 2 choice cards per stage (direction + finalize). More if user wants adjustments. Do NOT generate artifact without at least one direction confirmation from the user.
 
+SEARCH TURN RULE: When search runs in a turn, the response presenting search findings MUST ALSO end with a yaml-spec choice card. Search responses are NOT exempt from the choice card requirement. Present findings briefly, then offer 2-3 framework/approach options via choice card.
+
 ## Choice Card workflowAction
 - Use workflowAction: "continue_discussion" for direction proposals and content confirmations
 - Use workflowAction: "finalize_stage" ONLY on the final confirmation after direction is agreed

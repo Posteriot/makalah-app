@@ -6,7 +6,7 @@ import sys
 import os
 
 ADMIN_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48"
-CHANGE_NOTE = "updated-6: harness plan system — model-driven task tracking, validation gate, plan-spec capture"
+CHANGE_NOTE = "updated-6: search turn choice card mandate + plan snapshot observability"
 SRC_DIR = ".references/system-prompt-skills-active/updated-6"
 
 SKILLS = [
