@@ -25,13 +25,19 @@
   - `userId: Id<"users">`
   - `convexToken: string`
   - `messages: UIMessage[]` (raw AI SDK messages, not re-parsed)
-  - `lastUserContent: string` (normalized, trimmed)
+  - `lastUserContent: string` (last user message content, extracted for quota check — maps to `lastUserContentForQuota` in route.ts:191-196)
   - `firstUserContent: string`
   - `requestStartedAt: number | undefined`
   - `billingContext: { userId: Id<"users">; quotaWarning: string | undefined; operationType: OperationType }`
-  - `choiceInteractionEvent: ChoiceInteractionEvent | null`
+  - `choiceInteractionEvent: ParsedChoiceInteractionEvent | null` (from `choice-request.ts` Zod parser, NOT `ChoiceInteractionEvent` from `choice-submit.ts`)
   - `fetchQueryWithToken: ConvexFetchQuery`
   - `fetchMutationWithToken: ConvexFetchMutation`
+  - `conversationId: Id<"conversations"> | undefined` (raw from request body — may be undefined for new conversations)
+  - `requestFileIds: unknown[]` (raw from request body, validated downstream)
+  - `requestedAttachmentMode: unknown` (raw from request body)
+  - `replaceAttachmentContext: boolean | undefined`
+  - `inheritAttachmentContext: boolean | undefined`
+  - `clearAttachmentContext: boolean | undefined`
 - `ConvexFetchQuery` and `ConvexFetchMutation` — typed wrappers for the token-bound Convex fetch helpers. Use `(ref: any, args: any) => Promise<any>` initially (matching the existing `eslint-disable` pattern at `route.ts:127-130`). These can be tightened later, but the priority is extraction parity, not type strictness. Do NOT attempt to type them against Convex generics in this phase.
 - `RunLane` — identity for the execution attempt:
   - `requestId: string`
@@ -80,6 +86,9 @@ Returns `Response` directly on auth failure (401) or quota exceeded. Caller chec
 - Billing quota check preserved exactly
 - `requestId` generation preserved
 - `firstUserContent` extracted from messages (lines 183–186)
+- `lastUserContent` extracted from last message (lines 191–196, maps to `lastUserContentForQuota` in original)
+- Body fields forwarded: `conversationId`, `requestFileIds`, `requestedAttachmentMode`, `replaceAttachmentContext`, `inheritAttachmentContext`, `clearAttachmentContext`
+- `choiceInteractionEvent` typed as `ParsedChoiceInteractionEvent | null` (from `parseOptionalChoiceInteractionEvent`)
 - Observability log preserved
 - No behavior change
 
@@ -212,7 +221,7 @@ Note: choice event parsing (`parseOptionalChoiceInteractionEvent`) already lives
 **Function signature:**
 ```typescript
 export async function validateChoiceInteraction(params: {
-  choiceInteractionEvent: ChoiceInteractionEvent | null;
+  choiceInteractionEvent: ParsedChoiceInteractionEvent | null;
   conversationId: Id<"conversations">;
   paperSession: PaperSession | null;
   paperStageScope: PaperStageId | undefined;
@@ -285,7 +294,7 @@ export function resolveRunLane(params: {
    → if Response, return it (401 or quota exceeded)
 
 2. const conversation = await resolveConversation({
-     conversationId: body.conversationId,  // from accepted
+     conversationId: accepted.conversationId,  // from parsed body, may be undefined
      userId: accepted.userId,
      firstUserContent: accepted.firstUserContent,
      fetchQueryWithToken: accepted.fetchQueryWithToken,
@@ -295,7 +304,11 @@ export function resolveRunLane(params: {
 3. const attachments = await resolveAttachments({
      conversationId: conversation.conversationId,
      messages: accepted.messages,
-     ...body attachment fields,
+     requestFileIds: accepted.requestFileIds,
+     requestedAttachmentMode: accepted.requestedAttachmentMode,
+     replaceAttachmentContext: accepted.replaceAttachmentContext,
+     inheritAttachmentContext: accepted.inheritAttachmentContext,
+     clearAttachmentContext: accepted.clearAttachmentContext,
      fetchQueryWithToken: accepted.fetchQueryWithToken,
      fetchMutationWithToken: accepted.fetchMutationWithToken,
    })
@@ -502,7 +515,7 @@ export type OnFinishConfig = {
   paperToolTracker: PaperToolTracker;
   paperTurnObservability: PaperTurnObservability;
   resolvedWorkflow: ResolvedChoiceWorkflow | undefined;
-  choiceInteractionEvent: ChoiceInteractionEvent | null;
+  choiceInteractionEvent: ParsedChoiceInteractionEvent | null;
   isCompileThenFinalize: boolean;
   normalizedLastUserContent: string;  // needed for revision classifier
   lane: RunLane;
@@ -967,7 +980,7 @@ export async function resolveSearchDecision(params: {
   isDraftingStage: boolean;
   stageSearchPolicy: string;
   exactSourceResolution: ExactSourceFollowupResult;  // from Task 3.5
-  choiceInteractionEvent: ChoiceInteractionEvent | null;
+  choiceInteractionEvent: ParsedChoiceInteractionEvent | null;
   availableExactSources: ExactSourceSummary[];
   webSearchConfig: WebSearchConfig;
   fetchQueryWithToken: ConvexFetchQuery;
@@ -1294,7 +1307,7 @@ Returns `Response` on early-return paths (web search result, reference inventory
   - `paperStageScope: PaperStageId | undefined`
   - `paperToolTracker: PaperToolTracker`
   - `resolvedWorkflow: ResolvedChoiceWorkflow | undefined`
-  - `choiceInteractionEvent: ChoiceInteractionEvent | null`
+  - `choiceInteractionEvent: ParsedChoiceInteractionEvent | null`
   - `isCompileThenFinalize: boolean`
   - `shouldEnforceArtifactChain: boolean`
   - `planHasIncompleteTasks: boolean`
@@ -1544,7 +1557,7 @@ export function verifyStepOutcome(params: {
   paperToolTracker: PaperToolTracker;
   paperTurnObservability: PaperTurnObservability;
   resolvedWorkflow: ResolvedChoiceWorkflow | undefined;
-  choiceInteractionEvent: ChoiceInteractionEvent | null;
+  choiceInteractionEvent: ParsedChoiceInteractionEvent | null;
   paperSession: PaperSession | null;
   paperStageScope: PaperStageId | undefined;
 }): StepVerificationResult

@@ -1,15 +1,21 @@
 import * as Sentry from "@sentry/nextjs"
-import { generateTitle } from "@/lib/ai/title-generator"
 import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateText, Output, tool, type ToolSet, type ModelMessage, stepCountIs } from "ai"
 import { z } from "zod"
 import type { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google"
 
-import { isAuthenticated, getToken } from "@/lib/auth-server"
 import { getSystemPrompt } from "@/lib/ai/chat-config"
-import { fetchQuery, fetchMutation } from "convex/nextjs"
+import { fetchQuery } from "convex/nextjs"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import { retryMutation, retryQuery, retryDelay } from "@/lib/convex/retry"
+import {
+    acceptChatRequest,
+    resolveConversation,
+    resolveAttachments,
+    persistUserMessage,
+    validateChoiceInteraction,
+    resolveRunLane,
+} from "@/lib/chat-harness/entry"
 import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 // isBlockedSourceDomain removed — blocklist enforcement via SKILL.md natural language
@@ -33,10 +39,7 @@ import {
 } from "@/lib/ai/context-budget"
 import { runCompactionChain, type CompactableMessage } from "@/lib/ai/context-compaction"
 import {
-    checkQuotaBeforeOperation,
     recordUsageAfterOperation,
-    createQuotaExceededResponse,
-    type OperationType,
 } from "@/lib/billing/enforcement"
 import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
 import { getSearchSkill, composeSkillInstructions, type SkillContext } from "@/lib/ai/skills"
@@ -55,19 +58,12 @@ import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
 import {
-    parseOptionalChoiceInteractionEvent,
-    validateChoiceInteractionEvent,
-    buildChoiceContextNote,
-    resolveChoiceWorkflow,
     shouldAttemptRescue,
 } from "@/lib/chat/choice-request"
-import type { ResolvedChoiceWorkflow } from "@/lib/chat/choice-request"
 import { compileChoiceSpec } from "@/lib/json-render/compile-choice-spec"
 import { sanitizeChoiceOutcome, paperRecoveryLeakagePattern } from "@/lib/chat/choice-outcome-guard"
-import { resolveEffectiveFileIds } from "@/lib/chat/effective-file-ids"
 import {
     classifyAttachmentHealth,
-    normalizeRequestedAttachmentMode,
     resolveAttachmentRuntimeEnv,
 } from "@/lib/chat/attachment-health"
 import {
@@ -92,279 +88,66 @@ import { resolveExactSourceFollowup, type ExactSourceConversationMessage } from 
 
 export async function POST(req: Request) {
     try {
-        // 1. Authenticate with BetterAuth
-        const isAuthed = await isAuthenticated()
-        if (!isAuthed) {
-            return new Response("Unauthorized", { status: 401 })
-        }
-
-        // 1.1. Ambil token BetterAuth untuk Convex auth guard
-        let convexToken: string | null = null
-        let tokenError: unknown = null
-        for (let attempt = 1; attempt <= 3; attempt += 1) {
-            try {
-                convexToken = (await getToken()) ?? null
-                if (convexToken) {
-                    break
-                }
-                tokenError = new Error("Convex auth token missing")
-            } catch (error) {
-                tokenError = error
-            }
-
-            if (attempt < 3) {
-                await retryDelay(attempt * 150)
-            }
-        }
-        if (!convexToken) {
-            Sentry.captureException(tokenError instanceof Error ? tokenError : new Error(String(tokenError)), {
-                tags: { "api.route": "chat", subsystem: "auth" },
-            })
-            console.error("[Chat API] Failed to get Convex token after retry:", tokenError)
-            return new Response("Session token unavailable. Please refresh and retry.", { status: 401 })
-        }
-        const convexOptions = { token: convexToken }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const fetchQueryWithToken = (ref: any, args: any) => fetchQuery(ref, args, convexOptions)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const fetchMutationWithToken = (ref: any, args: any) => fetchMutation(ref, args, convexOptions)
-
-        // 2. Parse request (AI SDK v5/v6 format)
-        const body = await req.json()
-        const {
-            messages,
-            conversationId,
-            fileIds: requestFileIds,
-            attachmentMode: requestedAttachmentMode,
-            replaceAttachmentContext,
-            inheritAttachmentContext,
-            clearAttachmentContext,
-            requestStartedAt: rawRequestStartedAt,
-        } = body
-        const requestStartedAt =
-            typeof rawRequestStartedAt === "number" &&
-            Number.isFinite(rawRequestStartedAt) &&
-            rawRequestStartedAt > 0
-                ? rawRequestStartedAt
-                : undefined
-        const choiceInteractionEvent = parseOptionalChoiceInteractionEvent(body)
-        if (choiceInteractionEvent) {
-            console.info(`[CHOICE-CARD][event-received] type=${choiceInteractionEvent.type} stage=${choiceInteractionEvent.stage} selected=${choiceInteractionEvent.selectedOptionIds.join(",")} workflowAction=${choiceInteractionEvent.workflowAction ?? "unknown"}`)
-        }
-        const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-
-        // Observability: log user input at request entry
-        {
-            const lastMsg = messages[messages.length - 1]
-            const userText = lastMsg?.role === "user"
-                ? (lastMsg.content || lastMsg.parts?.find((p: { type: string; text?: string }) => p.type === "text")?.text || "")
-                : ""
-            const truncated = typeof userText === "string" ? userText.slice(0, 120) : ""
-            if (choiceInteractionEvent) {
-                console.info(`[USER-INPUT] type=choice-selection stage=${choiceInteractionEvent.stage} selected=${choiceInteractionEvent.selectedOptionIds.join(",")}`)
-            } else if (truncated) {
-                console.info(`[USER-INPUT] type=prompt text="${truncated}${userText.length > 120 ? "..." : ""}"`)
-            }
-        }
-
-        // 3. Get Convex User ID
-        const userId = await retryQuery(
-            () => fetchQueryWithToken(api.chatHelpers.getMyUserId, {}),
-            "chatHelpers.getMyUserId"
-        )
-        if (!userId) {
-            return new Response("User not found in database", { status: 404 })
-        }
-
-        // 4. Handle Conversation ID (or Create New)
-        let currentConversationId = conversationId
-        let isNewConversation = false
-        // Extract first user message content (handle AI SDK v5/v6 UIMessage format)
-        const firstUserMsg = messages.find((m: { role: string }) => m.role === "user")
-        const firstUserContent = firstUserMsg?.content ||
-            firstUserMsg?.parts?.find((p: { type: string; text?: string }) => p.type === 'text')?.text ||
-            ""
-
         // ════════════════════════════════════════════════════════════════
-        // BILLING: Pre-flight quota check
+        // Entry boundary (Phase 1) — auth, parsing, billing, conversation,
+        // attachments, user message persistence
         // ════════════════════════════════════════════════════════════════
-        const lastMsgForQuota = messages[messages.length - 1]
-        const lastUserContentForQuota = lastMsgForQuota?.role === "user"
-            ? (lastMsgForQuota.content ||
-                lastMsgForQuota.parts?.find((p: { type: string; text?: string }) => p.type === "text")?.text ||
-                "")
-            : ""
+        const accepted = await acceptChatRequest(req)
+        if (accepted instanceof Response) return accepted
 
-        // Determine operation type (will be refined later when we know paper session)
-        const initialOperationType: OperationType = "chat_message"
-
-        // Check quota before proceeding
-        const quotaCheck = await checkQuotaBeforeOperation(
-            userId,
-            lastUserContentForQuota,
-            initialOperationType,
-            convexToken
-        )
-
-        if (!quotaCheck.allowed) {
-            console.warn("[Billing] Quota check failed:", {
-                userId,
-                reason: quotaCheck.reason,
-                message: quotaCheck.message,
-                tier: quotaCheck.tier,
-            })
-            return createQuotaExceededResponse(quotaCheck)
-        }
-
-        // Store for later use in onFinish
-        const billingContext = {
-            userId,
-            quotaWarning: quotaCheck.warning,
-            operationType: initialOperationType as OperationType,
-        }
-        // ════════════════════════════════════════════════════════════════
-
-        if (!currentConversationId) {
-            isNewConversation = true
-            // Initial placeholder title
-            const title = "Percakapan baru"
-
-            currentConversationId = await retryMutation(
-                () => fetchMutationWithToken(api.conversations.createConversation, {
-                    userId,
-                    title,
-                }),
-                "conversations.createConversation"
-            )
-        }
-
-        const attachmentContext = await fetchQueryWithToken(
-            api.conversationAttachmentContexts.getByConversation,
-            {
-                conversationId: currentConversationId as Id<"conversations">,
-            }
-        )
-
-        const attachmentResolution = resolveEffectiveFileIds({
-            requestFileIds: Array.isArray(requestFileIds) ? requestFileIds : [],
-            conversationContextFileIds: attachmentContext?.activeFileIds ?? [],
-            replaceAttachmentContext,
-            inheritAttachmentContext,
-            clearAttachmentContext,
+        const conversation = await resolveConversation({
+            conversationId: accepted.conversationId,
+            userId: accepted.userId,
+            firstUserContent: accepted.firstUserContent,
+            fetchQueryWithToken: accepted.fetchQueryWithToken,
+            fetchMutationWithToken: accepted.fetchMutationWithToken,
         })
 
-        const effectiveFileIds = attachmentResolution.effectiveFileIds as Id<"files">[]
-        const requestedAttachmentModeNormalized = normalizeRequestedAttachmentMode(requestedAttachmentMode)
-        const requestFileIdsLength = Array.isArray(requestFileIds) ? requestFileIds.length : 0
-        const hasAttachmentSignal =
-            requestFileIdsLength > 0 ||
-            effectiveFileIds.length > 0 ||
-            clearAttachmentContext === true ||
-            requestedAttachmentModeNormalized !== "none"
+        const attachments = await resolveAttachments({
+            conversationId: conversation.conversationId,
+            messages: accepted.messages,
+            requestFileIds: accepted.requestFileIds,
+            requestedAttachmentMode: accepted.requestedAttachmentMode,
+            replaceAttachmentContext: accepted.replaceAttachmentContext,
+            inheritAttachmentContext: accepted.inheritAttachmentContext,
+            clearAttachmentContext: accepted.clearAttachmentContext,
+            fetchQueryWithToken: accepted.fetchQueryWithToken,
+            fetchMutationWithToken: accepted.fetchMutationWithToken,
+        })
 
-        if (attachmentResolution.shouldClearContext) {
-            await retryMutation(
-                () => fetchMutationWithToken(api.conversationAttachmentContexts.clearByConversation, {
-                    conversationId: currentConversationId as Id<"conversations">,
-                }),
-                "conversationAttachmentContexts.clearByConversation"
-            )
-        } else if (attachmentResolution.shouldUpsertContext) {
-            await retryMutation(
-                () => fetchMutationWithToken(api.conversationAttachmentContexts.upsertByConversation, {
-                    conversationId: currentConversationId as Id<"conversations">,
-                    fileIds: effectiveFileIds,
-                }),
-                "conversationAttachmentContexts.upsertByConversation"
-            )
-        }
+        const msgResult = await persistUserMessage({
+            messages: accepted.messages,
+            conversationId: conversation.conversationId,
+            effectiveFileIds: attachments.effectiveFileIds,
+            requestedAttachmentMode: accepted.requestedAttachmentMode,
+            attachmentResolution: attachments.attachmentResolution,
+            fetchMutationWithToken: accepted.fetchMutationWithToken,
+        })
+        if (msgResult instanceof Response) return msgResult
 
-        // Background Title Generation (Fire and Forget)
-        if (isNewConversation && firstUserContent) {
-            // We don't await this to avoid blocking the response
-            generateTitle({ userMessage: firstUserContent })
-                .then(async (generatedTitle) => {
-                    await fetchMutationWithToken(api.conversations.updateConversation, {
-                        conversationId: currentConversationId as Id<"conversations">,
-                        title: generatedTitle
-                    })
-                })
-                .catch(err => Sentry.captureException(err, { tags: { subsystem: "title_generation" } }))
-        }
-
-        // Helper: update judul conversation berdasarkan aturan AI rename (2x max)
-        const maybeUpdateTitleFromAI = async (options: {
-            assistantText: string
-            minPairsForFinalTitle: number
-        }) => {
-            const conversation = await fetchQueryWithToken(api.conversations.getConversation, {
-                conversationId: currentConversationId as Id<"conversations">,
-            })
-
-            if (!conversation) return
-            if (conversation.userId !== userId) return
-            if (conversation.titleLocked) return
-
-            const currentCount = conversation.titleUpdateCount ?? 0
-            if (currentCount >= 2) return
-
-            const placeholderTitles = new Set(["Percakapan baru", "New Chat"])
-            const isPlaceholder = placeholderTitles.has(conversation.title)
-
-            // Rename pertama: begitu assistant selesai merespons pertama kali, dan judul masih placeholder
-            if (currentCount === 0 && isPlaceholder && firstUserContent && options.assistantText) {
-                const generatedTitle = await generateTitle({
-                    userMessage: firstUserContent,
-                    assistantMessage: options.assistantText,
-                })
-
-                await fetchMutationWithToken(api.conversations.updateConversationTitleFromAI, {
-                    conversationId: currentConversationId as Id<"conversations">,
-                    userId,
-                    title: generatedTitle,
-                    nextTitleUpdateCount: 1,
-                })
-            }
-
-            // Rename kedua (final) sengaja nggak otomatis di sini; itu lewat tool,
-            // dan baru boleh kalau udah lewat minimal X pasang pesan.
-            // Nilai X dipakai buat validasi tool.
-            void options.minPairsForFinalTitle
-        }
-
-        // 5. Save USER message to Convex
-        // Extract content from last message (AI SDK v5/v6 UIMessage format)
-        const lastMessage = messages[messages.length - 1]
-        if (lastMessage && lastMessage.role === "user") {
-            // AI SDK v5/v6: content is in parts array or direct content field
-            const userContent = lastMessage.content ||
-                lastMessage.parts?.find((p: { type: string; text?: string }) => p.type === 'text')?.text ||
-                ""
-            const normalizedUserContent = typeof userContent === "string" ? userContent.trim() : ""
-
-            if (!normalizedUserContent && effectiveFileIds.length > 0) {
-                return new Response("Attachment membutuhkan teks pendamping minimal 1 karakter.", { status: 400 })
-            }
-
-            if (normalizedUserContent) {
-                const attachmentMode =
-                    requestedAttachmentMode === "explicit" || requestedAttachmentMode === "inherit"
-                        ? requestedAttachmentMode
-                        : (attachmentResolution.reason === "explicit" ? "explicit" : "inherit")
-
-                await retryMutation(
-                    () => fetchMutationWithToken(api.messages.createMessage, {
-                        conversationId: currentConversationId as Id<"conversations">,
-                        role: "user",
-                        content: userContent,
-                        fileIds: effectiveFileIds.length > 0 ? effectiveFileIds : undefined,
-                        attachmentMode,
-                        ...(lastMessage.id ? { uiMessageId: lastMessage.id } : {}),
-                    }),
-                    "messages.createMessage(user)"
-                )
-            }
-        }
+        // Aliases for downstream code — Phase 3+ will remove these when
+        // context assembly and executor are extracted.
+        const messages = accepted.messages
+        const currentConversationId = conversation.conversationId
+        const userId = accepted.userId
+        const convexToken = accepted.convexToken
+        const fetchQueryWithToken = accepted.fetchQueryWithToken
+        const fetchMutationWithToken = accepted.fetchMutationWithToken
+        const requestId = accepted.requestId
+        const billingContext = accepted.billingContext
+        const firstUserContent = accepted.firstUserContent
+        const effectiveFileIds = attachments.effectiveFileIds
+        const attachmentResolution = attachments.attachmentResolution
+        const requestedAttachmentModeNormalized = attachments.attachmentMode
+        const hasAttachmentSignal = attachments.hasAttachmentSignal
+        const attachmentAwarenessInstruction = attachments.attachmentAwarenessInstruction
+        const choiceInteractionEvent = accepted.choiceInteractionEvent
+        const maybeUpdateTitleFromAI = conversation.maybeUpdateTitleFromAI
+        const requestStartedAt = accepted.requestStartedAt
+        const requestFileIdsLength = Array.isArray(accepted.requestFileIds) ? accepted.requestFileIds.length : 0
+        const replaceAttachmentContext = accepted.replaceAttachmentContext
+        const clearAttachmentContext = accepted.clearAttachmentContext
+        const convexOptions = { token: convexToken }
 
         // 6. Prepare System Prompt & Context
         const systemPrompt = await getSystemPrompt()
@@ -455,76 +238,28 @@ export async function POST(req: Request) {
             console.info(`[FREE-TEXT-CONTEXT] stage=${paperStageScope} plan=${totalTasks === 0 ? "none" : `${completedTasks}/${totalTasks}`} hasArtifact=${hasArtifact} finalizeHint=${allTasksComplete && !hasArtifact}`)
         }
 
-        let choiceContextNote: string | undefined
-        let resolvedWorkflow: ResolvedChoiceWorkflow | undefined
-        if (choiceInteractionEvent) {
-            try {
-                validateChoiceInteractionEvent({
-                    event: choiceInteractionEvent,
-                    conversationId: currentConversationId,
-                    currentStage: paperStageScope ?? null,
-                    isPaperMode: !!paperModePrompt,
-                    stageStatus: paperSession?.stageStatus as string | undefined,
-                })
-            } catch (validationError) {
-                const errorMsg = validationError instanceof Error ? validationError.message : String(validationError);
-                if (errorMsg.includes("CHOICE_REJECTED_STALE_STATE")) {
-                    console.warn(`[stale-choice-rejected] stage=${choiceInteractionEvent.stage} stageStatus=${paperSession?.stageStatus} sourceMessageId=${choiceInteractionEvent.sourceMessageId} submittedAt=${choiceInteractionEvent.submittedAt}`);
-                    return new Response(
-                        JSON.stringify({
-                            error: "CHOICE_REJECTED_STALE_STATE",
-                            message: "Pilihan ini sudah tidak berlaku karena state draft sudah berubah. Silakan gunakan chat atau panel validasi yang aktif.",
-                            stage: choiceInteractionEvent.stage,
-                            stageStatus: paperSession?.stageStatus,
-                        }),
-                        { status: 409, headers: { "Content-Type": "application/json" } }
-                    );
-                }
-                throw validationError; // re-throw non-stale errors
-            }
-            const choiceStageData = paperSession?.stageData as Record<string, Record<string, unknown> | undefined> | undefined
-            const currentStageChoiceData = choiceStageData?.[choiceInteractionEvent.stage]
-            const hasExistingArtifact = !!currentStageChoiceData?.artifactId
+        // Choice validation (depends on paperSession from context assembly above)
+        const choiceResult = await validateChoiceInteraction({
+            choiceInteractionEvent,
+            conversationId: currentConversationId,
+            paperSession,
+            paperStageScope,
+            paperModePrompt,
+        })
+        if (choiceResult instanceof Response) return choiceResult
+        const { resolvedWorkflow, choiceContextNote } = choiceResult
 
-            // Resolve choice workflow via unified registry — workflowAction is primary signal
-            resolvedWorkflow = resolveChoiceWorkflow({
-                stage: choiceInteractionEvent.stage as PaperStageId,
-                workflowAction: choiceInteractionEvent.workflowAction,
-                decisionMode: choiceInteractionEvent.decisionMode,
-                stageData: currentStageChoiceData as Record<string, unknown> | undefined,
-                hasExistingArtifact,
-                stageStatus: paperSession?.stageStatus as string | undefined,
-            })
-
-            choiceContextNote = buildChoiceContextNote(choiceInteractionEvent, {
-                hasExistingArtifact,
-                resolvedWorkflow,
-            })
-
-            // Observability: log choice commit semantics
-            if (resolvedWorkflow.action !== "continue_discussion") {
-                console.info(`[CHOICE][commit-point] stage=${choiceInteractionEvent.stage} action=${resolvedWorkflow.action} class=${resolvedWorkflow.workflowClass} reason=${resolvedWorkflow.reason} contract=${resolvedWorkflow.contractVersion}`)
-            } else {
-                console.info(`[CHOICE][exploration-loop] stage=${choiceInteractionEvent.stage} action=${resolvedWorkflow.action} reason=${resolvedWorkflow.reason} contract=${resolvedWorkflow.contractVersion}`)
-            }
-
-            console.info("[PAPER][post-choice-context]", {
-                stage: choiceInteractionEvent.stage,
-                stageStatus: paperSession?.stageStatus ?? "unknown",
-                workflowAction: choiceInteractionEvent.workflowAction ?? "none",
-                decisionMode: choiceInteractionEvent.decisionMode ?? "unknown",
-                resolvedAction: resolvedWorkflow.action,
-                workflowClass: resolvedWorkflow.workflowClass,
-                contractVersion: resolvedWorkflow.contractVersion,
-                reason: resolvedWorkflow.reason,
-                hasCurrentArtifact: hasExistingArtifact,
-            })
-        }
-
-        // Update billing context with paper session info
+        // Update billing context with paper session info (must happen after paperSession fetch)
         if (paperSession) {
             billingContext.operationType = "paper_generation"
         }
+
+        // Run lane assembly (provisional run identity for Phase 6+ persistence)
+        const _lane = resolveRunLane({
+            requestId,
+            conversationId: currentConversationId,
+            isNewConversation: conversation.isNewConversation,
+        })
 
         // Unified search skill instance
         const skill = getSearchSkill()
@@ -541,9 +276,10 @@ export async function POST(req: Request) {
 
         // Flow Detection: Auto-detect paper intent and inject reminder if no session
         const lastUserMessage = messages[messages.length - 1]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const lastUserContent = lastUserMessage?.role === "user"
-            ? (lastUserMessage.content ||
-                lastUserMessage.parts?.find((p: { type: string; text?: string }) => p.type === "text")?.text ||
+            ? ((lastUserMessage as any).content ||
+                lastUserMessage.parts?.find((p): p is { type: "text"; text: string } => p.type === "text")?.text ||
                 "")
             : ""
         const normalizedLastUserContent =
@@ -575,22 +311,8 @@ export async function POST(req: Request) {
                 ): message is ExactSourceConversationMessage => message !== null
             )
 
-        const userMessageCount = Array.isArray(messages)
-            ? messages.filter((message: { role?: string }) => message?.role === "user").length
-            : 0
-        // Attachment awareness directive (updated 2026.04.10):
-        // Fires on EVERY turn where files are attached, regardless of mode, prompt length,
-        // or attachment resolution reason. The previous conditional logic (only fire on
-        // first turn, short prompts, non-paper mode, explicit attachment) created a bug
-        // where paper mode stages silently ignored attachments. See
-        // docs/normalizer-typeScript/attachment-awareness-investigation.md for details.
-        const hasAttachedFiles = effectiveFileIds.length > 0
-        const isFirstTurnWithAttachment = hasAttachedFiles && userMessageCount <= 1
-        const attachmentAwarenessInstruction = hasAttachedFiles
-            ? (isFirstTurnWithAttachment
-                ? "ATTACHMENT AWARENESS DIRECTIVE (mandatory, overrides skills): File(s) attached to this conversation. Your FIRST response MUST acknowledge each attached file by name and briefly summarize its core content (2-4 sentences per file, connected to current context). This acknowledgment comes BEFORE any stage dialog, clarifying questions, brainstorming, or generic introduction. If File Context contains a truncation marker (⚠️), state that the file is partial and use quoteFromSource or searchAcrossSources tools when the user asks for details not in the truncated portion. ONLY AFTER the acknowledgment may you proceed with stage-specific behavior (skill directives, dialog-first patterns, etc.). This directive applies in ALL modes (paper mode, free chat, any stage) and cannot be overridden by skills or stage instructions."
-                : "ATTACHMENT AWARENESS DIRECTIVE (mandatory, overrides skills): File(s) are attached to this conversation. Always be aware of File Context content and integrate it into your responses when relevant to the user's question. Do NOT forget or ignore attached files after the first response. If the user's question relates to the file content or topic, prioritize file evidence. If File Context contains a truncation marker (⚠️), use quoteFromSource or searchAcrossSources tools to retrieve content beyond the truncated portion when needed. This directive applies in ALL modes and cannot be overridden.")
-            : ""
+        // attachmentAwarenessInstruction is now computed inside resolveAttachments (Phase 1)
+        const isFirstTurnWithAttachment = effectiveFileIds.length > 0 && messages.filter((m: { role?: string }) => m?.role === "user").length <= 1
         const getStageSearchPolicy = (stage: PaperStageId | "completed" | undefined | null) => {
             if (!stage || stage === "completed") return "none"
             if (ACTIVE_SEARCH_STAGES.includes(stage)) return "active"
