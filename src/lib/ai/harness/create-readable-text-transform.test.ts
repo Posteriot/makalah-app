@@ -352,6 +352,51 @@ describe("createReadableTextTransform", () => {
         // Word-level chunking: each space-terminated run flushes separately.
         expect(textChunks).toEqual(["satu ", "dua ", "tiga."])
     })
+
+    it("emits NO text-delta AFTER text-end at TextStreamPart level (prevents `text part not found`)", async () => {
+        // Same protocol invariant as the UI coalescer variant: streamText's
+        // internal eventProcessor deletes activeTextContent[id] at text-end,
+        // so residual must fully flush before text-end reaches downstream.
+        const inputs = [
+            { type: "text-start", id: "text-1" },
+            { type: "text-delta", id: "text-1", text: "Hello wor" },
+            { type: "text-end", id: "text-1" },
+            { type: "finish", finishReason: "stop", totalUsage: {} },
+        ]
+
+        const output = await runTransform(inputs, makeTransform())
+
+        const textEndIdx = output.findIndex((c) => c.type === "text-end")
+        expect(textEndIdx).toBeGreaterThanOrEqual(0)
+        const textDeltasAfterEnd = output
+            .slice(textEndIdx + 1)
+            .filter((c) => c.type === "text-delta")
+        expect(textDeltasAfterEnd).toEqual([])
+        const preEndText = output
+            .slice(0, textEndIdx)
+            .filter((c) => c.type === "text-delta")
+            .map((c) => c.text as string)
+            .join("")
+        expect(preEndText).toBe("Hello wor")
+    })
+
+    it("flushes text buffer before reasoning-end (symmetric invariant for reasoning id)", async () => {
+        const inputs = [
+            { type: "reasoning-start", id: "r1" },
+            { type: "reasoning-delta", id: "r1", text: "think about this wor" },
+            { type: "reasoning-end", id: "r1" },
+            { type: "finish", finishReason: "stop", totalUsage: {} },
+        ]
+
+        const output = await runTransform(inputs, makeTransform())
+
+        const reasoningEndIdx = output.findIndex((c) => c.type === "reasoning-end")
+        expect(reasoningEndIdx).toBeGreaterThanOrEqual(0)
+        const reasoningDeltasAfterEnd = output
+            .slice(reasoningEndIdx + 1)
+            .filter((c) => c.type === "reasoning-delta")
+        expect(reasoningDeltasAfterEnd).toEqual([])
+    })
 })
 
 // ────────────────────────────────────────────────────────────────
@@ -473,5 +518,72 @@ describe("createUITextCoalescer", () => {
         // Terminator forces full flush — residual revealed before finish.
         expect(textChunks.join("")).toBe("incomplete")
         expect(output[output.length - 1].type).toBe("finish")
+    })
+
+    it("emits NO text-delta AFTER text-end (prevents `text part not found` in AI SDK)", async () => {
+        // AI SDK's internal eventProcessor deletes activeTextContent[id]
+        // when text-end lands. If the transform emits a text-delta with that
+        // same id later, the consumer errors with "text part X not found".
+        // Observed in test-3 iteration-5 rerun (nextjs log:
+        // TOOLS-STREAM-ERROR errorText='text part 1 not found'). Fix: any
+        // text-end chunk must force a FULL flush so residual cannot outlive
+        // the text block it belongs to.
+        const inputs = [
+            { type: "text-start", id: "1" },
+            { type: "text-delta", id: "1", delta: "Hello wor" }, // partial tail "wor"
+            { type: "text-end", id: "1" },
+            { type: "finish", finishReason: "stop" },
+        ]
+
+        const output = await runTransform(inputs, makeUIFactory())
+
+        const textEndIdx = output.findIndex((c) => c.type === "text-end")
+        expect(textEndIdx).toBeGreaterThanOrEqual(0)
+
+        // Critical: no text-delta after text-end.
+        const textDeltasAfterEnd = output
+            .slice(textEndIdx + 1)
+            .filter((c) => c.type === "text-delta")
+        expect(textDeltasAfterEnd).toEqual([])
+
+        // All text content must reach the UI BEFORE text-end.
+        const preEndText = output
+            .slice(0, textEndIdx)
+            .filter((c) => c.type === "text-delta")
+            .map((c) => c.delta as string)
+            .join("")
+        expect(preEndText).toBe("Hello wor")
+    })
+
+    it("treats text-start as block boundary (full-flushes residual from previous block)", async () => {
+        // If two text blocks appear in sequence (id=1 then id=2) with a
+        // partial-word residual from block 1 held in buffer, forwarding
+        // text-start id=2 opens a new id in AI SDK's eventProcessor. Any
+        // later flush of block-1 residual carries the OLD id, which would
+        // hit the same "text part 1 not found" path. Force full-flush at
+        // text-start too.
+        const inputs = [
+            { type: "text-start", id: "1" },
+            { type: "text-delta", id: "1", delta: "first blo" }, // partial tail "blo"
+            { type: "text-end", id: "1" },
+            { type: "text-start", id: "2" },
+            { type: "text-delta", id: "2", delta: "second." },
+            { type: "text-end", id: "2" },
+            { type: "finish", finishReason: "stop" },
+        ]
+
+        const output = await runTransform(inputs, makeUIFactory())
+
+        const firstTextEndIdx = output.findIndex((c) => c.type === "text-end")
+        // All id=1 text-delta emissions happen before the first text-end.
+        const preFirstEnd = output.slice(0, firstTextEndIdx).filter((c) => c.type === "text-delta")
+        const preFirstEndText = preFirstEnd.map((c) => c.delta as string).join("")
+        expect(preFirstEndText).toBe("first blo")
+        // All emitted text-delta must carry the correct id; no id=1 deltas
+        // after text-end id=1.
+        const id1DeltasAfterFirstEnd = output
+            .slice(firstTextEndIdx + 1)
+            .filter((c) => c.type === "text-delta" && c.id === "1")
+        expect(id1DeltasAfterFirstEnd).toEqual([])
     })
 })

@@ -193,11 +193,38 @@ function createCoreCoalescer(params: {
                 const chunkType = (chunk as { type?: string })?.type
 
                 if (chunkType !== "text-delta" && chunkType !== "reasoning-delta") {
-                    const isStreamTerminator =
+                    // ── Boundary policy ──
+                    // Two classes of non-text chunks need different flush
+                    // semantics:
+                    //
+                    //   1. Block / stream boundaries (forces FULL flush):
+                    //      - finish / error / abort → stream is ending,
+                    //        nothing can merge the tail later.
+                    //      - text-start / text-end → AI SDK's internal
+                    //        eventProcessor creates / deletes the
+                    //        activeTextContent[id] entry at these markers.
+                    //        If a partial tail outlives text-end, a later
+                    //        flush with that id errors with
+                    //        "text part X not found" (root cause of
+                    //        test-3 iteration-5 rerun regression).
+                    //      - reasoning-start / reasoning-end → symmetric
+                    //        invariant for reasoning ids.
+                    //
+                    //   2. Mid-stream interrupts (allows residual hold):
+                    //      - tool-call / tool-result / tool-input-* /
+                    //        start-step / finish-step / source / file →
+                    //        the text block's id is still open, so the
+                    //        partial tail can safely merge with the next
+                    //        text-delta that continues the block.
+                    const forcesFullFlush =
                         chunkType === "finish" ||
                         chunkType === "error" ||
-                        chunkType === "abort"
-                    if (isStreamTerminator) {
+                        chunkType === "abort" ||
+                        chunkType === "text-start" ||
+                        chunkType === "text-end" ||
+                        chunkType === "reasoning-start" ||
+                        chunkType === "reasoning-end"
+                    if (forcesFullFlush) {
                         fullFlush()
                     } else {
                         partialSafeFlush()
