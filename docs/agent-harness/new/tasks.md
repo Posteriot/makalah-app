@@ -1645,13 +1645,34 @@ export function verifyRunReadiness(params: {
 
 ---
 
-## Phase 6: Add Explicit Run, Step, Decision, Policy, and Event Persistence
+## Phase 6: Add Explicit Run, Step, Policy, and Event Persistence
 
-**Scope:** New Convex tables (`harnessRuns`, `harnessRunSteps`, `harnessEvents`) and persistence adapters. This is the first phase that adds new data models.
+**Scope:** New Convex tables (`harnessRuns`, `harnessRunSteps`, `harnessEvents`) plus persistence adapters in `src/lib/chat-harness/persistence/`. First phase that adds new data models — qualitatively different from Phase 1–5 extractions.
 
-**Goal:** Persist harness runtime facts without corrupting existing domain models (`paperSessions`, `artifacts`).
+**Goal:** Persist harness runtime facts as a reconstructible event stream without mutating existing domain models (`paperSessions`, `artifacts`, `conversations`, `messages` remain untouched and authoritative for domain truth).
 
-**Runtime namespace:** `src/lib/chat-harness/persistence/`, `convex/harness*.ts`
+**Runtime namespace:** `src/lib/chat-harness/persistence/`, `convex/harnessRuns.ts`, `convex/harnessRunSteps.ts`, `convex/harnessEvents.ts`
+
+> **Pre-verify patch notes (Session 3, 2026-04-16):** Original plan was minimal (3-table + 5-field envelope). User decision: **align to research doc event contract** (12-field envelope, 28 canonical event types) and **resolve three blockers in-phase** rather than deferring:
+> - **B1 (step indexing missing):** resolved by adding `stepNumber` counter on `harnessRuns` + `incrementStepNumber` mutation for atomic increment (Task 6.2a).
+> - **B2 (`executionBoundary` ≠ `PolicyState.currentBoundary`):** resolved by keeping `executionBoundary` (5 values) in event payloads and persisting a separate mapped `currentBoundary` (3 values) in `policyState` snapshot (Task 6.1d + Task 6.4c).
+> - **B3 (RunLane insufficient for run creation):** resolved by extending RunLane with `runId` and `ownerToken`, and deriving `workflowStage`/`workflowStatus` from paperSession when present or defaulting to `"intake"`/`"running"` (Task 6.4a).
+>
+> `activeLaneKey` (never defined anywhere) is replaced by `ownerToken` per research doc RunState contract.
+
+**Reference:** `.references/agent-harness/research/2026-04-15-makalahapp-harness-v1-event-model-and-data-contracts.md`
+- Event envelope: line 128
+- Canonical event types: lines 73–121 (6 categories, 28 types)
+- `RunState` contract: lines 809–831
+- `PolicyState` contract: lines 868–878
+- `WorkflowStatus` enum: line 744 (`running | paused | failed | completed | aborted`)
+
+**Schema conventions (applies to all Phase 6 tasks):**
+- Timestamps use `v.number()` (ms epoch) to match existing tables; research doc's ISO strings convert at API edges only
+- Enums use `v.union(v.literal(...), ...)`
+- Foreign keys use `v.id("table")` where target is a Convex table
+- Index names follow existing convention: `by_<field>` or `by_<a>_<b>`
+- Auth: all mutations call `requireAuthUserId` / `requireConversationOwner` per `convex/conversations.ts` pattern
 
 ---
 
@@ -1659,93 +1680,418 @@ export function verifyRunReadiness(params: {
 
 **Modify:** `convex/schema.ts`
 
-**New tables:**
-- `harnessRuns` with fields: `conversationId`, `paperSessionId?`, `status`, `activeLaneKey`, `workflowStage`, `workflowStatus`, `pendingDecision`, `policyState`, `startedAt`, `updatedAt`, `completedAt?`
-- `harnessRunSteps` with fields: `runId`, `stepIndex`, `status`, `executorResultSummary`, `verificationSummary`, `toolCalls`, `startedAt`, `completedAt?`
-- `harnessEvents` with canonical event envelope. Fields:
-  - `runId: Id<"harnessRuns">`
-  - `stepIndex: number | undefined` (null for run-level events)
-  - `eventType: string` (e.g., "run.started", "step.completed", "policy.decided", "verification.completed", "run.paused", "run.resumed")
-  - `payload: Record<string, unknown>` (event-specific data)
-  - `timestamp: number`
-  - Reference: `.references/agent-harness/research/2026-04-15-makalahapp-harness-v1-event-model-and-data-contracts.md`
+#### 6.1a: `harnessRuns` table
+
+Fields (aligned with research doc `RunState` + paperSessions link):
+- `conversationId: v.id("conversations")`
+- `paperSessionId: v.optional(v.id("paperSessions"))` — nullable; links when paper flow starts
+- `userId: v.string()` — access-control parity with other tables
+- `ownerToken: v.string()` — atomic ownership anchor (Phase 8 resume + duplicate-start prevention); replaces ambiguous `activeLaneKey`
+- `status: v.union(v.literal("running"), v.literal("paused"), v.literal("completed"), v.literal("failed"), v.literal("aborted"))`
+- `workflowStage: v.string()` — mirrors `paperSessions.currentStage` when linked; `"intake"` default when no paperSession
+- `workflowStatus: v.union(...)` — `WorkflowStatus` enum (same 5 values as run status but tracked separately per research doc note: `stage` and `status` must remain separate; workflow status can complete while run is still running)
+- `stepNumber: v.number()` — monotonic per-run counter (resolves Blocker B1)
+- `currentStepId: v.optional(v.id("harnessRunSteps"))`
+- `pendingDecisionId: v.optional(v.string())` — authoritative block marker for user pause (Phase 8)
+- `policyState: v.optional(v.object({...}))` — see 6.1d
+- `failureClass: v.optional(v.union(v.literal("entry_failure"), v.literal("state_failure"), v.literal("tool_failure"), v.literal("verification_failure"), v.literal("guard_failure"), v.literal("unexpected_failure")))`
+- `failureReason: v.optional(v.string())`
+- `startedAt: v.number()`
+- `updatedAt: v.number()`
+- `pausedAt: v.optional(v.number())`
+- `completedAt: v.optional(v.number())`
+
+Indexes:
+- `by_conversation` on `conversationId`
+- `by_paperSession` on `paperSessionId`
+- `by_ownerToken` on `ownerToken` (unique lookups for resume)
+- `by_user_updated` on `["userId", "updatedAt"]`
+
+#### 6.1b: `harnessRunSteps` table
+
+Fields:
+- `runId: v.id("harnessRuns")`
+- `stepIndex: v.number()` — monotonic per-run; matches the `stepNumber` value at creation time
+- `status: v.union(v.literal("running"), v.literal("completed"), v.literal("failed"))`
+- `executorResultSummary: v.optional(v.object({ finishReason: v.string(), inputTokens: v.optional(v.number()), outputTokens: v.optional(v.number()), totalTokens: v.optional(v.number()) }))`
+- `verificationSummary: v.optional(v.object({ canContinue: v.boolean(), mustPause: v.boolean(), pauseReason: v.optional(v.string()), canComplete: v.boolean(), completionBlockers: v.array(v.string()), leakageDetected: v.boolean(), artifactChainComplete: v.boolean(), planComplete: v.boolean(), streamContentOverridden: v.boolean() }))` — flattened snapshot of `StepVerificationResult` (omits `leakageDetails` body and `streamContentOverride` string to cap row size; retains booleans for replay)
+- `toolCalls: v.array(v.object({ toolName: v.string(), toolCallId: v.optional(v.string()), resultStatus: v.optional(v.string()) }))`
+- `startedAt: v.number()`
+- `completedAt: v.optional(v.number())`
+
+Indexes:
+- `by_run` on `runId`
+- `by_run_step` on `["runId", "stepIndex"]` — composite; enforces logical primary key at query level
+
+Table uses default Convex `_id`; composite `(runId, stepIndex)` uniqueness enforced by mutation logic (not by schema constraint — Convex has no unique-index primitive).
+
+#### 6.1c: `harnessEvents` table
+
+Fields (12-field envelope per research doc line 128):
+- `eventId: v.string()` — stable dedupable identifier; generated by mutation if not supplied
+- `eventType: v.string()` — must be one of the 28 canonical names (validated at adapter level, not at schema level, to keep mutations permissive for future event types)
+- `schemaVersion: v.number()` — start at `1`
+- `occurredAt: v.number()` — ms epoch (converted from ISO at API boundaries if needed)
+- `userId: v.string()`
+- `sessionId: v.string()` — request-scoped session identifier
+- `chatId: v.id("conversations")`
+- `runId: v.optional(v.id("harnessRuns"))` — absent for pre-run entry events
+- `stepId: v.optional(v.id("harnessRunSteps"))`
+- `correlationId: v.optional(v.string())` — groups events for one user action
+- `causationEventId: v.optional(v.string())` — causal chain pointer
+- `payload: v.any()` — event-specific; validated by TypeScript at adapter layer
+
+Indexes:
+- `by_run_time` on `["runId", "occurredAt"]`
+- `by_correlation` on `correlationId`
+- `by_eventType_time` on `["eventType", "occurredAt"]`
+- `by_chat_time` on `["chatId", "occurredAt"]`
+
+#### 6.1d: `policyState` sub-object (embedded in `harnessRuns`)
+
+Shape (research doc `PolicyState` contract, line 871):
+```ts
+v.object({
+  approvalMode: v.union(v.literal("default"), v.literal("required_for_high_impact")),
+  currentBoundary: v.union(v.literal("read_only"), v.literal("bounded_mutation"), v.literal("blocked")),
+  pendingApprovalDecisionId: v.optional(v.string()),
+  lastPolicyReason: v.optional(v.string()),
+  updatedAt: v.number(),
+})
+```
+
+`executionBoundary` (5 values from `RuntimePolicyDecision`) lives in event payloads only. Mapping to `currentBoundary` (3 values) happens in Task 6.4c wiring. This keeps runtime observability rich (5-value taxonomy preserved in events) while persisting the coarser durable contract.
 
 **Acceptance criteria:**
-- Schema compiles
-- `npx convex dev` accepts the new tables
-- No changes to existing tables
-- `paperSessions` and `artifacts` untouched
+- Schema compiles (`npx tsc --noEmit`)
+- `npx convex dev` accepts the new tables without warnings
+- `paperSessions`, `artifacts`, `conversations`, `messages` fields are NOT modified
+- All four new indexes on `harnessRuns` are present
 
-**Test:** `npx tsc --noEmit` + Convex schema validation
+**Test:** `npx tsc --noEmit` + Convex schema validation via `npx convex dev` dry run
 
 ---
 
 ### Task 6.2: Create harness persistence mutations
 
-**Create:** `convex/harnessRuns.ts`
-**Create:** `convex/harnessRunSteps.ts`
-**Create:** `convex/harnessEvents.ts`
+**Create:** `convex/harnessRuns.ts`, `convex/harnessRunSteps.ts`, `convex/harnessEvents.ts`
 
-**What to implement:**
-- `harnessRuns`: `createRun`, `updateRunStatus`, `completeRun`, `getRunByConversation`
-- `harnessRunSteps`: `createStep`, `completeStep`, `getStepsByRun`
-- `harnessEvents`: `emitEvent`, `getEventsByRun`
+**Conventions:**
+- Use `mutation` / `query` from `./_generated/server`
+- Auth: `requireAuthUserId(ctx, userId)` / `requireConversationOwner(ctx, conversationId, userId)` per existing `convex/conversations.ts` patterns
+- Return the mutated record ID or record; let Convex validation errors propagate (no custom error classes)
+- Each file stays under ~200 lines
+
+#### 6.2a: `convex/harnessRuns.ts`
+
+- `createRun({ conversationId, userId, paperSessionId?, workflowStage, workflowStatus })` → `{ runId, ownerToken }`
+  - Generates `ownerToken` via `crypto.randomUUID()` (Convex Node runtime has `crypto.webcrypto`)
+  - Initializes: `status="running"`, `stepNumber=0`, `startedAt=Date.now()`, `updatedAt=Date.now()`
+- `updateRunStatus({ runId, status, workflowStatus?, pausedAt?, failureClass?, failureReason? })` → `null`
+  - Always patches `updatedAt=Date.now()`
+- `linkPaperSession({ runId, paperSessionId })` — called when paper flow starts mid-conversation
+- `recordPolicyState({ runId, policyState })` — writes PolicyState snapshot; sets embedded `policyState.updatedAt`
+- `incrementStepNumber({ runId })` → `{ stepNumber }` (atomic read + patch; **resolves Blocker B1**)
+  - Read current `stepNumber`, patch to `stepNumber + 1`, return new value
+  - Convex mutations are serialized per document so this is safe against double-increment
+- `setCurrentStep({ runId, stepId })`
+- `completeRun({ runId })` — sets `status="completed"`, `completedAt=Date.now()`
+- `getRunByConversation({ conversationId, status? })` — returns latest run, optionally filtered by status (uses `by_conversation` index + `.order("desc")`)
+- `getRunByOwnerToken({ ownerToken })` — Phase 8 resume lookup (uses `by_ownerToken` index)
+
+#### 6.2b: `convex/harnessRunSteps.ts`
+
+- `createStep({ runId, stepIndex, startedAt })` → `{ stepId }`
+  - Callers MUST pass `stepIndex` obtained from `incrementStepNumber` (keeps monotonicity enforceable at one call site)
+  - Initializes `status="running"`, empty `toolCalls=[]`
+- `completeStep({ stepId, status, executorResultSummary?, verificationSummary?, toolCalls, completedAt })` → `null`
+- `getStepsByRun({ runId })` — ordered by `stepIndex` asc (uses `by_run_step` index)
+- `getCurrentStep({ runId })` — returns the step matching `harnessRuns.currentStepId`, or null
+
+#### 6.2c: `convex/harnessEvents.ts`
+
+- `emitEvent({ eventId?, eventType, schemaVersion?, occurredAt?, userId, sessionId, chatId, runId?, stepId?, correlationId?, causationEventId?, payload })` → `null`
+  - If `eventId` omitted, generate via `crypto.randomUUID()`
+  - If `occurredAt` omitted, use `Date.now()`
+  - `schemaVersion` defaults to `1`
+- `getEventsByRun({ runId, eventTypeFilter?, limit? })` — ordered by `occurredAt` asc (uses `by_run_time`)
+- `getEventsByCorrelation({ correlationId })` (uses `by_correlation`)
+- `getEventsByChat({ chatId, limit? })` — debug/observability helper (uses `by_chat_time`)
+
+**Event type validation strategy:** Validation of `eventType` against the canonical 28 names lives in the TypeScript adapter layer (`event-types.ts` constant). Convex mutations accept arbitrary strings so future event types don't require a schema migration. Trade-off documented explicitly here.
 
 **Acceptance criteria:**
-- All mutations compile and are accessible via `api.*`
-- CRUD operations work for all three tables
-- No coupling to `paperSessions` internals
+- All mutations compile and are accessible via `api.harnessRuns.*`, `api.harnessRunSteps.*`, `api.harnessEvents.*`
+- CRUD operations work for all three tables (verified via new unit tests)
+- No import of `paperSessions` internals
+- Each file ≤200 lines
 
-**Test:** `npx tsc --noEmit` + new test file for harness persistence
+**Test:** `npx tsc --noEmit` + new test files:
+- `convex/harnessRuns.test.ts` — covers create → incrementStepNumber → updateStatus → completeRun flow
+- `convex/harnessEvents.test.ts` — covers emit + query by run + query by correlation
 
 ---
 
 ### Task 6.3: Create persistence adapters
 
-**Create:** `src/lib/chat-harness/persistence/run-store.ts`
-**Create:** `src/lib/chat-harness/persistence/event-store.ts`
+**Create:**
+- `src/lib/chat-harness/persistence/types.ts` — `RunStore`, `EventStore`, `HarnessEventEnvelope` interfaces
+- `src/lib/chat-harness/persistence/event-types.ts` — canonical event name constant + type guard
+- `src/lib/chat-harness/persistence/run-store.ts`
+- `src/lib/chat-harness/persistence/event-store.ts`
+- `src/lib/chat-harness/persistence/index.ts` — barrel
 
-**What to implement:**
-- `RunStore` — thin wrapper that calls harness Convex mutations
-- `EventStore` — emits events with canonical envelope
+#### 6.3a: `event-types.ts`
+
+Export a frozen constant mapping canonical names → string literals, derived from research doc lines 73–121:
+
+```ts
+export const HARNESS_EVENT_TYPES = {
+  // Entry (3)
+  USER_MESSAGE_RECEIVED: "user_message_received",
+  USER_TOOL_RESULT_RECEIVED: "user_tool_result_received",
+  USER_DECISION_RECEIVED: "user_decision_received",
+  // Run lifecycle (6)
+  RUN_STARTED: "run_started",
+  RUN_RESUMED: "run_resumed",
+  RUN_PAUSED: "run_paused",
+  RUN_COMPLETED: "run_completed",
+  RUN_FAILED: "run_failed",
+  RUN_ABORTED: "run_aborted",
+  // Step execution (4)
+  STEP_STARTED: "step_started",
+  INSTRUCTION_STACK_RESOLVED: "instruction_stack_resolved",
+  AGENT_OUTPUT_RECEIVED: "agent_output_received",
+  STEP_COMPLETED: "step_completed",
+  // Tool & mutation (8)
+  TOOL_CALLED: "tool_called",
+  APPROVAL_REQUESTED: "approval_requested",
+  APPROVAL_RESOLVED: "approval_resolved",
+  EXECUTION_BOUNDARY_EVALUATED: "execution_boundary_evaluated",
+  TOOL_RESULT_RECEIVED: "tool_result_received",
+  ARTIFACT_MUTATION_REQUESTED: "artifact_mutation_requested",
+  ARTIFACT_MUTATION_APPLIED: "artifact_mutation_applied",
+  ARTIFACT_MUTATION_REJECTED: "artifact_mutation_rejected",
+  // Workflow & verification (5)
+  WORKFLOW_TRANSITION_REQUESTED: "workflow_transition_requested",
+  WORKFLOW_TRANSITION_APPLIED: "workflow_transition_applied",
+  WORKFLOW_TRANSITION_REJECTED: "workflow_transition_rejected",
+  VERIFICATION_STARTED: "verification_started",
+  VERIFICATION_COMPLETED: "verification_completed",
+  // User decision (3)
+  USER_DECISION_REQUESTED: "user_decision_requested",
+  USER_DECISION_RESOLVED: "user_decision_resolved",
+  USER_DECISION_DECLINED: "user_decision_declined",
+} as const;
+
+export type HarnessEventType = (typeof HARNESS_EVENT_TYPES)[keyof typeof HARNESS_EVENT_TYPES];
+```
+
+#### 6.3b: `run-store.ts`
+
+```ts
+interface RunStore {
+  createRun(params: CreateRunParams): Promise<{ runId: Id<"harnessRuns">; ownerToken: string }>;
+  linkPaperSession(runId, paperSessionId): Promise<void>;
+  updateStatus(runId, status, opts?): Promise<void>;
+  recordPolicyState(runId, policyState): Promise<void>;
+  startStep(runId): Promise<{ stepId: Id<"harnessRunSteps">; stepIndex: number }>;
+    // Internally calls incrementStepNumber + createStep + setCurrentStep
+  completeStep(stepId, summary): Promise<void>;
+  completeRun(runId): Promise<void>;
+  getActiveRunByConversation(conversationId): Promise<RunRecord | null>;
+}
+```
+
+Thin wrapper over Convex mutations. No business logic beyond composing the `startStep` flow (two mutations, one boundary). All auth, validation, and mutation logic lives in Convex mutations.
+
+#### 6.3c: `event-store.ts`
+
+```ts
+interface EventStore {
+  emit(envelope: HarnessEventEnvelope): Promise<void>;
+  // Typed helpers per canonical event (reduces call-site noise):
+  emitRunStarted(params): Promise<void>;
+  emitStepStarted(params): Promise<void>;
+  emitStepCompleted(params): Promise<void>;
+  emitToolCalled(params): Promise<void>;
+  emitExecutionBoundaryEvaluated(params): Promise<void>;
+  emitVerificationCompleted(params): Promise<void>;
+  emitWorkflowTransitionApplied(params): Promise<void>;
+  emitUserDecisionReceived(params): Promise<void>;
+  // ...one helper per event actually emitted in Task 6.4 wiring
+}
+```
+
+Canonical envelope fields (`schemaVersion`, `occurredAt`, generated `eventId`) are filled at adapter level. Correlation/causation IDs are threaded from request context.
+
+**V1 scope:** Only implement typed helpers for events actually emitted in Task 6.4 wiring. Other 28 canonical types may emit via the generic `emit()` or be deferred to V2.
 
 **Acceptance criteria:**
 - Adapters callable from harness modules
-- One synchronous request produces traceable run + step + event records
+- One synchronous chat request produces traceable `harnessRuns` + `harnessRunSteps` + `harnessEvents` records
+- No Convex mutation calls outside `persistence/` (enforced by code review, not by type system)
+- TypeScript payload types for each typed helper match the research doc contracts
 
-**Test:** `npx tsc --noEmit` + new persistence tests
+**Test:**
+- `npx tsc --noEmit`
+- `src/lib/chat-harness/persistence/run-store.test.ts` — mock Convex client; verify correct mutation calls for each adapter method
+- `src/lib/chat-harness/persistence/event-store.test.ts` — verify envelope assembly (auto-fills, correlation threading)
 
 ---
 
-### Task 6.4: Wire persistence into harness and verify
+### Task 6.4: Wire persistence into harness modules
 
-**Modify:** Relevant harness modules to call persistence adapters at key moments:
-- Run creation at entry (Phase 1)
-- Step recording at executor (Phase 2)
-- Policy decision recording (Phase 4)
-- Verification result recording (Phase 5)
-- Event emission at significant state transitions
+**Scope:** Inject persistence calls at lifecycle points without changing existing logic paths. UI behavior must remain identical.
+
+**Execution strategy:** Multi-agent dispatch — one agent per wiring target (6.4a–6.4e) running in parallel where possible, then one agent for integration verification.
+
+**Observability requirement:** Each wiring task MUST add corresponding `[HARNESS][persistence]` log lines so terminal output can be matched against Convex row changes during UI testing.
+
+#### 6.4a: Entry wiring (resolves Blocker B3)
+
+**Modify:**
+- `src/lib/chat-harness/types/runtime.ts` — extend `RunLane`:
+  ```ts
+  interface RunLane {
+    requestId: string;
+    conversationId: Id<"conversations">;
+    mode: RunStartMode;
+    runId: Id<"harnessRuns">;   // NEW
+    ownerToken: string;          // NEW
+    sessionId: string;           // NEW — for event envelope
+  }
+  ```
+- `src/lib/chat-harness/entry/resolve-run-lane.ts` — after acceptance, call `runStore.createRun` and populate new fields
+- `src/lib/chat-harness/entry/persist-user-message.ts` — emit `user_message_received` after message save
+- `src/lib/chat-harness/entry/validate-choice-interaction.ts` — emit `user_decision_received` when choice event validates (see also 6.4e)
+
+**`workflowStage`/`workflowStatus` derivation:**
+- If `paperSession` exists for conversation: `workflowStage = paperSession.currentStage`, `workflowStatus` mapped from `stageStatus` (`"pending_validation"` → `"running"`, `"completed"` → `"completed"`, etc.)
+- Else: `workflowStage = "intake"`, `workflowStatus = "running"`
+- Exact mapping table documented in `create-harness-run.ts` header comment
+
+**Emit order:**
+1. `createRun` → fills RunLane.runId/ownerToken/sessionId
+2. Emit `run_started` with `RunStartedPayload`
+3. Persist user message (existing logic)
+4. Emit `user_message_received`
+
+#### 6.4b: Executor wiring
+
+**Modify:**
+- `src/lib/chat-harness/executor/build-step-stream.ts` — wrap `streamText` invocation with step lifecycle
+- `src/lib/chat-harness/executor/build-on-finish-handler.ts` — complete step + emit events in onFinish
+- `src/lib/chat-harness/executor/types.ts` — extend `StepExecutionConfig` with `runId`, `stepId` (injected via closure from wrapper)
+
+**Flow:**
+1. Before `streamText`: `runStore.startStep(runId)` → `{ stepId, stepIndex }`; emit `step_started`
+2. On each `tool-call` stream part: emit `tool_called`
+3. On each `tool-result` stream part: emit `tool_result_received`
+4. In onFinish handler:
+   - Build `executorResultSummary` from `{ finishReason, usage }`
+   - Build `toolCalls` from `steps.flatMap(...)`
+   - Wait for `verifyStepOutcome` result (already produced per Phase 5)
+   - Build `verificationSummary` from `StepVerificationResult` (booleans + arrays, no closure/stream fields)
+   - Call `runStore.completeStep(stepId, { status, executorResultSummary, verificationSummary, toolCalls, completedAt })`
+   - Emit `step_completed`, `agent_output_received`, `verification_completed`
+5. On stream error: `runStore.updateStatus(runId, "failed", { failureClass: "tool_failure" | "unexpected_failure", failureReason })`; emit `run_failed`
+
+**Step ID threading:** `stepId` is captured in the executor closure at stream start and used in onFinish. No changes to the external streamText API.
+
+#### 6.4c: Policy wiring (resolves Blocker B2)
+
+**Create:** `src/lib/chat-harness/policy/map-policy-boundary.ts`
+
+```ts
+export function mapExecutionBoundaryToPolicyBoundary(
+  decision: RuntimePolicyDecision
+): PolicyStateCurrentBoundary {
+  if (decision.requiresApproval || decision.pauseReason) return "blocked";
+  if (decision.executionBoundary === "normal") return "read_only";
+  // forced-sync, forced-submit, exact-source, revision-chain
+  return "bounded_mutation";
+}
+```
+
+**Modify:** `src/lib/chat-harness/policy/evaluate-runtime-policy.ts`
+- After decision computation, before return:
+  - Build `PolicyState` snapshot: `{ approvalMode: decision.requiresApproval ? "required_for_high_impact" : "default", currentBoundary: mapExecutionBoundaryToPolicyBoundary(decision), pendingApprovalDecisionId: undefined /* populated by 6.4e when decision requested */, lastPolicyReason: decision.policyDecisionSummary, updatedAt: Date.now() }`
+  - Call `runStore.recordPolicyState(runId, snapshot)`
+  - Emit `execution_boundary_evaluated` with full `RuntimePolicyDecision` payload (excluding `prepareStep`, `stepTimingRef` — non-serializable)
+
+#### 6.4d: Verification wiring
+
+**Modify:**
+- `src/lib/chat-harness/verification/verify-step-outcome.ts`:
+  - Emit `verification_started` at entry (target=`"combined"`)
+  - Emit `verification_completed` at return with full `StepVerificationResult` as payload
+- `src/lib/chat-harness/verification/verify-run-readiness.ts`:
+  - Emit `verification_completed` with target=`"completion"` and `RunReadinessResult` payload
+
+**Note:** `verification_completed` fires twice per step (once for step outcome, once for run readiness). Distinguished by `payload.target`.
+
+#### 6.4e: Decision / workflow transition wiring
+
+**Modify:** `src/lib/chat-harness/entry/validate-choice-interaction.ts`
+- On valid choice received:
+  - Emit `user_decision_received`
+  - Emit `workflow_transition_requested` + `workflow_transition_applied` (or `_rejected` on stale state)
+- On stale state (409 response): emit `workflow_transition_rejected`
+
+#### 6.4f: Baseline verification
+
+**Run after all wiring complete:**
+- All 11 baseline tests (handoff file list) pass unchanged
+- New persistence tests pass
+- `npx tsc --noEmit` clean
+- `npx next build` succeeds
+- Manual smoke: one chat request produces expected row counts in Convex dashboard
 
 **Acceptance criteria:**
-- One synchronous request can be replayed from run + step + event records
-- `paperSessions` and `artifacts` remain authoritative for domain truth
-- All 7 baseline tests still pass
-- New persistence tests pass
-- Build passes
+- One chat request produces: 1 `harnessRuns` row + ≥1 `harnessRunSteps` row + ≥10 `harnessEvents` rows (typical chat without tools; tool-heavy paper flow produces more)
+- All 11 baseline tests still pass
+- New persistence tests pass (`convex/harnessRuns.test.ts`, `convex/harnessEvents.test.ts`, `src/lib/chat-harness/persistence/run-store.test.ts`, `src/lib/chat-harness/persistence/event-store.test.ts`)
+- `npx next build` passes
+- `paperSessions` and `artifacts` tables have zero schema or data modifications
+- `harnessEvents.correlationId` groups events within one user action (verifiable by query)
 
-**Test:** Full baseline + new persistence tests + type check + build
+**Observability expectations — document per wiring target:**
+
+| Wiring | Next.js terminal | Convex logs | Browser console |
+|---|---|---|---|
+| 6.4a Entry | `[HARNESS][persistence] createRun runId=<id> ownerToken=<token>` | `harnessRuns.createRun` mutation | (none) |
+| 6.4a Entry | `[HARNESS][event] run_started correlationId=<cid>` | `harnessEvents.emitEvent` | (none) |
+| 6.4b Executor | `[HARNESS][persistence] startStep runId=<id> stepIndex=N` | `harnessRuns.incrementStepNumber` + `harnessRunSteps.createStep` | (none) |
+| 6.4b Executor | `[HARNESS][persistence] completeStep stepId=<id> blockers=[...]` | `harnessRunSteps.completeStep` | (none) |
+| 6.4c Policy | `[HARNESS][persistence] recordPolicyState currentBoundary=<b>` | `harnessRuns.recordPolicyState` | (none) |
+| 6.4d Verification | `[HARNESS][event] verification_completed target=<t>` | `harnessEvents.emitEvent` | (none) |
+
+**Test:** Full baseline + persistence tests + type check + `npx next build` + manual smoke via UI
 
 ---
 
 ### Task 6.5: Post-phase review checkpoint
 
-**Action:** Dispatch agent reviewer to audit Phase 6 against:
-- Plan persistence shape matches spec
-- No corruption of existing domain models
-- Event envelope matches research doc spec
-- Persistence adapters are thin (no business logic)
+**Action:** Dispatch agent reviewer (Codex-delegated per `CLAUDE.md` ADR) to audit Phase 6 against:
 
-**Output:** Review report → fix gaps → report to user → wait for validation.
+- **Schema fidelity:** field types match research doc contracts; enum values match; 12-envelope is complete
+- **No domain corruption:** `paperSessions`, `artifacts`, `conversations`, `messages` have zero field changes (verified via git diff on `convex/schema.ts`)
+- **Adapter thinness:** no business logic in `run-store.ts` or `event-store.ts` beyond envelope assembly and one-to-many mutation composition (e.g., `startStep` = increment + create + setCurrent)
+- **Event coverage:** all 28 canonical event types have typed helpers OR a documented deferral list
+- **Boundary mapping:** `mapExecutionBoundaryToPolicyBoundary` is correct for all 5 `executionBoundary` values × approval states
+- **Step monotonicity:** `stepNumber` increments atomically; cannot produce duplicate `stepIndex` under concurrent requests (Convex per-document serialization is sufficient; note in comment)
+- **`ownerToken` generation:** uses `crypto.randomUUID()` (or equivalent CSPRNG); never predictable
+- **Correlation chaining:** events within one request share `correlationId`; step events chain via `causationEventId` to `step_started`
+- **Observability logs:** every `[HARNESS][persistence]` log line in the matrix above actually fires at the expected point during a test request
+
+**Observability artifacts to produce:**
+- Sample run trace: annotated Next.js terminal output for a simple chat request
+- Sample run trace: annotated terminal output for a paper-flow `paper.start` → choice → next-stage sequence
+- Sample Convex dashboard screenshot reference: row counts per table for each scenario
+- Sample `harnessEvents` query: events for one `runId` ordered by `occurredAt`, showing correlation chain
+
+**Output:** Review report → fix gaps → report to user → wait for validation before Phase 7.
 
 ---
 
