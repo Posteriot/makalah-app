@@ -97,4 +97,10 @@ export interface PaperContextResolution {
   skillResolverFallback: boolean
   /** Stage instruction source label for observability logging. */
   stageInstructionSource: string | undefined
+  /** Skill identifier resolved for the current stage (telemetry). */
+  activeSkillId: string | undefined
+  /** Version of the resolved skill (telemetry). */
+  activeSkillVersion: number | undefined
+  /** Reason the skill resolver fell back to a default, if any (telemetry). */
+  fallbackReason: string | undefined
 }
