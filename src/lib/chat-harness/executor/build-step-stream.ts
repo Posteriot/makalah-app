@@ -677,6 +677,46 @@ export function buildStepStream(params: {
                 }
 
                 if (chunk.type === "error") {
+                    // ── Detailed error payload logging (E2E iteration 5) ──
+                    // Previous summary-only log obscured the origin of stream
+                    // error chunks that fire even after onStepFinish reported
+                    // a normal finishReason=stop (evidenced in test-2 rerun:
+                    // step_finish finishReason=stop at 6891ms, followed at
+                    // 6895ms by outcome=error, then the client surfaces a
+                    // "Gagal mengirim pesan" banner). Extract every field the
+                    // UIMessageChunk + AI SDK error shapes may use plus
+                    // enough context to trace the error to its origin layer.
+                    const errAt = Date.now()
+                    const raw = chunk as {
+                        errorText?: unknown
+                        error?: unknown
+                        message?: unknown
+                    }
+                    const rawErrorObj = raw.error as
+                        | { name?: string; message?: string; stack?: string; cause?: unknown }
+                        | undefined
+                    console.error(
+                        `[TOOLS-STREAM-ERROR][${toolsStreamReqId}]${logTag} stream emitted chunk.type=error`,
+                        {
+                            errorText:
+                                typeof raw.errorText === "string" ? raw.errorText : undefined,
+                            errorName: rawErrorObj?.name,
+                            errorMessage: rawErrorObj?.message,
+                            errorCause: rawErrorObj?.cause,
+                            errorStack: rawErrorObj?.stack,
+                            messageField:
+                                typeof raw.message === "string" ? raw.message : undefined,
+                            textChunkCount: toolsTextChunkCount,
+                            composedChars: toolsComposedChars,
+                            reasoningChunks: toolsReasoningChunkCount,
+                            msSinceStreamStart: errAt - toolsStreamStart,
+                            msSinceFirstTextDelta:
+                                toolsFirstTextDeltaAt > 0 ? errAt - toolsFirstTextDeltaAt : null,
+                            msSinceLastTextChunk:
+                                toolsLastTextChunkTime > 0 ? errAt - toolsLastTextChunkTime : null,
+                            lastChunkWasReasoning: toolsLastChunkWasReasoning,
+                        },
+                    )
                     reasoningAccumulator.finalize()
                     emitTrace(reasoningTrace.finalize({
                         outcome: "error",
@@ -685,8 +725,7 @@ export function buildStepStream(params: {
                     }))
                     emitDurationPart()
                     writer.write(chunk)
-                    const errorAt = Date.now()
-                    console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} summary: outcome=error total=${errorAt - toolsStreamStart}ms textChunks=${toolsTextChunkCount} composedChars=${toolsComposedChars} maxGap=${toolsMaxGapMs}ms gapsOver200ms=${toolsGapsOver200ms} reasoningChunks=${toolsReasoningChunkCount} reasoningInterruptions=${toolsReasoningBetweenTextCount}`)
+                    console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} summary: outcome=error total=${errAt - toolsStreamStart}ms textChunks=${toolsTextChunkCount} composedChars=${toolsComposedChars} maxGap=${toolsMaxGapMs}ms gapsOver200ms=${toolsGapsOver200ms} reasoningChunks=${toolsReasoningChunkCount} reasoningInterruptions=${toolsReasoningBetweenTextCount}`)
                     break
                 }
 
