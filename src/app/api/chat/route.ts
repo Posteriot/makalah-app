@@ -362,6 +362,8 @@ export async function POST(req: Request) {
                     toolChoice: stepContext.toolChoice,
                     providerOptions: stepContext.providerOptions,
                     samplingOptions: stepContext.samplingOptions,
+                    runStore,
+                    eventStore,
                 },
                 onFinishConfig: {
                     conversationId: currentConversationId as Id<"conversations">,
@@ -395,6 +397,8 @@ export async function POST(req: Request) {
                     enableSourceTitleEnrichment: true,
                     enableRevisionClassifier: true,
                     enablePlanSpecFallbackExtraction: true,
+                    runStore,
+                    eventStore,
                 },
                 streamContext: {
                     messageId: primaryMessageId,
@@ -420,6 +424,7 @@ export async function POST(req: Request) {
                     buildForcedSyncStatusMessage: buildForcedSyncStatusMessage as any,
                     getCurrentPlanSnapshot,
                     enforcerStepStartTime: policyDecision.stepTimingRef.current,
+                    activeStep: null,
                 },
                 reasoningTraceEnabled,
                 enablePlanCapture: !!paperStageScope,
@@ -544,6 +549,8 @@ export async function POST(req: Request) {
                         toolChoice: fallbackForcedToolChoice,
                         providerOptions: fallbackReasoningProviderOptions,
                         samplingOptions: stepContext.samplingOptions,
+                        runStore,
+                        eventStore,
                     },
                     onFinishConfig: {
                         conversationId: currentConversationId as Id<"conversations">,
@@ -577,6 +584,8 @@ export async function POST(req: Request) {
                         enableSourceTitleEnrichment: false,
                         enableRevisionClassifier: false,
                         enablePlanSpecFallbackExtraction: false,
+                        runStore,
+                        eventStore,
                     },
                     streamContext: {
                         messageId: fallbackMessageId,
@@ -602,6 +611,7 @@ export async function POST(req: Request) {
                     buildForcedSyncStatusMessage: buildForcedSyncStatusMessage as any,
                         getCurrentPlanSnapshot,
                         enforcerStepStartTime: undefined,
+                        activeStep: null,
                     },
                     reasoningTraceEnabled,
                     enablePlanCapture: !!paperStageScope,

@@ -23,6 +23,8 @@ import type {
     OnFinishConfig,
     StreamPipelineConfig,
 } from "./types"
+import { HARNESS_EVENT_TYPES } from "../persistence"
+import type { Id } from "../../../../convex/_generated/dataModel"
 
 // ────────────────────────────────────────────────────────────────
 // Stream Pipeline Configuration
@@ -226,6 +228,15 @@ export function buildStepStream(params: {
     const paperTurnObservability = onFinishConfig.paperTurnObservability
     const resolvedWorkflow = onFinishConfig.resolvedWorkflow
 
+    // ── Persistence wiring (Task 6.4b) ──
+    // Pull the harness adapters out of the configs for clarity.
+    const runStore = executionConfig.runStore
+    const eventStore = executionConfig.eventStore
+    const lane = onFinishConfig.lane
+    const userId: Id<"users"> = onFinishConfig.userId
+    const paperStageScopeForEvents = onFinishConfig.paperStageScope
+    const logTagForPersistence = streamContext.telemetry.failoverUsed ? "[fallback]" : ""
+
     // ── Create the UI message stream ──
     const uiMessageStream = createUIMessageStream({
         execute: async ({ writer }) => {
@@ -234,6 +245,46 @@ export function buildStepStream(params: {
             // Accumulate ALL streamed text deltas for outcome-gated guard.
             // onFinish text only has final step — this captures full stream.
             let accumulatedStreamText = ""
+
+            // ── Step lifecycle: open a harness step row before invoking streamText ──
+            // This must happen before the model starts streaming so the runId/stepId
+            // pair is available for every event we emit during the stream and in the
+            // onFinish handler. Failure here is non-fatal: we log and continue without
+            // step-level persistence so the user-facing stream still works.
+            const stepStartTime = Date.now()
+            try {
+                const { stepId, stepIndex } = await runStore.startStep(lane.runId)
+                streamContext.activeStep = {
+                    stepId,
+                    stepIndex,
+                    startedAt: stepStartTime,
+                    completed: false,
+                }
+                eventStore
+                    .emit({
+                        eventType: HARNESS_EVENT_TYPES.STEP_STARTED,
+                        userId,
+                        sessionId: lane.sessionId,
+                        chatId: lane.conversationId,
+                        runId: lane.runId,
+                        stepId,
+                        correlationId: lane.requestId,
+                        payload: {
+                            stepId,
+                            stepIndex,
+                            startedAt: stepStartTime,
+                            workflowStage: paperStageScopeForEvents ?? "intake",
+                            trigger: lane.mode === "start" ? "run_start" : "continue",
+                        },
+                    })
+                    .catch(err => console.warn(`[HARNESS][event]${logTagForPersistence} step_started emit failed`, err))
+            } catch (startStepErr) {
+                console.warn(
+                    `[HARNESS][persistence]${logTagForPersistence} startStep failed runId=${lane.runId}`,
+                    startStepErr,
+                )
+                streamContext.activeStep = null
+            }
 
             const ensureStart = () => {
                 if (started) return
@@ -285,12 +336,13 @@ export function buildStepStream(params: {
                 prepareStep: executionConfig.prepareStep,
                 stopWhen: stepCountIs(executionConfig.maxSteps),
                 ...executionConfig.samplingOptions,
-                onFinish: async ({ text, steps, providerMetadata, usage }: {
+                onFinish: async ({ text, steps, providerMetadata, usage, finishReason }: {
                     text: string
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     steps: any[]
                     providerMetadata?: unknown
                     usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
+                    finishReason?: string
                 }) => {
                     await onFinishHandler({
                         text,
@@ -301,6 +353,7 @@ export function buildStepStream(params: {
                             outputTokens: usage?.outputTokens,
                             totalTokens: usage?.totalTokens,
                         },
+                        finishReason,
                     })
                 },
             }
@@ -328,6 +381,12 @@ export function buildStepStream(params: {
                 : planTransformedStream
 
             // ── Stream writer loop ──
+            // Wrapped in try/catch so a streamText failure (network error,
+            // provider crash, etc.) flips the harness step + run into a "failed"
+            // state and emits run_failed before the error propagates. On success
+            // the onFinish handler completes the step inside its own try block;
+            // we leave the original error unmasked.
+            try {
             for await (const chunk of iterateStream(yamlTransformedStream)) {
                 // Capture data-spec parts emitted by pipeYamlRender for DB persistence
                 if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
@@ -499,6 +558,69 @@ export function buildStepStream(params: {
 
                 ensureStart()
                 writer.write(chunk)
+            }
+            } catch (streamErr) {
+                // Mark step + run as failed and emit run_failed. All persistence
+                // calls here are wrapped so a Convex failure does not mask the
+                // original streamErr that callers (route.ts) need to see for
+                // failover decisions.
+                const failureReason = streamErr instanceof Error
+                    ? `${streamErr.name}: ${streamErr.message}`
+                    : String(streamErr)
+                const failureClass: "tool_failure" | "unexpected_failure" =
+                    /tool|invocation|argument/i.test(failureReason)
+                        ? "tool_failure"
+                        : "unexpected_failure"
+
+                const failedStep = streamContext.activeStep
+                if (failedStep && !failedStep.completed) {
+                    try {
+                        await runStore.completeStep(failedStep.stepId, {
+                            status: "failed",
+                            toolCalls: [],
+                            completedAt: Date.now(),
+                        })
+                        failedStep.completed = true
+                    } catch (completeErr) {
+                        console.warn(
+                            `[HARNESS][persistence]${logTagForPersistence} completeStep(failed) failed`,
+                            completeErr,
+                        )
+                    }
+                }
+
+                try {
+                    await runStore.updateStatus(lane.runId, "failed", {
+                        failureClass,
+                        failureReason,
+                    })
+                } catch (statusErr) {
+                    console.warn(
+                        `[HARNESS][persistence]${logTagForPersistence} updateStatus(failed) failed`,
+                        statusErr,
+                    )
+                }
+
+                eventStore
+                    .emit({
+                        eventType: HARNESS_EVENT_TYPES.RUN_FAILED,
+                        userId,
+                        sessionId: lane.sessionId,
+                        chatId: lane.conversationId,
+                        runId: lane.runId,
+                        ...(failedStep ? { stepId: failedStep.stepId } : {}),
+                        correlationId: lane.requestId,
+                        payload: {
+                            runId: lane.runId,
+                            failureClass,
+                            failureReason,
+                            workflowStage: paperStageScopeForEvents ?? "intake",
+                            recoverable: failureClass === "tool_failure",
+                        },
+                    })
+                    .catch(err => console.warn(`[HARNESS][event]${logTagForPersistence} run_failed emit failed`, err))
+
+                throw streamErr
             }
         },
     })

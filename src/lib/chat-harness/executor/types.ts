@@ -7,6 +7,7 @@ import type { PlanSpec } from "@/lib/ai/harness/plan-spec"
 import type { PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import type { JsonRendererChoicePayload } from "@/lib/json-render/choice-payload"
 import type { ConvexFetchQuery, ConvexFetchMutation, RunLane } from "../types"
+import type { EventStore, RunStore } from "../persistence"
 
 // ────────────────────────────────────────────────────────────────
 // Step Execution
@@ -27,6 +28,9 @@ export interface StepExecutionConfig {
     toolChoice: any   // AI SDK ToolChoice<ToolSet>
     providerOptions: Record<string, unknown> | undefined
     samplingOptions: Record<string, unknown>
+    /** Harness persistence adapters (Task 6.4b). */
+    runStore: RunStore
+    eventStore: EventStore
 }
 
 /** Summary of a tool call for telemetry/observability. */
@@ -124,6 +128,9 @@ export interface OnFinishConfig {
     enableSourceTitleEnrichment: boolean
     enableRevisionClassifier: boolean
     enablePlanSpecFallbackExtraction: boolean
+    /** Harness persistence adapters (Task 6.4b). */
+    runStore: RunStore
+    eventStore: EventStore
 }
 
 /** Narrow paper session type for executor scope. */

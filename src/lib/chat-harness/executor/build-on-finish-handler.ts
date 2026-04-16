@@ -22,6 +22,14 @@ import type {
     OnFinishConfig,
     PaperSessionForExecutor,
 } from "./types"
+import { HARNESS_EVENT_TYPES } from "../persistence"
+import type {
+    StepVerificationSummary,
+    ToolCallRecord,
+    ExecutorResultSummary,
+    StepStatus,
+} from "../persistence"
+import type { StepVerificationResult } from "../verification/types"
 
 // ────────────────────────────────────────────────────────────────
 // Types for buildOnFinishHandler
@@ -48,6 +56,15 @@ export interface TelemetryContext {
     skillContext: Record<string, unknown>
 }
 
+/** Active harness step identity, populated by buildStepStream after startStep. */
+export interface ActiveHarnessStep {
+    stepId: Id<"harnessRunSteps">
+    stepIndex: number
+    startedAt: number
+    /** Flipped to true after completeStep has been called so the failure path can avoid double-completing. */
+    completed: boolean
+}
+
 /** Per-stream-call context that changes between primary/fallback invocations. */
 export interface OnFinishStreamContext {
     messageId: string
@@ -61,6 +78,13 @@ export interface OnFinishStreamContext {
     getCurrentPlanSnapshot: () => PlanSpec | undefined
     /** Elapsed ms ref for step timing (primary only). */
     enforcerStepStartTime: number | undefined
+    /**
+     * Harness step identity for this stream (Task 6.4b).
+     * Populated by buildStepStream once runStore.startStep succeeds; read by
+     * the onFinish handler to call completeStep and emit step-level events.
+     * `null` until the step row exists (or when persistence was skipped).
+     */
+    activeStep: ActiveHarnessStep | null
 }
 
 /** Result from buildOnFinishHandler. */
@@ -71,6 +95,8 @@ export interface OnFinishHandlerResult {
         steps: any[]
         providerMetadata?: unknown
         usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
+        /** Top-level finish reason from the AI SDK streamText result (Task 6.4b). */
+        finishReason?: string
     }) => Promise<void>
     streamContentOverrideRef: { current: string | null }
     capturedSpecRef: { current: Spec | null }
@@ -117,6 +143,7 @@ export function buildOnFinishHandler(
         choiceInteractionEvent,
         isCompileThenFinalize,
         normalizedLastUserContent,
+        lane,
         maybeUpdateTitleFromAI,
         fetchQueryWithToken,
         fetchMutationWithToken,
@@ -127,6 +154,8 @@ export function buildOnFinishHandler(
         enableSourceTitleEnrichment,
         enableRevisionClassifier,
         enablePlanSpecFallbackExtraction,
+        runStore,
+        eventStore,
     } = config
 
     const logTag = streamCtx.telemetry.failoverUsed ? "[fallback]" : ""
@@ -137,6 +166,8 @@ export function buildOnFinishHandler(
         steps: any[]
         providerMetadata?: unknown
         usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
+        /** Top-level finish reason from the AI SDK streamText result (Task 6.4b). */
+        finishReason?: string
     }): Promise<void> => {
         const { text, steps, providerMetadata, usage } = result
 
@@ -746,6 +777,148 @@ export function buildOnFinishHandler(
                     : 3,
             })
         }
+
+        // ── Harness step persistence (Task 6.4b) ──
+        // Aggregate-pass tool event emission: see header comment in this file
+        // and the per-emit comment below for why we chose aggregate over
+        // per-stream-part emission.
+        const activeStep = streamCtx.activeStep
+        if (activeStep && !activeStep.completed) {
+            // Build executor result summary from the AI SDK result.
+            const finishReason = typeof result.finishReason === "string" ? result.finishReason : "unknown"
+            const executorResultSummary: ExecutorResultSummary = {
+                finishReason,
+                ...(usage?.inputTokens !== undefined ? { inputTokens: usage.inputTokens } : {}),
+                ...(usage?.outputTokens !== undefined ? { outputTokens: usage.outputTokens } : {}),
+                ...(usage?.totalTokens !== undefined ? { totalTokens: usage.totalTokens } : {}),
+            }
+
+            // Flatten StepVerificationResult → durable summary (booleans + arrays only).
+            const verificationSummary = buildVerificationSummary(stepVerification)
+
+            // Build tool-call records from result.steps (aggregate pass).
+            // Each step exposes `toolCalls` (calls model issued) and `toolResults`
+            // (results returned). We pair them by toolCallId so each record carries
+            // both the call identity and result status when available.
+            // `toolCallArgs` is parallel to `toolCalls` and held separately so the
+            // ToolCallRecord shape stays compatible with Convex strict validators.
+            const { records: toolCalls, argsByIndex: toolCallArgs } = collectToolCallRecords(steps)
+
+            // Determine step status. "failed" if AI SDK reported an error finish
+            // reason or verification mandated a non-approval pause. Approval
+            // pauses are NOT failures — they are normal pause-for-user moments.
+            const isFailureFinishReason = finishReason === "error"
+            const isFailingVerificationPause =
+                stepVerification.mustPause &&
+                !!stepVerification.pauseReason &&
+                !/approval|user|decision|choice/i.test(stepVerification.pauseReason)
+            const stepStatus: Exclude<StepStatus, "running"> =
+                isFailureFinishReason || isFailingVerificationPause ? "failed" : "completed"
+
+            try {
+                await runStore.completeStep(activeStep.stepId, {
+                    status: stepStatus,
+                    executorResultSummary,
+                    verificationSummary,
+                    toolCalls,
+                    completedAt: Date.now(),
+                })
+                activeStep.completed = true
+            } catch (err) {
+                console.warn(`[HARNESS][persistence] completeStep failed`, err)
+            }
+
+            // Emit step_completed.
+            eventStore
+                .emit({
+                    eventType: HARNESS_EVENT_TYPES.STEP_COMPLETED,
+                    userId,
+                    sessionId: lane.sessionId,
+                    chatId: lane.conversationId,
+                    runId: lane.runId,
+                    stepId: activeStep.stepId,
+                    correlationId: lane.requestId,
+                    payload: {
+                        stepId: activeStep.stepId,
+                        stepIndex: activeStep.stepIndex,
+                        status: stepStatus,
+                        finishReason,
+                        toolCount: toolCalls.length,
+                        blockers: verificationSummary.completionBlockers,
+                        durationMs: Date.now() - activeStep.startedAt,
+                    },
+                })
+                .catch(err => console.warn(`[HARNESS][event] step_completed emit failed`, err))
+
+            // Emit agent_output_received (executor output shape).
+            eventStore
+                .emit({
+                    eventType: HARNESS_EVENT_TYPES.AGENT_OUTPUT_RECEIVED,
+                    userId,
+                    sessionId: lane.sessionId,
+                    chatId: lane.conversationId,
+                    runId: lane.runId,
+                    stepId: activeStep.stepId,
+                    correlationId: lane.requestId,
+                    payload: {
+                        stepId: activeStep.stepId,
+                        outputTextLength: typeof result.text === "string" ? result.text.length : 0,
+                        finishReason,
+                        toolCallCount: toolCalls.length,
+                    },
+                })
+                .catch(err => console.warn(`[HARNESS][event] agent_output_received emit failed`, err))
+
+            // Aggregate-pass tool_called + tool_result_received emission.
+            // We emit one tool_called and one tool_result_received per
+            // toolCallId observed in result.steps. Per-stream-part emission was
+            // rejected for V1 because the chunk loop in build-step-stream.ts
+            // already filters/transforms parts (pipePlanCapture, pipeYamlRender)
+            // and adding side-effect emits there risks breaking the stream
+            // pipeline. The cost is timestamp accuracy: emits fire at step
+            // completion, not at the moment the model issued each call.
+            for (let i = 0; i < toolCalls.length; i++) {
+                const tc = toolCalls[i]
+                const argsBlob = serializeToolArgs(toolCallArgs[i])
+                eventStore
+                    .emit({
+                        eventType: HARNESS_EVENT_TYPES.TOOL_CALLED,
+                        userId,
+                        sessionId: lane.sessionId,
+                        chatId: lane.conversationId,
+                        runId: lane.runId,
+                        stepId: activeStep.stepId,
+                        correlationId: lane.requestId,
+                        payload: {
+                            stepId: activeStep.stepId,
+                            toolName: tc.toolName,
+                            ...(tc.toolCallId !== undefined ? { toolCallId: tc.toolCallId } : {}),
+                            ...(argsBlob !== undefined ? { args: argsBlob } : {}),
+                        },
+                    })
+                    .catch(err => console.warn(`[HARNESS][event] tool_called emit failed`, err))
+
+                if (tc.resultStatus !== undefined) {
+                    eventStore
+                        .emit({
+                            eventType: HARNESS_EVENT_TYPES.TOOL_RESULT_RECEIVED,
+                            userId,
+                            sessionId: lane.sessionId,
+                            chatId: lane.conversationId,
+                            runId: lane.runId,
+                            stepId: activeStep.stepId,
+                            correlationId: lane.requestId,
+                            payload: {
+                                stepId: activeStep.stepId,
+                                toolName: tc.toolName,
+                                ...(tc.toolCallId !== undefined ? { toolCallId: tc.toolCallId } : {}),
+                                resultStatus: tc.resultStatus,
+                            },
+                        })
+                        .catch(err => console.warn(`[HARNESS][event] tool_result_received emit failed`, err))
+                }
+            }
+        }
     }
 
     return {
@@ -753,5 +926,97 @@ export function buildOnFinishHandler(
         streamContentOverrideRef,
         capturedSpecRef,
         capturedPlanSpecRef,
+    }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Persistence helpers (Task 6.4b)
+// ────────────────────────────────────────────────────────────────
+
+/** Flatten StepVerificationResult to the durable summary shape. */
+function buildVerificationSummary(v: StepVerificationResult): StepVerificationSummary {
+    return {
+        canContinue: v.canContinue,
+        mustPause: v.mustPause,
+        ...(v.pauseReason !== undefined ? { pauseReason: v.pauseReason } : {}),
+        canComplete: v.canComplete,
+        completionBlockers: v.completionBlockers,
+        leakageDetected: v.leakageDetected,
+        artifactChainComplete: v.artifactChainComplete,
+        planComplete: v.planComplete,
+        streamContentOverridden: v.streamContentOverride !== undefined,
+    }
+}
+
+/**
+ * Walk result.steps and pair toolCalls with their toolResults by toolCallId.
+ * Returns BOTH:
+ *   - `records`: clean ToolCallRecord[] for runStore.completeStep (Convex
+ *     v.object validators reject extra fields, so this is strict).
+ *   - `argsByIndex`: per-record args payload kept off the record so it can be
+ *     attached only to tool_called emits.
+ *
+ * A tool result without a matching call is ignored. A tool call without a
+ * matching result is recorded with `resultStatus = undefined`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function collectToolCallRecords(steps: any[] | undefined): {
+    records: ToolCallRecord[]
+    argsByIndex: Array<unknown>
+} {
+    if (!Array.isArray(steps)) return { records: [], argsByIndex: [] }
+    const records: ToolCallRecord[] = []
+    const argsByIndex: Array<unknown> = []
+    for (const step of steps) {
+        const calls = (step?.toolCalls ?? []) as Array<{
+            toolName?: string
+            toolCallId?: string
+            args?: unknown
+            input?: unknown
+        }>
+        const results = (step?.toolResults ?? []) as Array<{
+            toolCallId?: string
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            result?: any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            output?: any
+            isError?: boolean
+        }>
+        const resultByCallId = new Map<string, (typeof results)[number]>()
+        for (const r of results) {
+            if (r?.toolCallId) resultByCallId.set(r.toolCallId, r)
+        }
+        for (const call of calls) {
+            if (!call?.toolName) continue
+            const matched = call.toolCallId ? resultByCallId.get(call.toolCallId) : undefined
+            const resultStatus = matched
+                ? matched.isError === true
+                    ? "error"
+                    : "success"
+                : undefined
+            records.push({
+                toolName: call.toolName,
+                ...(call.toolCallId !== undefined ? { toolCallId: call.toolCallId } : {}),
+                ...(resultStatus !== undefined ? { resultStatus } : {}),
+            })
+            argsByIndex.push(call.args !== undefined ? call.args : call.input)
+        }
+    }
+    return { records, argsByIndex }
+}
+
+/** Cap tool args at ~2KB when serialized to keep event payloads manageable. */
+function serializeToolArgs(args: unknown): unknown {
+    if (args === undefined) return undefined
+    try {
+        const json = typeof args === "string" ? args : JSON.stringify(args)
+        if (typeof json !== "string") return undefined
+        const MAX = 2048
+        if (json.length <= MAX) {
+            return typeof args === "string" ? args : JSON.parse(json)
+        }
+        return { __truncated: true, preview: json.slice(0, MAX), originalLength: json.length }
+    } catch {
+        return { __truncated: true, reason: "serialize_failed" }
     }
 }
