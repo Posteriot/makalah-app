@@ -373,3 +373,22 @@ export const getRunByOwnerToken = query({
         return run
     },
 })
+
+// Phase 8 — resume entry point needs to fetch a run by its Convex _id.
+// Mirrors `getRunByOwnerToken`'s permissive semantics: missing auth or
+// ownership mismatch returns null rather than throwing, so the caller
+// (acceptChatRequest) can surface 403/404 explicitly.
+export const getRunById = query({
+    args: {
+        runId: v.id("harnessRuns"),
+    },
+    handler: async (ctx, { runId }) => {
+        const run = await ctx.db.get(runId)
+        if (run === null) return null
+
+        const access = await getConversationIfOwner(ctx, run.conversationId)
+        if (!access) return null
+
+        return run
+    },
+})

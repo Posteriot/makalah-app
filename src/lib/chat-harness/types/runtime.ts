@@ -30,6 +30,25 @@ export interface AcceptedChatRequest {
     replaceAttachmentContext: boolean | undefined
     inheritAttachmentContext: boolean | undefined
     clearAttachmentContext: boolean | undefined
+    /**
+     * Present when the incoming request carries `x-harness-resume: <runId>`.
+     * Orchestrator uses this to skip step 2 (resolveRunLane) and reuse the
+     * persisted run's lane state. Validation (token + ownership) happens in
+     * acceptChatRequest before this field is populated. The extra fields
+     * (paperSessionId, workflowStage) come from the persisted run row and
+     * let the orchestrator reuse persisted state without re-deriving.
+     *
+     * `sessionId` is NOT persisted on harnessRuns (schema v1) — the
+     * orchestrator mints a fresh sessionId on resume. Event correlation
+     * across the paused/resumed boundary is preserved via `runId`.
+     */
+    resumeContext?: {
+        runId: Id<"harnessRuns">
+        ownerToken: string
+        paperSessionId: Id<"paperSessions"> | undefined
+        workflowStage: string
+        conversationId: Id<"conversations">
+    }
 }
 
 export type RunStartMode = "start" | "resume_candidate"

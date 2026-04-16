@@ -149,6 +149,59 @@ export async function acceptChatRequest(req: Request): Promise<AcceptedChatReque
     }
     // ════════════════════════════════════════════════════════════════
 
+    // ════════════════════════════════════════════════════════════════
+    // Phase 8 — resume header parsing (Task 8.3a)
+    // ════════════════════════════════════════════════════════════════
+    // If `x-harness-resume: <runId>` is present, the caller is re-entering
+    // a paused run after a decision was resolved. We fetch the run via the
+    // authenticated Convex query (which enforces ownership) and validate:
+    //   1. Run exists (else 404)
+    //   2. Status is `paused` (else 409)
+    //   3. Access granted (else 403 — getRunById returns null on mismatch)
+    // On success we surface a `resumeContext` that the orchestrator uses to
+    // skip resolveRunLane and reuse persisted lane identifiers.
+    let resumeContext: AcceptedChatRequest["resumeContext"]
+    const resumeRunId = req.headers.get("x-harness-resume")
+    if (resumeRunId) {
+        const pausedRun = await fetchQueryWithToken(api.harnessRuns.getRunById, {
+            runId: resumeRunId as Id<"harnessRuns">,
+        }) as {
+            _id: Id<"harnessRuns">
+            conversationId: Id<"conversations">
+            paperSessionId?: Id<"paperSessions">
+            ownerToken: string
+            status: string
+            workflowStage: string
+        } | null
+
+        if (pausedRun === null) {
+            // Convex getRunById returns null for BOTH not-found and
+            // ownership-denied — we cannot disambiguate without leaking
+            // run existence to unauthenticated callers. Return 403 which
+            // covers both cases safely (404 would confirm non-existence
+            // to an attacker who guessed a real runId).
+            return new Response("Forbidden", { status: 403 })
+        }
+
+        if (pausedRun.status !== "paused") {
+            return new Response(`Run is not paused (status=${pausedRun.status})`, {
+                status: 409,
+            })
+        }
+
+        resumeContext = {
+            runId: pausedRun._id,
+            ownerToken: pausedRun.ownerToken,
+            paperSessionId: pausedRun.paperSessionId,
+            workflowStage: pausedRun.workflowStage,
+            conversationId: pausedRun.conversationId,
+        }
+
+        console.info(
+            `[HARNESS][entry] resume header detected runId=${pausedRun._id} workflowStage=${pausedRun.workflowStage}`,
+        )
+    }
+
     return {
         requestId,
         userId,
@@ -167,5 +220,6 @@ export async function acceptChatRequest(req: Request): Promise<AcceptedChatReque
         replaceAttachmentContext,
         inheritAttachmentContext,
         clearAttachmentContext,
+        ...(resumeContext !== undefined ? { resumeContext } : {}),
     }
 }

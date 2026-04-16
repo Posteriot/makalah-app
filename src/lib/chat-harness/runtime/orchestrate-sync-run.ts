@@ -17,9 +17,19 @@
  *
  * Pause control-flow (Q5):
  *   After policy evaluation, if `policyDecision.requiresApproval === true`
- *   the orchestrator returns `{ kind: "paused", ... }`. Phase 8 extends this
- *   with `runStore.updateStatus("paused", ...)` + pending-decision row
- *   creation; Phase 7 only establishes the early-return seam.
+ *   the orchestrator composes `runStore.pauseRun` (creates a pending decision
+ *   row + flips harnessRuns.status to `paused` + stamps pendingDecisionId),
+ *   emits a `run_paused` event carrying the decisionId, and returns
+ *   `{ kind: "paused", runId, pendingDecisionId }` (Task 8.3b).
+ *
+ * Resume control-flow (Task 8.3):
+ *   When the HTTP adapter parses a valid `x-harness-resume` header, it
+ *   populates `accepted.resumeContext` from the persisted run row. The
+ *   orchestrator skips `resolveRunLane` (no new harnessRuns row created),
+ *   reconstructs the `RunLane` from the persisted identifiers, and emits
+ *   `run_resumed` in place of `run_started`. All subsequent steps run
+ *   unchanged — policy re-evaluation decides whether to pause again or
+ *   proceed to stream execution.
  *
  * Fidelity contract:
  *   Zero behavior change. All `[PAPER][*]` / `[FREE-TEXT-CONTEXT]` /
@@ -67,12 +77,29 @@ import type { ResolvedStepContext } from "../context/types"
 import type { RuntimePolicyDecision } from "../policy/types"
 import type { AcceptedChatRequest } from "../types/runtime"
 import type { RunStore, EventStore } from "../persistence"
+import { HARNESS_EVENT_TYPES } from "../persistence"
 
 import type {
     PaperContextResolution,
     SyncRunContext,
     SyncRunResult,
 } from "./types"
+
+// ═══════════════════════════════════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Mints a fresh sessionId for the resume re-entry. `sessionId` is not
+ * persisted on the harnessRuns row (schema v1), so each POST to /api/chat
+ * starts a new sessionId. Event correlation across the paused/resumed
+ * boundary is preserved via `runId` + `correlationId` (requestId).
+ */
+function mintResumeSessionId(): string {
+    const cryptoObj = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto
+    if (cryptoObj?.randomUUID) return cryptoObj.randomUUID()
+    return `sess-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // Entry point
@@ -83,6 +110,11 @@ export async function orchestrateSyncRun(
 ): Promise<SyncRunResult> {
     const { accepted, runStore, eventStore } = ctx
 
+    // Phase 8 — resume detection. When the adapter parsed a valid
+    // `x-harness-resume` header, the lane is reconstructed from the
+    // persisted run instead of creating a fresh harnessRuns row.
+    const isResume = !!accepted.resumeContext
+
     // ── Step 1: resolve conversation ──────────────────────────────────
     const conversation = await resolveConversation({
         conversationId: accepted.conversationId,
@@ -92,16 +124,64 @@ export async function orchestrateSyncRun(
         fetchMutationWithToken: accepted.fetchMutationWithToken,
     })
 
-    // ── Step 2: resolve run lane (creates harnessRuns + emits run_started)
-    const lane = await resolveRunLane({
-        requestId: accepted.requestId,
-        conversationId: conversation.conversationId,
-        userId: accepted.userId,
-        isNewConversation: conversation.isNewConversation,
-        runStore,
-        eventStore,
-        fetchQuery: accepted.fetchQueryWithToken,
-    })
+    // ── Step 2: resolve run lane ─────────────────────────────────────
+    // Fresh request path: creates harnessRuns row + emits `run_started`.
+    // Resume path: reuses persisted runId/ownerToken + emits `run_resumed`.
+    let lane: RunLane
+    if (isResume) {
+        const rc = accepted.resumeContext!
+        // The adapter already validated ownership + paused status at the
+        // entry layer; here we additionally guard against a mismatched
+        // conversationId between the request and the persisted run —
+        // the conversation resolve step should produce the same id the
+        // paused run was bound to. A mismatch means the client pointed
+        // resume at a run from a different conversation.
+        if (rc.conversationId !== conversation.conversationId) {
+            throw new Error(
+                `[HARNESS][resume] conversationId mismatch: header run bound to ${rc.conversationId} but request resolved to ${conversation.conversationId}`,
+            )
+        }
+
+        const sessionId = mintResumeSessionId()
+        lane = {
+            requestId: accepted.requestId,
+            conversationId: conversation.conversationId,
+            mode: "resume_candidate",
+            runId: rc.runId,
+            ownerToken: rc.ownerToken,
+            sessionId,
+        }
+
+        await eventStore.emit({
+            eventType: HARNESS_EVENT_TYPES.RUN_RESUMED,
+            userId: accepted.userId,
+            sessionId: lane.sessionId,
+            chatId: lane.conversationId,
+            runId: lane.runId,
+            correlationId: lane.requestId,
+            payload: {
+                runId: lane.runId,
+                ownerToken: lane.ownerToken,
+                previousRunStatus: "paused",
+                resumeReason: "user_decision",
+                workflowStage: rc.workflowStage,
+            },
+        })
+
+        console.info(
+            `[HARNESS][persistence] resumeLane runId=${lane.runId} requestId=${lane.requestId}`,
+        )
+    } else {
+        lane = await resolveRunLane({
+            requestId: accepted.requestId,
+            conversationId: conversation.conversationId,
+            userId: accepted.userId,
+            isNewConversation: conversation.isNewConversation,
+            runStore,
+            eventStore,
+            fetchQuery: accepted.fetchQueryWithToken,
+        })
+    }
 
     // ── Step 3: resolve attachments ───────────────────────────────────
     const attachments = await resolveAttachments({
@@ -219,13 +299,51 @@ export async function orchestrateSyncRun(
         userId: accepted.userId,
     })
 
-    // ── Step 8.5: pause seam (Phase 8 extension point) ────────────────
+    // ── Step 8.5: pause seam (Phase 8 — Task 8.3b) ────────────────────
+    // Enforcers that set `requiresApproval=true` must populate `pauseReason`
+    // with human-readable context; we surface it as the decision prompt
+    // `question`. `pauseRun` is composed: creates a harnessDecisions row
+    // first (stable decisionId) then patches the harnessRuns row to
+    // `paused` with the decisionId pointer. The emitted `run_paused` event
+    // carries the same decisionId so downstream subscribers (UI) can fetch
+    // the decision row without polling.
     if (policyDecision.requiresApproval) {
+        const reason = policyDecision.pauseReason ?? "approval required"
+        const workflowStage = paperContext.paperStageScope ?? "intake"
+
+        const { decisionId } = await runStore.pauseRun(lane.runId, {
+            reason,
+            decision: {
+                type: "approval",
+                blocking: true,
+                workflowStage,
+                prompt: {
+                    title: "Action requires approval",
+                    question: reason,
+                    allowsFreeform: true,
+                },
+            },
+        })
+
+        await eventStore.emit({
+            eventType: HARNESS_EVENT_TYPES.RUN_PAUSED,
+            userId: accepted.userId,
+            sessionId: lane.sessionId,
+            chatId: lane.conversationId,
+            runId: lane.runId,
+            correlationId: lane.requestId,
+            payload: {
+                decisionId,
+                reason,
+                workflowStage,
+                pausedAt: Date.now(),
+            },
+        })
+
         return {
             kind: "paused",
             runId: lane.runId,
-            // Phase 8 populates via runStore.updateStatus + pending-decision row.
-            pendingDecisionId: null,
+            pendingDecisionId: decisionId,
         }
     }
 
