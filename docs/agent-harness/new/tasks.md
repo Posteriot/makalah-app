@@ -1674,6 +1674,13 @@ export function verifyRunReadiness(params: {
 - Index names follow existing convention: `by_<field>` or `by_<a>_<b>`
 - Auth: all mutations call `requireAuthUserId` / `requireConversationOwner` per `convex/conversations.ts` pattern
 
+> **Accepted deviation from research doc — identity field types (post-audit, 2026-04-16):**
+> Research doc contracts (`RunState`, `EventEnvelope`) use plain `string` for `userId`, `sessionId`, `chatId`, `runId`, `stepId`. This Phase 6 implementation uses Convex's typed `v.id("table")` brand for fields whose target is a real Convex table (`userId: v.id("users")`, `chatId: v.id("conversations")`, `runId: v.id("harnessRuns")`, `stepId: v.id("harnessRunSteps")`). `sessionId` remains plain `v.string()` (no target table; it's a request-scoped opaque token).
+>
+> **Rationale:** (1) at runtime, `v.id("users")` IS a string — branded type, identical persisted bytes; (2) all 15 existing tables in the repo use typed user/conversation IDs — repo-wide consistency outranks line-by-line spec fidelity; (3) typed IDs catch wrong-table foreign-key bugs at compile time.
+>
+> Codex audit (Phase 6 close-out) flagged this as MEDIUM. **Decision:** keep typed IDs, document deviation here. Research doc contracts remain authoritative for envelope SHAPE; field types are repo-pattern aligned.
+
 ---
 
 ### Task 6.1: Define Convex schema for harness tables
