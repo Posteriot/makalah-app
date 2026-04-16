@@ -2104,83 +2104,232 @@ export function mapExecutionBoundaryToPolicyBoundary(
 
 ## Phase 7: Thin `route.ts` into a Chat Harness Adapter
 
-**Scope:** Final assembly — `route.ts` becomes a thin HTTP adapter that calls the harness runtime.
+**Scope:** Final assembly — `route.ts` becomes a thin HTTP adapter that delegates to the harness runtime. All orchestration, paper-mode setup, observability plumbing, and fallback execution move behind a `runChatHarness()` entry.
 
-**Goal:** `route.ts` responsibility = auth → call harness → return response → fatal error handling. Everything else lives behind `runChatHarness()`.
+**Goal:** `route.ts` responsibility = parse request → delegate to harness → return response → catch fatal. Everything else lives behind the adapter boundary so Phase 8 pause/resume can extend the orchestrator without touching HTTP concerns.
 
 **Runtime namespace:** `src/lib/chat-harness/runtime/`
+
+> **Pre-verify patch notes (Session 3, 2026-04-16):** Plan was written before Phases 1-6 executed. Post-Phase-6 reality changed the scope:
+> - `route.ts` is now 645 lines (Phase 6 wiring added ~35 lines: runStore/eventStore construction, RunLane extended, async `evaluateRuntimePolicy`, step lifecycle state).
+> - 17 inline logic blocks (~180 lines) that the original plan didn't enumerate need explicit orchestrator responsibility.
+> - Fallback is a 195-line nested block in the primary try/catch, not a mere "classify + retry" step.
+>
+> User decisions on design points (Q1-Q5), documented here:
+> - **Q1 Fallback extraction:** Extract to `attemptFallbackExecution()` method INSIDE `orchestrate-sync-run.ts` (not a separate file; same module so orchestrator retains single-source-of-truth for the full execution flow).
+> - **Q2 Tool registry order:** Reorder in orchestrator so `buildToolRegistry` runs AFTER `evaluateRuntimePolicy` — policy's `forcedToolChoice` + `allowedToolNames` must apply before tools finalize.
+> - **Q3 File split:** Two files as planned. `run-chat-harness.ts` = HTTP adapter boundary (request parse + adapter construction + Response assembly). `orchestrate-sync-run.ts` = 13-step synchronous execution engine + fallback path. Phase 8 modifies only `orchestrate-sync-run.ts`.
+> - **Q4 paperSession threading:** `paperSession` becomes a first-class output of step 5 (paper context resolution) and is threaded explicitly to all downstream consumers. No more closure capture in `saveAssistantMessageLocal`, `getCurrentPlanSnapshot`, or fallback routing.
+> - **Q5 Pause control flow:** After step 8 (policy), if `policyDecision.requiresApproval === true`, orchestrator returns early with a pause result (`{ status: "paused", pendingDecisionId }`). Phase 8 extends this return path with pause persistence; Phase 7 establishes the early-return pattern.
+>
+> **Line count target:** Tightened from "~50-80" to **~50-70 lines**, based on reviewer's calculated remaining (~41 lines core + imports/types ≈ 50-70).
+
+**Reference:** Reviewer's pre-verify audit enumerates 17 inline logic blocks and 8 gap items. See Task 7.1 "Inline blocks inventory" below.
 
 ---
 
 ### Task 7.1: Create harness runtime orchestrator
 
-**Create:** `src/lib/chat-harness/runtime/run-chat-harness.ts`
-**Create:** `src/lib/chat-harness/runtime/orchestrate-sync-run.ts`
+**Create:**
+- `src/lib/chat-harness/runtime/run-chat-harness.ts` — HTTP adapter boundary
+- `src/lib/chat-harness/runtime/orchestrate-sync-run.ts` — 13-step execution engine + fallback
+- `src/lib/chat-harness/runtime/types.ts` — `SyncRunResult`, `SyncRunPauseResult`, `SyncRunError` types
+- `src/lib/chat-harness/runtime/index.ts` — barrel
 
-**`runChatHarness` sequence:**
-1. Accept request (Phase 1: `acceptChatRequest`)
-2. Resolve conversation (Phase 1: `resolveConversation`)
-3. Resolve attachments (Phase 1: `resolveAttachments`)
-4. Persist user message (Phase 1: `persistUserMessage`)
-5. Fetch `paperSession` + `paperModePrompt` (currently in route.ts)
-6. Validate choice interaction (Phase 1: `validateChoiceInteraction`)
-7. Assemble step context (Phase 3: `assembleStepContext`)
-8. Evaluate runtime policy (Phase 4: `evaluateRuntimePolicy`)
-9. Build tool registry (Phase 2: `buildToolRegistry`)
-10. Build step stream + execute (Phase 2: `buildStepStream`)
-11. On error: classify + fallback execution
-12. Return Response
+#### 7.1a: `run-chat-harness.ts` — HTTP adapter
 
-**Acceptance criteria:**
-- `route.ts` shrinks to ~50-80 lines
-- `route.ts` only does: auth/token → `runChatHarness(req)` → return response → catch fatal
-- All harness logic is behind the adapter boundary
-- **Zero behavior change**
-- All baseline tests pass + build passes
+**Responsibility:** HTTP-level concerns only. Does NOT orchestrate steps.
 
-**Test:** Full baseline + type check + build
+Pseudocode:
+```ts
+export async function runChatHarness(req: Request): Promise<Response> {
+  // 1. Accept + construct adapters (entry boundary)
+  const accepted = await acceptChatRequest(req)
+  const runStore = createRunStore({ fetchMutation: accepted.fetchMutationWithToken })
+  const eventStore = createEventStore({ fetchMutation: accepted.fetchMutationWithToken })
+
+  // 2. Delegate to 13-step sync orchestrator
+  const result = await orchestrateSyncRun({
+    accepted,
+    runStore,
+    eventStore,
+  })
+
+  // 3. Adapter: SyncRunResult → Response
+  if (result.kind === "stream") return result.response
+  if (result.kind === "paused") return buildPauseResponse(result)  // Phase 8 scaffolding
+  throw result.error  // fatal → route.ts outer catch
+}
+```
+
+**Acceptance criteria for 7.1a:**
+- File ≤80 lines
+- No business logic — only request parsing, adapter construction, and result→Response mapping
+- `SyncRunResult` discriminated union: `{ kind: "stream", response } | { kind: "paused", pendingDecisionId, runId } | { kind: "error", error }`
+
+#### 7.1b: `orchestrate-sync-run.ts` — 13-step sync engine + fallback
+
+**Responsibility:** The full execution flow. Owns all orchestration, observability setup, and fallback retry.
+
+**Revised 13-step sequence (post pre-verify):**
+
+1. `resolveConversation` (Phase 1)
+2. `resolveAttachments` (Phase 1)
+3. `persistUserMessage` (Phase 1) + emit `user_message_received`
+4. **Paper context resolution** (extracted from inline):
+   - Fetch `paperSession` via Convex query
+   - Resolve `paperModePrompt` via `getPaperModeSystemPrompt()`
+   - Derive `paperStageScope`, `isDraftingStage`, `isHasilPostChoice`
+   - Detect post-edit-resend reset condition
+   - Initialize `paperToolTracker` + `paperTurnObservability` objects
+   - Construct `freeTextContextNote` per paper-state branches
+   - Log `[PAPER][session-resolve]` observability
+   - Mutate `billingContext.operationType` IF paper mode (critical timing — must happen AFTER paperSession fetch; Phase 1 preserved this pattern)
+   - **Output:** `PaperContextResolution` object: `{ paperSession, paperStageScope, isDraftingStage, isHasilPostChoice, paperToolTracker, paperTurnObservability, paperModePrompt, freeTextContextNote }`
+5. `validateChoiceInteraction` (Phase 1)
+6. `assembleStepContext` (Phase 3)
+7. `evaluateRuntimePolicy` (Phase 4) — async post-Phase-6
+8. **Pause check** (Phase 8 seam): if `policyDecision.requiresApproval === true` → return `{ kind: "paused", pendingDecisionId, runId }`. Phase 7 returns early with empty pendingDecisionId placeholder; Phase 8 populates via `runStore.updateStatus("paused", ...)`.
+9. `buildToolRegistry` (Phase 2) — **MOVED: runs AFTER policy**, consumes `policyDecision.forcedToolChoice` + `allowedToolNames`
+10. Telemetry setup: start time, reasoning trace controller+snapshot, trace mode label function, forced-tool telemetry context, skill telemetry context
+11. Primary: `buildStepStream` execute → return stream Response
+12. On error: `attemptFallbackExecution()` method (in same file)
+13. Return Response (primary or fallback)
+
+#### 7.1c: `attemptFallbackExecution(params)` method
+
+**Location:** Private method in `orchestrate-sync-run.ts` (NOT a separate file per Q1=A decision).
+
+**Responsibility:** Re-run steps 7-11 with fallback model + relaxed config.
+
+Re-derives:
+- Dynamic import of `@/lib/ai/streaming` → `getOpenRouterModel({ enableWebSearch: false })`
+- Forced tool choice override (forced submit or undefined)
+- Max steps override (conditional)
+- Sync prepare step override (deterministic getCurrentPaperState sequence if needed)
+- `buildExactSourceRouting()` re-derived for fallback
+- Re-call `evaluateRuntimePolicy()` with adapted routing
+- Reasoning provider options (transparency-aware)
+- Re-call `buildStepStream()` with fallback config
+
+**Input:** primary-path state (accepted, lane, paperContext, stepContext, stores)
+**Output:** fallback Response OR re-throws if fallback itself fails
+
+#### 7.1d: 17 inline blocks inventory (extraction targets)
+
+These are the logic blocks enumerated by the pre-verify reviewer. All move into `orchestrate-sync-run.ts` as part of the 13-step sequence. None require their own extracted file — they are step components.
+
+| Block | Current route.ts | New Home |
+|---|---|---|
+| 1. Paper mode prompt resolution | L108-115 | Step 4 |
+| 2. Paper session fetch | L117-121 | Step 4 |
+| 3. Stage scope + drafting detection | L122-131 | Step 4 |
+| 4. Post-edit-resend reset detection | L127-131 | Step 4 |
+| 5. Free-text context note construction | L149-186 | Step 4 |
+| 6. `[PAPER][session-resolve]` log | L132 | Step 4 |
+| 7. Paper tool tracker init | L134 | Step 4 |
+| 8. Paper turn observability object | L135-147 | Step 4 |
+| 9. Skill telemetry context | L209-219 | Step 10 |
+| 10. Telemetry start time | L337 | Step 10 |
+| 11. Reasoning trace controller+snapshot | L338-339 | Step 10 |
+| 12. Trace mode label function | L340-344 | Step 10 |
+| 13. Reasoning provider options (fallback) | L478-482 | Step 12 (fallback) |
+| 14. Forced-tool telemetry context | L346-351 | Step 10 |
+| 15. Billing context mutation timing | L202-205 | Step 4 (after paperSession fetch) |
+| 16. `getCurrentPlanSnapshot` closure | L257-262 | Step 10 (threaded, not closure) |
+| 17. `saveAssistantMessageLocal` wrapper | L265-287 | Step 10 (threaded, explicit params) |
+
+#### 7.1e: paperSession threading (Q4 decision)
+
+Per Q4=A, `paperSession` is an explicit parameter (not closure-captured) in:
+- `saveAssistantMessageLocal` helper — takes `paperSession` param
+- `getCurrentPlanSnapshot` — takes `paperSession` param (becomes a thin getter, not a closure)
+- Fallback routing — receives `paperSession` from primary-path state
+- Any other downstream consumer in executor `onFinishConfig`
+
+This simplifies Phase 8 resume (paperSession snapshot becomes explicit state, not hidden closure state).
+
+**Acceptance criteria for Task 7.1:**
+- Two files created in `src/lib/chat-harness/runtime/`
+- `runChatHarness` handles HTTP adapter role only (≤80 lines)
+- `orchestrateSyncRun` implements 13-step sequence with `attemptFallbackExecution` method for step 12
+- All 17 inline blocks moved into sync orchestrator
+- `paperSession` threaded explicitly (no closure capture for plan snapshot / saveAssistantMessageLocal / fallback)
+- Tool registry runs AFTER policy (step 9 after step 7-8 pause check)
+- Step 8 (pause check) returns early if `requiresApproval === true` — Phase 8 extension seam
+- `SyncRunResult` union supports `stream | paused | error`
+- **Zero behavior change** — all baseline tests pass
+
+**Test:** Full baseline + type check + production build + manual smoke (one chat request should produce identical stream output)
 
 ---
 
-### Task 7.2: Thin route.ts
+### Task 7.2: Thin `route.ts`
 
 **Modify:** `src/app/api/chat/route.ts`
 
-**Target shape:**
+**Target shape (~50-70 lines total):**
 ```typescript
-export async function POST(req: Request) {
+import { runChatHarness } from "@/lib/chat-harness/runtime"
+import * as Sentry from "@sentry/nextjs"
+
+export async function POST(req: Request): Promise<Response> {
   try {
-    const response = await runChatHarness(req)
-    return response
+    return await runChatHarness(req)
   } catch (error) {
+    console.error("[HARNESS][fatal]", error)
     Sentry.captureException(error)
-    return new Response("Internal error", { status: 500 })
+    return new Response("Internal server error", { status: 500 })
   }
 }
 ```
 
-**What moves behind `runChatHarness`:**
-- `paperSession` fetch (the last remaining inline code)
-- `freeTextContextNote` construction
-- `billingContext` mutation
-- All orchestration sequencing
+**What moves behind `runChatHarness` (entire remaining 565 lines):**
+- All entry phase (Phase 1 calls) — but those are already extracted; route.ts just stops invoking them directly
+- All paper context resolution (L108-206, 99 lines) — extracted as step 4 of orchestrator
+- All observability/telemetry plumbing (reasoning trace, telemetry start time, trace mode labels)
+- `getCurrentPlanSnapshot` closure
+- `saveAssistantMessageLocal` wrapper
+- `evaluateRuntimePolicy` call
+- `buildToolRegistry` call (reordered to after policy)
+- `buildStepStream` primary call
+- Entire fallback block (L440-634, 195 lines) — extracted as `attemptFallbackExecution` method
+- `runStore`/`eventStore` construction (moved to `runChatHarness`)
+
+**What remains in `route.ts`:**
+- Imports (2-3 lines)
+- `POST` handler declaration
+- Outer try/catch fatal boundary
+- `console.error` + `Sentry.captureException` + 500 response
 
 **Acceptance criteria:**
-- `route.ts` is structurally small enough to read in one screen
-- All runtime law is visible through harness modules
-- All baseline tests pass + build passes
+- `route.ts` between 50-70 lines total
+- Zero business logic in `route.ts` (verified via diff)
+- No imports from `src/lib/chat-harness/{entry,executor,context,policy,verification,persistence}` — only from `src/lib/chat-harness/runtime`
+- All 11 baseline tests pass
+- All 5 Phase 6 tests pass (total 189/189)
+- `npx tsc --noEmit` clean
+- `npx next build` clean
+- **Manual smoke required:** one chat request via UI must produce identical streaming output to pre-Phase-7
 
-**Test:** Full baseline + type check + build
+**Test:** Full baseline + type check + build + manual UI smoke
 
 ---
 
 ### Task 7.3: Post-phase review checkpoint
 
-**Action:** Dispatch agent reviewer to audit Phase 7 against:
-- `route.ts` is a thin adapter (no business logic)
-- All harness boundaries are correctly composed in `runChatHarness`
-- No missing orchestration steps
-- Fallback/error recovery path preserved
+**Action:** Dispatch agent reviewer (Codex-delegated per CLAUDE.md ADR) to audit Phase 7 against:
+
+1. **Adapter thinness:** `route.ts` ≤70 lines, zero business logic, imports only from `runtime/` namespace
+2. **Orchestrator correctness:** all 13 steps present in `orchestrateSyncRun`; step order matches spec (policy BEFORE tool registry); pause check returns early correctly
+3. **Fallback extraction:** `attemptFallbackExecution` method is cleanly separated, no duplicated logic with primary path beyond intentional re-evaluation
+4. **paperSession threading:** no closure capture for `saveAssistantMessageLocal` / `getCurrentPlanSnapshot` / fallback routing — all explicit params
+5. **Persistence wiring preserved:** `runStore` + `eventStore` constructed in `runChatHarness`, threaded through orchestrator to all downstream consumers
+6. **Observability preserved:** all `[HARNESS][*]` logs + `[PAPER][*]` logs + telemetry events still fire in expected order for a typical chat request (verified via manual smoke or trace analysis)
+7. **Zero behavior change:** stream output byte-identical (or semantically equivalent) to pre-Phase-7
+8. **Phase 8 seam ready:** `SyncRunResult.kind === "paused"` path is present; Phase 8 can extend without restructuring orchestrator
+
+**Output:** Review report → fix gaps → report to user → wait for validation before Phase 8.
 
 **Output:** Review report → fix gaps → report to user → wait for validation.
 
