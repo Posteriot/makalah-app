@@ -28,6 +28,7 @@ import {
     buildExactSourceRouting,
     buildForcedSyncStatusMessage,
 } from "@/lib/chat-harness/context"
+import { evaluateRuntimePolicy } from "@/lib/chat-harness/policy"
 
 export async function POST(req: Request) {
     try {
@@ -293,140 +294,20 @@ export async function POST(req: Request) {
         })
 
         // ════════════════════════════════════════════════════════════════
-        // ENFORCERS — remain in route.ts (they reference paperToolTracker
-        // which is route-local mutable state)
+        // RUNTIME POLICY — evaluates all enforcers & composes prepareStep
         // ════════════════════════════════════════════════════════════════
-
-        // Reactive revision chain enforcer — active during pending_validation only.
-        const isRevisionActive = paperSession?.stageStatus === "pending_validation" || paperSession?.stageStatus === "revision"
-        const revisionChainEnforcer = isRevisionActive
-            ? ({ steps, stepNumber }: {
-                steps: Array<{ toolCalls?: Array<{ toolName: string }> }>;
-                stepNumber: number;
-              }) => {
-                if (stepNumber === 0) {
-                    if (paperSession?.stageStatus === "revision") {
-                        console.info(`[REVISION][chain-enforcer] step=0 status=revision → required`)
-                        return { toolChoice: "required" as const }
-                    }
-                    return undefined
-                }
-
-                const prevToolNames = steps[stepNumber - 1]?.toolCalls?.map(tc => tc.toolName) ?? []
-
-                if (prevToolNames.includes("requestRevision")) {
-                    console.info(`[REVISION][chain-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} → required`)
-                    return { toolChoice: "required" as const }
-                }
-                if (prevToolNames.includes("updateStageData")) {
-                    console.info(`[REVISION][chain-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} → required`)
-                    return { toolChoice: "required" as const }
-                }
-                if (prevToolNames.includes("updateArtifact") || prevToolNames.includes("createArtifact")) {
-                    if (paperToolTracker?.sawUpdateArtifactSuccess || paperToolTracker?.sawCreateArtifactSuccess) {
-                        console.info(`[REVISION][chain-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} → submitStageForValidation`)
-                        return { toolChoice: { type: "tool", toolName: "submitStageForValidation" } as const }
-                    }
-                    console.info(`[REVISION][chain-enforcer] step=${stepNumber} prev=${prevToolNames.join(",")} → artifact failed, allowing retry`)
-                    return { toolChoice: "required" as const }
-                }
-
-                return undefined
-              }
-            : undefined
-
-        const isCompileThenFinalize = resolvedWorkflow?.action === "compile_then_finalize"
-        const shouldEnforceArtifactChain =
-            resolvedWorkflow?.action !== "continue_discussion"
-
-        const currentPlan = (paperSession?.stageData as Record<string, Record<string, unknown>> | undefined)
-            ?.[paperStageScope ?? ""]?._plan as PlanSpec | undefined
-        const planHasIncompleteTasks = currentPlan?.tasks?.some(
-            (t: { status: string }) => t.status !== "complete"
-        ) ?? false
-
-        if (shouldEnforceArtifactChain && planHasIncompleteTasks && resolvedWorkflow?.action === "finalize_stage") {
-            console.info(`[PLAN-GATE] enforcer downgraded: plan has incomplete tasks (${currentPlan?.tasks.filter((t: { status: string }) => t.status === "complete").length}/${currentPlan?.tasks.length} complete)`)
-        }
-
-        const draftingChoiceArtifactEnforcer =
-            choiceInteractionEvent && paperStageScope && paperSession?.stageStatus === "drafting"
-            && shouldEnforceArtifactChain && !(planHasIncompleteTasks && resolvedWorkflow?.action === "finalize_stage")
-                ? ({ steps, stepNumber }: {
-                    steps: Array<{ toolCalls?: Array<{ toolName: string }> }>;
-                    stepNumber: number;
-                  }) => {
-                    const allPrevToolNames = steps.flatMap(s => s.toolCalls?.map(tc => tc.toolName) ?? [])
-                    const sawCompile = allPrevToolNames.includes("compileDaftarPustaka")
-                    const sawUpdateStageData = allPrevToolNames.includes("updateStageData")
-                    const sawCreateArtifact = allPrevToolNames.includes("createArtifact")
-                    const sawUpdateArtifact = allPrevToolNames.includes("updateArtifact")
-                    const sawSubmit = allPrevToolNames.includes("submitStageForValidation")
-                    const sawArtifact = sawCreateArtifact || sawUpdateArtifact
-
-                    if (isCompileThenFinalize && !sawCompile) {
-                        console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} stage=${paperStageScope} → compileDaftarPustaka (compile_then_finalize)`)
-                        return { toolChoice: { type: "tool", toolName: "compileDaftarPustaka" } as const }
-                    }
-
-                    if (!sawUpdateStageData && !sawArtifact) {
-                        console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} stage=${paperStageScope} → updateStageData (chain start)`)
-                        return { toolChoice: { type: "tool", toolName: "updateStageData" } as const }
-                    }
-
-                    if (sawUpdateStageData && !sawArtifact) {
-                        console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} stage=${paperStageScope} → createArtifact`)
-                        return { toolChoice: { type: "tool", toolName: "createArtifact" } as const }
-                    }
-
-                    if (sawArtifact && !sawSubmit) {
-                        console.info(`[CHOICE][artifact-enforcer] step=${stepNumber} stage=${paperStageScope} → submitStageForValidation`)
-                        return { toolChoice: { type: "tool", toolName: "submitStageForValidation" } as const }
-                    }
-
-                    return undefined
-                  }
-                : undefined
-
-        let enforcerStepStartTime = Date.now()
-        const universalReactiveEnforcer =
-            paperStageScope && paperSession?.stageStatus === "drafting"
-                ? ({ steps, stepNumber }: {
-                    steps: Array<{ toolCalls?: Array<{ toolName: string }> }>;
-                    stepNumber: number;
-                  }) => {
-                    if (stepNumber > 0) {
-                        const prevStepTools = steps[stepNumber - 1]?.toolCalls?.map(tc => tc.toolName).join(",") ?? "text"
-                        const elapsed = Date.now() - enforcerStepStartTime
-                        console.info(`[STEP-TIMING] step=${stepNumber - 1} stage=${paperStageScope} tools=[${prevStepTools}] elapsed=${elapsed}ms`)
-                    }
-                    enforcerStepStartTime = Date.now()
-
-                    if (stepNumber === 0) return undefined
-
-                    const allPrevToolNames = steps.flatMap(s => s.toolCalls?.map(tc => tc.toolName) ?? [])
-                    const sawUpdateStageData = allPrevToolNames.includes("updateStageData")
-
-                    if (!sawUpdateStageData) return undefined
-
-                    const sawCreateArtifact = allPrevToolNames.includes("createArtifact")
-                    const sawUpdateArtifact = allPrevToolNames.includes("updateArtifact")
-                    const sawSubmit = allPrevToolNames.includes("submitStageForValidation")
-                    const sawArtifact = sawCreateArtifact || sawUpdateArtifact
-
-                    if (!sawArtifact) {
-                        console.info(`[REACTIVE-ENFORCER] step=${stepNumber} stage=${paperStageScope} → createArtifact`)
-                        return { toolChoice: { type: "tool", toolName: "createArtifact" } as const }
-                    }
-
-                    if (!sawSubmit) {
-                        console.info(`[REACTIVE-ENFORCER] step=${stepNumber} stage=${paperStageScope} → submitStageForValidation`)
-                        return { toolChoice: { type: "tool", toolName: "submitStageForValidation" } as const }
-                    }
-
-                    return undefined
-                  }
-                : undefined
+        const policyDecision = evaluateRuntimePolicy({
+            enforcerContext: {
+                paperSession,
+                paperStageScope,
+                paperToolTracker,
+                resolvedWorkflow,
+                choiceInteractionEvent,
+            },
+            exactSourceRouting: stepContext.exactSourceRouting,
+            forcedSyncPrepareStep: stepContext.forcedSyncPrepareStep,
+            forcedToolChoice: stepContext.forcedToolChoice,
+        })
 
         // ════════════════════════════════════════════════════════════════
         // STREAM EXECUTION — Primary + Fallback
@@ -452,23 +333,12 @@ export async function POST(req: Request) {
             const primaryMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
 
             // ── Primary stream: buildStepStream ──
-            const primaryPrepareStep = (() => {
-                const forceInspect = stepContext.exactSourceRouting.prepareStep
-                const chainedEnforcer = (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
-                    revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params) ?? universalReactiveEnforcer?.(params)
-                if (forceInspect && (revisionChainEnforcer || draftingChoiceArtifactEnforcer || universalReactiveEnforcer)) {
-                    return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
-                        forceInspect(params) ?? chainedEnforcer(params)
-                }
-                return chainedEnforcer ?? forceInspect ?? stepContext.forcedSyncPrepareStep
-            })()
-
             return buildStepStream({
                 executionConfig: {
                     model,
                     messages: stepContext.messages,
                     tools,
-                    prepareStep: primaryPrepareStep,
+                    prepareStep: policyDecision.prepareStep,
                     stopWhen: undefined,
                     maxSteps: stepContext.maxSteps,
                     modelName: modelNames.primary.model,
@@ -490,7 +360,7 @@ export async function POST(req: Request) {
                     paperTurnObservability,
                     resolvedWorkflow,
                     choiceInteractionEvent,
-                    isCompileThenFinalize,
+                    isCompileThenFinalize: policyDecision.isCompileThenFinalize,
                     normalizedLastUserContent,
                     lane,
                     maybeUpdateTitleFromAI,
@@ -532,7 +402,7 @@ export async function POST(req: Request) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     buildForcedSyncStatusMessage: buildForcedSyncStatusMessage as any,
                     getCurrentPlanSnapshot,
-                    enforcerStepStartTime,
+                    enforcerStepStartTime: policyDecision.stepTimingRef.current,
                 },
                 reasoningTraceEnabled,
                 enablePlanCapture: !!paperStageScope,
@@ -623,17 +493,25 @@ export async function POST(req: Request) {
 
                 const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const forceInspectFn = fallbackExactSourceRouting.prepareStep as ((params: any) => any) | undefined
-                const fallbackPrepareStep = (() => {
-                    const chainedEnforcer = (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
-                        revisionChainEnforcer?.(params) ?? draftingChoiceArtifactEnforcer?.(params) ?? universalReactiveEnforcer?.(params)
-                    if (forceInspectFn && (revisionChainEnforcer || draftingChoiceArtifactEnforcer || universalReactiveEnforcer)) {
-                        return (params: { stepNumber: number; steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) =>
-                            forceInspectFn(params) ?? chainedEnforcer(params)
-                    }
-                    return chainedEnforcer ?? forceInspectFn ?? fallbackDeterministicSyncPrepareStep
-                })()
+                // Re-evaluate policy for fallback with its own exact source routing.
+                // buildExactSourceRouting returns a different shape than ExactSourceRoutingResult,
+                // so we adapt it to the expected interface.
+                const fallbackPolicyDecision = evaluateRuntimePolicy({
+                    enforcerContext: {
+                        paperSession,
+                        paperStageScope,
+                        paperToolTracker,
+                        resolvedWorkflow,
+                        choiceInteractionEvent,
+                    },
+                    exactSourceRouting: {
+                        mode: fallbackExactSourceRouting.prepareStep ? "force-inspect" : "none",
+                        matchedSourceId: stepContext.exactSourceRouting.matchedSourceId,
+                        prepareStep: fallbackExactSourceRouting.prepareStep,
+                    },
+                    forcedSyncPrepareStep: fallbackDeterministicSyncPrepareStep,
+                    forcedToolChoice: fallbackForcedToolChoice,
+                })
 
                 const fallbackTransparent = isTransparentReasoning && reasoningSettings.fallback.supported
 
@@ -642,7 +520,7 @@ export async function POST(req: Request) {
                         model: fallbackModel,
                         messages: fallbackExactSourceRouting.messages,
                         tools,
-                        prepareStep: fallbackPrepareStep,
+                        prepareStep: fallbackPolicyDecision.prepareStep,
                         stopWhen: undefined,
                         maxSteps: fallbackExactSourceRouting.maxToolSteps ?? fallbackMaxToolSteps,
                         modelName: modelNames.fallback.model,
@@ -664,7 +542,7 @@ export async function POST(req: Request) {
                         paperTurnObservability,
                         resolvedWorkflow,
                         choiceInteractionEvent,
-                        isCompileThenFinalize,
+                        isCompileThenFinalize: fallbackPolicyDecision.isCompileThenFinalize,
                         normalizedLastUserContent,
                         lane,
                         maybeUpdateTitleFromAI,

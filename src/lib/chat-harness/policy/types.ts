@@ -64,6 +64,10 @@ export interface RuntimePolicyDecision {
     allowedToolNames: string[] | undefined
     executionBoundary: ExecutionBoundary
     policyDecisionSummary: string
+    /** Derived value: whether the workflow is compile_then_finalize. Needed by onFinishConfig. */
+    isCompileThenFinalize: boolean
+    /** Shared mutable ref for step timing. Written by universal reactive enforcer. */
+    stepTimingRef: { current: number }
 }
 
 // ────────────────────────────────────────────────────────────────
