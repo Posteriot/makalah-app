@@ -12,6 +12,7 @@ import {
   recordPolicyState,
   incrementStepNumber,
   setCurrentStep,
+  startStepAtomic,
   completeRun,
   getRunByConversation,
   getRunByOwnerToken,
@@ -381,5 +382,65 @@ describe("getRunByOwnerToken", () => {
     const ctx = createMockCtx()
     const result = await asHandler(getRunByOwnerToken)(ctx, { ownerToken: "nonexistent-token" })
     expect(result).toBeNull()
+  })
+})
+
+describe("startStepAtomic", () => {
+  it("atomically increments stepNumber, inserts step, and sets currentStepId in one mutation", async () => {
+    const ctx = createMockCtx()
+    const { runId } = await asHandler(createRun)(ctx, {
+      conversationId: "conversations_1",
+      userId: "users_1",
+      workflowStage: "intake",
+      workflowStatus: "running",
+    })
+
+    const result = await asHandler(startStepAtomic)(ctx, { runId })
+
+    expect(result.stepIndex).toBe(1)
+    expect(result.stepId).toMatch(/^harnessRunSteps_/)
+
+    const run = ctx.tables.get("harnessRuns")![0]
+    expect(run.stepNumber).toBe(1)
+    expect(run.currentStepId).toBe(result.stepId)
+
+    const step = ctx.tables.get("harnessRunSteps")![0]
+    expect(step._id).toBe(result.stepId)
+    expect(step.runId).toBe(runId)
+    expect(step.stepIndex).toBe(1)
+    expect(step.status).toBe("running")
+    expect(step.toolCalls).toEqual([])
+  })
+
+  it("monotonically increments across multiple invocations", async () => {
+    const ctx = createMockCtx()
+    const { runId } = await asHandler(createRun)(ctx, {
+      conversationId: "conversations_1",
+      userId: "users_1",
+      workflowStage: "intake",
+      workflowStatus: "running",
+    })
+
+    const r1 = await asHandler(startStepAtomic)(ctx, { runId })
+    const r2 = await asHandler(startStepAtomic)(ctx, { runId })
+    const r3 = await asHandler(startStepAtomic)(ctx, { runId })
+
+    expect(r1.stepIndex).toBe(1)
+    expect(r2.stepIndex).toBe(2)
+    expect(r3.stepIndex).toBe(3)
+
+    const run = ctx.tables.get("harnessRuns")![0]
+    expect(run.stepNumber).toBe(3)
+    expect(run.currentStepId).toBe(r3.stepId)
+    expect(ctx.tables.get("harnessRunSteps")).toHaveLength(3)
+  })
+
+  it("throws when run not found (no partial state)", async () => {
+    const ctx = createMockCtx()
+    await expect(
+      asHandler(startStepAtomic)(ctx, { runId: "harnessRuns_nonexistent" })
+    ).rejects.toThrow(/not found/)
+    // No rows should be created
+    expect(ctx.tables.get("harnessRunSteps") ?? []).toHaveLength(0)
   })
 })

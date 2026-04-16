@@ -180,6 +180,55 @@ export const setCurrentStep = mutation({
     },
 })
 
+// ------------------------------------------------------------------
+// Atomic step-start (Phase 6 audit fix — HIGH 1).
+// ------------------------------------------------------------------
+// Collapses the legacy 3-call composition (incrementStepNumber →
+// createStep → setCurrentStep) into a single mutation handler so the
+// three writes live inside one Convex transaction:
+//   1. Patch `harnessRuns.stepNumber` (bump + updatedAt).
+//   2. Insert a `harnessRunSteps` row at the new index (status=running).
+//   3. Patch `harnessRuns.currentStepId` to the new step id.
+// Convex executes a mutation handler atomically: all `ctx.db` writes
+// within a single handler invocation either commit together or not at
+// all. That means this mutation gives all-or-nothing semantics for the
+// full step-start — no more partial-write window where stepNumber got
+// bumped but createStep failed (or currentStepId was never pointed at
+// the fresh row), which was the root cause of orphaned "running" rows.
+//
+// Callers MUST use this mutation for new step creation. The legacy
+// `incrementStepNumber` and `setCurrentStep` mutations are preserved
+// above for backwards compatibility and explicit lifecycle control
+// (e.g., resume flows that want to re-point currentStepId without
+// inserting a row) but are no longer on the hot path.
+export const startStepAtomic = mutation({
+    args: { runId: v.id("harnessRuns") },
+    handler: async (ctx, { runId }) => {
+        const run = await ctx.db.get(runId)
+        if (run === null) throw new Error("harness run not found")
+        await requireConversationOwner(ctx, run.conversationId)
+        const now = Date.now()
+
+        // 1. Atomically increment stepNumber.
+        const nextStepNumber = run.stepNumber + 1
+        await ctx.db.patch(runId, { stepNumber: nextStepNumber, updatedAt: now })
+
+        // 2. Insert harnessRunSteps row at the new index.
+        const stepId = await ctx.db.insert("harnessRunSteps", {
+            runId,
+            stepIndex: nextStepNumber,
+            status: "running",
+            toolCalls: [],
+            startedAt: now,
+        })
+
+        // 3. Point the run at the new step.
+        await ctx.db.patch(runId, { currentStepId: stepId, updatedAt: now })
+
+        return { stepId, stepIndex: nextStepNumber }
+    },
+})
+
 export const completeRun = mutation({
     args: {
         runId: v.id("harnessRuns"),
