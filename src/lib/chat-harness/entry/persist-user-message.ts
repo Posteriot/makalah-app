@@ -4,6 +4,10 @@
  * Extracts the latest user message content from AI SDK UIMessage format,
  * validates that attachments have accompanying text, and persists the
  * message to Convex.
+ *
+ * On successful save, emits `user_message_received` (Task 6.4a). The emit
+ * is SKIPPED when the message body is empty (guard path returns early or
+ * 400s) — we only record events for actions that actually reached the DB.
  */
 
 import { retryMutation } from "@/lib/convex/retry"
@@ -11,7 +15,9 @@ import { api } from "../../../../convex/_generated/api"
 import type { Id } from "../../../../convex/_generated/dataModel"
 import type { UIMessage } from "ai"
 import type { ResolveEffectiveFileIdsResult } from "@/lib/chat/effective-file-ids"
-import type { ConvexFetchMutation } from "../types"
+import type { ConvexFetchMutation, RunLane } from "../types"
+import type { EventStore } from "../persistence"
+import { HARNESS_EVENT_TYPES } from "../persistence"
 
 export async function persistUserMessage(params: {
     messages: UIMessage[]
@@ -20,6 +26,9 @@ export async function persistUserMessage(params: {
     requestedAttachmentMode: unknown
     attachmentResolution: ResolveEffectiveFileIdsResult
     fetchMutationWithToken: ConvexFetchMutation
+    eventStore: EventStore
+    lane: RunLane
+    userId: Id<"users">
 }): Promise<void | Response> {
     const {
         messages,
@@ -28,6 +37,9 @@ export async function persistUserMessage(params: {
         requestedAttachmentMode,
         attachmentResolution,
         fetchMutationWithToken,
+        eventStore,
+        lane,
+        userId,
     } = params
 
     // Extract content from last message (AI SDK v5/v6 UIMessage format)
@@ -56,7 +68,7 @@ export async function persistUserMessage(params: {
                 ? requestedAttachmentMode
                 : (attachmentResolution.reason === "explicit" ? "explicit" : "inherit")
 
-        await retryMutation(
+        const savedMessageId = (await retryMutation(
             () => fetchMutationWithToken(api.messages.createMessage, {
                 conversationId,
                 role: "user",
@@ -66,6 +78,22 @@ export async function persistUserMessage(params: {
                 ...(lastMessage.id ? { uiMessageId: lastMessage.id } : {}),
             }),
             "messages.createMessage(user)",
-        )
+        )) as Id<"messages"> | string | undefined
+
+        // Emit persistence event ONLY when the message actually saved.
+        await eventStore.emit({
+            eventType: HARNESS_EVENT_TYPES.USER_MESSAGE_RECEIVED,
+            userId,
+            sessionId: lane.sessionId,
+            chatId: lane.conversationId,
+            runId: lane.runId,
+            correlationId: lane.requestId,
+            payload: {
+                messageId: savedMessageId ?? lastMessage.id ?? "unknown",
+                messageRole: "user",
+                messageText: userContent,
+                requestSource: "chat",
+            },
+        })
     }
 }

@@ -38,4 +38,7 @@ export interface RunLane {
     requestId: string
     conversationId: Id<"conversations">
     mode: RunStartMode
+    runId: Id<"harnessRuns">
+    ownerToken: string
+    sessionId: string
 }

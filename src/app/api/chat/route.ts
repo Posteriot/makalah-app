@@ -2,7 +2,6 @@ import * as Sentry from "@sentry/nextjs"
 import type { ModelMessage } from "ai"
 
 import { getSystemPrompt } from "@/lib/ai/chat-config"
-import { fetchQuery } from "convex/nextjs"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import {
@@ -29,6 +28,7 @@ import {
     buildForcedSyncStatusMessage,
 } from "@/lib/chat-harness/context"
 import { evaluateRuntimePolicy } from "@/lib/chat-harness/policy"
+import { createRunStore, createEventStore } from "@/lib/chat-harness/persistence"
 
 export async function POST(req: Request) {
     try {
@@ -39,12 +39,30 @@ export async function POST(req: Request) {
         const accepted = await acceptChatRequest(req)
         if (accepted instanceof Response) return accepted
 
+        // Persistence adapters — single instance per request, shared across
+        // entry/executor/policy/verification phases. `fetchMutationWithToken`
+        // is already user-scoped from acceptChatRequest.
+        const runStore = createRunStore({ fetchMutation: accepted.fetchMutationWithToken })
+        const eventStore = createEventStore({ fetchMutation: accepted.fetchMutationWithToken })
+
         const conversation = await resolveConversation({
             conversationId: accepted.conversationId,
             userId: accepted.userId,
             firstUserContent: accepted.firstUserContent,
             fetchQueryWithToken: accepted.fetchQueryWithToken,
             fetchMutationWithToken: accepted.fetchMutationWithToken,
+        })
+
+        // Run lane — creates harnessRuns row + emits run_started BEFORE we
+        // persist the user message so downstream events have a runId.
+        const lane = await resolveRunLane({
+            requestId: accepted.requestId,
+            conversationId: conversation.conversationId,
+            userId: accepted.userId,
+            isNewConversation: conversation.isNewConversation,
+            runStore,
+            eventStore,
+            fetchQuery: accepted.fetchQueryWithToken,
         })
 
         const attachments = await resolveAttachments({
@@ -66,6 +84,9 @@ export async function POST(req: Request) {
             requestedAttachmentMode: accepted.requestedAttachmentMode,
             attachmentResolution: attachments.attachmentResolution,
             fetchMutationWithToken: accepted.fetchMutationWithToken,
+            eventStore,
+            lane,
+            userId: accepted.userId,
         })
         if (msgResult instanceof Response) return msgResult
 
@@ -171,6 +192,9 @@ export async function POST(req: Request) {
             paperSession,
             paperStageScope,
             paperModePrompt,
+            eventStore,
+            lane,
+            userId: userId as Id<"users">,
         })
         if (choiceResult instanceof Response) return choiceResult
         const { resolvedWorkflow, choiceContextNote } = choiceResult
@@ -179,13 +203,6 @@ export async function POST(req: Request) {
         if (paperSession) {
             billingContext.operationType = "paper_generation"
         }
-
-        // Run lane assembly (provisional run identity for Phase 6+ persistence)
-        const lane = resolveRunLane({
-            requestId,
-            conversationId: currentConversationId,
-            isNewConversation: conversation.isNewConversation,
-        })
 
         const isPaperMode = !!paperModePrompt
 

@@ -6,6 +6,9 @@ import {
     resolveChoiceWorkflow,
 } from "@/lib/chat/choice-request"
 import type { PaperStageId } from "../../../../convex/paperSessions/constants"
+import type { RunLane } from "../types"
+import type { EventStore } from "../persistence"
+import { HARNESS_EVENT_TYPES } from "../persistence"
 
 /**
  * Minimal paper-session shape consumed by choice validation.
@@ -29,6 +32,12 @@ export interface PaperSessionForChoice {
  *
  * When `choiceInteractionEvent` is null the function returns early with
  * both fields undefined — no work to do.
+ *
+ * Event emission (Task 6.4e):
+ *   - On any validated choice arrival → `user_decision_received`
+ *   - Before guard check                → `workflow_transition_requested`
+ *   - Passed guard (valid)              → `workflow_transition_applied`
+ *   - Failed guard (stale 409)          → `workflow_transition_rejected`
  */
 export async function validateChoiceInteraction(params: {
     choiceInteractionEvent: ParsedChoiceInteractionEvent | null
@@ -36,6 +45,9 @@ export async function validateChoiceInteraction(params: {
     paperSession: PaperSessionForChoice | null
     paperStageScope: PaperStageId | undefined
     paperModePrompt: string | null
+    eventStore: EventStore
+    lane: RunLane
+    userId: Id<"users">
 }): Promise<
     | {
           resolvedWorkflow: ResolvedChoiceWorkflow | undefined
@@ -48,11 +60,61 @@ export async function validateChoiceInteraction(params: {
         paperSession,
         paperStageScope,
         paperModePrompt,
+        eventStore,
+        lane,
+        userId,
     } = params
 
     if (!choiceInteractionEvent) {
         return { resolvedWorkflow: undefined, choiceContextNote: undefined }
     }
+
+    // --- Decision event: user submitted a choice ---
+    // Fire BEFORE the guard so we record the arrival even if it turns out stale.
+    // `decisionId` is synthesized from the source message + stage since the
+    // choice-submit envelope has no dedicated decision id field.
+    const decisionId = `${choiceInteractionEvent.sourceMessageId}:${choiceInteractionEvent.stage}`
+    await eventStore.emit({
+        eventType: HARNESS_EVENT_TYPES.USER_DECISION_RECEIVED,
+        userId,
+        sessionId: lane.sessionId,
+        chatId: lane.conversationId,
+        runId: lane.runId,
+        correlationId: lane.requestId,
+        payload: {
+            decisionId,
+            decisionType: "selection",
+            responseType: "answered",
+            response: {
+                stage: choiceInteractionEvent.stage,
+                choicePartId: choiceInteractionEvent.choicePartId,
+                kind: choiceInteractionEvent.kind,
+                selectedOptionIds: choiceInteractionEvent.selectedOptionIds,
+                workflowAction: choiceInteractionEvent.workflowAction,
+                decisionMode: choiceInteractionEvent.decisionMode,
+                customText: choiceInteractionEvent.customText,
+                submittedAt: choiceInteractionEvent.submittedAt,
+            },
+        },
+    })
+
+    // --- Workflow transition requested (before guard) ---
+    const fromStage = paperSession?.currentStage ?? "intake"
+    const toStage = choiceInteractionEvent.stage
+    await eventStore.emit({
+        eventType: HARNESS_EVENT_TYPES.WORKFLOW_TRANSITION_REQUESTED,
+        userId,
+        sessionId: lane.sessionId,
+        chatId: lane.conversationId,
+        runId: lane.runId,
+        correlationId: lane.requestId,
+        payload: {
+            fromStage,
+            toStage,
+            reasonClass: "user_decision",
+            reason: "user_choice",
+        },
+    })
 
     // --- Stale-state validation (throws on mismatch) ---
     try {
@@ -70,6 +132,24 @@ export async function validateChoiceInteraction(params: {
                 : String(validationError)
 
         if (errorMsg.includes("CHOICE_REJECTED_STALE_STATE")) {
+            // Record the rejection before returning the 409.
+            await eventStore.emit({
+                eventType: HARNESS_EVENT_TYPES.WORKFLOW_TRANSITION_REJECTED,
+                userId,
+                sessionId: lane.sessionId,
+                chatId: lane.conversationId,
+                runId: lane.runId,
+                correlationId: lane.requestId,
+                payload: {
+                    fromStage,
+                    toStage,
+                    rejectionClass: "guard_failed",
+                    reason: "stale_state",
+                    currentStage: paperSession?.currentStage,
+                    stageStatus: paperSession?.stageStatus,
+                },
+            })
+
             console.warn(
                 `[stale-choice-rejected] stage=${choiceInteractionEvent.stage} stageStatus=${paperSession?.stageStatus} sourceMessageId=${choiceInteractionEvent.sourceMessageId} submittedAt=${choiceInteractionEvent.submittedAt}`,
             )
@@ -102,6 +182,24 @@ export async function validateChoiceInteraction(params: {
         stageData: currentStageChoiceData as Record<string, unknown> | undefined,
         hasExistingArtifact,
         stageStatus: paperSession?.stageStatus as string | undefined,
+    })
+
+    // --- Workflow transition applied (guard passed) ---
+    await eventStore.emit({
+        eventType: HARNESS_EVENT_TYPES.WORKFLOW_TRANSITION_APPLIED,
+        userId,
+        sessionId: lane.sessionId,
+        chatId: lane.conversationId,
+        runId: lane.runId,
+        correlationId: lane.requestId,
+        payload: {
+            fromStage,
+            toStage,
+            appliedBy: "orchestrator",
+            appliedAt: Date.now(),
+            resolvedAction: resolvedWorkflow.action,
+            workflowClass: resolvedWorkflow.workflowClass,
+        },
     })
 
     // --- Build context note ---
