@@ -618,6 +618,7 @@ export async function POST(req: Request) {
                     forcedToolChoice: fallbackForcedToolChoice,
                     availableExactSources,
                     messages: stepContext.messages,
+                    stageStatus: paperSession?.stageStatus as string | undefined,
                 })
 
                 const fallbackMessageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`

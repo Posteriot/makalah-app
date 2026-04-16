@@ -350,6 +350,7 @@ export async function assembleStepContext(
         forcedToolChoice,
         availableExactSources,
         messages: budgetResult.messages,
+        stageStatus: params.paperSession?.stageStatus as string | undefined,
     })
 
     // ── Step 10: Web search early return ──────────────────────────

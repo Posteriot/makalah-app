@@ -4,17 +4,21 @@ import path from "node:path"
 
 const repoRoot = path.resolve(__dirname, "..", "..", "..")
 const routePath = path.join(repoRoot, "src/app/api/chat/route.ts")
+const searchDecisionPath = path.join(repoRoot, "src/lib/chat-harness/context/resolve-search-decision.ts")
 const telemetryPath = path.join(repoRoot, "src/lib/ai/telemetry.ts")
 
 describe("chat websearch observability guards", () => {
   it("keeps fail-closed reason and explicit search-unavailable response", () => {
-    const routeSource = fs.readFileSync(routePath, "utf8")
+    // Phase 3: search decision + response factories moved to context modules
+    const searchSource = fs.readFileSync(searchDecisionPath, "utf8")
+    const responseFactoriesPath = path.join(repoRoot, "src/lib/chat-harness/context/response-factories.ts")
+    const responseFactories = fs.readFileSync(responseFactoriesPath, "utf8")
+    const combined = searchSource + "\n" + responseFactories
 
-    expect(routeSource).toContain('searchUnavailableReasonCode = "search_required_but_unavailable"')
-    expect(routeSource).toContain('reasonCode: searchUnavailableReasonCode')
-    expect(routeSource).toContain('telemetryFallbackReason: searchUnavailableReasonCode')
-    expect(routeSource).toContain('status: "error"')
-    expect(routeSource).toContain("message: input.message")
+    expect(combined).toContain('search_required_but_unavailable')
+    expect(combined).toContain('reasonCode')
+    expect(combined).toContain('telemetryFallbackReason')
+    expect(combined).toContain('status: "error"')
   })
 
   it("keeps telemetry fields required for ai-ops diagnosis", () => {

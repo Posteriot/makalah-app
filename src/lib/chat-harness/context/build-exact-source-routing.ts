@@ -24,6 +24,7 @@ export function buildExactSourceRouting(params: {
     forcedToolChoice: unknown
     availableExactSources: ExactSourceSummary[]
     messages: ModelMessage[]
+    stageStatus: string | undefined
 }): {
     prepareStep: unknown
     toolChoice: unknown
@@ -38,15 +39,22 @@ export function buildExactSourceRouting(params: {
         forcedToolChoice,
         availableExactSources,
         messages,
+        stageStatus,
     } = params
 
-    // Deterministic routing only applies when web search is off and
-    // there are no forced overrides from other routing decisions.
+    // Deterministic routing only applies when web search is off,
+    // there are no forced overrides, and either we're in force-inspect mode
+    // or we're NOT in pending_validation/revision (where the revision chain
+    // enforcer should take priority over clarify-mode routing).
     const shouldApplyDeterministicRouting =
         !enableWebSearch &&
         !forcedSyncPrepareStep &&
         !forcedToolChoice &&
-        availableExactSources.length > 0
+        availableExactSources.length > 0 &&
+        (exactSourceResolution.mode === "force-inspect" || (
+            stageStatus !== "pending_validation" &&
+            stageStatus !== "revision"
+        ))
 
     const routePlan = shouldApplyDeterministicRouting
         ? buildDeterministicExactSourcePrepareStep({

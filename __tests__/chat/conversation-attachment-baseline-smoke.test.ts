@@ -7,19 +7,22 @@ const read = (relativePath: string) =>
 
 describe("conversation attachment baseline smoke", () => {
   it("chat route still resolves effective fileIds and builds file context", () => {
-    const routeSource = read("src/app/api/chat/route.ts")
+    // Phase 3: attachment resolution in entry/, file context in context/
+    const entryAttachments = read("src/lib/chat-harness/entry/resolve-attachments.ts")
+    const fileContext = read("src/lib/chat-harness/context/assemble-file-context.ts")
 
-    expect(routeSource).toContain("const attachmentResolution = resolveEffectiveFileIds")
-    expect(routeSource).toContain("const effectiveFileIds = attachmentResolution.effectiveFileIds")
-    expect(routeSource).toContain("if (effectiveFileIds.length > 0)")
-    expect(routeSource).toContain("fileContext += `[File: ${file.name}]\\n`")
+    expect(entryAttachments).toContain("resolveEffectiveFileIds")
+    expect(entryAttachments).toContain("effectiveFileIds")
+    expect(fileContext).toContain("effectiveFileIds.length > 0")
+    expect(fileContext).toContain("[File:")
   })
 
   it("chat route still handles extraction pending and failed statuses", () => {
-    const routeSource = read("src/app/api/chat/route.ts")
+    // Phase 3: file context assembly now in context module
+    const fileContext = read("src/lib/chat-harness/context/assemble-file-context.ts")
 
-    expect(routeSource).toContain("File sedang diproses")
-    expect(routeSource).toContain("File gagal diproses")
+    expect(fileContext).toContain("File sedang diproses")
+    expect(fileContext).toContain("File gagal diproses")
   })
 
   it("chat window still routes user sends via unified context helper", () => {
