@@ -313,7 +313,7 @@ export async function POST(req: Request) {
         // ════════════════════════════════════════════════════════════════
         // RUNTIME POLICY — evaluates all enforcers & composes prepareStep
         // ════════════════════════════════════════════════════════════════
-        const policyDecision = evaluateRuntimePolicy({
+        const policyDecision = await evaluateRuntimePolicy({
             enforcerContext: {
                 paperSession,
                 paperStageScope,
@@ -324,6 +324,10 @@ export async function POST(req: Request) {
             exactSourceRouting: stepContext.exactSourceRouting,
             forcedSyncPrepareStep: stepContext.forcedSyncPrepareStep,
             forcedToolChoice: stepContext.forcedToolChoice,
+            runStore,
+            eventStore,
+            lane,
+            userId: userId as Id<"users">,
         })
 
         // ════════════════════════════════════════════════════════════════
@@ -518,7 +522,7 @@ export async function POST(req: Request) {
                 // Re-evaluate policy for fallback with its own exact source routing.
                 // buildExactSourceRouting returns a different shape than ExactSourceRoutingResult,
                 // so we adapt it to the expected interface.
-                const fallbackPolicyDecision = evaluateRuntimePolicy({
+                const fallbackPolicyDecision = await evaluateRuntimePolicy({
                     enforcerContext: {
                         paperSession,
                         paperStageScope,
@@ -533,6 +537,10 @@ export async function POST(req: Request) {
                     },
                     forcedSyncPrepareStep: fallbackDeterministicSyncPrepareStep,
                     forcedToolChoice: fallbackForcedToolChoice,
+                    runStore,
+                    eventStore,
+                    lane,
+                    userId: userId as Id<"users">,
                 })
 
                 const fallbackTransparent = isTransparentReasoning && reasoningSettings.fallback.supported
