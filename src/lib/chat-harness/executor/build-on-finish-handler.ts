@@ -351,6 +351,7 @@ export function buildOnFinishHandler(
             lane,
             userId,
             stepId: streamCtx.activeStep?.stepId ?? null,
+            emitEvents: true, // definitive verification pass — single emit per step
         })
 
         // Log completion blockers from verification

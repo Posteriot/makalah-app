@@ -448,7 +448,12 @@ export function buildStepStream(params: {
                         console.info(`[F1-F6-TEST] ChoiceCardSpec${logTag} { elements: "${elementTypes}", hasSubmitButton: ${hasSubmitBtn} }`)
                     }
 
-                    // Outcome-gated stream override via verifyStepOutcome
+                    // Outcome-gated stream override via verifyStepOutcome.
+                    // Stream-side call: emitEvents=false because verification runs
+                    // again in the onFinish handler, which is the single definitive
+                    // emitter of verification_started/completed events per step
+                    // (audit fix HIGH 3). The verification logic itself still runs
+                    // here so the stream guard can detect streamContentOverride.
                     if (!streamContentOverrideRef.current && accumulatedStreamText.length > 0) {
                         const streamVerification = await verifyStepOutcome({
                             text: accumulatedStreamText,
@@ -467,6 +472,7 @@ export function buildStepStream(params: {
                             lane: onFinishConfig.lane,
                             userId: onFinishConfig.userId,
                             stepId: streamContext.activeStep?.stepId ?? null,
+                            emitEvents: false, // stream-side guard pass — events emitted by onFinish path
                         })
                         if (streamVerification.streamContentOverride) {
                             streamContentOverrideRef.current = streamVerification.streamContentOverride

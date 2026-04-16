@@ -4,11 +4,22 @@
 // Consolidates scattered step-outcome verification logic from the
 // executor modules into a single, testable function.
 //
-// Called from buildStepStream's stream writer finish handler.
-// Verification logic itself is side-effect free; the function emits
-// `verification_started` + `verification_completed` events around the
-// verification (Task 6.4d). Persistence failures are logged + swallowed
-// so observability never blocks the verification flow.
+// Called from TWO locations per step (dual-call pattern):
+//   1. buildStepStream stream-finish handler — runs verification to
+//      compute `streamContentOverride` for the in-flight stream guard.
+//      This caller passes `emitEvents: false` so the observability
+//      events (`verification_started` / `verification_completed`) are
+//      NOT emitted from the stream path.
+//   2. buildOnFinishHandler — runs verification again over the final
+//      normalized text. This caller passes `emitEvents: true` and is
+//      the SINGLE, definitive emitter of verification events per step.
+//
+// The `emitEvents: boolean` gate (Task 6.4d / audit fix HIGH 3) exists
+// to prevent double-emission of nearly-identical verification events
+// that share the same correlationId. The verification logic itself is
+// side-effect free and runs on both calls. Persistence failures are
+// logged + swallowed so observability never blocks the verification
+// flow.
 // ────────────────────────────────────────────────────────────────
 
 import type { PaperToolTracker } from "@/lib/ai/paper-tools"
@@ -45,6 +56,15 @@ export async function verifyStepOutcome(params: {
     userId: Id<"users">
     /** Step record id (may be null if step creation failed earlier). */
     stepId: Id<"harnessRunSteps"> | null
+    /**
+     * When true, emits verification_started + verification_completed events.
+     * The function is called from TWO locations per step:
+     *   - stream-finish handler (build-step-stream.ts) — emitEvents=false
+     *     (verification logic runs only for guard/override; no events to avoid duplication)
+     *   - onFinish handler (build-on-finish-handler.ts) — emitEvents=true
+     *     (single, definitive verification emission per step)
+     */
+    emitEvents: boolean
 }): Promise<StepVerificationResult> {
     const {
         text,
@@ -61,25 +81,29 @@ export async function verifyStepOutcome(params: {
         lane,
         userId,
         stepId,
+        emitEvents,
     } = params
 
     // ── Emit verification_started (best-effort observability) ──
-    try {
-        await eventStore.emit({
-            eventType: HARNESS_EVENT_TYPES.VERIFICATION_STARTED,
-            userId,
-            sessionId: lane.sessionId,
-            chatId: lane.conversationId,
-            runId: lane.runId,
-            stepId: stepId ?? undefined,
-            correlationId: lane.requestId,
-            payload: {
-                target: "combined",
-                startedAt: Date.now(),
-            },
-        })
-    } catch (err) {
-        console.warn("[HARNESS][persistence] verification_started emit failed", err)
+    // Gated by emitEvents so only one of the two per-step calls emits.
+    if (emitEvents) {
+        try {
+            await eventStore.emit({
+                eventType: HARNESS_EVENT_TYPES.VERIFICATION_STARTED,
+                userId,
+                sessionId: lane.sessionId,
+                chatId: lane.conversationId,
+                runId: lane.runId,
+                stepId: stepId ?? undefined,
+                correlationId: lane.requestId,
+                payload: {
+                    target: "combined",
+                    startedAt: Date.now(),
+                },
+            })
+        } catch (err) {
+            console.warn("[HARNESS][persistence] verification_started emit failed", err)
+        }
     }
 
     const completionBlockers: string[] = []
@@ -227,26 +251,29 @@ export async function verifyStepOutcome(params: {
     }
 
     // ── Emit verification_completed (best-effort observability) ──
-    try {
-        await eventStore.emit({
-            eventType: HARNESS_EVENT_TYPES.VERIFICATION_COMPLETED,
-            userId,
-            sessionId: lane.sessionId,
-            chatId: lane.conversationId,
-            runId: lane.runId,
-            stepId: stepId ?? undefined,
-            correlationId: lane.requestId,
-            payload: {
-                target: "combined",
-                status: result.canContinue && !result.mustPause ? "pass" : "fail",
-                outcome: deriveVerificationOutcome(result),
-                findings: deriveFindings(result),
-                completionEligible: result.canComplete,
-                completedAt: Date.now(),
-            },
-        })
-    } catch (err) {
-        console.warn("[HARNESS][persistence] verification_completed emit failed", err)
+    // Gated by emitEvents so only one of the two per-step calls emits.
+    if (emitEvents) {
+        try {
+            await eventStore.emit({
+                eventType: HARNESS_EVENT_TYPES.VERIFICATION_COMPLETED,
+                userId,
+                sessionId: lane.sessionId,
+                chatId: lane.conversationId,
+                runId: lane.runId,
+                stepId: stepId ?? undefined,
+                correlationId: lane.requestId,
+                payload: {
+                    target: "combined",
+                    status: result.canContinue && !result.mustPause ? "pass" : "fail",
+                    outcome: deriveVerificationOutcome(result),
+                    findings: deriveFindings(result),
+                    completionEligible: result.canComplete,
+                    completedAt: Date.now(),
+                },
+            })
+        } catch (err) {
+            console.warn("[HARNESS][persistence] verification_completed emit failed", err)
+        }
     }
 
     return result
