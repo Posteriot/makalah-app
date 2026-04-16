@@ -200,4 +200,117 @@ describe("createRunStore", () => {
       expect(logged).toMatch(/\[HARNESS\]\[persistence\] createRun/)
     })
   })
+
+  describe("pauseRun — composed operation (Phase 8)", () => {
+    it("calls createDecision then pauseRun in order, returns decisionId", async () => {
+      const fetchMutation = createFetchMutation()
+      fetchMutation
+        .mockResolvedValueOnce({ decisionId: "decision-uuid-abc" })
+        .mockResolvedValueOnce(null)
+      const store = createRunStore({ fetchMutation })
+
+      const result = await store.pauseRun("harnessRuns_1" as never, {
+        reason: "awaiting approval for tool X",
+        decision: {
+          type: "approval",
+          blocking: true,
+          workflowStage: "drafting",
+          prompt: { title: "Approve?", question: "Should the agent proceed?" },
+        },
+      })
+
+      expect(result).toEqual({ decisionId: "decision-uuid-abc" })
+      expect(fetchMutation).toHaveBeenCalledTimes(2)
+
+      expect(callAt(fetchMutation, 0).args).toMatchObject({
+        runId: "harnessRuns_1",
+        type: "approval",
+        blocking: true,
+        workflowStage: "drafting",
+        prompt: { title: "Approve?", question: "Should the agent proceed?" },
+      })
+
+      expect(callAt(fetchMutation, 1).args).toEqual({
+        runId: "harnessRuns_1",
+        reason: "awaiting approval for tool X",
+        decisionId: "decision-uuid-abc",
+      })
+    })
+
+    it("logs [HARNESS][persistence] pauseRun line after both mutations succeed", async () => {
+      const fetchMutation = createFetchMutation()
+      fetchMutation
+        .mockResolvedValueOnce({ decisionId: "d-1" })
+        .mockResolvedValueOnce(null)
+      const store = createRunStore({ fetchMutation })
+
+      await store.pauseRun("harnessRuns_1" as never, {
+        reason: "test pause",
+        decision: {
+          type: "approval",
+          blocking: true,
+          workflowStage: "intake",
+          prompt: { question: "ok?" },
+        },
+      })
+
+      const logged = consoleInfoSpy.mock.calls.flat().join(" ")
+      expect(logged).toMatch(/\[HARNESS\]\[persistence\] pauseRun runId=harnessRuns_1 decisionId=d-1/)
+    })
+  })
+
+  describe("resumeRun — composed operation (Phase 8)", () => {
+    it("calls resolveDecision then resumeRun in order", async () => {
+      const fetchMutation = createFetchMutation()
+      fetchMutation
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+      const store = createRunStore({ fetchMutation })
+
+      await store.resumeRun("harnessRuns_1" as never, {
+        ownerToken: "owner-token-xyz",
+        decisionResponse: {
+          decisionId: "decision-uuid-abc",
+          resolution: "resolved",
+          response: { decision: "approve", feedback: "looks good" },
+        },
+      })
+
+      expect(fetchMutation).toHaveBeenCalledTimes(2)
+
+      expect(callAt(fetchMutation, 0).args).toEqual({
+        decisionId: "decision-uuid-abc",
+        resolution: "resolved",
+        response: { decision: "approve", feedback: "looks good" },
+      })
+
+      expect(callAt(fetchMutation, 1).args).toEqual({
+        runId: "harnessRuns_1",
+        ownerToken: "owner-token-xyz",
+      })
+    })
+
+    it("omits response field when undefined (Convex validator safety)", async () => {
+      const fetchMutation = createFetchMutation()
+      fetchMutation
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+      const store = createRunStore({ fetchMutation })
+
+      await store.resumeRun("harnessRuns_1" as never, {
+        ownerToken: "owner-token-xyz",
+        decisionResponse: {
+          decisionId: "decision-1",
+          resolution: "declined",
+        },
+      })
+
+      const resolveArgs = callAt(fetchMutation, 0).args as Record<string, unknown>
+      expect("response" in resolveArgs).toBe(false)
+      expect(resolveArgs).toEqual({
+        decisionId: "decision-1",
+        resolution: "declined",
+      })
+    })
+  })
 })

@@ -123,6 +123,47 @@ export interface CompleteStepParams {
   completedAt: number
 }
 
+// ===================================================================
+// Phase 8 — pause/resume decision contracts
+// ===================================================================
+
+export type DecisionType = "clarification" | "approval" | "selection"
+export type DecisionResolution = "resolved" | "declined"
+
+export interface DecisionPromptOption {
+  label: string
+  description?: string
+  recommended?: boolean
+}
+
+export interface DecisionPrompt {
+  title?: string
+  question: string
+  options?: DecisionPromptOption[]
+  allowsFreeform?: boolean
+}
+
+export interface PauseRunParams {
+  /** Human-readable reason; stamped into policyState.lastPolicyReason. */
+  reason: string
+  decision: {
+    type: DecisionType
+    blocking: boolean
+    workflowStage: string
+    prompt: DecisionPrompt
+  }
+}
+
+export interface ResumeRunParams {
+  /** Strict ownership check against the persisted run row. */
+  ownerToken: string
+  decisionResponse: {
+    decisionId: string
+    resolution: DecisionResolution
+    response?: Record<string, unknown>
+  }
+}
+
 /**
  * Thin wrapper over the Convex `harnessRuns` / `harnessRunSteps` mutations.
  * No business logic — adapter composes related mutations where the logical
@@ -163,6 +204,26 @@ export interface RunStore {
   ): Promise<void>
 
   completeRun(runId: Id<"harnessRuns">): Promise<void>
+
+  /**
+   * Composed operation (Phase 8): creates a pending decision row +
+   * patches the run to `paused` status with pendingDecisionId pointer.
+   * Returns the generated decisionId for client/event correlation.
+   */
+  pauseRun(
+    runId: Id<"harnessRuns">,
+    params: PauseRunParams,
+  ): Promise<{ decisionId: string }>
+
+  /**
+   * Composed operation (Phase 8): resolves the decision row + patches
+   * the run back to `running` status. Strict ownerToken check at the
+   * Convex mutation — adapter surfaces it directly.
+   */
+  resumeRun(
+    runId: Id<"harnessRuns">,
+    params: ResumeRunParams,
+  ): Promise<void>
 }
 
 /**

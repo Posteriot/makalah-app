@@ -24,11 +24,15 @@ export type {
   FailureClass,
   ApprovalMode,
   PolicyBoundary,
+  DecisionType,
+  DecisionResolution,
   // Sub-object shapes
   PolicyStateSnapshot,
   ExecutorResultSummary,
   StepVerificationSummary,
   ToolCallRecord,
+  DecisionPrompt,
+  DecisionPromptOption,
   // Envelope
   HarnessEventEnvelope,
   // Store interfaces
@@ -37,4 +41,6 @@ export type {
   CreateRunParams,
   UpdateRunStatusOptions,
   CompleteStepParams,
+  PauseRunParams,
+  ResumeRunParams,
 } from "./types"

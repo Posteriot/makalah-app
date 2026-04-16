@@ -22,6 +22,8 @@ import type {
     PolicyStateSnapshot,
     RunStatus,
     UpdateRunStatusOptions,
+    PauseRunParams,
+    ResumeRunParams,
 } from "./types"
 import type { Id } from "../../../../convex/_generated/dataModel"
 import { api } from "../../../../convex/_generated/api"
@@ -121,6 +123,57 @@ export function createRunStore(deps: RunStoreDeps): RunStore {
             await deps.fetchMutation(api.harnessRuns.completeRun, { runId })
             console.info(
                 `[HARNESS][persistence] completeRun runId=${runId}`,
+            )
+        },
+
+        // ── Phase 8 — pause/resume ──
+        // Both methods compose TWO Convex mutations. Unlike `startStep` (which
+        // was collapsed to server-side atomic in Phase 6 audit fix HIGH 1),
+        // decision and run state live in DIFFERENT tables, so atomicity is
+        // enforced by Convex's per-call transaction boundary plus explicit
+        // ordering: create/resolve the decision row FIRST, then flip run status.
+        // A partial failure leaves a pending (or stale resolved) decision with
+        // no run-side state change — the subsequent run state mutation simply
+        // never happens, and retry semantics are safe because the decisionId
+        // is stable.
+
+        async pauseRun(runId: Id<"harnessRuns">, params: PauseRunParams) {
+            const { decisionId } = (await deps.fetchMutation(api.harnessDecisions.createDecision, {
+                runId,
+                type: params.decision.type,
+                blocking: params.decision.blocking,
+                workflowStage: params.decision.workflowStage,
+                prompt: params.decision.prompt,
+            })) as { decisionId: string }
+
+            await deps.fetchMutation(api.harnessRuns.pauseRun, {
+                runId,
+                reason: params.reason,
+                decisionId,
+            })
+
+            console.info(
+                `[HARNESS][persistence] pauseRun runId=${runId} decisionId=${decisionId} reason="${params.reason}"`,
+            )
+            return { decisionId }
+        },
+
+        async resumeRun(runId: Id<"harnessRuns">, params: ResumeRunParams) {
+            await deps.fetchMutation(api.harnessDecisions.resolveDecision, {
+                decisionId: params.decisionResponse.decisionId,
+                resolution: params.decisionResponse.resolution,
+                ...(params.decisionResponse.response !== undefined && {
+                    response: params.decisionResponse.response,
+                }),
+            })
+
+            await deps.fetchMutation(api.harnessRuns.resumeRun, {
+                runId,
+                ownerToken: params.ownerToken,
+            })
+
+            console.info(
+                `[HARNESS][persistence] resumeRun runId=${runId} decisionId=${params.decisionResponse.decisionId} resolution=${params.decisionResponse.resolution}`,
             )
         },
     }
