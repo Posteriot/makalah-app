@@ -384,6 +384,62 @@ export function buildStepStream(params: {
             let toolsReasoningChunkCount = 0
             let toolsReasoningBetweenTextCount = 0
             let toolsLastChunkWasReasoning = false
+
+            // ── Tool-boundary instrumentation (E2E iteration 3) ──
+            // Uses AI SDK v6 step + tool-call callbacks to answer: when the
+            // tools-stream pauses in the middle of a text run (e.g. the
+            // 15.9s gap observed in test-2 turn 3), where does the time go?
+            //   • tool execution (tool_call_finish.durationMs)
+            //   • post-tool model thinking (gap between tool_call_finish and
+            //     the next text-delta / step_start)
+            //   • SDK orchestration overhead (step_start → step_finish minus
+            //     known tool durations)
+            const toolBoundaryTag = `[⏱ TOOL-BOUNDARY][${toolsStreamReqId}]${logTag}`
+            let lastToolCallFinishAt: number | null = null
+            streamTextConfig.experimental_onStepStart = async (event: {
+                stepNumber: number
+                activeTools?: readonly unknown[]
+            }) => {
+                const relMs = Date.now() - toolsStreamStart
+                const activeToolsStr = Array.isArray(event.activeTools) && event.activeTools.length > 0
+                    ? event.activeTools.join(",")
+                    : "all"
+                console.info(`${toolBoundaryTag} step_start stepNumber=${event.stepNumber} activeTools=${activeToolsStr} elapsedSinceStreamStart=${relMs}ms`)
+            }
+            streamTextConfig.onStepFinish = async (event: {
+                finishReason?: string
+                toolCalls?: Array<{ toolName?: string }>
+                usage?: { inputTokens?: number; outputTokens?: number }
+            }) => {
+                const relMs = Date.now() - toolsStreamStart
+                const toolNames = Array.isArray(event.toolCalls) && event.toolCalls.length > 0
+                    ? event.toolCalls.map(tc => tc.toolName ?? "?").join(",")
+                    : "none"
+                const inputTok = event.usage?.inputTokens ?? "?"
+                const outputTok = event.usage?.outputTokens ?? "?"
+                console.info(`${toolBoundaryTag} step_finish finishReason=${event.finishReason ?? "?"} tools=[${toolNames}] usage=in:${inputTok}/out:${outputTok} elapsedSinceStreamStart=${relMs}ms`)
+            }
+            streamTextConfig.experimental_onToolCallStart = async (event: {
+                toolCall: { toolName: string; toolCallId: string }
+                stepNumber?: number
+            }) => {
+                const relMs = Date.now() - toolsStreamStart
+                const msSinceLastToolFinish = lastToolCallFinishAt !== null
+                    ? `gapSinceLastToolFinish=${Date.now() - lastToolCallFinishAt}ms`
+                    : "firstToolOfRun=true"
+                console.info(`${toolBoundaryTag} tool_call_start toolName=${event.toolCall.toolName} toolCallId=${event.toolCall.toolCallId} stepNumber=${event.stepNumber ?? "?"} elapsedSinceStreamStart=${relMs}ms ${msSinceLastToolFinish}`)
+            }
+            streamTextConfig.experimental_onToolCallFinish = async (event: {
+                toolCall: { toolName: string; toolCallId: string }
+                durationMs: number
+                success: boolean
+                stepNumber?: number
+            }) => {
+                const relMs = Date.now() - toolsStreamStart
+                lastToolCallFinishAt = Date.now()
+                console.info(`${toolBoundaryTag} tool_call_finish toolName=${event.toolCall.toolName} toolCallId=${event.toolCall.toolCallId} success=${event.success} durationMs=${event.durationMs}ms stepNumber=${event.stepNumber ?? "?"} elapsedSinceStreamStart=${relMs}ms`)
+            }
+
             const result = streamText(streamTextConfig)
 
             // ── Stream transforms: pipePlanCapture -> pipeYamlRender ──
@@ -589,6 +645,17 @@ export function buildStepStream(params: {
                     const nowMs = Date.now()
                     toolsTextChunkCount += 1
                     toolsComposedChars += delta.length
+
+                    // Post-tool text-resume gap: if a tool just finished, log
+                    // how long the model thought before emitting the next
+                    // text-delta. Answers "was the 15.9s gap tool execution
+                    // or model post-tool thinking?"
+                    if (lastToolCallFinishAt !== null) {
+                        const postToolGap = nowMs - lastToolCallFinishAt
+                        console.info(`${toolBoundaryTag} post_tool_text_resume gapMs=${postToolGap}ms chunk#${toolsTextChunkCount}`)
+                        lastToolCallFinishAt = null
+                    }
+
                     if (toolsTextChunkCount === 1) {
                         toolsFirstTextDeltaAt = nowMs
                         toolsLastTextChunkTime = nowMs
