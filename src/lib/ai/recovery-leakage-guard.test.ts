@@ -4,6 +4,7 @@ import path from "node:path"
 
 const routePath = path.resolve(__dirname, "..", "..", "app/api/chat/route.ts")
 const executorDir = path.resolve(__dirname, "..", "chat-harness/executor")
+const orchestratorPath = path.resolve(__dirname, "..", "chat-harness/runtime/orchestrate-sync-run.ts")
 
 /**
  * Regression tests for recovery prose leakage guard.
@@ -21,11 +22,12 @@ const executorDir = path.resolve(__dirname, "..", "chat-harness/executor")
  */
 describe("recovery leakage guard", () => {
     const routeSource = fs.readFileSync(routePath, "utf8")
+    const orchestratorSource = fs.readFileSync(orchestratorPath, "utf8")
     const onFinishSource = fs.readFileSync(path.join(executorDir, "build-on-finish-handler.ts"), "utf8")
     const stepStreamSource = fs.readFileSync(path.join(executorDir, "build-step-stream.ts"), "utf8")
     const outcomeGuardSource = fs.readFileSync(path.resolve(__dirname, "..", "chat/choice-outcome-guard.ts"), "utf8")
-    // Combined source for pattern assertions that may live in any executor module or guard
-    const combinedSource = routeSource + "\n" + onFinishSource + "\n" + stepStreamSource + "\n" + outcomeGuardSource
+    // Combined source for pattern assertions that may live in any executor module, orchestrator, or guard
+    const combinedSource = routeSource + "\n" + orchestratorSource + "\n" + onFinishSource + "\n" + stepStreamSource + "\n" + outcomeGuardSource
 
     // ── Guard pattern coverage ──
 
@@ -67,11 +69,13 @@ describe("recovery leakage guard", () => {
         // Phase 2 unified primary+fallback into single buildStepStream function.
         // Both paths call the same function with different config flags, so
         // the accumulation mechanism is guaranteed identical. Verify the
-        // unified function has the guard, and route.ts calls it for both paths.
+        // unified function has the guard, and the orchestrator calls it for
+        // both paths (Phase 7 moved the orchestration out of route.ts into
+        // chat-harness/runtime/orchestrate-sync-run.ts).
         expect(stepStreamSource).toContain("accumulatedStreamText")
         expect(stepStreamSource).toContain("outcome-gated")
-        // Both primary and fallback use buildStepStream
-        expect(routeSource).toMatch(/buildStepStream\(/)
+        // Both primary and fallback use buildStepStream (now called from orchestrator)
+        expect(orchestratorSource).toMatch(/buildStepStream\(/)
     })
 
     // ── Stream override mechanism ──
