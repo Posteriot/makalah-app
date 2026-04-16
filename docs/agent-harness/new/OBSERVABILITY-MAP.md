@@ -149,6 +149,8 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 | `[HASIL][partial-save-stall]` / `[false-validation-claim]` / `[prose-leakage]` | `build-on-finish-handler.ts` | Hasil-specific detections | Terminal |
 | `[DAFTAR_PUSTAKA][artifact-without-submit]` / `[compiled-but-no-artifact]` / `[revision-create-instead-of-update]` | `build-on-finish-handler.ts` | Daftar pustaka specific detections | Terminal |
 | `[JUDUL][server-fallback]` / `[LAMPIRAN][server-fallback]` | `build-on-finish-handler.ts` | Server fallback for these stages | Terminal |
+| `[⏱ STREAM-SMOOTHNESS][reqId] pass=<y\|n\|na> reason=<ok\|avg_too_small_batched_render\|avg_too_large_sentence_burst\|inter_chunk_gap_exceeded> avgCharsPerChunk=... maxInterChunkGapMs=... textChunks=... composedChars=...` | `build-step-stream.ts` (`emitStreamSmoothnessVerdict`) | Emitted once per turn at writer-loop `finish` / `error` / `abort`. `pass=y` when avgCharsPerChunk ∈ [3, 20] AND maxInterChunkGapMs ≤ 2000ms (thresholds: `STREAM_SMOOTHNESS_THRESHOLDS`). See "Streaming feels choppy or sentence-burst" scenario below. (E2E iteration 10) | Terminal |
+| `[⏱ ARTIFACT-ORDERING][reqId] verdict=<ordered\|concurrent\|reversed\|no_artifact> artifactToolCount=N lastTextAtMs=N firstArtifactAtMs=N lastArtifactAtMs=N orderingGapMs=N` | `build-step-stream.ts` (`emitArtifactOrderingVerdict`) | Emitted once per turn at writer-loop `finish` / `error` / `abort`. Tracks tools in `ARTIFACT_SURFACE_TOOLS = {createArtifact, updateArtifact, submitStageForValidation}` where `success=true`. `ordered` = desired UX (artifact after last text). See "Artifact panel appears during text, not after" scenario below. (E2E iteration 10) | Terminal |
 
 ### Verification — `src/lib/chat-harness/verification/` (Phase 5+6)
 
@@ -247,6 +249,22 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 5. **Convex Dashboard:** query `harnessRuns` table, should see new row per request
 6. **Convex Dashboard:** query `harnessEvents` table grouped by `correlationId` (requestId) — should see ≥10 events per request
 
+### "Streaming feels choppy or sentence-burst" (E2E iteration 10)
+1. **Terminal:** `grep "\[⏱ STREAM-SMOOTHNESS\].*pass=n" <log>` — any failing turns?
+2. **Terminal:** Inspect `reason=` field on failing lines:
+   - `avg_too_small_batched_render` — raw per-char chunks arriving; React batches them into bursts. Likely `pipeUITextCoalesce` was removed or its chunking preset regressed to something finer than `"word"`.
+   - `avg_too_large_sentence_burst` — coalescer is holding text until sentence boundary. Check `pipeUITextCoalesce` wiring — chunking should be `"word"`, not `"sentence"`.
+   - `inter_chunk_gap_exceeded` — model stalled >2s mid-stream. Cross-check with `[⏱ TOOL-BOUNDARY] post_tool_text_resume gapMs=...` to see if this is a legitimate reasoning pause post-tool vs a pipeline stall.
+3. **Terminal:** `[⏱ CHUNK-TAP] layer=afterPipeYamlRender` — confirm pipeYamlRender is still emitting per-char (expected); if it has collapsed to sentence-level, something upstream is pre-coalescing.
+4. **Terminal:** `[⏱ CHUNK-TAP] layer=afterUITextCoalesce` — confirm coalescer is still wired; if this layer is missing, pipeUITextCoalesce was accidentally removed.
+
+### "Artifact panel appears during text, not after" (E2E iteration 10)
+1. **Terminal:** `grep "\[⏱ ARTIFACT-ORDERING\].*verdict=reversed" <log>` — artifact fires before last text, pathological.
+2. **Terminal:** `grep "\[⏱ ARTIFACT-ORDERING\].*verdict=concurrent" <log>` — tools interleaved with text; usually acceptable if model emits commentary after the tool, but worth inspecting.
+3. **Terminal:** `[⏱ TOOL-BOUNDARY] tool_call_finish toolName=createArtifact` + subsequent `post_tool_text_resume gapMs=...` — did model emit text after the tool call? If yes and `orderingGapMs` is small/negative, model is streaming post-tool commentary; if no and verdict=reversed, the artifact event was the final thing emitted before finish and the text you saw earlier was everything.
+4. **Browser:** `[ARTIFACT-REVEAL] onFinish — deferring panel open` (happy path) vs `[ARTIFACT-REVEAL][fallback] Convex-reactive auto-open` (CHAIN-COMPLETION path) — which path opened the panel?
+5. **Convex Dashboard:** artifacts table createdAt — did the artifact row land during the turn or after?
+
 ### "Pause/resume flow" (Phase 8)
 > Phase 8 infrastructure is LATENT — no enforcer currently sets `requiresApproval=true`. To manually test:
 > 1. Temporarily add `requiresApproval = true` to `policy/evaluate-runtime-policy.ts` or an enforcer
@@ -273,6 +291,8 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 | `[F1-F6-TEST]` | shared across context + executor + UI | test fixtures |
 | `[FREE-TEXT-CONTEXT]` | orchestrator step 5 | 7 |
 | `[STEP-TIMING]` / `[TOOL-CHAIN-ORDER]` / `[CHAIN-COMPLETION]` | executor | 2 |
+| `[⏱ STREAM-SMOOTHNESS]` | executor | 2 (added E2E iteration 10) |
+| `[⏱ ARTIFACT-ORDERING]` | executor | 2 (added E2E iteration 10) |
 | `[PLAN-CAPTURE]` / `[PLAN-SNAPSHOT]` | executor | 2 |
 | `[HARNESS-FLOW]` | context search decision | 3 |
 | `[SEARCH-*]` / `[EXACT-SOURCE-*]` | context | 3 |
@@ -358,3 +378,4 @@ paperSessions.approveStage → [PAPER][stage-transition] ...
 ## Changelog
 
 - **2026-04-16 (Phase 8 close):** Initial document. Covers Phases 1-8. Created in response to user request noting that log locations changed post-refactor and the existing `test-review-audit-checklist.md` docs don't reflect new file paths.
+- **2026-04-17 (E2E iteration 10):** Added `[⏱ STREAM-SMOOTHNESS]` and `[⏱ ARTIFACT-ORDERING]` verdict lines emitted once per turn from `build-step-stream.ts`. Both carry `reqId` so they can be joined with the turn-scoped `[⏱ TOOLS-STREAM]` / `[⏱ TOOL-BOUNDARY]` logs. See new "Streaming feels choppy or sentence-burst" and "Artifact panel appears during text, not after" debugging scenarios for grep-based triage steps. Other logs added during E2E iterations 1-9 (`[⏱ ONFINISH]`, `[⏱ TOOLS-STREAM]`, `[⏱ TOOL-BOUNDARY]`, `[⏱ CHUNK-TAP]`, `[TOOLS-STREAM-ERROR]`, client-side `[ARTIFACT-REVEAL][fallback]`) are intentionally NOT mapped in this revision — they land in a follow-up.
