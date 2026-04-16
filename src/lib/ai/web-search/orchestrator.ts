@@ -35,7 +35,10 @@ import { pipeYamlRender } from "@json-render/yaml"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
-import { createReadableTextTransform } from "@/lib/ai/harness/create-readable-text-transform"
+import {
+    createReadableTextTransform,
+    pipeUITextCoalesce,
+} from "@/lib/ai/harness/create-readable-text-transform"
 import { PLAN_DATA_PART_TYPE, type PlanSpec, planSpecSchema, UNFENCED_PLAN_REGEX } from "@/lib/ai/harness/plan-spec"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
 import {
@@ -1139,7 +1142,11 @@ export async function executeWebSearch(
         // pipePlanCapture BEFORE pipeYamlRender: plan-spec stripping works
         // with AI SDK's textDelta format, then pipeYamlRender transforms to @json-render format.
         const planStream = pipePlanCapture(uiStream) as typeof uiStream
-        return config.isDraftingStage ? pipeYamlRender(planStream) : planStream
+        const yamlStream = config.isDraftingStage ? pipeYamlRender(planStream) : planStream
+        // Post-yaml UI coalescer (E2E iteration 5): re-coalesce the per-char
+        // text-deltas that pipeYamlRender emits back to sentence-level
+        // units. Mirror of the tools path wiring in build-step-stream.ts.
+        return pipeUITextCoalesce(yamlStream)
       }
 
       // ── Run compose with one-time failover ──

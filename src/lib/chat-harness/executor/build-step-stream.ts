@@ -9,7 +9,10 @@ import type { PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 import type { ReasoningLiveDataPart } from "@/lib/ai/curated-trace"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
-import { createReadableTextTransform } from "@/lib/ai/harness/create-readable-text-transform"
+import {
+    createReadableTextTransform,
+    pipeUITextCoalesce,
+} from "@/lib/ai/harness/create-readable-text-transform"
 import { pipeYamlRender } from "@json-render/yaml"
 import { PLAN_DATA_PART_TYPE } from "@/lib/ai/harness/plan-spec"
 import type { PlanSpec } from "@/lib/ai/harness/plan-spec"
@@ -442,23 +445,87 @@ export function buildStepStream(params: {
 
             const result = streamText(streamTextConfig)
 
-            // ── Stream transforms: pipePlanCapture -> pipeYamlRender ──
+            // ── Chunk-size taps (E2E iteration 5) ──
+            // Layered counters to audit which pipe layer splits text-deltas
+            // back to char-level. Each tap emits ONE summary log at stream
+            // end (finish / error / abort) with chunk + char counts.
+            // Iteration 4's test-2 rerun revealed pipeYamlRender's internal
+            // for-loop emits one text-delta PER CHARACTER; these taps make
+            // that behavior visible for regression tracking.
+            function makeChunkCountTap(label: string) {
+                let textChunks = 0
+                let textChars = 0
+                let totalChunks = 0
+                let summaryEmitted = false
+                const emitSummary = (cause: string) => {
+                    if (summaryEmitted) return
+                    summaryEmitted = true
+                    console.info(
+                        `[⏱ CHUNK-TAP][${toolsStreamReqId}]${logTag} layer=${label} cause=${cause} textChunks=${textChunks} textChars=${textChars} totalChunks=${totalChunks}`,
+                    )
+                }
+                return new TransformStream<unknown, unknown>({
+                    transform(chunk, controller) {
+                        totalChunks += 1
+                        const chunkType = (chunk as { type?: string })?.type
+                        if (chunkType === "text-delta") {
+                            textChunks += 1
+                            const delta =
+                                (chunk as { delta?: unknown }).delta ??
+                                (chunk as { text?: unknown }).text
+                            if (typeof delta === "string") textChars += delta.length
+                        }
+                        if (chunkType === "finish" || chunkType === "error" || chunkType === "abort") {
+                            emitSummary(chunkType)
+                        }
+                        controller.enqueue(chunk)
+                    },
+                    flush() {
+                        emitSummary("stream_end")
+                    },
+                })
+            }
+
+            // ── Stream transforms: pipePlanCapture -> pipeYamlRender -> UI coalesce ──
             const uiStream = result.toUIMessageStream({
                 sendStart: false,
                 generateMessageId: () => messageId,
                 sendReasoning: transparentReasoningEnabled,
             })
 
+            const afterUIStream = uiStream.pipeThrough(
+                makeChunkCountTap("afterToUIMessageStream"),
+            ) as typeof uiStream
+
             // pipePlanCapture BEFORE pipeYamlRender: plan-spec stripping works
             // with AI SDK's textDelta format. pipeYamlRender then transforms
             // the clean text into @json-render format for the client.
             const planTransformedStream = enablePlanCapture
-                ? pipePlanCapture(uiStream) as typeof uiStream
-                : uiStream
+                ? pipePlanCapture(afterUIStream) as typeof afterUIStream
+                : afterUIStream
+
+            const afterPlanCapture = planTransformedStream.pipeThrough(
+                makeChunkCountTap("afterPipePlanCapture"),
+            ) as typeof planTransformedStream
 
             const yamlTransformedStream = enableYamlRender
-                ? pipeYamlRender(planTransformedStream)
-                : planTransformedStream
+                ? pipeYamlRender(afterPlanCapture)
+                : afterPlanCapture
+
+            const afterYamlRender = yamlTransformedStream.pipeThrough(
+                makeChunkCountTap("afterPipeYamlRender"),
+            ) as typeof yamlTransformedStream
+
+            // Post-yaml UI coalescer (E2E iteration 5): re-coalesce the
+            // per-character text-deltas that pipeYamlRender emits back to
+            // sentence-level units. Without this, iteration 3/4's transform
+            // at streamText level is effectively undone for user-visible
+            // text (evidence: test-2 rerun showed textChunks = composedChars
+            // = 1:1 at the writer loop).
+            const coalescedStream = pipeUITextCoalesce(afterYamlRender) as typeof yamlTransformedStream
+            const afterCoalesce = coalescedStream.pipeThrough(
+                makeChunkCountTap("afterUITextCoalesce"),
+            ) as typeof coalescedStream
 
             // ── Stream writer loop ──
             // Wrapped in try/catch so a streamText failure (network error,
@@ -467,7 +534,7 @@ export function buildStepStream(params: {
             // the onFinish handler completes the step inside its own try block;
             // we leave the original error unmasked.
             try {
-            for await (const chunk of iterateStream(yamlTransformedStream)) {
+            for await (const chunk of iterateStream(afterCoalesce)) {
                 // Capture data-spec parts emitted by pipeYamlRender for DB persistence
                 if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
                     try {
