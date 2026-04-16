@@ -1,28 +1,40 @@
 /**
  * Readable text transform for visible compose streams.
  *
- * Iteration 4 — two-tier boundary policy addresses the Codex audit finding
- * that the iteration-3 helper still dropped partial tokens onto the UI at
- * tool-boundary time.
+ * Iteration 5 — pipeline audit revealed @json-render/yaml's pipeYamlRender
+ * re-splits every text-delta into per-character chunks (its fence-scanning
+ * loop emits `emitTextDelta(ch, controller)` for each char). That silently
+ * undid the coalescing done by iteration 3/4's transform at streamText level.
  *
- * Sits inside streamText's experimental_transform (at TextStreamPart level,
- * BEFORE toUIMessageStream). Buffers text-delta and reasoning-delta chunks,
- * releases them at a PRIMARY boundary (default: sentence), and at a
- * non-text chunk boundary only releases up to the last SAFE boundary
- * (default: word). The partial tail after the safe boundary is HELD across
- * the tool call and prepended to the next incoming text-delta so the user
- * never sees a mid-word fragment left frozen on screen while a tool runs.
+ * The fix is a TWO-STAGE pipeline:
  *
- * Release triggers:
- *   - Primary chunking match (sentence by default, also word/line/regex).
- *     This is the steady-state emission for prose.
- *   - Non-text chunk arrival → partial-safe flush (emit up to last word
- *     boundary; keep tail for merge with post-tool text).
- *   - maxBufferedDelayMs timeout → partial-safe flush (never breaks a word).
- *   - maxBufferedChars emergency → full flush (rare; used when a single
- *     word-run exceeds the hard cap, e.g. a very long URL).
- *   - id/type change → full flush (cannot merge residual across streams).
- *   - Stream end → full flush (no more data coming; emit whatever is left).
+ *   1. `createReadableTextTransform` — sits in streamText's
+ *      `experimental_transform`. Operates on TextStreamPart chunks (field
+ *      name: `.text`). Smooths reasoning-delta (which pipeYamlRender does
+ *      NOT re-split) and gives pipePlanCapture larger-granularity input.
+ *
+ *   2. `createUITextCoalescer` / `pipeUITextCoalesce` — sits AFTER
+ *      pipeYamlRender, operating on UIMessageChunk chunks (field name:
+ *      `.delta`). Re-coalesces the per-char text-delta stream that
+ *      pipeYamlRender produced, so the writer loop + client see
+ *      sentence-level output.
+ *
+ * Both helpers share the same two-tier boundary policy:
+ *
+ *   - PRIMARY chunking (default: sentence) drives steady-state emission.
+ *   - SAFE boundary (always word-level) drives partial-flush at non-text
+ *     chunk arrival and timer-based fallback. The partial tail is HELD
+ *     across non-text (tool-call etc.) boundaries so a mid-word never
+ *     freezes on screen while a tool runs.
+ *   - Stream-terminating chunks (finish / error / abort) force full
+ *     flush before forwarding so the terminator is always the last
+ *     event the UI sees.
+ *   - maxBufferedChars forces full flush on pathological long-run input
+ *     (e.g. URL with no whitespace, longer than the cap).
+ *   - maxBufferedDelayMs timer triggers partial-safe flush (never breaks
+ *     a word) so slow-model prose doesn't hide indefinitely.
+ *   - id/type change forces full flush (cannot merge across streams).
+ *   - End of stream (flush callback) forces full flush.
  */
 
 import type { StreamTextTransform, ToolSet } from "ai"
@@ -30,8 +42,7 @@ import type { StreamTextTransform, ToolSet } from "ai"
 /**
  * Primary chunking presets. `sentence` uses whitespace after punctuation (no
  * end-of-buffer match) so normal word-end periods don't false-trigger when
- * the word continues in the next delta (e.g. "Dr." followed by " Martin"
- * or a later delta that continues "artifact" → "artifacts").
+ * the word continues in the next delta.
  */
 const CHUNKING_PRESETS = {
     word: /\S+\s/,
@@ -39,11 +50,7 @@ const CHUNKING_PRESETS = {
     sentence: /[.!?]\s|\n/,
 } satisfies Record<string, RegExp>
 
-/**
- * Safe-boundary regex used for partial-flush at non-text / timer boundaries.
- * Always word-level regardless of the configured primary chunking so tool
- * boundaries and slow-model timeouts never split a word.
- */
+/** Word-level safe boundary used for partial flushes at non-text/timer. */
 const SAFE_BOUNDARY_REGEX_SOURCE = /\S+\s/.source
 const SAFE_BOUNDARY_REGEX_FLAGS = "g"
 
@@ -59,12 +66,6 @@ export interface ReadableTextTransformOptions {
     }
 }
 
-/**
- * Defaults picked so prose flows in readable sentence-level releases while
- * tool boundaries fall on word boundaries. Tuned for chat compose streams
- * where a sentence typically takes 1-3 seconds to produce; that lag is the
- * price paid for avoiding mid-sentence freezes when a tool interrupts.
- */
 export const READABLE_TEXT_TRANSFORM_DEFAULTS = {
     chunking: "sentence" as const satisfies ChunkingPreset,
     maxBufferedChars: 240,
@@ -83,15 +84,24 @@ function findLastSafeBoundaryEndIndex(buffer: string): number {
     while ((m = re.exec(buffer)) != null) {
         const end = m.index + m[0].length
         if (end > lastEnd) lastEnd = end
-        // Guard against zero-width match infinite loop.
         if (m.index === re.lastIndex) re.lastIndex += 1
     }
     return lastEnd
 }
 
-export function createReadableTextTransform(
-    options?: ReadableTextTransformOptions,
-): StreamTextTransform<ToolSet> {
+/**
+ * Core factory — parameterised by the field name that holds text payload.
+ *
+ * - `textField: "text"` — TextStreamPart (streamText's fullStream level,
+ *   used by `experimental_transform`).
+ * - `textField: "delta"` — UIMessageChunk (after `toUIMessageStream` and
+ *   `pipeYamlRender`, used by the re-coalescing pipe helper).
+ */
+function createCoreCoalescer(params: {
+    options?: ReadableTextTransformOptions
+    textField: "text" | "delta"
+}): () => TransformStream<unknown, unknown> {
+    const { options, textField } = params
     const chunkingOption = options?.chunking ?? READABLE_TEXT_TRANSFORM_DEFAULTS.chunking
     const maxBufferedChars = Math.max(
         1,
@@ -132,33 +142,22 @@ export function createReadableTextTransform(
             }
         }
 
-        /**
-         * Emit ENTIRE buffer (including any partial trailing token).
-         * Reserved for stream-end, id/type change, and maxBufferedChars
-         * emergency — use cases where holding the tail is worse than
-         * revealing it (we'd otherwise lose or orphan it).
-         */
+        const buildEmission = (text: string): Record<string, unknown> => ({
+            type: bufferType,
+            id: bufferId,
+            [textField]: text,
+            ...(providerMetadata != null ? { providerMetadata } : {}),
+        })
+
         const fullFlush = () => {
             if (buffer.length > 0 && bufferType !== undefined && activeController) {
-                activeController.enqueue({
-                    type: bufferType,
-                    id: bufferId,
-                    text: buffer,
-                    ...(providerMetadata != null ? { providerMetadata } : {}),
-                })
+                activeController.enqueue(buildEmission(buffer))
                 buffer = ""
                 providerMetadata = undefined
             }
             clearTimer()
         }
 
-        /**
-         * Emit only up to the last safe (word) boundary. KEEP the partial
-         * trailing token in buffer so it can merge with the next text
-         * delta. If buffer has no safe boundary yet, emit nothing and keep
-         * holding — the user will never see a mid-word fragment from this
-         * path.
-         */
         const partialSafeFlush = () => {
             if (buffer.length === 0 || bufferType === undefined || !activeController) {
                 clearTimer()
@@ -171,16 +170,8 @@ export function createReadableTextTransform(
             }
             const flushed = buffer.slice(0, end)
             const tail = buffer.slice(end)
-            activeController.enqueue({
-                type: bufferType,
-                id: bufferId,
-                text: flushed,
-                ...(providerMetadata != null ? { providerMetadata } : {}),
-            })
+            activeController.enqueue(buildEmission(flushed))
             buffer = tail
-            // Provider metadata belongs to the flushed prefix; the tail
-            // starts fresh and will absorb any metadata on subsequent
-            // deltas that continue this run.
             providerMetadata = undefined
             clearTimer()
         }
@@ -190,34 +181,17 @@ export function createReadableTextTransform(
             if (maxBufferedDelayMs > 0 && buffer.length > 0) {
                 timer = setTimeoutFn(() => {
                     timer = null
-                    // Timer always does a SAFE flush — never breaks a word.
-                    // If no safe boundary exists, buffer keeps holding
-                    // until the next delta arrives or stream ends.
                     partialSafeFlush()
                 }, maxBufferedDelayMs)
             }
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return new TransformStream<any, any>({
+        return new TransformStream<unknown, unknown>({
             transform(chunk, controller) {
-                activeController = controller as TransformStreamDefaultController<unknown>
+                activeController = controller
 
                 const chunkType = (chunk as { type?: string })?.type
 
-                // Non-text / non-reasoning chunk handling:
-                // - Stream-terminating chunks (finish, error, abort): no
-                //   further text will ever arrive, so FULL-flush the
-                //   buffer (including any tail) before forwarding. This
-                //   keeps the final UI state ordered correctly with the
-                //   terminator chunk as the LAST event.
-                // - All other non-text chunks (tool-call, tool-result,
-                //   start-step, finish-step, tool-input-*, source, file,
-                //   etc.): PARTIAL-safe flush so completed words reach
-                //   the UI, but the trailing token stays buffered and
-                //   will merge with the next text-delta. This prevents
-                //   mid-word freezes when the next chunk is a tool-call
-                //   that may take seconds to resolve.
                 if (chunkType !== "text-delta" && chunkType !== "reasoning-delta") {
                     const isStreamTerminator =
                         chunkType === "finish" ||
@@ -232,17 +206,19 @@ export function createReadableTextTransform(
                     return
                 }
 
-                const c = chunk as {
+                const c = chunk as Record<string, unknown> & {
                     type: "text-delta" | "reasoning-delta"
                     id: string
-                    text: string
-                    providerMetadata?: unknown
+                }
+                const incomingText = c[textField]
+                if (typeof incomingText !== "string") {
+                    // Unexpected shape — pass through untouched rather than
+                    // silently drop. Better to leak a badly-shaped chunk than
+                    // to lose data.
+                    controller.enqueue(chunk)
+                    return
                 }
 
-                // If incoming delta belongs to a different text run,
-                // the residual cannot be safely merged (it was written
-                // by the previous run). Full-flush the old buffer,
-                // including any trailing token, before starting fresh.
                 if (
                     buffer.length > 0 &&
                     (c.type !== bufferType || c.id !== bufferId)
@@ -252,29 +228,19 @@ export function createReadableTextTransform(
 
                 bufferType = c.type
                 bufferId = c.id
-                buffer += c.text ?? ""
-                if (c.providerMetadata != null) {
-                    providerMetadata = c.providerMetadata
+                buffer += incomingText
+                const providerMetadataFromChunk = (c as { providerMetadata?: unknown }).providerMetadata
+                if (providerMetadataFromChunk != null) {
+                    providerMetadata = providerMetadataFromChunk
                 }
 
-                // Primary-boundary emission: release completed units
-                // (sentences by default) as soon as they're available.
                 let match: string | null
                 while ((match = detectPrimaryBoundary(buffer)) != null) {
-                    controller.enqueue({
-                        type: bufferType,
-                        id: bufferId,
-                        text: match,
-                        ...(providerMetadata != null ? { providerMetadata } : {}),
-                    })
+                    controller.enqueue(buildEmission(match))
                     buffer = buffer.slice(match.length)
                     providerMetadata = undefined
                 }
 
-                // Emergency hard cap. Only fires when a single run of
-                // non-whitespace text (URL, code token, minified JSON)
-                // exceeds maxBufferedChars. Preferable to accept a
-                // visible break over unbounded memory growth.
                 if (buffer.length >= maxBufferedChars) {
                     fullFlush()
                     return
@@ -283,11 +249,50 @@ export function createReadableTextTransform(
                 scheduleTimerFlush()
             },
             flush(controller) {
-                activeController = controller as TransformStreamDefaultController<unknown>
-                // End of stream — nothing more will arrive to merge the
-                // residual with. Reveal whatever is still buffered.
+                activeController = controller
                 fullFlush()
             },
         })
     }
+}
+
+/**
+ * Factory for `streamText({ experimental_transform })` — operates on
+ * TextStreamPart chunks with field `.text`.
+ *
+ * Still useful even though pipeYamlRender re-splits text-delta downstream:
+ *   - reasoning-delta is NOT touched by pipeYamlRender, so coalescing here
+ *     carries through to the UI.
+ *   - If pipeYamlRender is disabled in some path, this layer alone is
+ *     enough to render sentence-level text-delta output.
+ */
+export function createReadableTextTransform(
+    options?: ReadableTextTransformOptions,
+): StreamTextTransform<ToolSet> {
+    const factory = createCoreCoalescer({ options, textField: "text" })
+    return () => factory() as unknown as ReturnType<StreamTextTransform<ToolSet>>
+}
+
+/**
+ * Factory for a plain `ReadableStream` transform that operates on
+ * UIMessageChunk chunks with field `.delta`. Intended to be piped AFTER
+ * `pipeYamlRender` to re-coalesce the per-character text-deltas it emits
+ * back to sentence/word-level units for the client.
+ */
+export function createUITextCoalescer(
+    options?: ReadableTextTransformOptions,
+): () => TransformStream<unknown, unknown> {
+    return createCoreCoalescer({ options, textField: "delta" })
+}
+
+/**
+ * Convenience helper: pipe a UIMessageChunk ReadableStream through the
+ * coalescer. Mirrors the shape of pipePlanCapture / pipeYamlRender so the
+ * stream wiring reads naturally at the call site.
+ */
+export function pipeUITextCoalesce(
+    stream: ReadableStream<unknown>,
+    options?: ReadableTextTransformOptions,
+): ReadableStream<unknown> {
+    return stream.pipeThrough(createUITextCoalescer(options)())
 }

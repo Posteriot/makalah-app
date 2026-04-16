@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from "vitest"
-import { createReadableTextTransform } from "./create-readable-text-transform"
+import {
+    createReadableTextTransform,
+    createUITextCoalescer,
+    pipeUITextCoalesce,
+} from "./create-readable-text-transform"
 
 // Helper: pipe an array of chunks through the transform and collect output.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -347,5 +351,127 @@ describe("createReadableTextTransform", () => {
         const textChunks = output.filter((c) => c.type === "text-delta").map((c) => c.text)
         // Word-level chunking: each space-terminated run flushes separately.
         expect(textChunks).toEqual(["satu ", "dua ", "tiga."])
+    })
+})
+
+// ────────────────────────────────────────────────────────────────
+// createUITextCoalescer / pipeUITextCoalesce
+//
+// Same boundary policy, but operates on UIMessageChunk shape (uses `.delta`
+// field instead of `.text`). Intended to sit AFTER pipeYamlRender, which
+// re-splits every text-delta into per-char chunks.
+// ────────────────────────────────────────────────────────────────
+
+describe("createUITextCoalescer", () => {
+    function makeUIFactory(opts: Parameters<typeof createUITextCoalescer>[0] = { maxBufferedDelayMs: 0 }) {
+        return () => createUITextCoalescer(opts)()
+    }
+
+    it("coalesces per-char UIMessageChunk text-deltas back to sentence level", async () => {
+        // Simulates the exact output shape of pipeYamlRender: one text-delta
+        // UIMessageChunk per character (id always "1" from yaml-render's
+        // ensureTextBlock pattern).
+        const chars = "Halo dunia. Ini kedua."
+        const inputs = [
+            { type: "text-start", id: "1" },
+            ...chars.split("").map((ch) => ({ type: "text-delta", id: "1", delta: ch })),
+            { type: "text-end", id: "1" },
+            { type: "finish", finishReason: "stop" },
+        ]
+
+        const output = await runTransform(inputs, makeUIFactory())
+
+        // Expect 2 coalesced text-delta chunks (one per sentence boundary)
+        // plus the final tail emitted at text-end (non-text boundary).
+        const textChunks = output
+            .filter((c) => c.type === "text-delta")
+            .map((c) => c.delta as string)
+        expect(textChunks.join("")).toBe("Halo dunia. Ini kedua.")
+        // Should have at most 3 chunks: sentence 1, sentence 2 (+ possible
+        // trailing), not 22 (one per char).
+        expect(textChunks.length).toBeLessThan(5)
+    })
+
+    it("flushes residual tail BEFORE non-text chunk arrives (tool-call boundary)", async () => {
+        // Per-char input ending mid-word, then a tool-call chunk, then
+        // per-char continuation.
+        const before = "Oke, aku akan menyim"
+        const after = "pan ke artifact."
+        const inputs = [
+            ...before.split("").map((ch) => ({ type: "text-delta", id: "1", delta: ch })),
+            { type: "tool-call", toolCallId: "c1", toolName: "updateStageData", input: {} },
+            ...after.split("").map((ch) => ({ type: "text-delta", id: "1", delta: ch })),
+            { type: "finish", finishReason: "stop" },
+        ]
+
+        const output = await runTransform(inputs, makeUIFactory())
+
+        const toolCallIdx = output.findIndex((c) => c.type === "tool-call")
+        expect(toolCallIdx).toBeGreaterThan(0)
+
+        const preToolText = output
+            .slice(0, toolCallIdx)
+            .filter((c) => c.type === "text-delta")
+            .map((c) => c.delta as string)
+            .join("")
+        const postToolText = output
+            .slice(toolCallIdx + 1)
+            .filter((c) => c.type === "text-delta")
+            .map((c) => c.delta as string)
+            .join("")
+
+        // Partial tail "menyim" must be held back, not shown before tool-call.
+        expect(preToolText).toBe("Oke, aku akan ")
+        expect(preToolText).not.toContain("menyim")
+        // Tail merges with continuation to form the complete word.
+        expect(postToolText).toBe("menyimpan ke artifact.")
+        expect(output[output.length - 1].type).toBe("finish")
+    })
+
+    it("pipeUITextCoalesce helper wires a ReadableStream through the coalescer", async () => {
+        const chars = "Hello world. Testing helper.".split("")
+        const inputs = [
+            { type: "text-start", id: "1" },
+            ...chars.map((ch) => ({ type: "text-delta", id: "1", delta: ch })),
+            { type: "finish", finishReason: "stop" },
+        ]
+
+        const source = new ReadableStream({
+            start(controller) {
+                for (const item of inputs) controller.enqueue(item)
+                controller.close()
+            },
+        })
+        const coalesced = pipeUITextCoalesce(source, { maxBufferedDelayMs: 0 })
+        const reader = coalesced.getReader()
+        const out: unknown[] = []
+        while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            out.push(value)
+        }
+        const textChunks = out
+            .filter((c): c is { type: string; delta: string } => (c as { type?: string }).type === "text-delta")
+            .map((c) => c.delta)
+        expect(textChunks.join("")).toBe("Hello world. Testing helper.")
+        // Coalesced: 2 sentence chunks (+ possible residual at finish).
+        expect(textChunks.length).toBeLessThan(5)
+    })
+
+    it("treats `finish` as stream terminator and full-flushes residual tail", async () => {
+        // Partial word ending, no trailing whitespace, followed by finish.
+        const inputs = [
+            { type: "text-delta", id: "1", delta: "incomplete" },
+            { type: "finish", finishReason: "stop" },
+        ]
+
+        const output = await runTransform(inputs, makeUIFactory())
+
+        const textChunks = output
+            .filter((c) => c.type === "text-delta")
+            .map((c) => c.delta as string)
+        // Terminator forces full flush — residual revealed before finish.
+        expect(textChunks.join("")).toBe("incomplete")
+        expect(output[output.length - 1].type).toBe("finish")
     })
 })
