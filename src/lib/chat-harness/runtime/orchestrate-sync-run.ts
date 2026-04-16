@@ -10,8 +10,10 @@
  *      builder in the future; preserved ordering here to keep the seam).
  *   2. Paper context is resolved once in step 5 (a single aggregated object)
  *      and threaded explicitly to every downstream consumer — no more
- *      closure capture of `paperSession` in `saveAssistantMessageLocal` /
- *      `getCurrentPlanSnapshot` / the fallback path (Q4 decision).
+ *      closure capture of `paperSession` in `getCurrentPlanSnapshot` or
+ *      the fallback path (Q4 decision). (The legacy `saveAssistantMessageLocal`
+ *      wrapper has no consumer in this orchestrator and is intentionally
+ *      not reproduced — persistence lives in the executor's `onFinishConfig`.)
  *
  * Pause control-flow (Q5):
  *   After policy evaluation, if `policyDecision.requiresApproval === true`
