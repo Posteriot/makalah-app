@@ -4,7 +4,15 @@ export const CHOICE_VALIDATE_OPTION_ID = "sudah-cukup-lanjut-validasi"
 const CHOICE_VALIDATE_OPTION_LABEL = "Sudah cukup, lanjut validasi"
 const DEFAULT_SUBMIT_LABEL = "Lanjutkan"
 
-const VALIDATION_PATTERNS = [/\bsetuju/i, /\bvalidasi/i, /\blanjut(kan)?/i]
+// Patterns that identify a validation-like option so it can be canonicalised
+// to the single server-expected `sudah-cukup-lanjut-validasi` id.
+//
+// Iteration 7: `/\blanjut(kan)?/i` was removed because it was too broad — it
+// matched any option whose label contained "Lanjutkan" (e.g. the legitimate
+// "Lanjutkan diskusi" fallback option used when the model abandons the
+// choice card). The remaining two patterns ("setuju", "validasi") still
+// catch the validation-intent options model typically emits.
+const VALIDATION_PATTERNS = [/\bsetuju/i, /\bvalidasi/i]
 
 function slugifyId(value: string): string {
   const slug = value
@@ -136,8 +144,14 @@ export function compileChoiceSpec(params: {
       on: {
         press: {
           action: "setState",
+          // AI SDK / @json-render built-in setState action reads
+          // `params.statePath`. Using `params.path` (the earlier key) is a
+          // silent no-op at runtime, which manifests as a choice card
+          // whose option buttons appear clickable but never update
+          // /selection/selectedOptionId — the submit button then returns
+          // early because selectedOptionId remains empty.
           params: {
-            path: "/selection/selectedOptionId",
+            statePath: "/selection/selectedOptionId",
             value: opt.id,
           },
         },
