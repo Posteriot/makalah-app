@@ -803,20 +803,27 @@ export function buildOnFinishHandler(
         })
         measureStep("logTelemetry", Date.now() - logTelemetryStart)
 
-        // ── Title update ──
+        // ── Title update (non-blocking) ──
+        // Mirrors the search path (src/lib/chat-harness/context/execute-web-search-path.ts:286-296):
+        // maybeUpdateTitleFromAI may trigger an LLM call (generateTitle) on the
+        // first assistant response, which can add multi-second tail latency. It
+        // is not a durability requirement for closing the stream, so we
+        // fire-and-forget here too. Sentry captures any failure via .catch.
         if (normalizedText.length > 0) {
             const minPairsForFinalTitle = Number.parseInt(
                 process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
                 10
             )
             const updateTitleStart = Date.now()
-            await maybeUpdateTitleFromAI({
+            void maybeUpdateTitleFromAI({
                 assistantText: normalizedText,
                 minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
                     ? minPairsForFinalTitle
                     : 3,
-            })
-            measureStep("updateTitle", Date.now() - updateTitleStart)
+            }).catch(err => Sentry.captureException(err, { tags: { subsystem: "title" } }))
+            // Renamed step name signals this is scheduling-only cost (sync path)
+            // since the actual LLM/Convex work no longer blocks onFinish.
+            measureStep("updateTitleScheduled", Date.now() - updateTitleStart)
         }
 
         // ── Harness step persistence (Task 6.4b) ──
