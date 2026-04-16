@@ -16,6 +16,7 @@ import type {
     PaperTurnObservability,
 } from "./types"
 import type { ConvexFetchQuery, ConvexFetchMutation } from "../types"
+import { executeAutoRescue } from "../shared/auto-rescue-policy"
 
 // ────────────────────────────────────────────────────────────────
 // buildToolRegistry — extracted from route.ts lines 1325–1898
@@ -187,30 +188,26 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
 
                         // Artifact missing/invalidated/inaccessible — allow createArtifact as exceptional fallback.
                         // Auto-rescue only for pending_validation (revision is already correct state).
-                        if (paperSession.stageStatus === "pending_validation") {
-                            try {
-                                const rescueResult = await fetchMutationWithToken(api.paperSessions.autoRescueRevision, {
-                                    sessionId: paperSession._id,
-                                    userId: userId as Id<"users">,
-                                    source: "createArtifact",
-                                });
-                                if (rescueResult.rescued) {
-                                    console.log(`[create-artifact-fallback-no-valid] stage=${paperSession.currentStage} — auto-rescued, proceeding with createArtifact`);
-                                    const refreshed = await fetchQueryWithToken(api.paperSessions.getByConversation, {
-                                        conversationId
-                                    });
-                                    if (refreshed) Object.assign(paperSession, refreshed);
-                                }
-                            } catch (autoRescueError) {
-                                console.error("[createArtifact] Auto-rescue failed:", autoRescueError);
-                                return {
-                                    success: false,
-                                    errorCode: "AUTO_RESCUE_FAILED",
-                                    retryable: true,
-                                    error: "Failed to auto-transition stage to revision. Try calling requestRevision explicitly first.",
-                                    nextAction: "Call requestRevision(feedback) first, then retry createArtifact.",
-                                };
+                        const createRescue = await executeAutoRescue({
+                            paperSession,
+                            source: "createArtifact",
+                            userId: userId as Id<"users">,
+                            fetchMutationWithToken,
+                            fetchQueryWithToken,
+                            conversationId,
+                        })
+                        if (createRescue.error) {
+                            return {
+                                success: false,
+                                errorCode: "AUTO_RESCUE_FAILED",
+                                retryable: true,
+                                error: "Failed to auto-transition stage to revision. Try calling requestRevision explicitly first.",
+                                nextAction: "Call requestRevision(feedback) first, then retry createArtifact.",
                             }
+                        }
+                        if (createRescue.rescued && createRescue.refreshedSession) {
+                            console.log(`[create-artifact-fallback-no-valid] stage=${paperSession.currentStage} — auto-rescued, proceeding with createArtifact`)
+                            Object.assign(paperSession, createRescue.refreshedSession)
                         }
                     }
 
@@ -373,29 +370,26 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                     // convex/artifacts.ts:update does NOT go through paperSessions.updateStageData,
                     // so the backend auto-rescue in updateStageData does not cover this path.
                     // Uses autoRescueRevision (NOT requestRevision) to preserve trigger provenance.
-                    if (paperSession?.stageStatus === "pending_validation") {
-                        try {
-                            const rescueResult = await fetchMutationWithToken(api.paperSessions.autoRescueRevision, {
-                                sessionId: paperSession._id,
-                                userId: userId as Id<"users">,
-                                source: "updateArtifact",
-                            });
-                            if (rescueResult.rescued) {
-                                // Refresh paperSession reference so downstream code sees updated stageStatus
-                                const refreshed = await fetchQueryWithToken(api.paperSessions.getByConversation, {
-                                    conversationId
-                                });
-                                if (refreshed) Object.assign(paperSession, refreshed);
-                            }
-                        } catch (autoRescueError) {
-                            console.error("[updateArtifact] Auto-rescue failed:", autoRescueError);
+                    if (paperSession) {
+                        const updateRescue = await executeAutoRescue({
+                            paperSession,
+                            source: "updateArtifact",
+                            userId: userId as Id<"users">,
+                            fetchMutationWithToken,
+                            fetchQueryWithToken,
+                            conversationId,
+                        })
+                        if (updateRescue.error) {
                             return {
                                 success: false,
                                 errorCode: "AUTO_RESCUE_FAILED",
                                 retryable: true,
                                 error: "Failed to auto-transition stage to revision. Try calling requestRevision explicitly first.",
                                 nextAction: "Call requestRevision(feedback) first, then retry updateArtifact.",
-                            };
+                            }
+                        }
+                        if (updateRescue.rescued && updateRescue.refreshedSession) {
+                            Object.assign(paperSession, updateRescue.refreshedSession)
                         }
                     }
 
