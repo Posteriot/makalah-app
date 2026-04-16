@@ -109,6 +109,24 @@ export const usePaperSession = (conversationId?: Id<"conversations">, userId?: I
     const createMessageMutation = useMutation(api.messages.createMessage);
     const ensurePaperSessionMutation = useMutation(api.paperSessions.ensurePaperSessionExists);
 
+    // Phase 8 — harness pause/resume mutations.
+    // These run ADDITIVELY (not as a replacement) before approveStage/requestRevision
+    // when a paused harness run exists for the current conversation. The paper-domain
+    // mutations remain authoritative for stage progression; the harness layer only
+    // needs to learn that the decision was resolved so the paused run can continue.
+    const resolveDecisionMutation = useMutation(api.harnessDecisions.resolveDecision);
+    const resumeRunMutation = useMutation(api.harnessRuns.resumeRun);
+
+    // Subscribe to the latest paused harness run bound to this conversation.
+    // Returns null when no paused run exists (common case) or when auth/ownership
+    // fails. UI consumers (ChatWindow) read `_id` for the `x-harness-resume` header.
+    const pausedHarnessRun = useQuery(
+        api.harnessRuns.getRunByConversation,
+        conversationId && isAuthenticated
+            ? { conversationId, statusFilter: "paused" as const }
+            : "skip"
+    );
+
     // 3-state model:
     // - "loading": Convex query hasn't resolved yet (session === undefined)
     // - "ready": session exists and is loaded
@@ -141,6 +159,42 @@ export const usePaperSession = (conversationId?: Id<"conversations">, userId?: I
             sessionId: session._id,
             userId,
         });
+    };
+
+    /**
+     * Phase 8 — resolve the pending decision + resume the paused harness run.
+     *
+     * Call this BEFORE approveStage / requestRevision when a paused run exists.
+     * ADDITION pattern (Q4 decision): the paper-domain mutation still runs after
+     * this helper returns — resume only tells the harness layer "the decision
+     * was answered", it does not replace the paper workflow transition.
+     *
+     * Returns `null` when there is no paused run or no pending decision, so
+     * callers can invoke it unconditionally (cheap no-op in the common path).
+     *
+     * `resolution` mirrors the harnessDecisions.resolveDecision contract:
+     *   - "resolved"  → user answered (approve or revise → both map here;
+     *                   the answer is carried in `response.decision`).
+     *   - "declined"  → user actively cancelled / dismissed the decision
+     *                   (not used by the approve/revise flow in this task).
+     */
+    const resolveAndResume = async (
+        resolution: "resolved" | "declined",
+        response?: Record<string, unknown>,
+    ): Promise<{ resumedRunId: Id<"harnessRuns"> } | null> => {
+        if (!pausedHarnessRun || !pausedHarnessRun.pendingDecisionId) return null;
+
+        const runId = pausedHarnessRun._id;
+        const ownerToken = pausedHarnessRun.ownerToken;
+        const decisionId = pausedHarnessRun.pendingDecisionId;
+
+        await resolveDecisionMutation({
+            decisionId,
+            resolution,
+            ...(response !== undefined ? { response } : {}),
+        });
+        await resumeRunMutation({ runId, ownerToken });
+        return { resumedRunId: runId };
     };
 
     const requestRevision = async (userId: Id<"users">, feedback: string, trigger?: "panel" | "model") => {
@@ -268,5 +322,8 @@ export const usePaperSession = (conversationId?: Id<"conversations">, userId?: I
         getStageStartIndex,
         checkMessageInCurrentStage,
         isLoading: session === undefined,
+        // Phase 8 — harness pause/resume surface
+        pausedHarnessRun,
+        resolveAndResume,
     };
 };

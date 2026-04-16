@@ -624,6 +624,9 @@ export function ChatWindow({
     markStageAsDirty,
     rewindToStage,
     getStageStartIndex,
+    // Phase 8 — paused harness run surface (null when no paused run)
+    pausedHarnessRun,
+    resolveAndResume,
   } = usePaperSession(safeConversationId ?? undefined, userId ?? undefined)
 
   // Clear optimistic flag once Convex subscription confirms pending_validation
@@ -860,7 +863,13 @@ export function ChatWindow({
   const imageDataUrlsRef = useRef(imageDataUrls)
   imageDataUrlsRef.current = imageDataUrls
 
-  // Create transport with lazy body function — evaluated fresh at each request
+  // Create transport with lazy body function — evaluated fresh at each request.
+  // Phase 8 Task 8.4: emit `x-harness-resume: <runId>` header when a paused
+  // harness run is bound to this conversation. The orchestrator reads this
+  // header in accept-chat-request.ts to skip runLane creation and reuse the
+  // persisted lane. The header is only set when `pausedHarnessRun` resolves
+  // to a non-null row — normal turns (no paused run) send no extra header.
+  const pausedHarnessRunId = pausedHarnessRun?._id ?? null
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -868,8 +877,15 @@ export function ChatWindow({
         body: () => ({
           conversationId: safeConversationId,
         }),
+        headers: () => {
+          const headers: Record<string, string> = {}
+          if (pausedHarnessRunId) {
+            headers["x-harness-resume"] = pausedHarnessRunId
+          }
+          return headers
+        },
       }),
-    [safeConversationId]
+    [safeConversationId, pausedHarnessRunId]
   )
 
   type CreatedArtifact = { artifactId: Id<"artifacts">; title?: string }
@@ -2164,6 +2180,21 @@ export function ChatWindow({
     console.trace("[F1-DEBUG] handleApprove TRIGGERED — who called this?")
     console.log("[F1-DEBUG] handleApprove context:", { stageLabel, stageStatus: paperSession?.stageStatus, userId })
     try {
+      // Phase 8 Task 8.4: if a harness run is paused awaiting this approval,
+      // resolve the decision + resume the run BEFORE the paper-domain
+      // transition. This is ADDITIVE (not a replacement) — approveStage still
+      // fires to advance the paper workflow. The `decision` discriminator in
+      // `response` tells the backend which answer the user gave (approve).
+      const resumeResult = await resolveAndResume("resolved", {
+        decision: "approve",
+        stage: stageLabel,
+      })
+      if (resumeResult) {
+        console.info(
+          `[HARNESS][ui] resumed paused run runId=${resumeResult.resumedRunId} on approve`
+        )
+      }
+
       await approveStage(userId)
       // Auto-send message agar AI aware dan bisa lanjutkan ke tahap berikutnya
       sendMessageWithPendingIndicator(`[Approved: ${stageLabel}] Lanjut ke tahap berikutnya.`)
@@ -2177,6 +2208,21 @@ export function ChatWindow({
   const handleRevise = async (feedback: string) => {
     if (!userId) return
     try {
+      // Phase 8 Task 8.4: mirror of handleApprove — resolve the pending
+      // decision + resume the paused harness run before the paper-domain
+      // mutation. `resolution` stays "resolved" (the user answered); the
+      // answer itself is carried in `response.decision = "revise"`.
+      const resumeResult = await resolveAndResume("resolved", {
+        decision: "revise",
+        stage: stageLabel,
+        feedback,
+      })
+      if (resumeResult) {
+        console.info(
+          `[HARNESS][ui] resumed paused run runId=${resumeResult.resumedRunId} on revise`
+        )
+      }
+
       await requestRevision(userId, feedback, "panel")
       // Bug fix 6.6.1: Send feedback as user message so AI can see it
       sendMessageWithPendingIndicator(`[Revisi untuk ${stageLabel}]\n\n${feedback}`)
