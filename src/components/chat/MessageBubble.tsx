@@ -580,20 +580,32 @@ export function MessageBubble({
         return null
     }
 
-    const extractChoiceSpec = (uiMessage: UIMessage): JsonRendererChoiceSpec | null => {
+    // Pure choice-spec extraction: walks message.parts, applies any patches,
+    // validates the merged spec, and returns a rich result. NO console output —
+    // logging is handled below via a signature-deduped useEffect so streaming
+    // chunks no longer flood the console with the same line per render.
+    type ChoiceSpecExtraction = {
+        spec: JsonRendererChoiceSpec | null
+        hasSpecParts: boolean
+        parseSuccess: boolean
+        elementTypes: string
+        parseErrors: string[]
+        contractVersion?: string
+    }
+    const extractChoiceSpecResult = (uiMessage: UIMessage): ChoiceSpecExtraction => {
         let spec: Spec | null = null
+        let hasSpecParts = false
         for (const part of uiMessage.parts ?? []) {
             if (!part || typeof part !== "object") continue
             const dataPart = part as unknown as { type?: string; data?: unknown }
             if (dataPart.type !== SPEC_DATA_PART_TYPE) continue
+            hasSpecParts = true
             const data = dataPart.data as { type?: string; spec?: Spec; patch?: unknown } | null
             if (!data || typeof data !== "object") continue
             if (data.type === "flat" && data.spec) {
                 spec = data.spec
             } else if (data.type === "patch" && data.patch) {
-                // Initialize empty spec on first patch — pipeYamlRender only emits patches during streaming
                 if (!spec) spec = {} as Spec
-                // pipeYamlRender emits single patch per chunk (not array)
                 const patches = Array.isArray(data.patch) ? data.patch : [data.patch]
                 for (const p of patches) {
                     try { spec = applySpecPatch(spec, p as JsonPatch) } catch { /* skip invalid patch */ }
@@ -602,12 +614,7 @@ export function MessageBubble({
         }
 
         if (!spec) {
-            // Only log when spec-related parts exist but parsing failed (indicates a real problem)
-            const hasSpecParts = (uiMessage.parts ?? []).some(p => (p as {type?:string})?.type === SPEC_DATA_PART_TYPE)
-            if (hasSpecParts) {
-                console.log("[F1-F6-TEST] extractChoiceSpec: no spec found", { messageId: uiMessage.id })
-            }
-            return null
+            return { spec: null, hasSpecParts, parseSuccess: false, elementTypes: "", parseErrors: [] }
         }
 
         const rawElements = (spec as unknown as Record<string, unknown>).elements
@@ -624,18 +631,73 @@ export function MessageBubble({
             .join(", ")
         const parsedSpec = parseChoiceSpecForRender(spec)
         if (!parsedSpec.success) {
-            console.warn("[F1-F6-TEST] ChoiceSpec validation FAILED", { errors: parsedSpec.error.issues.map(i => `${i.path.join(".")}: ${i.message}`), elementTypes })
-        } else {
-            console.log("[F1-F6-TEST] extractChoiceSpec OK", { messageId: uiMessage.id, elementTypes, contractVersion: parsedSpec.contractVersion })
+            return {
+                spec: null,
+                hasSpecParts: true,
+                parseSuccess: false,
+                elementTypes,
+                parseErrors: parsedSpec.error.issues.map(i => `${i.path.join(".")}: ${i.message}`),
+            }
         }
-        return parsedSpec.success ? parsedSpec.spec : null
+        return {
+            spec: parsedSpec.spec,
+            hasSpecParts: true,
+            parseSuccess: true,
+            elementTypes,
+            parseErrors: [],
+            contractVersion: parsedSpec.contractVersion,
+        }
     }
 
     const searchStatus = extractSearchStatus(message)
     const citedText = extractCitedText(message)
-    const choiceSpec = extractChoiceSpec(message)
-    const choiceBlockPayload = useMemo<JsonRendererChoiceRenderPayload | null>(() => {
-        if (!choiceSpec) return null
+    // Memoize extraction so we re-parse only when message.parts changes,
+    // not on every unrelated re-render. Avoids O(n²) work over streaming chunks.
+    const choiceSpecResult = useMemo<ChoiceSpecExtraction>(
+        () => extractChoiceSpecResult(message),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [message.parts]
+    )
+    const choiceSpec = choiceSpecResult.spec
+
+    // Signature-deduped logging for choice-spec extraction. Fires once per
+    // distinct outcome rather than per render. Replaces former in-render
+    // console.log/warn at the bottom of extractChoiceSpec.
+    const lastChoiceSpecLogSig = useRef<string | null>(null)
+    useEffect(() => {
+        const sig = `${choiceSpecResult.hasSpecParts}|${choiceSpecResult.parseSuccess}|${choiceSpecResult.elementTypes}|${choiceSpecResult.contractVersion ?? ""}|err=${choiceSpecResult.parseErrors.join(";")}`
+        if (lastChoiceSpecLogSig.current === sig) return
+        lastChoiceSpecLogSig.current = sig
+        if (!choiceSpecResult.spec) {
+            if (choiceSpecResult.hasSpecParts && choiceSpecResult.parseErrors.length > 0) {
+                console.warn("[F1-F6-TEST] ChoiceSpec validation FAILED", {
+                    errors: choiceSpecResult.parseErrors,
+                    elementTypes: choiceSpecResult.elementTypes,
+                })
+            } else if (choiceSpecResult.hasSpecParts) {
+                console.log("[F1-F6-TEST] extractChoiceSpec: no spec found", { messageId: message.id })
+            }
+            return
+        }
+        console.log("[F1-F6-TEST] extractChoiceSpec OK", {
+            messageId: message.id,
+            elementTypes: choiceSpecResult.elementTypes,
+            contractVersion: choiceSpecResult.contractVersion,
+        })
+    }, [choiceSpecResult, message.id])
+    // Normalization decision is captured alongside payload so the side-effect
+    // (console.warn) can be deduped per state-change via useEffect below.
+    type ChoiceNormalizationDecision =
+        | "none"
+        | "ok"
+        | "submit-empty-label-fixed"
+        | "submit-injected-missing"
+        | "submit-injected-orphaned"
+    const choiceBlockComputed = useMemo<{
+        payload: JsonRendererChoiceRenderPayload | null
+        decision: ChoiceNormalizationDecision
+    }>(() => {
+        if (!choiceSpec) return { payload: null, decision: "none" }
 
         // Safety net: ensure ChoiceSubmitButton exists AND is reachable in root.children
         const elements = choiceSpec.elements ?? {}
@@ -652,6 +714,7 @@ export function MessageBubble({
         const hasReachableSubmitButton = !!submitEntry && rootChildren.includes(submitEntry[0])
 
         let normalizedSpec = choiceSpec
+        let decision: ChoiceNormalizationDecision = "ok"
 
         // Safety net 2: if ChoiceSubmitButton exists and reachable but has empty/missing label, fix it
         if (hasReachableSubmitButton && submitEntry) {
@@ -668,7 +731,7 @@ export function MessageBubble({
                         },
                     },
                 } as JsonRendererChoiceSpec
-                console.warn("[F1-F6-TEST] ChoiceSubmitButton had empty label — set to 'Lanjutkan'")
+                decision = "submit-empty-label-fixed"
             }
         }
 
@@ -701,7 +764,7 @@ export function MessageBubble({
                 },
             } as JsonRendererChoiceSpec
             const wasOrphan = !!submitEntry && !rootChildren.includes(submitEntry[0])
-            console.warn(`[F1-F6-TEST] ChoiceSubmitButton ${wasOrphan ? "orphaned in spec" : "missing from model YAML"} — injected fallback`)
+            decision = wasOrphan ? "submit-injected-orphaned" : "submit-injected-missing"
         }
 
         const specWithState = normalizedSpec as JsonRendererChoiceSpec & {
@@ -709,15 +772,36 @@ export function MessageBubble({
         }
 
         return {
-            spec: normalizedSpec,
-            initialState: specWithState.state ?? {
-                selection: {
-                    selectedOptionId: null,
-                    customText: "",
+            payload: {
+                spec: normalizedSpec,
+                initialState: specWithState.state ?? {
+                    selection: {
+                        selectedOptionId: null,
+                        customText: "",
+                    },
                 },
             },
+            decision,
         }
     }, [choiceSpec])
+    const choiceBlockPayload = choiceBlockComputed.payload
+
+    // Signature-deduped logging for choice-spec normalization decisions.
+    // Replaces former in-useMemo console.warn calls so streaming spec patches
+    // do not log the same decision repeatedly.
+    const lastChoiceNormalizationLogSig = useRef<ChoiceNormalizationDecision | null>(null)
+    useEffect(() => {
+        const decision = choiceBlockComputed.decision
+        if (lastChoiceNormalizationLogSig.current === decision) return
+        lastChoiceNormalizationLogSig.current = decision
+        if (decision === "submit-empty-label-fixed") {
+            console.warn("[F1-F6-TEST] ChoiceSubmitButton had empty label — set to 'Lanjutkan'")
+        } else if (decision === "submit-injected-orphaned") {
+            console.warn("[F1-F6-TEST] ChoiceSubmitButton orphaned in spec — injected fallback")
+        } else if (decision === "submit-injected-missing") {
+            console.warn("[F1-F6-TEST] ChoiceSubmitButton missing from model YAML — injected fallback")
+        }
+    }, [choiceBlockComputed.decision])
 
     const startEditing = () => {
         setIsEditing(true)
@@ -892,17 +976,24 @@ export function MessageBubble({
         taskSummary !== null || shouldShowProcessIndicators
     )
 
-    // Observability: log UnifiedProcessCard render state for E2E audit (last message only to avoid noise)
+    // Observability: log UnifiedProcessCard render state for E2E audit (last
+    // message only to avoid noise). Logging is signature-deduped via useEffect
+    // so streaming chunks no longer emit the same progress line per render.
     const isLastAssistantMessage = isAssistant && allMessages && messageIndex === allMessages.length - 1
     const unifiedCardFirstShown = useRef(false)
-    if (showUnifiedCard && taskSummary && isLastAssistantMessage) {
+    const lastUnifiedLogSig = useRef<string | null>(null)
+    useEffect(() => {
+        if (!(showUnifiedCard && taskSummary && isLastAssistantMessage)) return
         const source = taskSummary.tasks[0]?.field?.startsWith("plan-") ? "model-driven" : "hardcoded-fallback"
+        const sig = `${taskSummary.stageId}|${source}|${taskSummary.completed}/${taskSummary.total}|${taskSummary.tasks.map(t => `${t.field}:${t.status}`).join(",")}`
+        if (lastUnifiedLogSig.current === sig) return
         if (!unifiedCardFirstShown.current) {
             unifiedCardFirstShown.current = true
             console.info(`[UNIFIED-PROCESS-UI] FIRST-RENDER stage=${taskSummary.stageId} source=${source} progress=${taskSummary.completed}/${taskSummary.total} t=${Date.now()}`)
         }
+        lastUnifiedLogSig.current = sig
         console.info(`[UNIFIED-PROCESS-UI] stage=${taskSummary.stageId} source=${source} progress=${taskSummary.completed}/${taskSummary.total} tasks=[${taskSummary.tasks.map(t => `${t.field}:${t.status}`).join(",")}] t=${Date.now()}`)
-    }
+    }, [showUnifiedCard, taskSummary, isLastAssistantMessage])
     // Task 4.1: Extract sources (try annotations first, then fallback to property if we extend type)
     const sourcesFromAnnotation = (message as {
         annotations?: { type?: string; sources?: { url: string; title: string; publishedAt?: number | null }[] }[]
