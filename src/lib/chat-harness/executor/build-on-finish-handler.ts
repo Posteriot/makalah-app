@@ -820,6 +820,13 @@ export function buildOnFinishHandler(
             const stepStatus: Exclude<StepStatus, "running"> =
                 isFailureFinishReason || isFailingVerificationPause ? "failed" : "completed"
 
+            // Track whether persistence actually succeeded so we can keep the
+            // observability stream consistent with the harnessRunSteps row
+            // (audit fix HIGH 2). If completeStep throws, skip emitting
+            // step_completed + agent_output_received so replay consumers do
+            // not see a "done" event for a step that is still marked running
+            // (or lacks a summary) in the persistence layer.
+            let stepPersisted = false
             try {
                 await runStore.completeStep(activeStep.stepId, {
                     status: stepStatus,
@@ -829,50 +836,56 @@ export function buildOnFinishHandler(
                     completedAt: Date.now(),
                 })
                 activeStep.completed = true
+                stepPersisted = true
             } catch (err) {
-                console.warn(`[HARNESS][persistence] completeStep failed`, err)
+                console.warn(
+                    `[HARNESS][persistence] completeStep failed — skipping step_completed and agent_output_received emits to keep observability consistent`,
+                    err,
+                )
             }
 
-            // Emit step_completed.
-            eventStore
-                .emit({
-                    eventType: HARNESS_EVENT_TYPES.STEP_COMPLETED,
-                    userId,
-                    sessionId: lane.sessionId,
-                    chatId: lane.conversationId,
-                    runId: lane.runId,
-                    stepId: activeStep.stepId,
-                    correlationId: lane.requestId,
-                    payload: {
+            if (stepPersisted) {
+                // Emit step_completed.
+                eventStore
+                    .emit({
+                        eventType: HARNESS_EVENT_TYPES.STEP_COMPLETED,
+                        userId,
+                        sessionId: lane.sessionId,
+                        chatId: lane.conversationId,
+                        runId: lane.runId,
                         stepId: activeStep.stepId,
-                        stepIndex: activeStep.stepIndex,
-                        status: stepStatus,
-                        finishReason,
-                        toolCount: toolCalls.length,
-                        blockers: verificationSummary.completionBlockers,
-                        durationMs: Date.now() - activeStep.startedAt,
-                    },
-                })
-                .catch(err => console.warn(`[HARNESS][event] step_completed emit failed`, err))
+                        correlationId: lane.requestId,
+                        payload: {
+                            stepId: activeStep.stepId,
+                            stepIndex: activeStep.stepIndex,
+                            status: stepStatus,
+                            finishReason,
+                            toolCount: toolCalls.length,
+                            blockers: verificationSummary.completionBlockers,
+                            durationMs: Date.now() - activeStep.startedAt,
+                        },
+                    })
+                    .catch(err => console.warn(`[HARNESS][event] step_completed emit failed`, err))
 
-            // Emit agent_output_received (executor output shape).
-            eventStore
-                .emit({
-                    eventType: HARNESS_EVENT_TYPES.AGENT_OUTPUT_RECEIVED,
-                    userId,
-                    sessionId: lane.sessionId,
-                    chatId: lane.conversationId,
-                    runId: lane.runId,
-                    stepId: activeStep.stepId,
-                    correlationId: lane.requestId,
-                    payload: {
+                // Emit agent_output_received (executor output shape).
+                eventStore
+                    .emit({
+                        eventType: HARNESS_EVENT_TYPES.AGENT_OUTPUT_RECEIVED,
+                        userId,
+                        sessionId: lane.sessionId,
+                        chatId: lane.conversationId,
+                        runId: lane.runId,
                         stepId: activeStep.stepId,
-                        outputTextLength: typeof result.text === "string" ? result.text.length : 0,
-                        finishReason,
-                        toolCallCount: toolCalls.length,
-                    },
-                })
-                .catch(err => console.warn(`[HARNESS][event] agent_output_received emit failed`, err))
+                        correlationId: lane.requestId,
+                        payload: {
+                            stepId: activeStep.stepId,
+                            outputTextLength: typeof result.text === "string" ? result.text.length : 0,
+                            finishReason,
+                            toolCallCount: toolCalls.length,
+                        },
+                    })
+                    .catch(err => console.warn(`[HARNESS][event] agent_output_received emit failed`, err))
+            }
 
             // Aggregate-pass tool_called + tool_result_received emission.
             // We emit one tool_called and one tool_result_received per
