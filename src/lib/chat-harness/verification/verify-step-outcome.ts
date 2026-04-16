@@ -2,10 +2,13 @@
 // verify-step-outcome.ts
 //
 // Consolidates scattered step-outcome verification logic from the
-// executor modules into a single, testable pure function.
+// executor modules into a single, testable function.
 //
 // Called from buildStepStream's stream writer finish handler.
-// Does NOT perform side-effects (no DB writes, no retries).
+// Verification logic itself is side-effect free; the function emits
+// `verification_started` + `verification_completed` events around the
+// verification (Task 6.4d). Persistence failures are logged + swallowed
+// so observability never blocks the verification flow.
 // ────────────────────────────────────────────────────────────────
 
 import type { PaperToolTracker } from "@/lib/ai/paper-tools"
@@ -14,14 +17,18 @@ import type { PaperStageId } from "../../../../convex/paperSessions/constants"
 import type { ParsedChoiceInteractionEvent } from "@/lib/chat/choice-request"
 import type { ResolvedChoiceWorkflow } from "@/lib/chat/choice-request"
 import type { PlanSpec } from "@/lib/ai/harness/plan-spec"
+import type { Id } from "../../../../convex/_generated/dataModel"
 import { sanitizeChoiceOutcome } from "@/lib/chat/choice-outcome-guard"
 import type { StepVerificationResult, PaperSessionForVerification } from "./types"
+import type { EventStore } from "../persistence"
+import { HARNESS_EVENT_TYPES } from "../persistence"
+import type { RunLane } from "../types/runtime"
 
 // ────────────────────────────────────────────────────────────────
 // Main verification function
 // ────────────────────────────────────────────────────────────────
 
-export function verifyStepOutcome(params: {
+export async function verifyStepOutcome(params: {
     text: string
     toolChainOrder: string[]
     paperToolTracker: PaperToolTracker
@@ -32,7 +39,13 @@ export function verifyStepOutcome(params: {
     paperStageScope: PaperStageId | undefined
     isDraftingStage: boolean
     isCompileThenFinalize: boolean
-}): StepVerificationResult {
+    /** Harness persistence — Task 6.4d wiring. */
+    eventStore: EventStore
+    lane: RunLane
+    userId: Id<"users">
+    /** Step record id (may be null if step creation failed earlier). */
+    stepId: Id<"harnessRunSteps"> | null
+}): Promise<StepVerificationResult> {
     const {
         text,
         toolChainOrder,
@@ -44,7 +57,30 @@ export function verifyStepOutcome(params: {
         paperStageScope,
         isDraftingStage,
         isCompileThenFinalize,
+        eventStore,
+        lane,
+        userId,
+        stepId,
     } = params
+
+    // ── Emit verification_started (best-effort observability) ──
+    try {
+        await eventStore.emit({
+            eventType: HARNESS_EVENT_TYPES.VERIFICATION_STARTED,
+            userId,
+            sessionId: lane.sessionId,
+            chatId: lane.conversationId,
+            runId: lane.runId,
+            stepId: stepId ?? undefined,
+            correlationId: lane.requestId,
+            payload: {
+                target: "combined",
+                startedAt: Date.now(),
+            },
+        })
+    } catch (err) {
+        console.warn("[HARNESS][persistence] verification_started emit failed", err)
+    }
 
     const completionBlockers: string[] = []
 
@@ -177,7 +213,7 @@ export function verifyStepOutcome(params: {
         }
     }
 
-    return {
+    const result: StepVerificationResult = {
         canContinue,
         mustPause,
         pauseReason,
@@ -189,4 +225,88 @@ export function verifyStepOutcome(params: {
         planComplete,
         streamContentOverride,
     }
+
+    // ── Emit verification_completed (best-effort observability) ──
+    try {
+        await eventStore.emit({
+            eventType: HARNESS_EVENT_TYPES.VERIFICATION_COMPLETED,
+            userId,
+            sessionId: lane.sessionId,
+            chatId: lane.conversationId,
+            runId: lane.runId,
+            stepId: stepId ?? undefined,
+            correlationId: lane.requestId,
+            payload: {
+                target: "combined",
+                status: result.canContinue && !result.mustPause ? "pass" : "fail",
+                outcome: deriveVerificationOutcome(result),
+                findings: deriveFindings(result),
+                completionEligible: result.canComplete,
+                completedAt: Date.now(),
+            },
+        })
+    } catch (err) {
+        console.warn("[HARNESS][persistence] verification_completed emit failed", err)
+    }
+
+    return result
+}
+
+// ────────────────────────────────────────────────────────────────
+// Outcome / findings helpers (research doc lines 758-763 + 901-908)
+// ────────────────────────────────────────────────────────────────
+
+type VerificationOutcome =
+    | "pass"
+    | "fail_repairable"
+    | "fail_missing_content"
+    | "fail_user_blocked"
+    | "fail_irrecoverable"
+
+function deriveVerificationOutcome(result: StepVerificationResult): VerificationOutcome {
+    if (result.canContinue && !result.mustPause && result.completionBlockers.length === 0) {
+        return "pass"
+    }
+    if (
+        result.mustPause &&
+        result.pauseReason &&
+        /approval|user|decision|choice/i.test(result.pauseReason)
+    ) {
+        return "fail_user_blocked"
+    }
+    if (!result.artifactChainComplete || !result.planComplete) {
+        return "fail_missing_content"
+    }
+    if (result.leakageDetected || result.streamContentOverride !== undefined) {
+        return "fail_repairable"
+    }
+    return "fail_irrecoverable"
+}
+
+interface VerificationFinding {
+    code: string
+    severity: "info" | "warn" | "error"
+    message: string
+}
+
+function deriveFindings(result: StepVerificationResult): VerificationFinding[] {
+    const findings: VerificationFinding[] = []
+    for (const blocker of result.completionBlockers) {
+        findings.push({ code: "completion_blocker", severity: "error", message: blocker })
+    }
+    if (result.leakageDetected) {
+        findings.push({
+            code: "recovery_leakage_detected",
+            severity: "warn",
+            message: result.leakageDetails?.match ?? "leakage match (details suppressed)",
+        })
+    }
+    if (result.streamContentOverride !== undefined) {
+        findings.push({
+            code: "stream_content_overridden",
+            severity: "warn",
+            message: "outcome guard replaced stream content",
+        })
+    }
+    return findings
 }

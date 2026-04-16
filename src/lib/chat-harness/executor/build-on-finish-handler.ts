@@ -336,7 +336,7 @@ export function buildOnFinishHandler(
             )
             : []
 
-        const stepVerification = verifyStepOutcome({
+        const stepVerification = await verifyStepOutcome({
             text: normalizedText,
             toolChainOrder,
             paperToolTracker,
@@ -347,6 +347,10 @@ export function buildOnFinishHandler(
             paperStageScope,
             isDraftingStage,
             isCompileThenFinalize,
+            eventStore,
+            lane,
+            userId,
+            stepId: streamCtx.activeStep?.stepId ?? null,
         })
 
         // Log completion blockers from verification

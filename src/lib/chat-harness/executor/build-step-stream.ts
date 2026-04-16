@@ -450,7 +450,7 @@ export function buildStepStream(params: {
 
                     // Outcome-gated stream override via verifyStepOutcome
                     if (!streamContentOverrideRef.current && accumulatedStreamText.length > 0) {
-                        const streamVerification = verifyStepOutcome({
+                        const streamVerification = await verifyStepOutcome({
                             text: accumulatedStreamText,
                             toolChainOrder: [], // stream-side has no step-level tool chain; onFinish handles full chain
                             paperToolTracker,
@@ -463,6 +463,10 @@ export function buildStepStream(params: {
                             paperStageScope,
                             isDraftingStage: onFinishConfig.isDraftingStage,
                             isCompileThenFinalize: onFinishConfig.isCompileThenFinalize,
+                            eventStore: onFinishConfig.eventStore,
+                            lane: onFinishConfig.lane,
+                            userId: onFinishConfig.userId,
+                            stepId: streamContext.activeStep?.stepId ?? null,
                         })
                         if (streamVerification.streamContentOverride) {
                             streamContentOverrideRef.current = streamVerification.streamContentOverride
