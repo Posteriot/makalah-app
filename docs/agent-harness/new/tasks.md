@@ -1510,7 +1510,9 @@ export function evaluateRuntimePolicy(params: {
 
 ## Phase 5: Extract Verification Layer
 
-**Scope:** Outcome guards, stream content validation, artifact-chain completeness checks, plan completion gates, and source/body parity — all currently embedded in onFinish handlers and stream writer loops.
+**Scope:** Outcome guards, stream content validation, artifact-chain completeness checks, and plan completion gates — currently embedded in executor modules (`build-on-finish-handler.ts`, `build-step-stream.ts`).
+
+> **Source note (post-Phase 2):** All verification logic was already extracted from route.ts to executor/ during Phase 2. Phase 5 extracts FROM executor modules into a dedicated verification/ namespace. `checkSourceBodyParity` is excluded — it's a tool-call-time gate in `build-tool-registry.ts`, not a post-step check.
 
 **Goal:** Make "can continue / must pause / can complete" a visible harness boundary with a canonical `VerificationResult` shape.
 
@@ -1533,8 +1535,8 @@ export function evaluateRuntimePolicy(params: {
   - `leakageDetails: { match: string; snippet: string } | undefined`
   - `artifactChainComplete: boolean`
   - `planComplete: boolean`
-  - `sourceBodyParity: "pass" | "fail" | "skipped"`
   - `streamContentOverride: string | undefined` (replacement text if outcome guard triggers)
+  - Note: `sourceBodyParity` removed — `checkSourceBodyParity` is a tool-call-time validation gate inside `build-tool-registry.ts`, not a post-step outcome check. It doesn't belong in step verification.
 - `RunReadinessResult`:
   - `ready: boolean`
   - `blockers: string[]`
@@ -1551,13 +1553,16 @@ export function evaluateRuntimePolicy(params: {
 
 **Create:** `src/lib/chat-harness/verification/verify-step-outcome.ts`
 
-**What to extract from `route.ts`:**
-- Outcome guard evaluation: `sanitizeChoiceOutcome` call and its result processing (route.ts:3294-3306, 4432-4434)
-- Artifact-chain completeness checks (tool tracker flag verification in onFinish: route.ts:3201-3250, 4173-4227)
-- Plan completion gate: `autoCompletePlanOnValidation` (route.ts:3620-3636)
-- Source/body parity check: `checkSourceBodyParity` call (route.ts:3477-3503)
-- Leakage detection: `paperRecoveryLeakagePattern` matching (route.ts:3230-3248)
-- Stream guard content accumulation (route.ts:3893-3930, 4770-4826)
+**What to extract from executor modules (Phase 2):**
+
+> **Source file note (post-Phase 2):** All verification logic was extracted from route.ts to executor/ modules during Phase 2. This task extracts FROM executor modules into verification/, not from route.ts.
+
+- Outcome guard evaluation: `sanitizeChoiceOutcome` call — **dual location**: `build-on-finish-handler.ts:314` (onFinish path) AND `build-step-stream.ts:393` (stream finish handler)
+- Artifact-chain completeness checks: tool tracker flag verification in `build-on-finish-handler.ts:219-277`
+- Plan completion gate: `autoCompletePlanOnValidation` in `build-on-finish-handler.ts:628,679`
+- ~~Source/body parity check~~ — **REMOVED**: `checkSourceBodyParity` is a tool-call-time validation gate inside `build-tool-registry.ts:246,440` (not a post-step outcome check). Does NOT belong in step verification.
+- Leakage detection: `paperRecoveryLeakagePattern` matching in `build-step-stream.ts:473` — **incremental** (runs per text-delta chunk, not at finish). Extract as a **leakage summary** (read `paperTurnObservability.firstLeakageMatch` at finish time), not as a re-scan.
+- Stream guard: `sanitizeChoiceOutcome` in stream finish handler at `build-step-stream.ts:392-417` — produces `streamContentOverride`
 
 **Function signature:**
 ```typescript
@@ -1577,11 +1582,11 @@ export function verifyStepOutcome(params: {
 
 **Acceptance criteria:**
 - `sanitizeChoiceOutcome` call preserved (stays wrapped, not rewritten)
-- `checkSourceBodyParity` call preserved
-- Leakage pattern matching preserved
+- Leakage summary reads from `paperTurnObservability` (incremental detection stays in build-step-stream.ts)
 - `streamContentOverride` produced when outcome guard triggers
 - Called from inside `buildStepStream` stream writer, NOT from `onFinish`
 - All completeness checks produce same results
+- `checkSourceBodyParity` NOT moved here (stays in tool registry as tool-level check)
 
 **Test:** `npx tsc --noEmit` + baseline
 
