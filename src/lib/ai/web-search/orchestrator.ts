@@ -35,10 +35,7 @@ import { pipeYamlRender } from "@json-render/yaml"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
-import {
-    createReadableTextTransform,
-    pipeUITextCoalesce,
-} from "@/lib/ai/harness/create-readable-text-transform"
+import { pipeUITextCoalesce } from "@/lib/ai/harness/create-readable-text-transform"
 import { PLAN_DATA_PART_TYPE, type PlanSpec, planSpecSchema, UNFENCED_PLAN_REGEX } from "@/lib/ai/harness/plan-spec"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
 import {
@@ -666,6 +663,15 @@ export async function executeWebSearch(
       let composeFailoverUsed = false
       let canFailover = !!config.fallbackComposeModel
 
+      // NOTE (E2E iteration 8): no `experimental_transform` here.
+      // See commentary in src/lib/chat-harness/executor/build-step-stream.ts
+      // near the tools-path streamText call for the full rationale —
+      // the short version is that a sentence-level coalescer at
+      // streamText level fragments text-deltas at `\n` boundaries,
+      // which splits `\n```\n` fence-closers across chunks and
+      // breaks pipePlanCapture / pipeYamlRender fence detection.
+      // UI smoothness is handled by pipeUITextCoalesce downstream
+      // instead. The same wiring is mirrored on the search path here.
       const startComposeStream = (model: LanguageModel) => streamText({
         model,
         messages: composeMessages,
@@ -673,11 +679,6 @@ export async function executeWebSearch(
         ...(config.reasoningProviderOptions
           ? { providerOptions: config.reasoningProviderOptions as Parameters<typeof streamText>[0]["providerOptions"] }
           : {}),
-        // Visible stream readability (E2E iteration 3): coalesce char-per-char
-        // deltas into word-level releases and force-flush before any non-text
-        // chunk so tool boundaries never land on a half-word. See
-        // src/lib/ai/harness/create-readable-text-transform.ts for details.
-        experimental_transform: createReadableTextTransform(),
       })
 
       // Start primary compose

@@ -9,10 +9,7 @@ import type { PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 import type { ReasoningLiveDataPart } from "@/lib/ai/curated-trace"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
-import {
-    createReadableTextTransform,
-    pipeUITextCoalesce,
-} from "@/lib/ai/harness/create-readable-text-transform"
+import { pipeUITextCoalesce } from "@/lib/ai/harness/create-readable-text-transform"
 import { pipeYamlRender } from "@json-render/yaml"
 import { PLAN_DATA_PART_TYPE } from "@/lib/ai/harness/plan-spec"
 import type { PlanSpec } from "@/lib/ai/harness/plan-spec"
@@ -331,6 +328,27 @@ export function buildStepStream(params: {
             emitTrace(reasoningTrace.initialEvents)
 
             // ── Invoke streamText with execution config + onFinish ──
+            //
+            // NOTE (E2E iteration 8): we intentionally do NOT attach
+            // `experimental_transform` here. Iterations 3-6 attached a
+            // sentence-level coalescer at streamText level; that broke
+            // pipePlanCapture and pipeYamlRender fence detection because
+            // the coalescer fragmented text-deltas at every `\n`,
+            // splitting fence closers (`\n```\n`) across chunk
+            // boundaries. Evidence:
+            //   - test-1 (pre-iter-3): [PLAN-CAPTURE] parsed (fenced)
+            //     and [CHOICE-CARD][yaml-capture] both fired — model
+            //     choice card showed up.
+            //   - test-2 → test-5 (post-iter-3): both silenced,
+            //     [CHOICE-CARD][fallback-injected] fired on every turn
+            //     because pipePlanCapture never saw the close-fence in
+            //     a single buffer flush and pipeYamlRender likewise
+            //     missed the fence.
+            // Sentence-level UI smoothness is now provided downstream
+            // by pipeUITextCoalesce (see below) which operates AFTER
+            // pipeYamlRender on UIMessageChunk, so fence detection in
+            // pipePlanCapture + pipeYamlRender sees the native model
+            // chunk granularity that test-1 proved is compatible.
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const streamTextConfig: any = {
                 model: executionConfig.model,
@@ -340,12 +358,6 @@ export function buildStepStream(params: {
                 prepareStep: executionConfig.prepareStep,
                 stopWhen: stepCountIs(executionConfig.maxSteps),
                 ...executionConfig.samplingOptions,
-                // Visible stream readability (E2E iteration 3): coalesce
-                // char-per-char text deltas into word-level releases and
-                // force-flush the text buffer before any non-text chunk so
-                // tool-call / start-step / finish-step boundaries never
-                // land on a half-word. See src/lib/ai/harness/create-readable-text-transform.ts.
-                experimental_transform: createReadableTextTransform(),
                 onFinish: async ({ text, steps, providerMetadata, usage, finishReason }: {
                     text: string
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
