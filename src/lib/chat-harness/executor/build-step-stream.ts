@@ -135,6 +135,134 @@ function buildLeakageSnippet(text: string, matchIndex: number, matchValue: strin
 }
 
 // ────────────────────────────────────────────────────────────────
+// Verdict telemetry (E2E iteration 10)
+//
+// Two per-turn verdict lines that make the visible-stream UX
+// invariants grep-friendly for reviewers and future automated tests.
+// The underlying counters are accumulated in the writer loop (tools
+// path); these helpers only format + emit the final verdict line.
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * Thresholds for [⏱ STREAM-SMOOTHNESS] pass/fail.
+ *
+ * - `MIN_AVG_CHARS_PER_CHUNK` / `MAX_AVG_CHARS_PER_CHUNK`: we expect
+ *   word-level granularity after pipeUITextCoalesce (chunking: "word",
+ *   /\S+\s/). Average Indonesian/English word + space ≈ 6 chars; a
+ *   tolerance window of 3-20 keeps the verdict robust to short runs
+ *   and occasional longer tokens (URLs, technical terms) without
+ *   flagging every turn.
+ * - `MAX_INTER_CHUNK_GAP_MS`: a chunk-to-chunk gap longer than this
+ *   is perceived as a stall. 2000ms is picked to tolerate legitimate
+ *   reasoning pauses (model thinks mid-turn) without masking the
+ *   pathological multi-second freezes we saw in early iterations.
+ */
+const STREAM_SMOOTHNESS_THRESHOLDS = {
+    minAvgCharsPerChunk: 3,
+    maxAvgCharsPerChunk: 20,
+    maxInterChunkGapMs: 2000,
+} as const
+
+function emitStreamSmoothnessVerdict(params: {
+    reqId: string
+    logTag: string
+    textChunkCount: number
+    composedChars: number
+    maxGapMs: number
+}): void {
+    const { reqId, logTag, textChunkCount, composedChars, maxGapMs } = params
+    if (textChunkCount === 0) {
+        // No text emitted — usually an empty tool-only turn. Emit a
+        // neutral verdict so the line always appears per turn (easier
+        // grep) but do not treat it as a failure.
+        console.info(
+            `[⏱ STREAM-SMOOTHNESS][${reqId}]${logTag} pass=na reason=no_text_chunks textChunks=0 composedChars=0 maxInterChunkGapMs=0`,
+        )
+        return
+    }
+    const avg = composedChars / textChunkCount
+    const { minAvgCharsPerChunk, maxAvgCharsPerChunk, maxInterChunkGapMs } =
+        STREAM_SMOOTHNESS_THRESHOLDS
+    const avgOk = avg >= minAvgCharsPerChunk && avg <= maxAvgCharsPerChunk
+    const gapOk = maxGapMs <= maxInterChunkGapMs
+    const pass = avgOk && gapOk
+    const reason = pass
+        ? "ok"
+        : [
+              !avgOk && avg < minAvgCharsPerChunk ? "avg_too_small_batched_render" : null,
+              !avgOk && avg > maxAvgCharsPerChunk ? "avg_too_large_sentence_burst" : null,
+              !gapOk ? "inter_chunk_gap_exceeded" : null,
+          ]
+              .filter(Boolean)
+              .join(",")
+    console.info(
+        `[⏱ STREAM-SMOOTHNESS][${reqId}]${logTag} pass=${pass ? "y" : "n"} reason=${reason} avgCharsPerChunk=${avg.toFixed(2)} maxInterChunkGapMs=${maxGapMs} textChunks=${textChunkCount} composedChars=${composedChars}`,
+    )
+}
+
+/**
+ * Verdict for artifact / validation-panel surface ordering.
+ *
+ * - `ordered`: last artifact-surface tool finished AFTER the last text
+ *   delta was streamed to the client — desired UX (artifact appears
+ *   after the response).
+ * - `concurrent`: at least one artifact-surface tool finished BEFORE
+ *   the last text delta, but there was subsequent text within the
+ *   turn (artifact signal may interleave with text; acceptable only
+ *   when the model emits explicit commentary after the tool).
+ * - `reversed`: every artifact-surface tool finished before any text
+ *   delta (pathological — text catches up post-artifact).
+ * - `no_artifact`: no artifact-surface tool fired in this turn.
+ *
+ * All timestamps are wall-clock Date.now() from the server; they are
+ * proxies for the client's observed ordering but close enough for
+ * monitoring.
+ */
+function emitArtifactOrderingVerdict(params: {
+    reqId: string
+    logTag: string
+    lastTextChunkTime: number
+    firstArtifactToolFinishAt: number | null
+    lastArtifactToolFinishAt: number | null
+    artifactToolCount: number
+}): void {
+    const {
+        reqId,
+        logTag,
+        lastTextChunkTime,
+        firstArtifactToolFinishAt,
+        lastArtifactToolFinishAt,
+        artifactToolCount,
+    } = params
+    if (artifactToolCount === 0 || firstArtifactToolFinishAt === null) {
+        console.info(
+            `[⏱ ARTIFACT-ORDERING][${reqId}]${logTag} verdict=no_artifact artifactToolCount=0 lastTextAtMs=${lastTextChunkTime} firstArtifactAtMs=null lastArtifactAtMs=null orderingGapMs=null`,
+        )
+        return
+    }
+    const lastText = lastTextChunkTime
+    const firstArt = firstArtifactToolFinishAt
+    const lastArt = lastArtifactToolFinishAt ?? firstArt
+    let verdict: "ordered" | "concurrent" | "reversed"
+    if (lastArt >= lastText) {
+        verdict = "ordered"
+    } else if (firstArt >= lastText) {
+        // First artifact is after last text, but last artifact is
+        // before — unusual, treat as concurrent.
+        verdict = "concurrent"
+    } else {
+        // Even the first artifact landed before the last text — text
+        // finished streaming AFTER the artifact event, so the user
+        // sees text wrap around / below the artifact signal.
+        verdict = "reversed"
+    }
+    const orderingGapMs = lastArt - lastText
+    console.info(
+        `[⏱ ARTIFACT-ORDERING][${reqId}]${logTag} verdict=${verdict} artifactToolCount=${artifactToolCount} lastTextAtMs=${lastText} firstArtifactAtMs=${firstArt} lastArtifactAtMs=${lastArt} orderingGapMs=${orderingGapMs}`,
+    )
+}
+
+// ────────────────────────────────────────────────────────────────
 // buildStepStream
 // ────────────────────────────────────────────────────────────────
 
@@ -400,6 +528,28 @@ export function buildStepStream(params: {
             let toolsReasoningBetweenTextCount = 0
             let toolsLastChunkWasReasoning = false
 
+            // ── Verdict telemetry (E2E iteration 10) ──
+            // Grep-friendly per-turn verdict lines that make two UX
+            // invariants inspectable without parsing raw chunk logs:
+            //   1. [⏱ STREAM-SMOOTHNESS] pass=<y|n> — are text-deltas
+            //      arriving at a word-by-word cadence?
+            //   2. [⏱ ARTIFACT-ORDERING] verdict=<...> — does the
+            //      artifact/validation signal land AFTER the last
+            //      text-delta (desired UX)?
+            // Thresholds documented next to their use site below.
+            let firstArtifactToolFinishAt: number | null = null
+            let lastArtifactToolFinishAt: number | null = null
+            let artifactToolCount = 0
+            // Tools whose completion signals the user-facing
+            // artifact/validation panel surface — any of these firing
+            // during the turn means this was an artifact-generating
+            // turn and the ordering verdict applies.
+            const ARTIFACT_SURFACE_TOOLS = new Set([
+                "createArtifact",
+                "updateArtifact",
+                "submitStageForValidation",
+            ])
+
             // ── Tool-boundary instrumentation (E2E iteration 3) ──
             // Uses AI SDK v6 step + tool-call callbacks to answer: when the
             // tools-stream pauses in the middle of a text run (e.g. the
@@ -451,7 +601,14 @@ export function buildStepStream(params: {
                 stepNumber?: number
             }) => {
                 const relMs = Date.now() - toolsStreamStart
-                lastToolCallFinishAt = Date.now()
+                const nowAbs = Date.now()
+                lastToolCallFinishAt = nowAbs
+                // Track artifact-surface tools for ordering verdict.
+                if (event.success && ARTIFACT_SURFACE_TOOLS.has(event.toolCall.toolName)) {
+                    if (firstArtifactToolFinishAt === null) firstArtifactToolFinishAt = nowAbs
+                    lastArtifactToolFinishAt = nowAbs
+                    artifactToolCount += 1
+                }
                 console.info(`${toolBoundaryTag} tool_call_finish toolName=${event.toolCall.toolName} toolCallId=${event.toolCall.toolCallId} success=${event.success} durationMs=${event.durationMs}ms stepNumber=${event.stepNumber ?? "?"} elapsedSinceStreamStart=${relMs}ms`)
             }
 
@@ -693,6 +850,21 @@ export function buildStepStream(params: {
                     const composeTotal = (toolsFirstTextDeltaAt > 0 ? finishWrittenAt - toolsFirstTextDeltaAt : 0)
                     console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} finish_written t=${finishWrittenAt - toolsStreamStart}ms composeTotal=${composeTotal}ms`)
                     console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} summary: total=${finishWrittenAt - toolsStreamStart}ms textChunks=${toolsTextChunkCount} composedChars=${toolsComposedChars} maxGap=${toolsMaxGapMs}ms gapsOver200ms=${toolsGapsOver200ms} reasoningChunks=${toolsReasoningChunkCount} reasoningInterruptions=${toolsReasoningBetweenTextCount}`)
+                    emitStreamSmoothnessVerdict({
+                        reqId: toolsStreamReqId,
+                        logTag,
+                        textChunkCount: toolsTextChunkCount,
+                        composedChars: toolsComposedChars,
+                        maxGapMs: toolsMaxGapMs,
+                    })
+                    emitArtifactOrderingVerdict({
+                        reqId: toolsStreamReqId,
+                        logTag,
+                        lastTextChunkTime: toolsLastTextChunkTime,
+                        firstArtifactToolFinishAt,
+                        lastArtifactToolFinishAt,
+                        artifactToolCount,
+                    })
                     break
                 }
 
@@ -746,6 +918,21 @@ export function buildStepStream(params: {
                     emitDurationPart()
                     writer.write(chunk)
                     console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} summary: outcome=error total=${errAt - toolsStreamStart}ms textChunks=${toolsTextChunkCount} composedChars=${toolsComposedChars} maxGap=${toolsMaxGapMs}ms gapsOver200ms=${toolsGapsOver200ms} reasoningChunks=${toolsReasoningChunkCount} reasoningInterruptions=${toolsReasoningBetweenTextCount}`)
+                    emitStreamSmoothnessVerdict({
+                        reqId: toolsStreamReqId,
+                        logTag,
+                        textChunkCount: toolsTextChunkCount,
+                        composedChars: toolsComposedChars,
+                        maxGapMs: toolsMaxGapMs,
+                    })
+                    emitArtifactOrderingVerdict({
+                        reqId: toolsStreamReqId,
+                        logTag,
+                        lastTextChunkTime: toolsLastTextChunkTime,
+                        firstArtifactToolFinishAt,
+                        lastArtifactToolFinishAt,
+                        artifactToolCount,
+                    })
                     break
                 }
 
@@ -759,6 +946,21 @@ export function buildStepStream(params: {
                     writer.write(chunk)
                     const abortAt = Date.now()
                     console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} summary: outcome=abort total=${abortAt - toolsStreamStart}ms textChunks=${toolsTextChunkCount} composedChars=${toolsComposedChars} maxGap=${toolsMaxGapMs}ms gapsOver200ms=${toolsGapsOver200ms} reasoningChunks=${toolsReasoningChunkCount} reasoningInterruptions=${toolsReasoningBetweenTextCount}`)
+                    emitStreamSmoothnessVerdict({
+                        reqId: toolsStreamReqId,
+                        logTag,
+                        textChunkCount: toolsTextChunkCount,
+                        composedChars: toolsComposedChars,
+                        maxGapMs: toolsMaxGapMs,
+                    })
+                    emitArtifactOrderingVerdict({
+                        reqId: toolsStreamReqId,
+                        logTag,
+                        lastTextChunkTime: toolsLastTextChunkTime,
+                        firstArtifactToolFinishAt,
+                        lastArtifactToolFinishAt,
+                        artifactToolCount,
+                    })
                     break
                 }
 
