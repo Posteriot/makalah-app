@@ -9,7 +9,6 @@ import type { PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 import type { ReasoningLiveDataPart } from "@/lib/ai/curated-trace"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
-import { pipeUITextCoalesce } from "@/lib/ai/harness/create-readable-text-transform"
 import { pipeYamlRender } from "@json-render/yaml"
 import { PLAN_DATA_PART_TYPE } from "@/lib/ai/harness/plan-spec"
 import type { PlanSpec } from "@/lib/ai/harness/plan-spec"
@@ -344,11 +343,17 @@ export function buildStepStream(params: {
             //     because pipePlanCapture never saw the close-fence in
             //     a single buffer flush and pipeYamlRender likewise
             //     missed the fence.
-            // Sentence-level UI smoothness is now provided downstream
-            // by pipeUITextCoalesce (see below) which operates AFTER
-            // pipeYamlRender on UIMessageChunk, so fence detection in
-            // pipePlanCapture + pipeYamlRender sees the native model
-            // chunk granularity that test-1 proved is compatible.
+            // UPDATE (iteration 9): the post-pipeYamlRender
+            // pipeUITextCoalesce that once supplied sentence-level UI
+            // smoothness has also been removed — it was coalescing
+            // per-char text-deltas from pipeYamlRender into
+            // sentence-level bursts (stage-1 test-1 showed maxGap=10s
+            // mid-stream) and caused tool-output parts to appear
+            // ordered before the final buffered text chunks. Streams
+            // now flow at the native pipeYamlRender granularity, which
+            // the reference worktree
+            // /Users/eriksupit/Desktop/makalahapp/.worktrees/chat-naskah-pages-enforcement
+            // uses and which the client renders smoothly.
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const streamTextConfig: any = {
                 model: executionConfig.model,
@@ -528,16 +533,14 @@ export function buildStepStream(params: {
                 makeChunkCountTap("afterPipeYamlRender"),
             ) as typeof yamlTransformedStream
 
-            // Post-yaml UI coalescer (E2E iteration 5): re-coalesce the
-            // per-character text-deltas that pipeYamlRender emits back to
-            // sentence-level units. Without this, iteration 3/4's transform
-            // at streamText level is effectively undone for user-visible
-            // text (evidence: test-2 rerun showed textChunks = composedChars
-            // = 1:1 at the writer loop).
-            const coalescedStream = pipeUITextCoalesce(afterYamlRender) as typeof yamlTransformedStream
-            const afterCoalesce = coalescedStream.pipeThrough(
-                makeChunkCountTap("afterUITextCoalesce"),
-            ) as typeof coalescedStream
+            // NOTE (E2E iteration 9): pipeUITextCoalesce was removed here.
+            // It was coalescing per-char text-deltas from pipeYamlRender into
+            // sentence-level bursts (maxGap=10s in stage-1 test-1 log), which
+            // manifested as "kalimat terpotong, muncul tiba-tiba" in the UI
+            // and caused tool-output parts to appear ordered BEFORE the final
+            // buffered text chunks. The reference worktree
+            // /Users/eriksupit/Desktop/makalahapp/.worktrees/chat-naskah-pages-enforcement
+            // does not have this coalescer and streams smoothly per-char.
 
             // ── Stream writer loop ──
             // Wrapped in try/catch so a streamText failure (network error,
@@ -546,7 +549,7 @@ export function buildStepStream(params: {
             // the onFinish handler completes the step inside its own try block;
             // we leave the original error unmasked.
             try {
-            for await (const chunk of iterateStream(afterCoalesce)) {
+            for await (const chunk of iterateStream(afterYamlRender)) {
                 // Capture data-spec parts emitted by pipeYamlRender for DB persistence
                 if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
                     try {

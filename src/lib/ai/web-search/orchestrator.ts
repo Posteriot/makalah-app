@@ -35,7 +35,6 @@ import { pipeYamlRender } from "@json-render/yaml"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
-import { pipeUITextCoalesce } from "@/lib/ai/harness/create-readable-text-transform"
 import { PLAN_DATA_PART_TYPE, type PlanSpec, planSpecSchema, UNFENCED_PLAN_REGEX } from "@/lib/ai/harness/plan-spec"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
 import {
@@ -670,8 +669,10 @@ export async function executeWebSearch(
       // streamText level fragments text-deltas at `\n` boundaries,
       // which splits `\n```\n` fence-closers across chunks and
       // breaks pipePlanCapture / pipeYamlRender fence detection.
-      // UI smoothness is handled by pipeUITextCoalesce downstream
-      // instead. The same wiring is mirrored on the search path here.
+      // UPDATE (iteration 9): the downstream pipeUITextCoalesce has
+      // also been removed — see the fuller rationale at
+      // src/lib/chat-harness/executor/build-step-stream.ts. Streams now
+      // flow at native pipeYamlRender granularity on both paths.
       const startComposeStream = (model: LanguageModel) => streamText({
         model,
         messages: composeMessages,
@@ -1144,10 +1145,9 @@ export async function executeWebSearch(
         // with AI SDK's textDelta format, then pipeYamlRender transforms to @json-render format.
         const planStream = pipePlanCapture(uiStream) as typeof uiStream
         const yamlStream = config.isDraftingStage ? pipeYamlRender(planStream) : planStream
-        // Post-yaml UI coalescer (E2E iteration 5): re-coalesce the per-char
-        // text-deltas that pipeYamlRender emits back to sentence-level
-        // units. Mirror of the tools path wiring in build-step-stream.ts.
-        return pipeUITextCoalesce(yamlStream)
+        // NOTE (E2E iteration 9): pipeUITextCoalesce removed here — see
+        // commentary in src/lib/chat-harness/executor/build-step-stream.ts.
+        return yamlStream
       }
 
       // ── Run compose with one-time failover ──
