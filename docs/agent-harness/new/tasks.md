@@ -1286,7 +1286,9 @@ Returns `Response` on early-return paths (web search result, reference inventory
 
 ## Phase 4: Extract Runtime Policy Layer
 
-**Scope:** Enforcer definitions (lines 2371–2523), enforcer composition into `prepareStep` (lines 3104–3117, 4113–4123), deterministic sync/submit forced routing (lines 2779–2843), auto-rescue policy inside tool definitions (lines 1735–1759, 1921–1945), and choice workflow resolution semantics.
+**Scope:** Enforcer definitions (route.ts:300–429), enforcer composition into `prepareStep` (route.ts:455–464, 628–636), deterministic sync/submit forced routing (already extracted to context/assemble-step-context.ts:254–258, only consumption in route.ts), auto-rescue policy inside tool definitions (already in executor/build-tool-registry.ts:188–214, 372–399), and choice workflow resolution semantics.
+
+> **Line number note (post-Phase 3):** Phases 1+2+3 reduced route.ts from 4889 → 731 lines. Auto-rescue and deterministic routing were already extracted in Phases 2+3. Enforcers and composition IIFEs remain in route.ts at new positions.
 
 **Goal:** Turn scattered execution law into one runtime-visible policy layer. After this phase, route.ts has NO inline policy decisions — all enforcement and approval logic lives in `src/lib/chat-harness/policy/`.
 
@@ -1317,7 +1319,7 @@ Returns `Response` on early-return paths (web search result, reference inventory
   - `isCompileThenFinalize: boolean`
   - `shouldEnforceArtifactChain: boolean`
   - `planHasIncompleteTasks: boolean`
-  - `stepTimingRef: { current: number }` — mutable ref for `enforcerStepStartTime` (route.ts:2483). Written by universal reactive enforcer on each prepareStep call, read by onFinish handler for step timing telemetry. Must be a ref object so both enforcer and onFinish share the same mutable state.
+  - `stepTimingRef: { current: number }` — mutable ref for `enforcerStepStartTime` (route.ts:391). Written by universal reactive enforcer on each prepareStep call, read by onFinish handler for step timing telemetry. Must be a ref object so both enforcer and onFinish share the same mutable state.
 - `AutoRescueResult`:
   - `rescued: boolean`
   - `refreshedSession: PaperSession | undefined`
@@ -1336,9 +1338,9 @@ Returns `Response` on early-return paths (web search result, reference inventory
 **Create:** `src/lib/chat-harness/policy/enforcers.ts`
 
 **What to extract from `route.ts`:**
-- Revision chain enforcer (lines 2371–2414)
-- Drafting choice artifact enforcer (lines 2435–2476)
-- Universal reactive enforcer (lines 2484–2523)
+- Revision chain enforcer (route.ts:302–336)
+- Drafting choice artifact enforcer (route.ts:352–389)
+- Universal reactive enforcer (route.ts:392–429)
 
 **Function signatures:**
 ```typescript
@@ -1366,8 +1368,8 @@ Each returns `undefined` when its activation condition is not met (e.g., not in 
 **Create:** `src/lib/chat-harness/policy/compose-prepare-step.ts`
 
 **What to extract from `route.ts`:**
-- Primary enforcer composition IIFE (lines 3104–3117)
-- Fallback enforcer composition IIFE (lines 4113–4123)
+- Primary enforcer composition IIFE (route.ts:455–464)
+- Fallback enforcer composition IIFE (route.ts:628–636)
 
 **Function signature:**
 ```typescript
@@ -1399,8 +1401,10 @@ export function composePrepareStep(params: {
 **Create:** `src/lib/chat-harness/shared/auto-rescue-policy.ts` (NOT `policy/` — see below)
 
 **What to extract from `route.ts`:**
-- Auto-rescue block in `createArtifact` (lines 1735–1759)
-- Auto-rescue block in `updateArtifact` (lines 1921–1945)
+- Auto-rescue block in `createArtifact` (executor/build-tool-registry.ts:188–214)
+- Auto-rescue block in `updateArtifact` (executor/build-tool-registry.ts:372–399)
+
+**Source file note:** Auto-rescue blocks were extracted from route.ts to executor/build-tool-registry.ts during Phase 2. This task re-extracts them from build-tool-registry.ts into shared/auto-rescue-policy.ts.
 
 **Why `shared/` not `policy/`:** This function is called from inside the artifact tools (Task 2.5, `buildToolRegistry` in `executor/`). If it lived in `policy/`, the import graph becomes `executor/ → policy/`, which creates a circular dependency risk since `policy/` types reference `PaperToolTracker` (produced by executor-adjacent code). Placing auto-rescue in `shared/` (alongside `reasoning-sanitization.ts` from Task 3.9) keeps the import graph acyclic: both `executor/` and `policy/` can import from `shared/`, but neither imports from each other.
 
