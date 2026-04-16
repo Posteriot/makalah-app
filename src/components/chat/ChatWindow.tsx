@@ -588,6 +588,13 @@ export function ChatWindow({
   const staleStreamingTimeoutRef = useRef<number | null>(null)
   const sourceFocusTimeoutRef = useRef<number | null>(null)
   const artifactRevealRafRef = useRef<number | null>(null)
+  // Fallback auto-open (E2E iteration 9): track turn start + last opened
+  // artifact so a CHAIN-COMPLETION that creates an artifact without
+  // emitting a successful tool-output part (e.g. createArtifact refValidation
+  // failed server-side but fallback persisted the artifact anyway) can still
+  // trigger the artifact panel via Convex reactivity in extractCreatedArtifacts.
+  const lastTurnStartRef = useRef<number>(0)
+  const lastAutoOpenedArtifactIdRef = useRef<Id<"artifacts"> | null>(null)
   const previousStatusRef = useRef<string>("ready")
   const stoppedManuallyRef = useRef(false)
   const starterPromptLastAttemptAtRef = useRef(new Map<string, number>())
@@ -971,6 +978,11 @@ export function ChatWindow({
             artifactCount: createdArtifacts.length,
           })
         }
+        // Mark eagerly BEFORE scheduling rAFs so the Convex-reactive
+        // fallback effect (which may fire as `conversationArtifacts`
+        // updates and `stageStatus` flips to pending_validation) sees
+        // the id already claimed and short-circuits (review finding #2).
+        lastAutoOpenedArtifactIdRef.current = targetArtifactId
         // Double rAF: first rAF runs before next repaint, second rAF
         // runs after that repaint completes — guaranteeing the final
         // text has painted before the panel layout shift occurs
@@ -1002,6 +1014,72 @@ export function ChatWindow({
       setOptimisticPendingValidation(false)
     }
   }, [status, optimisticPendingValidation])
+
+  // Reset fallback auto-open tracking when conversation changes so state
+  // from a previous conversation never leaks into the current one.
+  useEffect(() => {
+    lastTurnStartRef.current = 0
+    lastAutoOpenedArtifactIdRef.current = null
+  }, [safeConversationId])
+
+  // Fallback auto-open (E2E iteration 9): when the happy-path tool-output
+  // reveal fails (e.g. createArtifact rejected by refValidation so the
+  // server's CHAIN-COMPLETION path persists the artifact without emitting
+  // a successful tool-output part), the onFinish `extractCreatedArtifacts`
+  // path produces zero entries and the panel stays closed. This effect
+  // watches Convex's reactive `conversationArtifacts` list and fires the
+  // same double-rAF → onArtifactSelect fallback.
+  //
+  // Gate NOTE (review finding #1): we gate on
+  // `stageStatus === "pending_validation"` rather than on
+  // `optimisticPendingValidation` because in the CHAIN-COMPLETION scenario
+  // the model never emits `tool-submitStageForValidation` with
+  // `success: true`, so `hasSubmitForValidation(message)` stays false and
+  // the optimistic flag never flips. `stageStatus` is reactive from
+  // Convex (via usePaperSession) and DOES flip to "pending_validation"
+  // when the server-side CHAIN-COMPLETION persists the submit — that's
+  // the signal we need. We keep `optimisticPendingValidation` in the
+  // condition as a fast-path for happy-path latency, but either one
+  // opens the gate.
+  useEffect(() => {
+    if (!onArtifactSelect) return
+    if (!optimisticPendingValidation && stageStatus !== "pending_validation") return
+    if (!conversationArtifacts || conversationArtifacts.length === 0) return
+    if (lastTurnStartRef.current === 0) return
+
+    // listByConversation orders desc → newest first
+    const latest = conversationArtifacts[0]
+    if (!latest) return
+
+    // Use _creationTime (Convex-native) to compare against the turn-start
+    // stamp since it is always present.
+    const createdAt = latest._creationTime
+    if (typeof createdAt !== "number") return
+    if (createdAt <= lastTurnStartRef.current) return
+    if (lastAutoOpenedArtifactIdRef.current === latest._id) return
+
+    const targetArtifactId = latest._id
+    // Mark eagerly so a concurrent happy-path reveal (review finding #2)
+    // cannot also trigger; `useArtifactTabs.openTab` is idempotent but we
+    // avoid duplicated [ARTIFACT-REVEAL] logs and double rAF chains.
+    lastAutoOpenedArtifactIdRef.current = targetArtifactId
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[ARTIFACT-REVEAL][fallback] Convex-reactive auto-open", {
+        ts: Date.now(),
+        artifactId: targetArtifactId,
+        turnStartedAt: lastTurnStartRef.current,
+        createdAt,
+        stageStatus,
+      })
+    }
+
+    artifactRevealRafRef.current = requestAnimationFrame(() => {
+      artifactRevealRafRef.current = requestAnimationFrame(() => {
+        artifactRevealRafRef.current = null
+        onArtifactSelect(targetArtifactId)
+      })
+    })
+  }, [conversationArtifacts, optimisticPendingValidation, stageStatus, onArtifactSelect])
 
   const isQuotaRejectedError = useMemo(() => isQuotaExceededChatError(error), [error])
   const quotaRejectedOffer = useMemo(
@@ -1185,6 +1263,9 @@ export function ChatWindow({
       body.inheritAttachmentContext = true
     }
 
+    // Stamp turn start so the Convex-backed fallback auto-open effect
+    // can distinguish newly-created artifacts from pre-existing ones.
+    lastTurnStartRef.current = Date.now()
     if (imageFileParts.length > 0) {
       sendMessage({ text, files: imageFileParts }, { body })
     } else {
@@ -1280,6 +1361,8 @@ export function ChatWindow({
       customText: params.customText,
     })
 
+    // Stamp turn start so fallback auto-open can detect post-turn artifacts
+    lastTurnStartRef.current = Date.now()
     sendMessage({ text: syntheticText }, { body: { interactionEvent: event } })
   }, [conversationId, paperSession, sendMessage])
 
@@ -1972,6 +2055,10 @@ export function ChatWindow({
     }
     setIsAwaitingAssistantStart(true)
     pendingScrollToBottomRef.current = true
+    // Stamp turn start so the fallback auto-open effect (review finding
+    // #3) can distinguish artifacts created DURING this regenerated
+    // turn from any persisted before.
+    lastTurnStartRef.current = Date.now()
     regenerate()
   }
 
