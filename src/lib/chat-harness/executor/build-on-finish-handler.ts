@@ -687,6 +687,14 @@ export function buildOnFinishHandler(
                     ],
                     recommendedId: "lanjutkan-diskusi",
                     appendValidationOption: true,
+                    // Iteration 7: declare workflowAction on the shell so
+                    // the emitted spec satisfies the strict v2 contract
+                    // (parseChoiceSpecForRender returns contractVersion="v2"
+                    // rather than "legacy-render"). The selected option id
+                    // still drives the actual server-side decision —
+                    // validation option gets validation treatment via
+                    // choice-request.ts VALIDATE_OPTION_ID handling.
+                    workflowAction: "continue_discussion",
                 })
                 capturedSpecRef.current = fallbackSpec as Spec
                 console.info(`[CHOICE-CARD][fallback-injected] stage=${paperStageScope} reason=model_did_not_emit_choice_card${logTag ? " (fallback model)" : ""}`)
