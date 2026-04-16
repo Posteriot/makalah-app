@@ -1566,4 +1566,147 @@ export default defineSchema({
   })
     .index("by_templateType", ["templateType"])
     .index("by_active", ["isActive", "templateType"]),
+
+  // ============================================================
+  // Agent Harness V1 — Phase 6 persistence tables
+  // ------------------------------------------------------------
+  // Research doc: .references/agent-harness/research/
+  //   2026-04-15-makalahapp-harness-v1-event-model-and-data-contracts.md
+  //
+  // Contracts:
+  //   RunState       → harnessRuns        (lines 809-831)
+  //   (no direct)    → harnessRunSteps    (derived from step event payloads)
+  //   EventEnvelope  → harnessEvents      (lines 128-142)
+  //   PolicyState    → harnessRuns.policyState sub-object (lines 871-878)
+  //
+  // Invariant: paperSessions / artifacts / conversations / messages
+  // remain authoritative for domain truth. These tables mirror runtime
+  // facts as a reconstructible event stream — never override domain state.
+  // ============================================================
+
+  harnessRuns: defineTable({
+    conversationId: v.id("conversations"),
+    paperSessionId: v.optional(v.id("paperSessions")), // nullable; links when paper flow starts
+    userId: v.id("users"),
+    ownerToken: v.string(), // atomic ownership anchor for resume + duplicate-start prevention
+    status: v.union(
+      v.literal("running"),
+      v.literal("paused"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("aborted"),
+    ),
+    // Workflow domain progression — mirrors paperSessions.currentStage when linked; "intake" default.
+    workflowStage: v.string(),
+    // Workflow lifecycle status — separate from run status per research doc note (workflow can complete
+    // while run is still running, and vice versa).
+    workflowStatus: v.union(
+      v.literal("running"),
+      v.literal("paused"),
+      v.literal("failed"),
+      v.literal("completed"),
+      v.literal("aborted"),
+    ),
+    stepNumber: v.number(), // monotonic per-run counter; incremented atomically via incrementStepNumber mutation
+    currentStepId: v.optional(v.id("harnessRunSteps")),
+    pendingDecisionId: v.optional(v.string()), // authoritative block marker for user pause (Phase 8)
+    policyState: v.optional(
+      v.object({
+        approvalMode: v.union(
+          v.literal("default"),
+          v.literal("required_for_high_impact"),
+        ),
+        currentBoundary: v.union(
+          v.literal("read_only"),
+          v.literal("bounded_mutation"),
+          v.literal("blocked"),
+        ),
+        pendingApprovalDecisionId: v.optional(v.string()),
+        lastPolicyReason: v.optional(v.string()),
+        updatedAt: v.number(),
+      }),
+    ),
+    failureClass: v.optional(
+      v.union(
+        v.literal("entry_failure"),
+        v.literal("state_failure"),
+        v.literal("tool_failure"),
+        v.literal("verification_failure"),
+        v.literal("guard_failure"),
+        v.literal("unexpected_failure"),
+      ),
+    ),
+    failureReason: v.optional(v.string()),
+    startedAt: v.number(),
+    updatedAt: v.number(),
+    pausedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_conversation", ["conversationId", "startedAt"])
+    .index("by_paperSession", ["paperSessionId"])
+    .index("by_ownerToken", ["ownerToken"])
+    .index("by_user_updated", ["userId", "updatedAt"]),
+
+  harnessRunSteps: defineTable({
+    runId: v.id("harnessRuns"),
+    stepIndex: v.number(), // monotonic per-run; matches stepNumber at creation time
+    status: v.union(
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
+    executorResultSummary: v.optional(
+      v.object({
+        finishReason: v.string(),
+        inputTokens: v.optional(v.number()),
+        outputTokens: v.optional(v.number()),
+        totalTokens: v.optional(v.number()),
+      }),
+    ),
+    // Flattened snapshot of StepVerificationResult (omits `leakageDetails` body and
+    // `streamContentOverride` string to cap row size; retains booleans for replay).
+    verificationSummary: v.optional(
+      v.object({
+        canContinue: v.boolean(),
+        mustPause: v.boolean(),
+        pauseReason: v.optional(v.string()),
+        canComplete: v.boolean(),
+        completionBlockers: v.array(v.string()),
+        leakageDetected: v.boolean(),
+        artifactChainComplete: v.boolean(),
+        planComplete: v.boolean(),
+        streamContentOverridden: v.boolean(),
+      }),
+    ),
+    toolCalls: v.array(
+      v.object({
+        toolName: v.string(),
+        toolCallId: v.optional(v.string()),
+        resultStatus: v.optional(v.string()),
+      }),
+    ),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_run", ["runId"])
+    .index("by_run_step", ["runId", "stepIndex"]),
+
+  harnessEvents: defineTable({
+    eventId: v.string(), // stable dedupable identifier; generated by mutation if omitted
+    eventType: v.string(), // canonical name from research doc; validated at adapter layer
+    schemaVersion: v.number(), // starts at 1; incremented when payload contract evolves
+    occurredAt: v.number(), // ms epoch (converts from ISO at API boundaries if needed)
+    userId: v.id("users"),
+    sessionId: v.string(), // request-scoped session identifier (threaded from RunLane)
+    chatId: v.id("conversations"),
+    runId: v.optional(v.id("harnessRuns")), // absent for pre-run entry events
+    stepId: v.optional(v.id("harnessRunSteps")),
+    correlationId: v.optional(v.string()), // groups events for one user action
+    causationEventId: v.optional(v.string()), // causal chain pointer
+    payload: v.any(), // event-specific; validated by TypeScript at adapter layer
+  })
+    .index("by_run_time", ["runId", "occurredAt"])
+    .index("by_correlation", ["correlationId"])
+    .index("by_eventType_time", ["eventType", "occurredAt"])
+    .index("by_chat_time", ["chatId", "occurredAt"]),
 })
