@@ -18,6 +18,16 @@ export interface StepVerificationResult {
 }
 
 // ────────────────────────────────────────────────────────────────
+// Paper Session (narrow type for verification scope)
+// ────────────────────────────────────────────────────────────────
+
+/** Narrow paper session type used only by verification functions. */
+export interface PaperSessionForVerification {
+    currentStage: string
+    stageStatus?: string
+}
+
+// ────────────────────────────────────────────────────────────────
 // Run Readiness
 // ────────────────────────────────────────────────────────────────
 
