@@ -171,6 +171,18 @@ export function buildOnFinishHandler(
     }): Promise<void> => {
         const { text, steps, providerMetadata, usage } = result
 
+        // ── ONFINISH timing instrumentation (E2E iteration 1) ──
+        // Per-step elapsed lines + final breakdown summary so we can locate
+        // tail-latency contributors in this handler. Names are stable and
+        // grep-friendly. Conditional blocks only emit a line when they fire.
+        const onFinishStart = Date.now()
+        const onFinishReqId = lane.requestId
+        const breakdown: Record<string, number> = {}
+        const measureStep = (name: string, elapsed: number): void => {
+            breakdown[name] = elapsed
+            console.info(`[⏱ ONFINISH][${onFinishReqId}] step=${name} elapsed=${elapsed}ms`)
+        }
+
         // ── Step timing log (primary only, when enforcerStepStartTime provided) ──
         if (streamCtx.enforcerStepStartTime && paperStageScope && Array.isArray(steps) && steps.length > 0) {
             const lastIdx = steps.length - 1
@@ -317,10 +329,12 @@ export function buildOnFinishHandler(
             && !paperToolTracker.sawUpdateArtifactSuccess
             && normalizedLastUserContent
             && model) {
+            const revisionClassifyStart = Date.now()
             const revisionResult = await classifyRevisionIntent({
                 lastUserContent: normalizedLastUserContent,
                 model,
             })
+            measureStep("revisionClassify", Date.now() - revisionClassifyStart)
             if (revisionResult?.output.hasRevisionIntent && revisionResult.output.confidence >= 0.6) {
                 console.warn(
                     `[revision-intent-answered-without-tools] stage=${paperSession.currentStage} ` +
@@ -336,6 +350,7 @@ export function buildOnFinishHandler(
             )
             : []
 
+        const verifyStepStart = Date.now()
         const stepVerification = await verifyStepOutcome({
             text: normalizedText,
             toolChainOrder,
@@ -353,6 +368,7 @@ export function buildOnFinishHandler(
             stepId: streamCtx.activeStep?.stepId ?? null,
             emitEvents: true, // definitive verification pass — single emit per step
         })
+        measureStep("verifyStep", Date.now() - verifyStepStart)
 
         // Log completion blockers from verification
         if (stepVerification.completionBlockers.length > 0 && paperStageScope) {
@@ -397,6 +413,7 @@ export function buildOnFinishHandler(
             !paperToolTracker.sawUpdateArtifactSuccess
         ) {
             console.info(`[PAPER][rescue] stage=lampiran reason=${lampiranRescueCheck.reason} fallbackPolicy=${resolvedWorkflow?.fallbackPolicy ?? "legacy"}${logTag ? ` path=fallback` : ""}`)
+            const lampiranRescueStart = Date.now()
             try {
                 const lampiranStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["lampiran"]
                 const alasan = typeof lampiranStageData?.alasanTidakAda === "string" ? lampiranStageData.alasanTidakAda : ""
@@ -439,6 +456,7 @@ export function buildOnFinishHandler(
             } catch (fallbackErr) {
                 console.error(`[LAMPIRAN][server-fallback]${logTag} failed:`, fallbackErr)
             }
+            measureStep("lampiranRescue", Date.now() - lampiranRescueStart)
         }
 
         // ── Server-owned fallback: judul title selection ──
@@ -456,6 +474,7 @@ export function buildOnFinishHandler(
             normalizedText.length > 0
         ) {
             console.info(`[PAPER][rescue] stage=judul reason=${judulRescueCheck.reason} fallbackPolicy=${resolvedWorkflow?.fallbackPolicy ?? "legacy"}${logTag ? ` path=fallback` : ""}`)
+            const judulRescueStart = Date.now()
             try {
                 let selectedTitle: string | undefined
                 try {
@@ -558,14 +577,17 @@ export function buildOnFinishHandler(
             } catch (fallbackErr) {
                 console.error(`[JUDUL][server-fallback]${logTag} failed:`, fallbackErr)
             }
+            measureStep("judulRescue", Date.now() - judulRescueStart)
         }
 
         // ── Feature flag #2: Source title enrichment (primary only) ──
         if (enableSourceTitleEnrichment && normalizedText.length > 0 && sources && sources.length > 0) {
+            const enrichSourcesStart = Date.now()
             sources = await enrichSourcesWithFetchedTitles(sources, {
                 concurrency: 4,
                 timeoutMs: 5000,
             })
+            measureStep("enrichSources", Date.now() - enrichSourcesStart)
         }
 
         // ── Harness chain completion ──
@@ -620,6 +642,7 @@ export function buildOnFinishHandler(
             } catch (chainErr) {
                 console.error(`[CHAIN-COMPLETION]${logTag} stage=${paperStageScope} failed after ${Date.now() - chainStartTime}ms:`, chainErr)
             }
+            measureStep("chainCompletion", Date.now() - chainStartTime)
         }
 
         // ── Empty response recovery ──
@@ -682,6 +705,7 @@ export function buildOnFinishHandler(
                 console.info(`[PLAN-SNAPSHOT]${logTag} stage=${paperStageScope} tasks=${snap.tasks.length} autoCompleted=${paperToolTracker.sawSubmitValidationSuccess} detail=[${taskDetail}]`)
             }
 
+            const saveAssistantMsgStart = Date.now()
             await saveAssistantMessage({
                 conversationId,
                 content: persistedContent,
@@ -694,6 +718,7 @@ export function buildOnFinishHandler(
                 planSnapshot: finalSnapshot,
                 fetchMutationWithToken,
             })
+            measureStep("saveAssistantMsg", Date.now() - saveAssistantMsgStart)
         }
 
         // ── Feature flag #5: Plan spec fallback extraction (primary only) ──
@@ -724,6 +749,7 @@ export function buildOnFinishHandler(
         // ── Persist captured plan to stageData ──
         if (capturedPlanSpecRef.current && paperSession?._id && paperStageScope) {
             const finalPlan = autoCompletePlanOnValidation(capturedPlanSpecRef.current, paperToolTracker.sawSubmitValidationSuccess)
+            const updatePlanStart = Date.now()
             try {
                 await fetchMutationWithToken(api.paperSessions.updatePlan, {
                     sessionId: paperSession._id,
@@ -734,10 +760,12 @@ export function buildOnFinishHandler(
             } catch (e) {
                 console.warn(`[PLAN-CAPTURE]${logTag ? " fallback" : ""} persist failed:`, e)
             }
+            measureStep("updatePlan", Date.now() - updatePlanStart)
         }
 
         // ── Billing: record token usage ──
         if (usage) {
+            const recordUsageStart = Date.now()
             await recordUsageAfterOperation({
                 userId: billingContext.userId,
                 conversationId,
@@ -749,9 +777,14 @@ export function buildOnFinishHandler(
                 operationType: billingContext.operationType as OperationType,
                 convexToken,
             }).catch(err => Sentry.captureException(err, { tags: { subsystem: "billing" } }))
+            measureStep("recordUsage", Date.now() - recordUsageStart)
         }
 
         // ── Telemetry ──
+        // Note: logAiTelemetry is fire-and-forget (no await). Measurement here
+        // only captures the synchronous call cost — the actual telemetry POST
+        // does not block onFinish.
+        const logTelemetryStart = Date.now()
         logAiTelemetry({
             token: convexToken,
             userId,
@@ -768,6 +801,7 @@ export function buildOnFinishHandler(
             outputTokens: usage?.outputTokens,
             ...streamCtx.telemetry.skillContext,
         })
+        measureStep("logTelemetry", Date.now() - logTelemetryStart)
 
         // ── Title update ──
         if (normalizedText.length > 0) {
@@ -775,12 +809,14 @@ export function buildOnFinishHandler(
                 process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
                 10
             )
+            const updateTitleStart = Date.now()
             await maybeUpdateTitleFromAI({
                 assistantText: normalizedText,
                 minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
                     ? minPairsForFinalTitle
                     : 3,
             })
+            measureStep("updateTitle", Date.now() - updateTitleStart)
         }
 
         // ── Harness step persistence (Task 6.4b) ──
@@ -827,6 +863,7 @@ export function buildOnFinishHandler(
             // not see a "done" event for a step that is still marked running
             // (or lacks a summary) in the persistence layer.
             let stepPersisted = false
+            const completeStepStart = Date.now()
             try {
                 await runStore.completeStep(activeStep.stepId, {
                     status: stepStatus,
@@ -843,6 +880,7 @@ export function buildOnFinishHandler(
                     err,
                 )
             }
+            measureStep("completeStep", Date.now() - completeStepStart)
 
             if (stepPersisted) {
                 // Emit step_completed.
@@ -895,6 +933,9 @@ export function buildOnFinishHandler(
             // and adding side-effect emits there risks breaking the stream
             // pipeline. The cost is timestamp accuracy: emits fire at step
             // completion, not at the moment the model issued each call.
+            // Note: tool emits are fire-and-forget (.catch only). Measurement
+            // captures only the synchronous scheduling cost.
+            const aggregateEmitStart = Date.now()
             for (let i = 0; i < toolCalls.length; i++) {
                 const tc = toolCalls[i]
                 const argsBlob = serializeToolArgs(toolCallArgs[i])
@@ -936,7 +977,17 @@ export function buildOnFinishHandler(
                         .catch(err => console.warn(`[HARNESS][event] tool_result_received emit failed`, err))
                 }
             }
+            measureStep("aggregateEmits", Date.now() - aggregateEmitStart)
         }
+
+        // ── ONFINISH summary ──
+        // Final breakdown line so reviewers can grep "[⏱ ONFINISH]" + "total="
+        // and see where the tail latency went per request.
+        const onFinishTotal = Date.now() - onFinishStart
+        const breakdownStr = Object.entries(breakdown)
+            .map(([k, v]) => `${k}=${v}`)
+            .join(",")
+        console.info(`[⏱ ONFINISH][${onFinishReqId}] total=${onFinishTotal}ms breakdown=${breakdownStr || "none"}`)
     }
 
     return {

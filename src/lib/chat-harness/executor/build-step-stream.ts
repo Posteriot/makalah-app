@@ -360,6 +360,23 @@ export function buildStepStream(params: {
             if (executionConfig.providerOptions) {
                 streamTextConfig.providerOptions = executionConfig.providerOptions
             }
+            // ── Tools-path stream timing instrumentation (E2E iteration 1) ──
+            // Parity with web-search orchestrator's Phase2 firstToken / STUTTER /
+            // composeTotal logs (src/lib/ai/web-search/orchestrator.ts) so the
+            // non-search path is no longer a blind spot when investigating
+            // streaming smoothness.
+            const toolsStreamReqId = lane.requestId
+            const toolsStreamStart = Date.now()
+            console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} streamText_started`)
+            let toolsFirstTextDeltaAt = 0
+            let toolsLastTextChunkTime = 0
+            let toolsTextChunkCount = 0
+            let toolsComposedChars = 0
+            let toolsMaxGapMs = 0
+            let toolsGapsOver200ms = 0
+            let toolsReasoningChunkCount = 0
+            let toolsReasoningBetweenTextCount = 0
+            let toolsLastChunkWasReasoning = false
             const result = streamText(streamTextConfig)
 
             // ── Stream transforms: pipePlanCapture -> pipeYamlRender ──
@@ -419,6 +436,8 @@ export function buildStepStream(params: {
 
                 if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
                     if (chunk.type === "reasoning-delta") {
+                        toolsReasoningChunkCount += 1
+                        toolsLastChunkWasReasoning = true
                         reasoningAccumulator.onReasoningDelta(
                             typeof (chunk as { delta?: unknown }).delta === "string"
                                 ? (chunk as { delta?: unknown }).delta as string
@@ -440,6 +459,9 @@ export function buildStepStream(params: {
                 }
 
                 if (chunk.type === "finish") {
+                    const finishReceivedAt = Date.now()
+                    console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} finish_received elapsedFromStart=${finishReceivedAt - toolsStreamStart}ms`)
+
                     // Log captured YAML spec for persistence
                     if (capturedSpecRef.current && capturedSpecRef.current.root) {
                         const elementTypes = Object.entries(capturedSpecRef.current.elements || {}).map(([id, el]) => `${id}:${(el as { type?: string }).type ?? '?'}`).join(", ")
@@ -517,6 +539,10 @@ export function buildStepStream(params: {
                     }))
                     emitDurationPart()
                     writer.write(chunk)
+                    const finishWrittenAt = Date.now()
+                    const composeTotal = (toolsFirstTextDeltaAt > 0 ? finishWrittenAt - toolsFirstTextDeltaAt : 0)
+                    console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} finish_written t=${finishWrittenAt - toolsStreamStart}ms composeTotal=${composeTotal}ms`)
+                    console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} summary: total=${finishWrittenAt - toolsStreamStart}ms textChunks=${toolsTextChunkCount} composedChars=${toolsComposedChars} maxGap=${toolsMaxGapMs}ms gapsOver200ms=${toolsGapsOver200ms} reasoningChunks=${toolsReasoningChunkCount} reasoningInterruptions=${toolsReasoningBetweenTextCount}`)
                     break
                 }
 
@@ -529,6 +555,8 @@ export function buildStepStream(params: {
                     }))
                     emitDurationPart()
                     writer.write(chunk)
+                    const errorAt = Date.now()
+                    console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} summary: outcome=error total=${errorAt - toolsStreamStart}ms textChunks=${toolsTextChunkCount} composedChars=${toolsComposedChars} maxGap=${toolsMaxGapMs}ms gapsOver200ms=${toolsGapsOver200ms} reasoningChunks=${toolsReasoningChunkCount} reasoningInterruptions=${toolsReasoningBetweenTextCount}`)
                     break
                 }
 
@@ -540,6 +568,8 @@ export function buildStepStream(params: {
                     }))
                     emitDurationPart()
                     writer.write(chunk)
+                    const abortAt = Date.now()
+                    console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} summary: outcome=abort total=${abortAt - toolsStreamStart}ms textChunks=${toolsTextChunkCount} composedChars=${toolsComposedChars} maxGap=${toolsMaxGapMs}ms gapsOver200ms=${toolsGapsOver200ms} reasoningChunks=${toolsReasoningChunkCount} reasoningInterruptions=${toolsReasoningBetweenTextCount}`)
                     break
                 }
 
@@ -547,6 +577,29 @@ export function buildStepStream(params: {
                 if (chunk.type === "text-delta" && typeof (chunk as { delta?: unknown }).delta === "string") {
                     const delta = (chunk as { delta: string }).delta
                     accumulatedStreamText += delta
+
+                    // ── Tools-stream timing per text-delta ──
+                    const nowMs = Date.now()
+                    toolsTextChunkCount += 1
+                    toolsComposedChars += delta.length
+                    if (toolsTextChunkCount === 1) {
+                        toolsFirstTextDeltaAt = nowMs
+                        toolsLastTextChunkTime = nowMs
+                        console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} firstTextDelta=${nowMs - toolsStreamStart}ms (time-to-first-text from streamText start)`)
+                    } else {
+                        const gap = nowMs - toolsLastTextChunkTime
+                        if (gap > toolsMaxGapMs) toolsMaxGapMs = gap
+                        if (gap > 200) {
+                            toolsGapsOver200ms += 1
+                            console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} gap=${gap}ms after chunk#${toolsTextChunkCount} reasoningBetween=${toolsLastChunkWasReasoning}`)
+                        }
+                        toolsLastTextChunkTime = nowMs
+                    }
+                    if (toolsLastChunkWasReasoning) {
+                        toolsReasoningBetweenTextCount += 1
+                        toolsLastChunkWasReasoning = false
+                    }
+
                     if (!paperTurnObservability.firstLeakageMatch) {
                         const match = paperRecoveryLeakagePattern.exec(accumulatedStreamText)
                         if (match && typeof match.index === "number") {
