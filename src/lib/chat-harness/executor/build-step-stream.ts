@@ -14,7 +14,8 @@ import { PLAN_DATA_PART_TYPE } from "@/lib/ai/harness/plan-spec"
 import type { PlanSpec } from "@/lib/ai/harness/plan-spec"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
-import { sanitizeChoiceOutcome, paperRecoveryLeakagePattern } from "@/lib/chat/choice-outcome-guard"
+import { paperRecoveryLeakagePattern } from "@/lib/chat/choice-outcome-guard"
+import { verifyStepOutcome } from "../verification"
 import { buildOnFinishHandler } from "./build-on-finish-handler"
 import type { OnFinishStreamContext } from "./build-on-finish-handler"
 import type {
@@ -388,19 +389,27 @@ export function buildStepStream(params: {
                         console.info(`[F1-F6-TEST] ChoiceCardSpec${logTag} { elements: "${elementTypes}", hasSubmitButton: ${hasSubmitBtn} }`)
                     }
 
-                    // Outcome-gated stream override: action-aware guard on full accumulated stream text
+                    // Outcome-gated stream override via verifyStepOutcome
                     if (!streamContentOverrideRef.current && accumulatedStreamText.length > 0) {
-                        const streamGuardResult = sanitizeChoiceOutcome({
-                            action: resolvedWorkflow?.action ?? "finalize_stage",
+                        const streamVerification = verifyStepOutcome({
                             text: accumulatedStreamText,
-                            hasArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess,
-                            submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
+                            toolChainOrder: [], // stream-side has no step-level tool chain; onFinish handles full chain
+                            paperToolTracker,
+                            paperTurnObservability,
+                            resolvedWorkflow,
+                            choiceInteractionEvent: onFinishConfig.choiceInteractionEvent,
+                            paperSession: onFinishConfig.paperSession
+                                ? { currentStage: onFinishConfig.paperSession.currentStage, stageStatus: onFinishConfig.paperSession.stageStatus }
+                                : null,
+                            paperStageScope,
+                            isDraftingStage: onFinishConfig.isDraftingStage,
+                            isCompileThenFinalize: onFinishConfig.isCompileThenFinalize,
                         })
-                        if (streamGuardResult.wasModified) {
-                            streamContentOverrideRef.current = streamGuardResult.text
+                        if (streamVerification.streamContentOverride) {
+                            streamContentOverrideRef.current = streamVerification.streamContentOverride
                             console.info(
                                 `[PAPER][outcome-guard-stream]${logTag} stage=${paperStageScope} ` +
-                                `violation=${streamGuardResult.violationType} action=${resolvedWorkflow?.action ?? "unknown"} ` +
+                                `action=${resolvedWorkflow?.action ?? "unknown"} ` +
                                 `accumulatedLen=${accumulatedStreamText.length}`
                             )
                             console.info(`[PAPER][outcome-guard-stream]${logTag}[details]`, {

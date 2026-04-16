@@ -12,7 +12,7 @@ import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 import { classifyRevisionIntent } from "@/lib/ai/classifiers/revision-intent-classifier"
 import { logAiTelemetry } from "@/lib/ai/telemetry"
 import { recordUsageAfterOperation, type OperationType } from "@/lib/billing/enforcement"
-import { sanitizeChoiceOutcome } from "@/lib/chat/choice-outcome-guard"
+import { verifyStepOutcome } from "../verification"
 import { UNFENCED_PLAN_REGEX, planSpecSchema, autoCompletePlanOnValidation } from "@/lib/ai/harness/plan-spec"
 import { compileChoiceSpec } from "@/lib/json-render/compile-choice-spec"
 import { getStageLabel } from "../../../../convex/paperSessions/constants"
@@ -112,6 +112,7 @@ export function buildOnFinishHandler(
         paperSession,
         paperStageScope,
         paperToolTracker,
+        paperTurnObservability,
         resolvedWorkflow,
         choiceInteractionEvent,
         isCompileThenFinalize,
@@ -297,31 +298,41 @@ export function buildOnFinishHandler(
             }
         }
 
-        // ── Generic cross-stage partial-save-stall detection ──
-        if (choiceInteractionEvent && paperStageScope) {
-            const wasCommitPoint = resolvedWorkflow?.action !== "continue_discussion"
-            if (wasCommitPoint
-                && paperToolTracker.sawUpdateStageData
-                && !paperToolTracker.sawCreateArtifactSuccess
-                && !paperToolTracker.sawUpdateArtifactSuccess
-                && !paperToolTracker.sawSubmitValidationSuccess) {
-                console.warn(`[CHOICE][partial-save-stall] stage=${paperStageScope} — commit-point choice resulted in updateStageData only, no artifact or submit`)
+        // ── Step verification (replaces inline partial-save-stall + outcome guard) ──
+        const toolChainOrder = Array.isArray(steps)
+            ? steps.flatMap((s: { toolCalls?: Array<{ toolName: string }> }) =>
+                (s.toolCalls ?? []).map(tc => tc.toolName)
+            )
+            : []
+
+        const stepVerification = verifyStepOutcome({
+            text: normalizedText,
+            toolChainOrder,
+            paperToolTracker,
+            paperTurnObservability,
+            resolvedWorkflow,
+            choiceInteractionEvent,
+            paperSession: paperSession ? { currentStage: paperSession.currentStage, stageStatus: paperSession.stageStatus } : null,
+            paperStageScope,
+            isDraftingStage,
+            isCompileThenFinalize,
+        })
+
+        // Log completion blockers from verification
+        if (stepVerification.completionBlockers.length > 0 && paperStageScope) {
+            for (const blocker of stepVerification.completionBlockers) {
+                console.warn(`[VERIFICATION][blocker]${logTag} ${blocker}`)
             }
         }
+        if (stepVerification.mustPause && paperStageScope) {
+            console.warn(`[VERIFICATION][must-pause]${logTag} stage=${paperStageScope} reason=${stepVerification.pauseReason ?? "unknown"}`)
+        }
 
-        // ── Outcome-gated persisted content ──
-        if (paperStageScope && normalizedText.length > 0) {
-            const guardResult = sanitizeChoiceOutcome({
-                action: resolvedWorkflow?.action ?? "finalize_stage",
-                text: normalizedText,
-                hasArtifactSuccess: paperToolTracker.sawCreateArtifactSuccess || paperToolTracker.sawUpdateArtifactSuccess,
-                submittedForValidation: paperToolTracker.sawSubmitValidationSuccess,
-            })
-            if (guardResult.wasModified) {
-                persistedContent = guardResult.text
-                streamContentOverrideRef.current = guardResult.text
-                console.info(`[PAPER][outcome-guard]${logTag} stage=${paperStageScope} violation=${guardResult.violationType} action=${resolvedWorkflow?.action ?? "unknown"} contract=${resolvedWorkflow?.contractVersion ?? "legacy"}`)
-            }
+        // Apply outcome guard override from verification result
+        if (stepVerification.streamContentOverride) {
+            persistedContent = stepVerification.streamContentOverride
+            streamContentOverrideRef.current = stepVerification.streamContentOverride
+            console.info(`[PAPER][outcome-guard]${logTag} stage=${paperStageScope} action=${resolvedWorkflow?.action ?? "unknown"} contract=${resolvedWorkflow?.contractVersion ?? "legacy"}`)
         }
 
         // ── System-owned closing message for completed session ──
