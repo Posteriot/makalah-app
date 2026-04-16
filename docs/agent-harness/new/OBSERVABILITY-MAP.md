@@ -149,6 +149,12 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 | `[HASIL][partial-save-stall]` / `[false-validation-claim]` / `[prose-leakage]` | `build-on-finish-handler.ts` | Hasil-specific detections | Terminal |
 | `[DAFTAR_PUSTAKA][artifact-without-submit]` / `[compiled-but-no-artifact]` / `[revision-create-instead-of-update]` | `build-on-finish-handler.ts` | Daftar pustaka specific detections | Terminal |
 | `[JUDUL][server-fallback]` / `[LAMPIRAN][server-fallback]` | `build-on-finish-handler.ts` | Server fallback for these stages | Terminal |
+| `[⏱ ONFINISH][reqId] step=<name> elapsed=<ms>ms` | `build-on-finish-handler.ts:183` (`measureStep` helper) | Per-step timing inside `onFinishHandler`. Wraps each major await: `revisionClassify`, `verifyStep`, `lampiranRescue`, `judulRescue`, `enrichSources`, `chainCompletion`, `saveAssistantMsg`, `updatePlan`, `recordUsage`, `logTelemetry`, `updateTitleScheduled`, `completeStep`, `aggregateEmits`. (E2E iteration 1) | Terminal |
+| `[⏱ ONFINISH][reqId] total=<ms>ms breakdown=<name>=<ms>,...` | `build-on-finish-handler.ts:1005` | One-line summary at onFinish end. Grep `breakdown=` to quickly attribute tail latency to specific awaits. Follow-up for any step whose elapsed > ~500ms. (E2E iteration 1) | Terminal |
+| `[⏱ TOOLS-STREAM][reqId]<logTag> streamText_started` / `firstTextDelta=...ms` / `gap=...ms after chunk#N reasoningBetween=<bool>` / `finish_received elapsedFromStart=...ms` / `finish_written t=...ms composeTotal=...ms` / `summary: total=... textChunks=... composedChars=... maxGap=... gapsOver200ms=... reasoningChunks=... reasoningInterruptions=...` | `build-step-stream.ts` (writer loop) | Tools-path parity with the web-search orchestrator's Phase 2 stream timing. `gap=` fires when inter-chunk delta > 200ms (heuristic for stream stutter). `logTag` is `[fallback]` on the fallback model's stream. Used together with `[⏱ TOOL-BOUNDARY]` to locate where the time went. (E2E iteration 1) | Terminal |
+| `[⏱ TOOL-BOUNDARY][reqId]<logTag> step_start stepNumber=N activeTools=...` / `step_finish finishReason=... tools=[...] usage=in:N/out:N elapsedSinceStreamStart=...ms` / `tool_call_start toolName=... toolCallId=... stepNumber=N elapsedSinceStreamStart=...ms gapSinceLastToolFinish=...ms` / `tool_call_finish toolName=... toolCallId=... success=<bool> durationMs=... stepNumber=N elapsedSinceStreamStart=...ms` / `post_tool_text_resume gapMs=... chunk#N` | `build-step-stream.ts` (streamText callbacks: `experimental_onStepStart`, `onStepFinish`, `experimental_onToolCallStart`, `experimental_onToolCallFinish`) + writer-loop text-delta branch | Exact tool-chain boundaries sourced from AI SDK callbacks. `post_tool_text_resume` is the gap between the last tool finish and the next text-delta resuming — a legitimate reasoning pause if model needed to think post-tool. (E2E iteration 3) | Terminal |
+| `[⏱ CHUNK-TAP][reqId]<logTag> layer=<afterToUIMessageStream\|afterPipePlanCapture\|afterPipeYamlRender> cause=<finish\|error\|abort\|stream_end> textChunks=N textChars=N totalChunks=N` | `build-step-stream.ts` (`makeChunkCountTap`) | Chunk counters at each pipeline layer, one summary line per layer at stream terminator. Primarily used to audit where text-deltas get split or coalesced (e.g. `afterPipeYamlRender` always shows per-char because the library splits internally). Compare across layers to spot missing pipes. (E2E iteration 5; `afterUITextCoalesce` layer tap was removed in iteration 9 rerun when pipeUITextCoalesce was reintroduced only in the compose path wiring, not behind a tap.) | Terminal |
+| `[TOOLS-STREAM-ERROR][reqId]<logTag> stream emitted chunk.type=error { errorText, errorName, errorMessage, errorCause, errorStack, messageField, textChunkCount, composedChars, reasoningChunks, msSinceStreamStart, msSinceFirstTextDelta, msSinceLastTextChunk, lastChunkWasReasoning }` | `build-step-stream.ts` (writer loop error branch) | `console.error` — fires when the writer loop receives a `chunk.type=error` (regardless of whether `onStepFinish` already reported `finishReason=stop`; they can coexist). Full payload so the error's origin layer can be traced — see the "Gagal mengirim pesan" banner scenario in the iteration-5 commit history. (E2E iteration 5) | Terminal |
 | `[⏱ STREAM-SMOOTHNESS][reqId] pass=<y\|n\|na> reason=<ok\|avg_too_small_batched_render\|avg_too_large_sentence_burst\|inter_chunk_gap_exceeded> avgCharsPerChunk=... maxInterChunkGapMs=... textChunks=... composedChars=...` | `build-step-stream.ts` (`emitStreamSmoothnessVerdict`) | Emitted once per turn at writer-loop `finish` / `error` / `abort`. `pass=y` when avgCharsPerChunk ∈ [3, 20] AND maxInterChunkGapMs ≤ 2000ms (thresholds: `STREAM_SMOOTHNESS_THRESHOLDS`). See "Streaming feels choppy or sentence-burst" scenario below. (E2E iteration 10) | Terminal |
 | `[⏱ ARTIFACT-ORDERING][reqId] verdict=<ordered\|concurrent\|reversed\|no_artifact> artifactToolCount=N lastTextAtMs=N firstArtifactAtMs=N lastArtifactAtMs=N orderingGapMs=N` | `build-step-stream.ts` (`emitArtifactOrderingVerdict`) | Emitted once per turn at writer-loop `finish` / `error` / `abort`. Tracks tools in `ARTIFACT_SURFACE_TOOLS = {createArtifact, updateArtifact, submitStageForValidation}` where `success=true`. `ordered` = desired UX (artifact after last text). See "Artifact panel appears during text, not after" scenario below. (E2E iteration 10) | Terminal |
 
@@ -188,6 +194,7 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 | `[UNIFIED-PROCESS-UI] source=model-driven\|hardcoded-fallback progress=N/N` | `MessageBubble.tsx` | Every assistant message during active stage | Browser Console |
 | `[PAPER][edit-resend-reset] Client: stage=... cleared=N fields` | `ChatWindow.tsx:2076` | After resetStageDataForEditResend mutation | Browser Console |
 | `[ARTIFACT-REVEAL] onFinish — deferring panel open { ts, artifactId }` | `ChatWindow.tsx:952` | Artifact created during stream | Browser Console |
+| `[ARTIFACT-REVEAL][fallback] Convex-reactive auto-open { ts, artifactId, turnStartedAt, createdAt, stageStatus }` | `ChatWindow.tsx` (fallback useEffect) | Auto-open path that fires when the happy-path `extractCreatedArtifacts` is empty (model `createArtifact` returned `success=false` and server CHAIN-COMPLETION persisted the artifact without emitting a tool-output). Gated on `stageStatus === "pending_validation"` or `optimisticPendingValidation` + newest artifact `_creationTime > lastTurnStartRef`. (E2E iteration 9) | Browser Console |
 
 ### Convex Dashboard Logs
 
@@ -291,8 +298,14 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 | `[F1-F6-TEST]` | shared across context + executor + UI | test fixtures |
 | `[FREE-TEXT-CONTEXT]` | orchestrator step 5 | 7 |
 | `[STEP-TIMING]` / `[TOOL-CHAIN-ORDER]` / `[CHAIN-COMPLETION]` | executor | 2 |
+| `[⏱ ONFINISH]` | executor | 2 (added E2E iteration 1) |
+| `[⏱ TOOLS-STREAM]` | executor | 2 (added E2E iteration 1) |
+| `[⏱ TOOL-BOUNDARY]` | executor | 2 (added E2E iteration 3) |
+| `[⏱ CHUNK-TAP]` | executor | 2 (added E2E iteration 5) |
+| `[TOOLS-STREAM-ERROR]` | executor | 2 (added E2E iteration 5) |
 | `[⏱ STREAM-SMOOTHNESS]` | executor | 2 (added E2E iteration 10) |
 | `[⏱ ARTIFACT-ORDERING]` | executor | 2 (added E2E iteration 10) |
+| `[ARTIFACT-REVEAL][fallback]` | ChatWindow (client) | UI (added E2E iteration 9) |
 | `[PLAN-CAPTURE]` / `[PLAN-SNAPSHOT]` | executor | 2 |
 | `[HARNESS-FLOW]` | context search decision | 3 |
 | `[SEARCH-*]` / `[EXACT-SOURCE-*]` | context | 3 |
@@ -378,4 +391,13 @@ paperSessions.approveStage → [PAPER][stage-transition] ...
 ## Changelog
 
 - **2026-04-16 (Phase 8 close):** Initial document. Covers Phases 1-8. Created in response to user request noting that log locations changed post-refactor and the existing `test-review-audit-checklist.md` docs don't reflect new file paths.
-- **2026-04-17 (E2E iteration 10):** Added `[⏱ STREAM-SMOOTHNESS]` and `[⏱ ARTIFACT-ORDERING]` verdict lines emitted once per turn from `build-step-stream.ts`. Both carry `reqId` so they can be joined with the turn-scoped `[⏱ TOOLS-STREAM]` / `[⏱ TOOL-BOUNDARY]` logs. See new "Streaming feels choppy or sentence-burst" and "Artifact panel appears during text, not after" debugging scenarios for grep-based triage steps. Other logs added during E2E iterations 1-9 (`[⏱ ONFINISH]`, `[⏱ TOOLS-STREAM]`, `[⏱ TOOL-BOUNDARY]`, `[⏱ CHUNK-TAP]`, `[TOOLS-STREAM-ERROR]`, client-side `[ARTIFACT-REVEAL][fallback]`) are intentionally NOT mapped in this revision — they land in a follow-up.
+- **2026-04-17 (E2E iteration 10):** Added `[⏱ STREAM-SMOOTHNESS]` and `[⏱ ARTIFACT-ORDERING]` verdict lines emitted once per turn from `build-step-stream.ts`. Both carry `reqId` so they can be joined with the turn-scoped `[⏱ TOOLS-STREAM]` / `[⏱ TOOL-BOUNDARY]` logs. See new "Streaming feels choppy or sentence-burst" and "Artifact panel appears during text, not after" debugging scenarios for grep-based triage steps.
+- **2026-04-17 (E2E iteration 10, map update follow-up):** Backfilled the six logs added during E2E iterations 1-9 that were previously deferred:
+    - `[⏱ ONFINISH]` per-step + breakdown summary (iteration 1) — `build-on-finish-handler.ts`.
+    - `[⏱ TOOLS-STREAM]` tools-path stream timing parity (iteration 1) — `build-step-stream.ts`.
+    - `[⏱ TOOL-BOUNDARY]` exact AI-SDK-callback boundaries (iteration 3) — `build-step-stream.ts`.
+    - `[⏱ CHUNK-TAP]` per-pipeline-layer chunk counters (iteration 5) — `build-step-stream.ts`.
+    - `[TOOLS-STREAM-ERROR]` detailed error chunk payload (iteration 5) — `build-step-stream.ts` writer-loop error branch.
+    - `[ARTIFACT-REVEAL][fallback]` Convex-reactive auto-open (iteration 9) — `ChatWindow.tsx`.
+
+  Pre-refactor web-search logs (`[⏱ STUTTER]`, `[⏱ LATENCY]`, `[⏱ RETRIEVER]`, `[⏱ LIFECYCLE]`) live in `src/lib/ai/web-search/orchestrator.ts` and are still NOT mapped here — they predate the harness refactor and are left for a separate revision.
