@@ -9,6 +9,7 @@ import type { PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 import type { ReasoningLiveDataPart } from "@/lib/ai/curated-trace"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
+import { pipeUITextCoalesce } from "@/lib/ai/harness/create-readable-text-transform"
 import { pipeYamlRender } from "@json-render/yaml"
 import { PLAN_DATA_PART_TYPE } from "@/lib/ai/harness/plan-spec"
 import type { PlanSpec } from "@/lib/ai/harness/plan-spec"
@@ -343,17 +344,11 @@ export function buildStepStream(params: {
             //     because pipePlanCapture never saw the close-fence in
             //     a single buffer flush and pipeYamlRender likewise
             //     missed the fence.
-            // UPDATE (iteration 9): the post-pipeYamlRender
-            // pipeUITextCoalesce that once supplied sentence-level UI
-            // smoothness has also been removed — it was coalescing
-            // per-char text-deltas from pipeYamlRender into
-            // sentence-level bursts (stage-1 test-1 showed maxGap=10s
-            // mid-stream) and caused tool-output parts to appear
-            // ordered before the final buffered text chunks. Streams
-            // now flow at the native pipeYamlRender granularity, which
-            // the reference worktree
-            // /Users/eriksupit/Desktop/makalahapp/.worktrees/chat-naskah-pages-enforcement
-            // uses and which the client renders smoothly.
+            // Word-level UI smoothness is provided downstream by
+            // pipeUITextCoalesce (see below) which operates AFTER
+            // pipeYamlRender on UIMessageChunk, so fence detection in
+            // pipePlanCapture + pipeYamlRender sees the native model
+            // chunk granularity that test-1 proved is compatible.
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const streamTextConfig: any = {
                 model: executionConfig.model,
@@ -533,14 +528,24 @@ export function buildStepStream(params: {
                 makeChunkCountTap("afterPipeYamlRender"),
             ) as typeof yamlTransformedStream
 
-            // NOTE (E2E iteration 9): pipeUITextCoalesce was removed here.
-            // It was coalescing per-char text-deltas from pipeYamlRender into
-            // sentence-level bursts (maxGap=10s in stage-1 test-1 log), which
-            // manifested as "kalimat terpotong, muncul tiba-tiba" in the UI
-            // and caused tool-output parts to appear ordered BEFORE the final
-            // buffered text chunks. The reference worktree
-            // /Users/eriksupit/Desktop/makalahapp/.worktrees/chat-naskah-pages-enforcement
-            // does not have this coalescer and streams smoothly per-char.
+            // Post-yaml UI coalescer (iteration 5, restored + tuned in
+            // iteration 9 rerun): re-coalesce the per-character text-deltas
+            // that pipeYamlRender emits back to readable units for the
+            // client. Iteration 9 first attempt removed this entirely and
+            // caused "teks tampil sekaligus" because raw per-char deltas
+            // arriving via SSE get batched by React's render scheduler —
+            // user never actually sees per-char updates, they see the
+            // batched whole. Chunking preset is "word" (whitespace-
+            // terminated runs, /\S+\s/) so visual output matches user
+            // expectation of word-by-word streaming; sentence-level was
+            // too coarse and caused the original "kalimat muncul tiba-
+            // tiba" complaint at tool-chain turns.
+            const coalescedStream = pipeUITextCoalesce(afterYamlRender, {
+                chunking: "word",
+            }) as typeof yamlTransformedStream
+            const afterCoalesce = coalescedStream.pipeThrough(
+                makeChunkCountTap("afterUITextCoalesce"),
+            ) as typeof coalescedStream
 
             // ── Stream writer loop ──
             // Wrapped in try/catch so a streamText failure (network error,
@@ -549,7 +554,7 @@ export function buildStepStream(params: {
             // the onFinish handler completes the step inside its own try block;
             // we leave the original error unmasked.
             try {
-            for await (const chunk of iterateStream(afterYamlRender)) {
+            for await (const chunk of iterateStream(afterCoalesce)) {
                 // Capture data-spec parts emitted by pipeYamlRender for DB persistence
                 if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
                     try {
