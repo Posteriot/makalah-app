@@ -1,0 +1,360 @@
+# Agent Harness V1 — Observability Map (Post-Refactor)
+
+**Status:** Active reference as of HEAD `722faed9` (Phase 8 close, 2026-04-16)
+**Purpose:** Consolidated map of every observability log after Phases 1-8. Since `route.ts` shrank from 4889 → 28 lines, all logs that USED to be inline are now scattered across harness namespaces. This doc answers: "log X sekarang ada di file mana?"
+
+**Companion docs (still valid, pre-Phase-6 scope):**
+- `docs/chat-naskah-pages-enforcement/all-sessions-are-paper-sessions/agent-harness/test-review-audit-checklist.md` — item-level checklist (H/I harness plan system)
+- `screenshots/test-stages/review-audit-checklist.md` — per-stage review checklist
+
+Use THIS doc for the "where does log X come from" question; use those for "what should I verify at stage N."
+
+---
+
+## Log Tier Taxonomy
+
+Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look during UI testing:
+
+| Tier | Where to read | When to check | Example tags |
+|---|---|---|---|
+| **Next.js Terminal** (server stdout) | Terminal running `npm run dev` | Every API request | `[USER-INPUT]`, `[PAPER][*]`, `[HARNESS][persistence]`, `[HARNESS][event]`, `[STEP-TIMING]`, `[F1-F6-TEST]`, `[AI-TELEMETRY]` |
+| **Convex Dashboard Logs** | Convex dashboard → Logs tab | Mutation/query execution | `[PAPER][stage-transition]`, `[PAPER][edit-resend-reset]`, `[revision-auto-rescued-by-backend]` |
+| **Browser Console** | Chrome DevTools → Console | Client-side state | `[UNIFIED-PROCESS-UI]`, `[PAPER][edit-resend-reset] Client:`, `[HARNESS][ui] resumed paused run`, `[F1-DEBUG]` |
+
+---
+
+## Quick Reference — "Log X sekarang ada di file Y"
+
+### User-requested tracing
+
+| Log Pattern | Where it USED to live | Where it is NOW | Tier |
+|---|---|---|---|
+| `[USER-INPUT] type=prompt text="..."` | `route.ts` (inline, pre-Phase-1) | `src/lib/chat-harness/entry/accept-chat-request.ts:94` | Terminal |
+| `[USER-INPUT] type=choice-selection stage=... selected=...` | `route.ts` | `src/lib/chat-harness/entry/accept-chat-request.ts:92` | Terminal |
+| `[F1-F6-TEST] SearchDecision { stage, search, reason }` | `route.ts` (search routing block) | `src/lib/chat-harness/context/resolve-search-decision.ts:528` | Terminal |
+| `[F1-F6-TEST] SearchPolicy { stage, policy }` | `route.ts` | `src/lib/chat-harness/context/resolve-search-decision.ts:409` | Terminal |
+| `[HARNESS-FLOW] ...` (search router flow) | `route.ts` | `src/lib/chat-harness/context/resolve-search-decision.ts` | Terminal |
+| `[PAPER][session-resolve] stage=... status=...` | `route.ts` L132 inline | `src/lib/chat-harness/runtime/orchestrate-sync-run.ts` step 5 helper `resolvePaperContext` | Terminal |
+| `[FREE-TEXT-CONTEXT] stage=... plan=...` | `route.ts` L185 | `src/lib/chat-harness/runtime/orchestrate-sync-run.ts` step 5 | Terminal |
+| `[STEP-TIMING] step=N stage=... tools=[...] elapsed=Nms` | `route.ts` onFinish | `src/lib/chat-harness/executor/build-on-finish-handler.ts` | Terminal |
+| `[CHOICE-CARD][yaml-capture]` | `route.ts` onFinish | `src/lib/chat-harness/executor/build-step-stream.ts` | Terminal |
+| `[PAPER][outcome-gated]` / `[outcome-guard-stream]` | `route.ts` onFinish | `src/lib/chat-harness/executor/build-on-finish-handler.ts` + `build-step-stream.ts` | Terminal |
+| `[PAPER][recovery-leakage-first-detected]` | `route.ts` onFinish | `src/lib/chat-harness/executor/build-step-stream.ts` | Terminal |
+| `[AI-TELEMETRY] { model, tokens, duration }` | `route.ts` onFinish + fallback | `orchestrate-sync-run.ts` (fallback) + `build-on-finish-handler.ts` (primary) | Terminal |
+| `[REVISION][chain-enforcer] step=N status=...` | `route.ts` policy block | `src/lib/chat-harness/policy/enforcers.ts` | Terminal |
+| `[CHOICE][artifact-enforcer] step=N stage=...` | `route.ts` policy | `src/lib/chat-harness/policy/enforcers.ts` | Terminal |
+| `[REACTIVE-ENFORCER] step=N stage=...` | `route.ts` policy | `src/lib/chat-harness/policy/enforcers.ts` | Terminal |
+| `[PLAN-GATE] enforcer downgraded: ...` | `route.ts` policy | `src/lib/chat-harness/policy/enforcers.ts` | Terminal |
+| `[PLAN-CAPTURE] parsed stage=X tasks=N` | `route.ts` stream handler | `src/lib/chat-harness/executor/build-step-stream.ts` | Terminal |
+| `[EXACT-SOURCE-RESOLUTION] mode=...` | `route.ts` context | `src/lib/chat-harness/context/resolve-exact-source-followup.ts` | Terminal |
+
+**Key insight:** Anything you used to grep in `route.ts` for debugging, grep in `src/lib/chat-harness/` instead. Route.ts has ZERO logs now except the fatal `console.error("Chat API Error:", error)` on L24.
+
+---
+
+## Full Log Map by Namespace
+
+### Entry — `src/lib/chat-harness/entry/` (Phase 1)
+
+| Log | File:Line | Fires When | Tier |
+|---|---|---|---|
+| `[USER-INPUT] type=prompt text="..."` | `accept-chat-request.ts:94` | Every chat POST with free-text message | Terminal |
+| `[USER-INPUT] type=choice-selection stage=... selected=...` | `accept-chat-request.ts:92` | Every chat POST from choice card click | Terminal |
+| `[HARNESS][entry] resume header detected runId=... workflowStage=...` | `accept-chat-request.ts:201` | When `x-harness-resume` header present (Phase 8 resume) | Terminal |
+| `[Billing] Quota check failed: ...` | `accept-chat-request.ts` (billing block) | Quota exceeded → 429 response | Terminal |
+| `[Billing] Usage recorded: ...` | `persist-user-message.ts` post-save | After successful message save | Terminal |
+| `[stale-choice-rejected] stage=... → 409 Response` | `validate-choice-interaction.ts` | User clicks stale choice card (workflow advanced) | Terminal |
+| `[CHOICE-CARD][event-received] type=paper.choice.submit stage=...` | `validate-choice-interaction.ts` | Choice event validated | Terminal |
+| `[CHOICE-CARD][fallback-injected]` | `validate-choice-interaction.ts` | Fallback context injected when paper session mid-flight | Terminal |
+| `[CHOICE][commit-point] stage=... action=...` | `validate-choice-interaction.ts` | Choice resolved to commit action | Terminal |
+| `[CHOICE][exploration-loop]` | `validate-choice-interaction.ts` | Continue-discussion choice detected | Terminal |
+| `[HARNESS][persistence] createRun runId=... ownerToken=...` | via `run-store.ts` (Phase 6) | After harnessRuns row created (step 2) | Terminal |
+| `[HARNESS][event] run_started eventId=... correlationId=... runId=...` | via `event-store.ts` | After createRun succeeds | Terminal |
+| `[HARNESS][event] user_message_received eventId=...` | via `event-store.ts` | After persistUserMessage succeeds (non-empty text only) | Terminal |
+| `[HARNESS][event] user_decision_received eventId=...` | via `event-store.ts` | After choice event validates | Terminal |
+| `[HARNESS][event] workflow_transition_requested/applied/rejected` | via `event-store.ts` | Per choice workflow outcome | Terminal |
+
+### Runtime Orchestrator — `src/lib/chat-harness/runtime/` (Phase 7+8)
+
+| Log | File:Line | Fires When | Tier |
+|---|---|---|---|
+| `[PAPER][session-resolve] stage=... status=... hasPrompt=...` | `orchestrate-sync-run.ts` step 5 (`resolvePaperContext`) | Every request after paperSession fetched | Terminal |
+| `[FREE-TEXT-CONTEXT] stage=... plan=... hasArtifact=...` | `orchestrate-sync-run.ts` step 5 | Only when non-choice message in drafting stage | Terminal |
+| `[HARNESS][persistence] resumeLane runId=... requestId=...` | `orchestrate-sync-run.ts` step 2 resume branch | Phase 8 resume path (header detected) | Terminal |
+| `[HARNESS][event] run_resumed eventId=...` | step 2 resume branch | Phase 8 resume path | Terminal |
+| `[HARNESS][event] run_paused eventId=...` | step 8.5 pause block | When `policyDecision.requiresApproval=true` (latent — no current trigger) | Terminal |
+| `[HARNESS][persistence] pauseRun runId=... decisionId=... reason="..."` | step 8.5 (via `run-store`) | Same as above | Terminal |
+| `[HARNESS][resume] conversationId mismatch: ...` | step 2 guard | Client pointed resume header at wrong conversation (throws) | Terminal |
+| `[AI-TELEMETRY]` primary failure breadcrumb | fallback path | When primary streamText throws | Terminal (Sentry breadcrumb) |
+| `Gateway stream failed, trying fallback:` | fallback path | streamText error caught | Terminal |
+
+### Context Assembler — `src/lib/chat-harness/context/` (Phase 3)
+
+| Log | File:Line | Fires When | Tier |
+|---|---|---|---|
+| `[FILE-CONTEXT] Waiting for extraction... (attempt N/16)` | `assemble-file-context.ts` | While file processing pending | Terminal |
+| `[SOURCES] recentCount=N exactSourceCount=N hasRecentInDb=true` | `fetch-and-assemble-sources.ts` | Every request with sources | Terminal |
+| `[EXACT-SOURCE-RESOLUTION] mode=force-inspect\|clarify\|none` | `resolve-exact-source-followup.ts` | Exact source classifier ran | Terminal |
+| `[F1-F6-TEST] SearchPolicy { stage, policy }` | `resolve-search-decision.ts:409` | Every request (search policy decided) | Terminal |
+| `[F1-F6-TEST] SearchDecision { stage, policy, search, reason }` | `resolve-search-decision.ts:528` | Search decision finalized | Terminal |
+| `[HARNESS-FLOW]` (router/search path flow) | `resolve-search-decision.ts` + `execute-web-search-path.ts` | Search orchestration steps | Terminal |
+| `[SEARCH-UNAVAILABLE] reasonCode=...` | `response-factories.ts` | Search required but unavailable | Terminal |
+| `[CONTEXT-BUDGET] totalChars=N shouldCompact=true\|false` | `apply-context-budget.ts` | Every request (budget evaluated) | Terminal |
+| `[CONTEXT-COMPACTION] priority=...` | `apply-context-budget.ts` | When compaction triggers | Terminal |
+| `[Context Compaction] P3 LLM summarization failed: ...` | `apply-context-budget.ts` | P3 LLM path fails | Terminal |
+| `[PAPER][post-choice-context] stage=...` | `resolve-exact-source-followup.ts` | Post-choice context enrichment | Terminal |
+| `[PAPER][post-choice-search-context] / [-rag]` | `execute-web-search-path.ts` | Search context for post-choice path | Terminal |
+
+### Policy — `src/lib/chat-harness/policy/` (Phase 4+6)
+
+| Log | File:Line | Fires When | Tier |
+|---|---|---|---|
+| `[REVISION][chain-enforcer] step=N status=revision → required` | `enforcers.ts` | Revision chain enforcer fires | Terminal |
+| `[CHOICE][artifact-enforcer] step=N stage=... → updateStageData` | `enforcers.ts` | Choice artifact enforcer fires | Terminal |
+| `[REACTIVE-ENFORCER] step=N stage=... → createArtifact` | `enforcers.ts` | Reactive enforcer gates tool choice | Terminal |
+| `[PLAN-GATE] enforcer downgraded: plan has incomplete tasks` | `enforcers.ts` | Plan gate blocks premature artifact creation | Terminal |
+| `[AUTO-RESCUE] source=createArtifact status=pending_validation → rescued` | `enforcers.ts` (auto-rescue policy) | Auto-rescue triggers | Terminal |
+| `[HARNESS][persistence] recordPolicyState runId=... currentBoundary=...` | via `run-store.ts` | After policy decision | Terminal |
+| `[HARNESS][event] execution_boundary_evaluated eventId=...` | via `event-store.ts` | Same as above | Terminal |
+
+### Executor — `src/lib/chat-harness/executor/` (Phase 2+6)
+
+| Log | File:Line | Fires When | Tier |
+|---|---|---|---|
+| `[TOOL-CHAIN-ORDER] expected=[...] actual=[...]` | `build-on-finish-handler.ts` | Tool chain validation | Terminal |
+| `[F1-F6-TEST] ToolChainOrder { correct: true/false, ... }` | `build-on-finish-handler.ts` | Tool chain audit | Terminal |
+| `[F1-F6-TEST] updateStageData { dataKeys, ... }` | `build-tool-registry.ts` (tool tracker) | `updateStageData` tool invoked | Terminal |
+| `[F1-F6-TEST] submitStageForValidation { status }` | `build-tool-registry.ts` | Submit tool invoked | Terminal |
+| `[F1-F6-TEST] ChoiceCardSpec { hasSubmitButton, elements }` | `build-step-stream.ts` | Choice card YAML spec captured | Terminal |
+| `[STEP-TIMING] step=N stage=... tools=[...] elapsed=Nms (final)` | `build-on-finish-handler.ts` | Every step completion | Terminal |
+| `[CHOICE-CARD][yaml-capture] stage=... specKeys=...` | `build-step-stream.ts:447` | YAML spec parsed during stream | Terminal |
+| `[PAPER][outcome-gated]<logTag> emitted data-cited-text override` | `build-on-finish-handler.ts` | Outcome guard replaced content | Terminal |
+| `[PAPER][outcome-guard-stream]<logTag> stage=...` | `build-step-stream.ts:469` | Stream-finish outcome guard fired | Terminal |
+| `[PAPER][recovery-leakage-first-detected]` | `build-step-stream.ts` | Leakage detected incrementally | Terminal |
+| `[PAPER][artifact-tool-success]` | `build-tool-registry.ts` | Artifact tool succeeded | Terminal |
+| `[PAPER][completed-guard]` | `build-tool-registry.ts` | Tool rejected due to completed stage | Terminal |
+| `[FALLBACK] Attempting fallback with OpenRouter` | `orchestrate-sync-run.ts` (fallback path, technically) | Primary streamText failed | Terminal |
+| `[EMPTY-RESPONSE][recovery]` | `build-on-finish-handler.ts` | Empty response recovery | Terminal |
+| `[HARNESS][persistence] startStep runId=... stepIndex=N` | via `run-store.ts` | Before streamText | Terminal |
+| `[HARNESS][persistence] completeStep stepId=... status=... blockers=N` | via `run-store.ts` | After streamText success (in onFinish) | Terminal |
+| `[HARNESS][event] step_started/step_completed/agent_output_received` | via `event-store.ts` | Step lifecycle | Terminal |
+| `[HARNESS][event] tool_called/tool_result_received` | via `event-store.ts` | Per tool call in onFinish aggregate | Terminal |
+| `[HARNESS][event] run_failed eventId=...` | `build-step-stream.ts:631` | Stream error caught | Terminal |
+| `[HARNESS][persistence] updateStatus runId=... status=failed` | via `run-store.ts` | Failure path | Terminal |
+| `[CHAIN-COMPLETION]` | `build-on-finish-handler.ts` | Finalization tool chain complete | Terminal |
+| `[PLAN-CAPTURE] parsed stage=X tasks=N` | `build-step-stream.ts` | Plan YAML fence parsed | Terminal |
+| `[PLAN-CAPTURE] no plan-spec detected (stage=X)` | `build-step-stream.ts` | Plan spec absent | Terminal |
+| `[PLAN-SNAPSHOT]` / `[PLAN-SNAPSHOT][search]` | `build-on-finish-handler.ts` | Plan snapshot recorded | Terminal |
+| `[HASIL][ordering-bug]` | `build-on-finish-handler.ts` | Hasil stage ordering issue | Terminal |
+| `[HASIL][partial-save-stall]` / `[false-validation-claim]` / `[prose-leakage]` | `build-on-finish-handler.ts` | Hasil-specific detections | Terminal |
+| `[DAFTAR_PUSTAKA][artifact-without-submit]` / `[compiled-but-no-artifact]` / `[revision-create-instead-of-update]` | `build-on-finish-handler.ts` | Daftar pustaka specific detections | Terminal |
+| `[JUDUL][server-fallback]` / `[LAMPIRAN][server-fallback]` | `build-on-finish-handler.ts` | Server fallback for these stages | Terminal |
+
+### Verification — `src/lib/chat-harness/verification/` (Phase 5+6)
+
+| Log | File:Line | Fires When | Tier |
+|---|---|---|---|
+| `[VERIFICATION][blocker] <reason>` | `verify-step-outcome.ts` (called from executor) | Completion blockers detected | Terminal |
+| `[VERIFICATION][must-pause] stage=... reason=...` | `verify-step-outcome.ts` | Ordering bug triggers pause | Terminal |
+| `[HARNESS][event] verification_started target=combined` | via `event-store.ts` | onFinish verification entry (with `emitEvents: true`) | Terminal |
+| `[HARNESS][event] verification_completed payload.outcome=pass\|fail_*` | via `event-store.ts` | onFinish verification return | Terminal |
+
+### Persistence Adapters — `src/lib/chat-harness/persistence/` (Phase 6+8)
+
+| Log | File:Line | Fires When | Tier |
+|---|---|---|---|
+| `[HARNESS][persistence] createRun runId=... ownerToken=...` | `run-store.ts:39` | createRun mutation succeeds | Terminal |
+| `[HARNESS][persistence] linkPaperSession runId=... paperSessionId=...` | `run-store.ts` | Link mutation succeeds | Terminal |
+| `[HARNESS][persistence] updateStatus runId=... status=...` | `run-store.ts` | Status update | Terminal |
+| `[HARNESS][persistence] recordPolicyState runId=... currentBoundary=...` | `run-store.ts` | Policy state write | Terminal |
+| `[HARNESS][persistence] startStep runId=... stepIndex=N` | `run-store.ts:97` | Atomic step start (Phase 6 audit fix) | Terminal |
+| `[HARNESS][persistence] completeStep stepId=... status=... blockers=N` | `run-store.ts` | Step complete | Terminal |
+| `[HARNESS][persistence] completeRun runId=...` | `run-store.ts` | Run complete | Terminal |
+| `[HARNESS][persistence] pauseRun runId=... decisionId=... reason="..."` | `run-store.ts:156` | Phase 8 pause (infra; latent trigger) | Terminal |
+| `[HARNESS][persistence] resumeRun runId=... decisionId=... resolution=resolved` | `run-store.ts:176` | Phase 8 resume | Terminal |
+| `[HARNESS][event] <eventType> eventId=... correlationId=... runId=...` | `event-store.ts:67` | Every event emit success | Terminal |
+| `[HARNESS][event] invalid eventType: <name>` | `event-store.ts:32` | Validation reject (before DB write) | Terminal (throws) |
+
+### UI — `src/components/chat/ChatWindow.tsx` + hooks (Phase 8)
+
+| Log | File:Line | Fires When | Tier |
+|---|---|---|---|
+| `[F1-DEBUG] handleApprove TRIGGERED — who called this?` | `ChatWindow.tsx:2180` | User clicks approve | Browser Console |
+| `[F1-DEBUG] handleApprove context: { stageLabel, stageStatus, userId }` | `ChatWindow.tsx:2181` | Same | Browser Console |
+| `[HARNESS][ui] resumed paused run runId=... on approve` | `ChatWindow.tsx:2194` | Phase 8: paused run resumed before approveStage | Browser Console |
+| `[HARNESS][ui] resumed paused run runId=... on revise` | `ChatWindow.tsx:2222` | Phase 8: paused run resumed before requestRevision | Browser Console |
+| `[UNIFIED-PROCESS-UI] source=model-driven\|hardcoded-fallback progress=N/N` | `MessageBubble.tsx` | Every assistant message during active stage | Browser Console |
+| `[PAPER][edit-resend-reset] Client: stage=... cleared=N fields` | `ChatWindow.tsx:2076` | After resetStageDataForEditResend mutation | Browser Console |
+| `[ARTIFACT-REVEAL] onFinish — deferring panel open { ts, artifactId }` | `ChatWindow.tsx:952` | Artifact created during stream | Browser Console |
+
+### Convex Dashboard Logs
+
+| Log | File:Line | Fires When | Tier |
+|---|---|---|---|
+| `[PAPER][auto-create] conversationId=... stage=gagasan` | `convex/conversations.ts:278` | New conversation → auto paperSession created | Convex Logs |
+| `[PAPER][session-resolve]` | Fires from Next.js server (not Convex) — see orchestrator | — | Terminal |
+| `[PAPER][stage-transition] stageA → stageB (drafting/session completed)` | `convex/paperSessions.ts:1348` | approveStage mutation succeeds | Convex Logs |
+| `[PAPER][updateStageData] stage=... keys=[...] warnings=N` | `convex/paperSessions.ts` | updateStageData mutation | Convex Logs |
+| `[PAPER][edit-resend-reset] stage=... cleared=[fields]` | `convex/paperSessions.ts:750` | resetStageDataForEditResend mutation | Convex Logs |
+| `[revision-auto-rescued-by-backend] stage=... trigger=auto-rescue revisionCount=N previousStatus=pending_validation source=updateStageData\|updateArtifact` | `convex/paperSessions.ts` | autoRescueRevision fires | Convex Logs |
+| `[USER-ACTION] type=approve stage=... decision=...` | `convex/paperSessions.ts` | approveStage logs the user action | Convex Logs |
+| `[USER-ACTION] type=revise stage=... trigger=panel\|model revision=N feedback="..."` | `convex/paperSessions.ts` | requestRevision | Convex Logs |
+| Harness table mutation invocations (`harnessRuns.createRun`, `harnessEvents.emitEvent`, `harnessDecisions.createDecision`, etc.) | `convex/harness*.ts` | Every harness persistence call | Convex Logs |
+
+---
+
+## Common Debugging Scenarios
+
+### "Stream output looks wrong"
+1. **Terminal:** `[USER-INPUT]` — what did server receive?
+2. **Terminal:** `[F1-F6-TEST] SearchDecision` — did search route correctly?
+3. **Terminal:** `[PAPER][session-resolve]` — paper mode detected correctly?
+4. **Terminal:** `[STEP-TIMING]` — how long did step take?
+5. **Terminal:** `[PAPER][outcome-gated]` or `[outcome-guard-stream]` — did outcome guard replace content?
+6. **Browser:** `[UNIFIED-PROCESS-UI]` — what task source?
+
+### "Choice card not appearing"
+1. **Terminal:** `[CHOICE-CARD][yaml-capture]` — was YAML spec captured?
+2. **Terminal:** `[F1-F6-TEST] ChoiceCardSpec { hasSubmitButton }` — did spec have submit button?
+3. **Browser:** Check React component render
+
+### "Approval panel not showing"
+1. **Convex Logs:** `[F1-F6-TEST] submitStageForValidation { status }` — did submit succeed?
+2. **Convex Logs:** `[PAPER][stage-transition]` — did stage advance?
+3. **Browser:** Check `paperSession.stageStatus === "pending_validation"` via Convex dashboard row
+
+### "Fallback not kicking in"
+1. **Terminal:** `Gateway stream failed, trying fallback:` — primary error caught?
+2. **Terminal:** `[AI-TELEMETRY] primary failure` — telemetry logged?
+3. **Terminal:** Look for secondary `[STEP-TIMING]` from fallback model
+
+### "Tool called but no artifact"
+1. **Terminal:** `[F1-F6-TEST] ToolChainOrder { correct, expected, actual }` — order correct?
+2. **Terminal:** `[PAPER][artifact-tool-success]` OR rescue logs
+3. **Convex Logs:** `artifacts` table insert via mutation
+4. **Terminal:** `[CHAIN-COMPLETION]` or `[HASIL][partial-save-stall]`
+
+### "Edit/resend not clearing stageData"
+1. **Terminal:** `[PAPER][session-resolve] ... postEditResendReset=true` — detected?
+2. **Convex Logs:** `[PAPER][edit-resend-reset] stage=X cleared=[...]` — mutation ran?
+3. **Browser:** `[PAPER][edit-resend-reset] Client: ...` — client confirmation?
+
+### "Harness run not persisting" (Phase 6+)
+1. **Terminal:** `[HARNESS][persistence] createRun` — should fire on every request
+2. **Terminal:** `[HARNESS][event] run_started` — follows immediately
+3. **Terminal:** `[HARNESS][persistence] startStep` — per step
+4. **Terminal:** `[HARNESS][persistence] completeStep` — on finish
+5. **Convex Dashboard:** query `harnessRuns` table, should see new row per request
+6. **Convex Dashboard:** query `harnessEvents` table grouped by `correlationId` (requestId) — should see ≥10 events per request
+
+### "Pause/resume flow" (Phase 8)
+> Phase 8 infrastructure is LATENT — no enforcer currently sets `requiresApproval=true`. To manually test:
+> 1. Temporarily add `requiresApproval = true` to `policy/evaluate-runtime-policy.ts` or an enforcer
+> 2. Trigger a chat request — expect 202 Response + `run_paused` event
+> 3. Check `harnessDecisions` table — should see new row with `status=pending`
+> 4. UI: click approve → check `[HARNESS][ui] resumed paused run` in browser console
+> 5. Check `harnessDecisions` row now `status=resolved` + `harnessRuns.status=running`
+> 6. Next POST should include `x-harness-resume` header (Network tab)
+> 7. Orchestrator terminal: `[HARNESS][persistence] resumeLane` + `run_resumed` event
+> 8. REVERT the trigger
+
+---
+
+## Log Tag Glossary (by Prefix)
+
+| Prefix | Owner | Phase |
+|---|---|---|
+| `[USER-INPUT]` | entry | 1 |
+| `[CHOICE-CARD]` / `[CHOICE]` | entry + executor + UI | 1+2 |
+| `[PAPER][session-resolve]` | orchestrator step 5 | 7 |
+| `[PAPER][outcome-*]` / `[recovery-*]` | executor | 2 |
+| `[PAPER][post-choice-*]` | context | 3 |
+| `[PAPER][stage-transition]` / `[edit-resend-reset]` / `[auto-create]` | Convex paperSessions | domain (pre-refactor) |
+| `[F1-F6-TEST]` | shared across context + executor + UI | test fixtures |
+| `[FREE-TEXT-CONTEXT]` | orchestrator step 5 | 7 |
+| `[STEP-TIMING]` / `[TOOL-CHAIN-ORDER]` / `[CHAIN-COMPLETION]` | executor | 2 |
+| `[PLAN-CAPTURE]` / `[PLAN-SNAPSHOT]` | executor | 2 |
+| `[HARNESS-FLOW]` | context search decision | 3 |
+| `[SEARCH-*]` / `[EXACT-SOURCE-*]` | context | 3 |
+| `[CONTEXT-BUDGET]` / `[CONTEXT-COMPACTION]` | context | 3 |
+| `[REVISION]` / `[CHOICE][artifact-enforcer]` / `[REACTIVE-ENFORCER]` / `[PLAN-GATE]` / `[AUTO-RESCUE]` | policy | 4 |
+| `[VERIFICATION]` | verification | 5 |
+| `[HARNESS][persistence]` / `[HARNESS][event]` | persistence adapters | 6 |
+| `[HARNESS][entry]` | entry resume header | 8 |
+| `[HARNESS][resume]` | orchestrator resume guard | 8 |
+| `[HARNESS][ui]` | ChatWindow handlers | 8 |
+| `[F1-DEBUG]` | ChatWindow (client) | debug (pre-refactor) |
+| `[UNIFIED-PROCESS-UI]` | MessageBubble | UI (pre-refactor) |
+| `[AI-TELEMETRY]` | executor + orchestrator fallback | 2+7 |
+| `[Billing]` | entry | 1 |
+
+---
+
+## Test Harness Expectations
+
+For UI smoke test across all 8 phases, expect these logs per typical chat request:
+
+**Terminal (Next.js server):**
+```
+[USER-INPUT] type=prompt text="..."
+[HARNESS][persistence] createRun runId=... ownerToken=...
+[HARNESS][event] run_started ...
+[HARNESS][event] user_message_received ...
+[PAPER][session-resolve] stage=... status=... hasPrompt=...
+[FREE-TEXT-CONTEXT] ... (only if free-text + drafting)
+[SOURCES] recentCount=... exactSourceCount=...
+[F1-F6-TEST] SearchPolicy { stage, policy }
+[F1-F6-TEST] SearchDecision { stage, search, reason }
+[CONTEXT-BUDGET] totalChars=... shouldCompact=...
+[HARNESS][persistence] recordPolicyState runId=... currentBoundary=...
+[HARNESS][event] execution_boundary_evaluated ...
+[HARNESS][persistence] startStep runId=... stepIndex=N
+[HARNESS][event] step_started ...
+  <stream runs>
+[CHOICE-CARD][yaml-capture] ... (if choice card)
+[F1-F6-TEST] ChoiceCardSpec ...
+[PLAN-CAPTURE] parsed stage=... tasks=N
+[STEP-TIMING] step=N stage=... tools=[...] elapsed=Nms
+[HARNESS][event] verification_started target=combined
+[HARNESS][event] verification_completed payload.outcome=pass
+[HARNESS][persistence] completeStep stepId=... status=completed
+[HARNESS][event] step_completed
+[HARNESS][event] agent_output_received
+[HARNESS][event] tool_called (per tool)
+[HARNESS][event] tool_result_received (per result)
+[F1-F6-TEST] ToolChainOrder { correct: true, ... }
+```
+
+**Convex logs (per request):**
+```
+(mutations)
+harnessRuns.createRun
+harnessEvents.emitEvent x multiple
+harnessRuns.startStepAtomic (Phase 6 atomic)
+harnessRunSteps.completeStep
+(if paper mode + user action)
+paperSessions.updateStageData
+paperSessions.approveStage → [PAPER][stage-transition] ...
+```
+
+**Browser Console (per interaction):**
+```
+[UNIFIED-PROCESS-UI] source=... progress=N/N
+(on approve)
+[F1-DEBUG] handleApprove TRIGGERED
+[F1-DEBUG] handleApprove context:
+(if paused run exists from Phase 8 latent trigger)
+[HARNESS][ui] resumed paused run runId=... on approve
+```
+
+**Convex Dashboard snapshots (per request):**
+- 1 `harnessRuns` row (status transitions running → completed)
+- ≥1 `harnessRunSteps` row (one per executor step)
+- ≥10 `harnessEvents` rows (typical chat; tool-heavy paper flow: 15-25)
+- 0 `harnessDecisions` rows (unless Phase 8 pause triggered)
+
+---
+
+## Changelog
+
+- **2026-04-16 (Phase 8 close):** Initial document. Covers Phases 1-8. Created in response to user request noting that log locations changed post-refactor and the existing `test-review-audit-checklist.md` docs don't reflect new file paths.
