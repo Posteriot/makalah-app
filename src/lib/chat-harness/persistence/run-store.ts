@@ -2,12 +2,14 @@
  * RunStore persistence adapter.
  *
  * Thin wrapper around the Convex `harnessRuns` / `harnessRunSteps` mutations.
- * Every method except `startStep` is a 1:1 pass-through to a single Convex
- * mutation. `startStep` is the one composed operation — see the comment above
- * that method for why.
+ * Every method is a 1:1 pass-through to a single Convex mutation — including
+ * `startStep`, which now delegates to the server-side `startStepAtomic`
+ * mutation (Phase 6 audit fix HIGH 1) so increment + insert + setCurrent
+ * commit in a single Convex transaction. No composed-call window remains
+ * in this adapter.
  *
  * Design rules (see persistence/types.ts for the interface contract):
- *   - No business logic beyond the `startStep` composition.
+ *   - No business logic; no orchestration across multiple mutations.
  *   - No try/catch: Convex errors propagate unchanged.
  *   - Observability logs fire AFTER each mutation succeeds so the log line
  *     reflects the actual DB state change.
@@ -85,33 +87,21 @@ export function createRunStore(deps: RunStoreDeps): RunStore {
         },
 
         /**
-         * Composed operation — the ONLY place in this adapter where we chain
-         * multiple Convex mutations:
-         *   1. incrementStepNumber → returns the atomically-bumped stepNumber.
-         *   2. createStep           → inserts the row using that stepNumber.
-         *   3. setCurrentStep       → points the run at the new step.
-         * All other methods in this adapter are 1:1 pass-through.
+         * Single atomic mutation — delegates to `api.harnessRuns.startStepAtomic`.
+         * The server-side handler runs increment + insert + setCurrent inside
+         * one Convex transaction, eliminating the partial-write window that
+         * existed when this adapter chained three separate mutations.
          */
         async startStep(runId: Id<"harnessRuns">) {
-            const { stepNumber } = (await deps.fetchMutation(
-                api.harnessRuns.incrementStepNumber,
+            const result = (await deps.fetchMutation(
+                api.harnessRuns.startStepAtomic,
                 { runId },
-            )) as { stepNumber: number }
-
-            const { stepId } = (await deps.fetchMutation(
-                api.harnessRunSteps.createStep,
-                { runId, stepIndex: stepNumber, startedAt: Date.now() },
-            )) as { stepId: Id<"harnessRunSteps"> }
-
-            await deps.fetchMutation(api.harnessRuns.setCurrentStep, {
-                runId,
-                stepId,
-            })
+            )) as { stepId: Id<"harnessRunSteps">; stepIndex: number }
 
             console.info(
-                `[HARNESS][persistence] startStep runId=${runId} stepIndex=${stepNumber}`,
+                `[HARNESS][persistence] startStep runId=${runId} stepIndex=${result.stepIndex}`,
             )
-            return { stepId, stepIndex: stepNumber }
+            return result
         },
 
         async completeStep(

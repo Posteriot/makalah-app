@@ -72,35 +72,17 @@ describe("createRunStore", () => {
     })
   })
 
-  describe("startStep — composed operation", () => {
-    it("calls incrementStepNumber → createStep → setCurrentStep in sequence", async () => {
+  describe("startStep — atomic operation", () => {
+    it("calls api.harnessRuns.startStepAtomic with runId in a single mutation", async () => {
       const fetchMutation = createFetchMutation()
-      fetchMutation
-        .mockResolvedValueOnce({ stepNumber: 7 })
-        .mockResolvedValueOnce({ stepId: "harnessRunSteps_X" })
-        .mockResolvedValueOnce(null)
+      fetchMutation.mockResolvedValueOnce({ stepId: "harnessRunSteps_X", stepIndex: 7 })
       const store = createRunStore({ fetchMutation })
 
       const result = await store.startStep("harnessRuns_1" as never)
 
       expect(result).toEqual({ stepId: "harnessRunSteps_X", stepIndex: 7 })
-      expect(fetchMutation).toHaveBeenCalledTimes(3)
-
-      // Mutation #1: incrementStepNumber
+      expect(fetchMutation).toHaveBeenCalledTimes(1)
       expect(callAt(fetchMutation, 0).args).toEqual({ runId: "harnessRuns_1" })
-
-      // Mutation #2: createStep
-      expect(callAt(fetchMutation, 1).args).toMatchObject({
-        runId: "harnessRuns_1",
-        stepIndex: 7,
-      })
-      expect(typeof (callAt(fetchMutation, 1).args as { startedAt: number }).startedAt).toBe("number")
-
-      // Mutation #3: setCurrentStep
-      expect(callAt(fetchMutation, 2).args).toEqual({
-        runId: "harnessRuns_1",
-        stepId: "harnessRunSteps_X",
-      })
     })
   })
 
