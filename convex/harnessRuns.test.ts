@@ -14,6 +14,8 @@ import {
   setCurrentStep,
   startStepAtomic,
   completeRun,
+  pauseRun,
+  resumeRun,
   getRunByConversation,
   getRunByOwnerToken,
 } from "./harnessRuns"
@@ -442,5 +444,152 @@ describe("startStepAtomic", () => {
     ).rejects.toThrow(/not found/)
     // No rows should be created
     expect(ctx.tables.get("harnessRunSteps") ?? []).toHaveLength(0)
+  })
+})
+
+describe("pauseRun", () => {
+  it("transitions running → paused, sets pendingDecisionId + pausedAt", async () => {
+    const ctx = createMockCtx()
+    const { runId } = await asHandler(createRun)(ctx, {
+      conversationId: "conversations_1",
+      userId: "users_1",
+      workflowStage: "intake",
+      workflowStatus: "running",
+    })
+
+    await asHandler(pauseRun)(ctx, {
+      runId,
+      reason: "awaiting user approval",
+      decisionId: "decision-abc-123",
+    })
+
+    const row = ctx.tables.get("harnessRuns")![0]
+    expect(row.status).toBe("paused")
+    expect(row.pendingDecisionId).toBe("decision-abc-123")
+    expect(row.pausedAt).toBeTypeOf("number")
+  })
+
+  it("stamps reason into policyState.lastPolicyReason when policyState exists", async () => {
+    const ctx = createMockCtx()
+    const { runId } = await asHandler(createRun)(ctx, {
+      conversationId: "conversations_1",
+      userId: "users_1",
+      workflowStage: "intake",
+      workflowStatus: "running",
+    })
+
+    // Seed existing policyState
+    await asHandler(recordPolicyState)(ctx, {
+      runId,
+      policyState: {
+        approvalMode: "default",
+        currentBoundary: "read_only",
+        lastPolicyReason: "prior",
+        updatedAt: 100,
+      },
+    })
+
+    await asHandler(pauseRun)(ctx, {
+      runId,
+      reason: "needs approval for mutation",
+      decisionId: "decision-xyz",
+    })
+
+    const row = ctx.tables.get("harnessRuns")![0]
+    expect((row.policyState as { lastPolicyReason?: string }).lastPolicyReason).toBe(
+      "needs approval for mutation",
+    )
+  })
+
+  it("throws when run status is not running", async () => {
+    const ctx = createMockCtx()
+    const { runId } = await asHandler(createRun)(ctx, {
+      conversationId: "conversations_1",
+      userId: "users_1",
+      workflowStage: "intake",
+      workflowStatus: "running",
+    })
+    await asHandler(completeRun)(ctx, { runId })
+
+    await expect(
+      asHandler(pauseRun)(ctx, {
+        runId,
+        reason: "test",
+        decisionId: "decision-1",
+      })
+    ).rejects.toThrow(/cannot pause run with status=completed/)
+  })
+
+  it("throws when run not found", async () => {
+    const ctx = createMockCtx()
+    await expect(
+      asHandler(pauseRun)(ctx, {
+        runId: "harnessRuns_nonexistent",
+        reason: "x",
+        decisionId: "d",
+      })
+    ).rejects.toThrow(/not found/)
+  })
+})
+
+describe("resumeRun", () => {
+  it("transitions paused → running, clears pendingDecisionId + pausedAt with matching ownerToken", async () => {
+    const ctx = createMockCtx()
+    const { runId, ownerToken } = await asHandler(createRun)(ctx, {
+      conversationId: "conversations_1",
+      userId: "users_1",
+      workflowStage: "intake",
+      workflowStatus: "running",
+    })
+    await asHandler(pauseRun)(ctx, { runId, reason: "wait", decisionId: "d-1" })
+
+    await asHandler(resumeRun)(ctx, { runId, ownerToken })
+
+    const row = ctx.tables.get("harnessRuns")![0]
+    expect(row.status).toBe("running")
+    expect(row.pendingDecisionId).toBeUndefined()
+    expect(row.pausedAt).toBeUndefined()
+  })
+
+  it("throws when ownerToken does not match", async () => {
+    const ctx = createMockCtx()
+    const { runId } = await asHandler(createRun)(ctx, {
+      conversationId: "conversations_1",
+      userId: "users_1",
+      workflowStage: "intake",
+      workflowStatus: "running",
+    })
+    await asHandler(pauseRun)(ctx, { runId, reason: "wait", decisionId: "d-1" })
+
+    await expect(
+      asHandler(resumeRun)(ctx, { runId, ownerToken: "bogus-token" })
+    ).rejects.toThrow(/ownerToken mismatch/)
+
+    // State unchanged
+    expect(ctx.tables.get("harnessRuns")![0].status).toBe("paused")
+  })
+
+  it("throws when run is not paused", async () => {
+    const ctx = createMockCtx()
+    const { runId, ownerToken } = await asHandler(createRun)(ctx, {
+      conversationId: "conversations_1",
+      userId: "users_1",
+      workflowStage: "intake",
+      workflowStatus: "running",
+    })
+
+    await expect(
+      asHandler(resumeRun)(ctx, { runId, ownerToken })
+    ).rejects.toThrow(/run is not paused/)
+  })
+
+  it("throws when run not found", async () => {
+    const ctx = createMockCtx()
+    await expect(
+      asHandler(resumeRun)(ctx, {
+        runId: "harnessRuns_nonexistent",
+        ownerToken: "x",
+      })
+    ).rejects.toThrow(/not found/)
   })
 })

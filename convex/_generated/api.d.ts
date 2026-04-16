@@ -44,6 +44,7 @@ import type * as emailTemplateConstants from "../emailTemplateConstants.js";
 import type * as emailTemplateHelper from "../emailTemplateHelper.js";
 import type * as emailTemplates from "../emailTemplates.js";
 import type * as files from "../files.js";
+import type * as harnessDecisions from "../harnessDecisions.js";
 import type * as harnessEvents from "../harnessEvents.js";
 import type * as harnessRunSteps from "../harnessRunSteps.js";
 import type * as harnessRuns from "../harnessRuns.js";
@@ -171,6 +172,7 @@ declare const fullApi: ApiFromModules<{
   emailTemplateHelper: typeof emailTemplateHelper;
   emailTemplates: typeof emailTemplates;
   files: typeof files;
+  harnessDecisions: typeof harnessDecisions;
   harnessEvents: typeof harnessEvents;
   harnessRunSteps: typeof harnessRunSteps;
   harnessRuns: typeof harnessRuns;

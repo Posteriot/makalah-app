@@ -248,6 +248,87 @@ export const completeRun = mutation({
     },
 })
 
+// ────────────────────────────────────────────────────────────────
+// Phase 8 — pause/resume mutations.
+//
+// pauseRun: called by the orchestrator after policy evaluation when
+// requiresApproval is true. Takes a decisionId already minted by
+// harnessDecisions.createDecision (adapter composes the two calls).
+//
+// resumeRun: called by the UI path AFTER harnessDecisions.resolveDecision
+// has written the user response. Validates ownerToken as a strict
+// ownership check (the resume entrypoint doubles as an auth barrier).
+// ────────────────────────────────────────────────────────────────
+
+export const pauseRun = mutation({
+    args: {
+        runId: v.id("harnessRuns"),
+        reason: v.string(),
+        decisionId: v.string(),
+    },
+    handler: async (ctx, { runId, reason, decisionId }) => {
+        const run = await ctx.db.get(runId)
+        if (run === null) throw new Error("harness run not found")
+        await requireConversationOwner(ctx, run.conversationId)
+
+        if (run.status !== "running") {
+            throw new Error(`cannot pause run with status=${run.status}`)
+        }
+
+        const now = Date.now()
+
+        // Preserve existing policyState if present; stamp the pause reason
+        // into lastPolicyReason so observability has a single surfaced cause.
+        const nextPolicyState = run.policyState
+            ? { ...run.policyState, lastPolicyReason: reason, updatedAt: now }
+            : undefined
+
+        const patch: Partial<typeof run> = {
+            status: "paused",
+            pendingDecisionId: decisionId,
+            pausedAt: now,
+            updatedAt: now,
+        }
+        if (nextPolicyState !== undefined) {
+            patch.policyState = nextPolicyState
+        }
+
+        await ctx.db.patch(runId, patch)
+        return null
+    },
+})
+
+export const resumeRun = mutation({
+    args: {
+        runId: v.id("harnessRuns"),
+        ownerToken: v.string(),
+    },
+    handler: async (ctx, { runId, ownerToken }) => {
+        const run = await ctx.db.get(runId)
+        if (run === null) throw new Error("harness run not found")
+        await requireConversationOwner(ctx, run.conversationId)
+
+        // Strict ownership check — resume is the sole re-entry point for a
+        // paused run, so we double-check the token matches persistence.
+        if (run.ownerToken !== ownerToken) {
+            throw new Error("ownerToken mismatch")
+        }
+
+        if (run.status !== "paused") {
+            throw new Error(`run is not paused (status=${run.status})`)
+        }
+
+        const now = Date.now()
+        await ctx.db.patch(runId, {
+            status: "running",
+            pendingDecisionId: undefined,
+            pausedAt: undefined,
+            updatedAt: now,
+        })
+        return null
+    },
+})
+
 export const getRunByConversation = query({
     args: {
         conversationId: v.id("conversations"),
