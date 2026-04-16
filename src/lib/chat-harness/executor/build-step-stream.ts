@@ -9,6 +9,7 @@ import type { PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 import type { ReasoningLiveDataPart } from "@/lib/ai/curated-trace"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
+import { createReadableTextTransform } from "@/lib/ai/harness/create-readable-text-transform"
 import { pipeYamlRender } from "@json-render/yaml"
 import { PLAN_DATA_PART_TYPE } from "@/lib/ai/harness/plan-spec"
 import type { PlanSpec } from "@/lib/ai/harness/plan-spec"
@@ -336,6 +337,12 @@ export function buildStepStream(params: {
                 prepareStep: executionConfig.prepareStep,
                 stopWhen: stepCountIs(executionConfig.maxSteps),
                 ...executionConfig.samplingOptions,
+                // Visible stream readability (E2E iteration 3): coalesce
+                // char-per-char text deltas into word-level releases and
+                // force-flush the text buffer before any non-text chunk so
+                // tool-call / start-step / finish-step boundaries never
+                // land on a half-word. See src/lib/ai/harness/create-readable-text-transform.ts.
+                experimental_transform: createReadableTextTransform(),
                 onFinish: async ({ text, steps, providerMetadata, usage, finishReason }: {
                     text: string
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any

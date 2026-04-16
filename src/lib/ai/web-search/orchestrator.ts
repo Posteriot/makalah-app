@@ -35,6 +35,7 @@ import { pipeYamlRender } from "@json-render/yaml"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
+import { createReadableTextTransform } from "@/lib/ai/harness/create-readable-text-transform"
 import { PLAN_DATA_PART_TYPE, type PlanSpec, planSpecSchema, UNFENCED_PLAN_REGEX } from "@/lib/ai/harness/plan-spec"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
 import {
@@ -669,6 +670,11 @@ export async function executeWebSearch(
         ...(config.reasoningProviderOptions
           ? { providerOptions: config.reasoningProviderOptions as Parameters<typeof streamText>[0]["providerOptions"] }
           : {}),
+        // Visible stream readability (E2E iteration 3): coalesce char-per-char
+        // deltas into word-level releases and force-flush before any non-text
+        // chunk so tool boundaries never land on a half-word. See
+        // src/lib/ai/harness/create-readable-text-transform.ts for details.
+        experimental_transform: createReadableTextTransform(),
       })
 
       // Start primary compose
