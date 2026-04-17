@@ -887,6 +887,7 @@ export function ChatWindow({
   const editAndTruncate = useMutation(api.messages.editAndTruncateConversation)
   const resetStageDataForEditResendMutation = useMutation(api.paperSessions.resetStageDataForEditResend)
   const cancelChoiceDecision = useMutation(api.paperSessions.cancelChoiceDecision)
+  const unapproveStage = useMutation(api.paperSessions.unapproveStage)
 
   // Refs to always read latest attachment state at request time (bypasses useChat stale transport bug)
   const attachedFilesRef = useRef(attachedFiles)
@@ -2409,6 +2410,38 @@ export function ChatWindow({
     }
   }, [userId, paperSession?._id, conversationId, historyMessages, cancelChoiceDecision, editAndTruncate, setMessages])
 
+  const handleCancelApproval = useCallback(async (uiMessageId: string, syntheticMessageIndex: number) => {
+    if (!userId || !paperSession?._id || !conversationId) return
+    try {
+      // 1. Revert Convex state
+      await unapproveStage({ sessionId: paperSession._id, userId })
+
+      // 2. Map UIMessage.id → Convex message._id for truncation
+      const convexMsg = historyMessages?.find(
+        (m) => m.uiMessageId === uiMessageId || String(m._id) === uiMessageId
+      )
+      if (convexMsg) {
+        await editAndTruncate({
+          messageId: convexMsg._id as Id<"messages">,
+          content: "",
+          conversationId: conversationId as Id<"conversations">,
+        })
+      }
+
+      // 3. Truncate local messages (UIMessage state)
+      setMessages((prev) => prev.slice(0, syntheticMessageIndex))
+
+      // 4. Validation panel auto-reappears via Convex reactivity
+      // (stageStatus = "pending_validation" triggers panel render)
+
+      console.info("[CANCEL-DECISION] approval cancelled, validation panel re-shown")
+    } catch (error) {
+      Sentry.captureException(error, { tags: { subsystem: "paper.cancel-approval" } })
+      console.error("Failed to cancel approval:", error)
+      toast.error("Gagal membatalkan persetujuan.")
+    }
+  }, [userId, paperSession?._id, conversationId, historyMessages, unapproveStage, editAndTruncate, setMessages])
+
   // Handler for template selection
   const handleTemplateSelect = (template: Template) => {
     if (isLoading) return
@@ -2833,6 +2866,7 @@ export function ChatWindow({
                         isChoiceSubmitted={submittedChoiceKeys.has(`${message.id}::${message.id}-choice-spec`)}
                         onChoiceSubmit={handleChoiceSubmit}
                         onCancelChoice={handleCancelChoice}
+                        onCancelApproval={handleCancelApproval}
                         isStreaming={status === "streaming"}
                       />
                     </div>

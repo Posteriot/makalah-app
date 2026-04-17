@@ -178,6 +178,7 @@ interface MessageBubbleProps {
         customText?: string
     }) => void | Promise<void>
     onCancelChoice?: (messageId: string, messageIndex: number) => void
+    onCancelApproval?: (messageId: string, messageIndex: number) => void
     isStreaming?: boolean
 }
 
@@ -199,6 +200,7 @@ export function MessageBubble({
     isChoiceSubmitted,
     onChoiceSubmit,
     onCancelChoice,
+    onCancelApproval,
     isStreaming,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
@@ -1180,6 +1182,47 @@ export function MessageBubble({
                                         className={actionBtnClass}
                                         style={{ color: "var(--chat-warning-foreground, var(--chat-muted-foreground))" }}
                                         aria-label="Batalkan pilihan"
+                                    >
+                                        <Undo className={actionIconClass} strokeWidth={2} />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Batalkan</TooltipContent>
+                            </Tooltip>
+                        ) : null}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={handleCopyUserMessage}
+                                    className={actionBtnClass}
+                                    style={isCopied ? copiedBtnStyle : actionBtnStyle}
+                                    aria-label="Copy message"
+                                >
+                                    {isCopied ? <Check className={actionIconClass} strokeWidth={2} /> : <Copy className={actionIconClass} strokeWidth={2} />}
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">{isCopied ? "Copied" : "Copy"}</TooltipContent>
+                        </Tooltip>
+                    </div>
+                    )
+                }
+
+                // Cancel Decision: Batalkan button for approved synthetic messages
+                if (autoAction?.kind === "approved" && onCancelApproval) {
+                    // 30-second throttle via allMessages[messageIndex].createdAt (design doc 5.5.3)
+                    const messageCreatedAt = allMessages[messageIndex]?.createdAt ?? 0
+                    const messageAge = messageCreatedAt ? Date.now() - messageCreatedAt : 0
+                    const throttled = !messageCreatedAt || messageAge < 30_000
+                    const cancelAllowed = !isStreaming && !throttled
+                    return (
+                    <div className="flex flex-col items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">
+                        {cancelAllowed ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        onClick={() => onCancelApproval(message.id, messageIndex)}
+                                        className={actionBtnClass}
+                                        style={{ color: "var(--chat-warning-foreground, var(--chat-muted-foreground))" }}
+                                        aria-label="Batalkan persetujuan"
                                     >
                                         <Undo className={actionIconClass} strokeWidth={2} />
                                     </button>
