@@ -776,6 +776,66 @@ export const stampDecisionEpoch = mutation({
 });
 
 /**
+ * Cancel a choice card decision. Reverts stageData, invalidates artifact if exists,
+ * reverts stageStatus from pending_validation to drafting, increments decisionEpoch.
+ * Ref: design doc section 5.1
+ */
+export const cancelChoiceDecision = mutation({
+    args: {
+        sessionId: v.id("paperSessions"),
+        userId: v.id("users"),
+    },
+    handler: async (ctx, args) => {
+        const { session } = await requirePaperSessionOwner(ctx, args.sessionId);
+
+        const currentStage = session.currentStage;
+        if (!STAGE_ORDER.includes(currentStage as PaperStageId)) {
+            throw new Error(`Cannot cancel: invalid stage "${currentStage}"`);
+        }
+
+        const stageData = session.stageData as Record<string, Record<string, unknown>>;
+        const currentStageData = stageData[currentStage] ?? {};
+
+        // Increment epoch (invalidates any in-flight chain-completion/rescue)
+        const currentEpoch = session.decisionEpoch ?? 0;
+        const newEpoch = currentEpoch + 1;
+
+        // Revert stageStatus if pending_validation
+        const statusReverted = session.stageStatus === "pending_validation";
+
+        // Invalidate artifact if exists
+        let artifactInvalidated = false;
+        const artifactId = currentStageData.artifactId as string | undefined;
+        if (artifactId) {
+            try {
+                await ctx.db.patch(artifactId as Id<"artifacts">, {
+                    invalidatedAt: Date.now(),
+                });
+                artifactInvalidated = true;
+            } catch {
+                console.warn(`[PAPER][cancel-choice] artifact patch failed id=${artifactId}`);
+            }
+        }
+
+        // Clear stageData (preserve revisionCount only)
+        const revisionCount = typeof currentStageData.revisionCount === "number"
+            ? currentStageData.revisionCount : 0;
+        const updatedStageData = { ...stageData };
+        updatedStageData[currentStage] = { revisionCount };
+
+        await ctx.db.patch(args.sessionId, {
+            stageData: updatedStageData,
+            stageStatus: statusReverted ? "drafting" : session.stageStatus,
+            decisionEpoch: newEpoch,
+            updatedAt: Date.now(),
+        });
+
+        console.info(`[PAPER][cancel-choice] stage=${currentStage} artifactInvalidated=${artifactInvalidated} statusReverted=${statusReverted} epoch=${newEpoch}`);
+        return { stage: currentStage, artifactInvalidated, statusReverted };
+    },
+});
+
+/**
  * Update data for the current stage.
  */
 export const updateStageData = mutation({
