@@ -671,14 +671,18 @@ export function buildOnFinishHandler(
                 return streamCtx.reasoningTrace.snapshot
             })()
 
-            // Fallback choice card injection
+            // Deterministic choice card injection (tools path)
+            // Always inject a code-built choice card for drafting turns.
+            // Model compliance with yaml-spec is non-deterministic — relying
+            // on it causes intermittent missing cards or delayed fallback.
+            // Skip only when validation chain succeeded (session advances).
             if (
-                !(capturedSpecRef.current && capturedSpecRef.current.root) &&
                 paperStageScope &&
                 paperSession?.stageStatus === "drafting" &&
                 !paperToolTracker?.sawSubmitValidationSuccess
             ) {
-                const { spec: fallbackSpec } = compileChoiceSpec({
+                const modelEmitted = !!(capturedSpecRef.current && capturedSpecRef.current.root)
+                const { spec: deterministicSpec } = compileChoiceSpec({
                     stage: paperStageScope,
                     kind: "single-select",
                     title: "Apa langkah selanjutnya?",
@@ -687,17 +691,10 @@ export function buildOnFinishHandler(
                     ],
                     recommendedId: "lanjutkan-diskusi",
                     appendValidationOption: true,
-                    // Iteration 7: declare workflowAction on the shell so
-                    // the emitted spec satisfies the strict v2 contract
-                    // (parseChoiceSpecForRender returns contractVersion="v2"
-                    // rather than "legacy-render"). The selected option id
-                    // still drives the actual server-side decision —
-                    // validation option gets validation treatment via
-                    // choice-request.ts VALIDATE_OPTION_ID handling.
                     workflowAction: "continue_discussion",
                 })
-                capturedSpecRef.current = fallbackSpec as Spec
-                console.info(`[CHOICE-CARD][fallback-injected] stage=${paperStageScope} reason=model_did_not_emit_choice_card${logTag ? " (fallback model)" : ""}`)
+                capturedSpecRef.current = deterministicSpec as Spec
+                console.info(`[CHOICE-CARD][deterministic] stage=${paperStageScope} modelEmitted=${modelEmitted}`)
             }
 
             // Auto-complete plan when validation succeeded
