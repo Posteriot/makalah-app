@@ -1656,6 +1656,7 @@ export function ChatWindow({
   }, [historyMessages, setMessages])
 
   // Rehydrate submitted choice keys from history — full-derive persisted set
+  // Adds BOTH _id and uiMessageId key variants so checks work with either identifier
   useEffect(() => {
     if (!historyMessages || historyMessages.length === 0) return
     const keys = new Set<string>()
@@ -1666,7 +1667,13 @@ export function ChatWindow({
           const prev = historyMessages[j]
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           if (prev.role === "assistant" && (prev as any).jsonRendererChoice) {
+            // _id variant (used after history hydration where message.id = _id)
             keys.add(`${prev._id}::${prev._id}-choice-spec`)
+            // uiMessageId variant (used during live session where message.id = AI SDK id)
+            const uiId = (prev as any).uiMessageId as string | undefined
+            if (uiId && uiId !== String(prev._id)) {
+              keys.add(`${uiId}::${uiId}-choice-spec`)
+            }
             break
           }
         }
@@ -1683,6 +1690,43 @@ export function ChatWindow({
       return next.size === prev.size ? prev : next
     })
   }, [historyMessages])
+
+  // Cancel Decision: derive which choice message (if any) is currently cancelable.
+  // Only the latest [Choice:] synthetic with no subsequent [Approved:] or [Revisi untuk] is eligible.
+  // Boundaries: [Approved:] = stage advanced, [Revisi untuk] = revision flow entered (Phase 1 doesn't handle revision cancel).
+  const cancelableChoiceMessageId = useMemo(() => {
+    if (!paperSession || paperSession.currentStage === "completed") return null
+    // Scan backward: if we hit [Approved:] or [Revisi untuk] before [Choice:], nothing is cancelable
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i]
+      if (msg.role !== "user") continue
+      const textPart = msg.parts?.find((p) => p.type === "text") as { text?: string } | undefined
+      const text = textPart?.text ?? ""
+      if (text.startsWith("[Approved:")) return null
+      if (text.startsWith("[Revisi untuk")) return null
+      if (text.startsWith("[Choice:")) return msg.id
+    }
+    return null
+  }, [messages, paperSession])
+
+  // Cancel Decision: derive which approved message (if any) is currently cancelable.
+  // Only the latest [Approved:] is eligible, and only when session state allows unapproval.
+  // Backend guard mirrors: stageStatus === "drafting" (normal) or completed+approved (final).
+  const cancelableApprovalMessageId = useMemo(() => {
+    if (!paperSession) return null
+    const isNormalApproval = paperSession.stageStatus === "drafting"
+    const isFinalApproval = paperSession.currentStage === "completed" && paperSession.stageStatus === "approved"
+    if (!isNormalApproval && !isFinalApproval) return null
+    // Find the latest [Approved:] — by construction this is the one for the current previous stage
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i]
+      if (msg.role !== "user") continue
+      const textPart = msg.parts?.find((p) => p.type === "text") as { text?: string } | undefined
+      const text = textPart?.text ?? ""
+      if (text.startsWith("[Approved:")) return msg.id
+    }
+    return null
+  }, [messages, paperSession])
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
@@ -2380,7 +2424,7 @@ export function ChatWindow({
       // 3. Truncate local messages (UIMessage state)
       setMessages((prev) => prev.slice(0, syntheticMessageIndex))
 
-      // 4. Remove from both choice key sets
+      // 4. Remove ALL equivalent key variants from both choice key sets
       if (historyMessages) {
         const syntheticIdx = historyMessages.findIndex(
           (m) => m.uiMessageId === uiMessageId || String(m._id) === uiMessageId
@@ -2390,9 +2434,17 @@ export function ChatWindow({
             const prev = historyMessages[j]
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (prev.role === "assistant" && (prev as any).jsonRendererChoice) {
-              const key = `${prev._id}::${prev._id}-choice-spec`
-              setPersistedChoiceKeys((p) => { const n = new Set(p); n.delete(key); return n })
-              setOptimisticPendingKeys((p) => { const n = new Set(p); n.delete(key); return n })
+              // Remove _id variant
+              const idKey = `${prev._id}::${prev._id}-choice-spec`
+              // Remove uiMessageId variant (live session uses this)
+              const uiId = (prev as any).uiMessageId as string | undefined
+              const uiKey = uiId && uiId !== String(prev._id) ? `${uiId}::${uiId}-choice-spec` : null
+              setPersistedChoiceKeys((p) => {
+                const n = new Set(p); n.delete(idKey); if (uiKey) n.delete(uiKey); return n
+              })
+              setOptimisticPendingKeys((p) => {
+                const n = new Set(p); n.delete(idKey); if (uiKey) n.delete(uiKey); return n
+              })
               break
             }
           }
@@ -2868,6 +2920,8 @@ export function ChatWindow({
                         onCancelChoice={handleCancelChoice}
                         onCancelApproval={handleCancelApproval}
                         isStreaming={status === "streaming"}
+                        cancelableChoiceMessageId={cancelableChoiceMessageId}
+                        cancelableApprovalMessageId={cancelableApprovalMessageId}
                       />
                     </div>
                   </div>

@@ -180,6 +180,10 @@ interface MessageBubbleProps {
     onCancelChoice?: (messageId: string, messageIndex: number) => void
     onCancelApproval?: (messageId: string, messageIndex: number) => void
     isStreaming?: boolean
+    /** ID of the single message eligible for choice cancel (computed in ChatWindow) */
+    cancelableChoiceMessageId?: string | null
+    /** ID of the single message eligible for approval cancel (computed in ChatWindow) */
+    cancelableApprovalMessageId?: string | null
 }
 
 export function MessageBubble({
@@ -202,6 +206,8 @@ export function MessageBubble({
     onCancelChoice,
     onCancelApproval,
     isStreaming,
+    cancelableChoiceMessageId,
+    cancelableApprovalMessageId,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
@@ -1170,7 +1176,7 @@ export function MessageBubble({
                 // Cancel Decision: Batalkan button for choice synthetic messages
                 // autoUserAction is derived from message.parts above (line ~459)
                 const autoAction = autoUserAction
-                if (autoAction?.kind === "choice" && onCancelChoice) {
+                if (autoAction?.kind === "choice" && onCancelChoice && message.id === cancelableChoiceMessageId) {
                     const cancelAllowed = !isStreaming
                     return (
                     <div className="flex flex-col items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">
@@ -1207,7 +1213,7 @@ export function MessageBubble({
                 }
 
                 // Cancel Decision: Batalkan button for approved synthetic messages
-                if (autoAction?.kind === "approved" && onCancelApproval) {
+                if (autoAction?.kind === "approved" && onCancelApproval && message.id === cancelableApprovalMessageId) {
                     // 30-second throttle via allMessages[messageIndex].createdAt (design doc 5.5.3)
                     const messageCreatedAt = allMessages[messageIndex]?.createdAt ?? 0
                     const messageAge = messageCreatedAt ? Date.now() - messageCreatedAt : 0
