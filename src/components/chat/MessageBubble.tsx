@@ -782,12 +782,29 @@ export function MessageBubble({
             state?: JsonRendererChoiceRenderPayload["initialState"]
         }
 
+        // Derive initial selectedOptionId from spec state, or fall back to
+        // scanning elements for a recommended/pre-selected option. This
+        // handles old DB specs that lack a `state` field but have
+        // `props.selected: true` on the recommended option.
+        let derivedSelectedId: string | null = null
+        if (!specWithState.state) {
+            for (const el of Object.values(normalizedSpec.elements)) {
+                if (
+                    el.type === "ChoiceOptionButton" &&
+                    (el.props as { selected?: boolean; recommended?: boolean }).selected === true
+                ) {
+                    derivedSelectedId = (el.props as { optionId: string }).optionId
+                    break
+                }
+            }
+        }
+
         return {
             payload: {
                 spec: normalizedSpec,
                 initialState: specWithState.state ?? {
                     selection: {
-                        selectedOptionId: null,
+                        selectedOptionId: derivedSelectedId,
                         customText: "",
                     },
                 },
