@@ -574,7 +574,16 @@ export function ChatWindow({
   const [pendingRewindTarget, setPendingRewindTarget] = useState<PaperStageId | null>(null)
   const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
-  const [submittedChoiceKeys, setSubmittedChoiceKeys] = useState<Set<string>>(new Set())
+  // Cancel Decision: two-set approach (design doc 5.5.1)
+  // persistedChoiceKeys — full-derived from historyMessages
+  // optimisticPendingKeys — bridges submit→persist gap, cleared on cancel or persistence confirm
+  const [persistedChoiceKeys, setPersistedChoiceKeys] = useState<Set<string>>(new Set())
+  const [optimisticPendingKeys, setOptimisticPendingKeys] = useState<Set<string>>(new Set())
+  // Derived combined set — replaces the old single submittedChoiceKeys state
+  const submittedChoiceKeys = useMemo(() =>
+      new Set([...persistedChoiceKeys, ...optimisticPendingKeys]),
+      [persistedChoiceKeys, optimisticPendingKeys]
+  )
   // Optimistic bridge: show approval panel immediately when onFinish detects
   // submitStageForValidation in message, without waiting for Convex subscription
   const [optimisticPendingValidation, setOptimisticPendingValidation] = useState(false)
@@ -877,6 +886,7 @@ export function ChatWindow({
   // 2. Initialize useChat with AI SDK v5/v6 API
   const editAndTruncate = useMutation(api.messages.editAndTruncateConversation)
   const resetStageDataForEditResendMutation = useMutation(api.paperSessions.resetStageDataForEditResend)
+  const cancelChoiceDecision = useMutation(api.paperSessions.cancelChoiceDecision)
 
   // Refs to always read latest attachment state at request time (bypasses useChat stale transport bug)
   const attachedFilesRef = useRef(attachedFiles)
@@ -1345,7 +1355,7 @@ export function ChatWindow({
     customText?: string
   }) => {
     const submissionKey = `${params.sourceMessageId}::${params.choicePartId}`
-    setSubmittedChoiceKeys((prev) => new Set([...prev, submissionKey]))
+    setOptimisticPendingKeys((prev) => new Set([...prev, submissionKey]))
 
     // V3 YAML: payload is { spec } — extract label + decisionMode from spec elements, stage from session
     const specAny = params.payload as unknown as { spec?: { elements?: Record<string, { type?: string; props?: { label?: string; optionId?: string; decisionMode?: string; workflowAction?: string } }> } }
@@ -1644,14 +1654,13 @@ export function ChatWindow({
     })
   }, [historyMessages, setMessages])
 
-  // Rehydrate submitted choice keys from history — mark choices that already have a follow-up user message
+  // Rehydrate submitted choice keys from history — full-derive persisted set
   useEffect(() => {
     if (!historyMessages || historyMessages.length === 0) return
     const keys = new Set<string>()
     for (let i = 0; i < historyMessages.length; i++) {
       const msg = historyMessages[i]
       if (msg.role === "user" && typeof msg.content === "string" && msg.content.startsWith("[Choice:")) {
-        // Walk backwards to find the assistant message with the choice card
         for (let j = i - 1; j >= 0; j--) {
           const prev = historyMessages[j]
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1662,10 +1671,16 @@ export function ChatWindow({
         }
       }
     }
-    if (keys.size > 0) {
-      setSubmittedChoiceKeys((prev) => new Set([...prev, ...keys]))
-      console.log("[F1-F6-TEST] ChoiceRehydrate", { rehydratedCount: keys.size, keys: [...keys] })
-    }
+    // Full-derive: replace entire persisted set
+    setPersistedChoiceKeys(keys)
+    // Migrate confirmed keys from optimistic to persisted
+    setOptimisticPendingKeys((prev) => {
+      const next = new Set(prev)
+      for (const key of prev) {
+        if (keys.has(key)) next.delete(key)
+      }
+      return next.size === prev.size ? prev : next
+    })
   }, [historyMessages])
 
   const isLoading = status !== 'ready' && status !== 'error'
@@ -2343,6 +2358,57 @@ export function ChatWindow({
     }
   }
 
+  const handleCancelChoice = useCallback(async (uiMessageId: string, syntheticMessageIndex: number) => {
+    if (!userId || !paperSession?._id || !conversationId) return
+    try {
+      // 1. Revert Convex state
+      await cancelChoiceDecision({ sessionId: paperSession._id, userId })
+
+      // 2. Map UIMessage.id → Convex message._id for truncation
+      const convexMsg = historyMessages?.find(
+        (m) => m.uiMessageId === uiMessageId || String(m._id) === uiMessageId
+      )
+      if (convexMsg) {
+        await editAndTruncate({
+          messageId: convexMsg._id as Id<"messages">,
+          content: "", // Required arg, not used
+          conversationId: conversationId as Id<"conversations">,
+        })
+      }
+
+      // 3. Truncate local messages (UIMessage state)
+      setMessages((prev) => prev.slice(0, syntheticMessageIndex))
+
+      // 4. Remove from both choice key sets
+      if (historyMessages) {
+        const syntheticIdx = historyMessages.findIndex(
+          (m) => m.uiMessageId === uiMessageId || String(m._id) === uiMessageId
+        )
+        if (syntheticIdx > 0) {
+          for (let j = syntheticIdx - 1; j >= 0; j--) {
+            const prev = historyMessages[j]
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (prev.role === "assistant" && (prev as any).jsonRendererChoice) {
+              const key = `${prev._id}::${prev._id}-choice-spec`
+              setPersistedChoiceKeys((p) => { const n = new Set(p); n.delete(key); return n })
+              setOptimisticPendingKeys((p) => { const n = new Set(p); n.delete(key); return n })
+              break
+            }
+          }
+        }
+      }
+
+      // 5. Clear optimistic pending validation if it was set
+      setOptimisticPendingValidation(false)
+
+      console.info("[CANCEL-DECISION] choice cancelled, card re-activated")
+    } catch (error) {
+      Sentry.captureException(error, { tags: { subsystem: "paper.cancel-choice" } })
+      console.error("Failed to cancel choice:", error)
+      toast.error("Gagal membatalkan pilihan.")
+    }
+  }, [userId, paperSession?._id, conversationId, historyMessages, cancelChoiceDecision, editAndTruncate, setMessages])
+
   // Handler for template selection
   const handleTemplateSelect = (template: Template) => {
     if (isLoading) return
@@ -2766,6 +2832,8 @@ export function ChatWindow({
                         onOpenSources={handleOpenSources}
                         isChoiceSubmitted={submittedChoiceKeys.has(`${message.id}::${message.id}-choice-spec`)}
                         onChoiceSubmit={handleChoiceSubmit}
+                        onCancelChoice={handleCancelChoice}
+                        isStreaming={status === "streaming"}
                       />
                     </div>
                   </div>
