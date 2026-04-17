@@ -40,18 +40,7 @@ daf7b998 feat(cancel-decision): add handleCancelApproval handler + Batalkan butt
 
 ## Next Step: Codex Audit
 
-### Apa yang harus dilakukan
-
-1. Copy isi review prompts ke Codex (satu per satu atau batch):
-   - `docs/cancel-decision/report/phase-1/REVIEW-PROMPT.md`
-   - `docs/cancel-decision/report/phase-2/REVIEW-PROMPT.md`
-   - `docs/cancel-decision/report/phase-3/REVIEW-PROMPT.md`
-
-2. Paste findings Codex ke sesi baru Claude
-
-3. Claude merespons per finding: fix, reject with evidence, atau acknowledge
-
-### Yang harus dibaca sesi baru (urutan)
+### Yang harus dibaca sesi ini
 
 1. **File ini** (`HANDOFF.md`) — status overview
 2. **Codex findings** (user akan paste)
@@ -109,3 +98,7 @@ daf7b998 feat(cancel-decision): add handleCancelApproval handler + Batalkan butt
 5. **UIMessage tidak punya `createdAt`** — Throttle pakai `allMessages[messageIndex]?.createdAt` (Convex PermissionMessage), bukan `message.createdAt`.
 
 6. **`getPreviousStage` belum di-import** — Plan bilang "already available" tapi ternyata hanya `getNextStage` yang di-import. Selalu verifikasi imports.
+
+
+## Validation
+Setelah memahami ini tunggu kiriman report audit dari user
