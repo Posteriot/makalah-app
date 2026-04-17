@@ -3056,7 +3056,16 @@ export function ChatWindow({
                         fileNameMap={fileNameMap}
                         fileMetaMap={fileMetaMap}
                         onOpenSources={handleOpenSources}
-                        isChoiceSubmitted={submittedChoiceKeys.has(`${message.id}::${message.id}-choice-spec`) && !cancelledChoiceMessageIdsRef.current.has(message.id)}
+                        isChoiceSubmitted={(() => {
+                          const key = `${message.id}::${message.id}-choice-spec`
+                          const inKeys = submittedChoiceKeys.has(key)
+                          const cancelled = cancelledChoiceMessageIdsRef.current.has(message.id)
+                          const result = inKeys && !cancelled
+                          if (process.env.NODE_ENV !== "production" && inKeys) {
+                            console.info(`[CHOICE-GATE] msgId=${message.id} inKeys=${inKeys} cancelled=${cancelled} result=${result} cancelledSet=[${[...cancelledChoiceMessageIdsRef.current].join(",")}]`)
+                          }
+                          return result
+                        })()}
                         onChoiceSubmit={handleChoiceSubmit}
                         onCancelChoice={handleCancelChoice}
                         onCancelApproval={handleCancelApproval}
