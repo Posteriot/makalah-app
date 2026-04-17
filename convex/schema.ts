@@ -740,6 +740,9 @@ export default defineSchema({
     isSoftBlocked: v.optional(v.boolean()), // True jika kredit habis
     softBlockedAt: v.optional(v.number()), // Timestamp saat soft-blocked
 
+    // Cancel Decision: monotonic epoch counter for race prevention (design doc 5.5.4)
+    decisionEpoch: v.optional(v.number()),
+
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),
