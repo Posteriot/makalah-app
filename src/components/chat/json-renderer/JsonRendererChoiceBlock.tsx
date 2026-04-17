@@ -31,6 +31,9 @@ export function JsonRendererChoiceBlock({
   useEffect(() => {
     if (!isSubmitted && localSubmitted) {
       setLocalSubmitted(false)
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[CHOICE-CARD] localSubmitted reset — card re-enabled for resubmission")
+      }
     }
   }, [isSubmitted, localSubmitted])
 
@@ -47,7 +50,12 @@ export function JsonRendererChoiceBlock({
   const handlers = useMemo(
     () => ({
       submitChoice: async (params?: Record<string, unknown>) => {
-        if (submitted || !onSubmit) return
+        if (submitted || !onSubmit) {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[CHOICE-CARD] submitChoice blocked", { submitted, isSubmitted, localSubmitted, hasOnSubmit: !!onSubmit })
+          }
+          return
+        }
 
         const selectedOptionId =
           typeof params?.selectedOptionId === "string"
