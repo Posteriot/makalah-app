@@ -754,6 +754,28 @@ export const resetStageDataForEditResend = mutation({
 });
 
 /**
+ * Increment decisionEpoch and return new value.
+ * Called at start of server-side request processing when choiceInteractionEvent present.
+ * Ref: design doc section 5.3
+ */
+export const stampDecisionEpoch = mutation({
+    args: {
+        sessionId: v.id("paperSessions"),
+    },
+    handler: async (ctx, args) => {
+        const { session } = await requirePaperSessionOwner(ctx, args.sessionId);
+        const currentEpoch = session.decisionEpoch ?? 0;
+        const newEpoch = currentEpoch + 1;
+        await ctx.db.patch(args.sessionId, {
+            decisionEpoch: newEpoch,
+            updatedAt: Date.now(),
+        });
+        console.info(`[PAPER][stamp-epoch] stage=${session.currentStage} epoch=${newEpoch}`);
+        return { epoch: newEpoch };
+    },
+});
+
+/**
  * Update data for the current stage.
  */
 export const updateStageData = mutation({
