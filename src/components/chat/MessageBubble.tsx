@@ -1579,9 +1579,11 @@ export function MessageBubble({
                     )}
 
                     {/* Assistant follow-up blocks: artifact output -> sources -> choice card -> quick actions */}
-                    {isAssistant && !isEditing && (hasArtifactSignals || hasSources || hasQuickActions || choiceSpec) && (
+                    {/* Artifact signals gated on !persistProcessIndicators so the card */}
+                    {/* only renders after text has finished streaming (reveal sequencing). */}
+                    {isAssistant && !isEditing && ((hasArtifactSignals && !persistProcessIndicators) || hasSources || hasQuickActions || choiceSpec) && (
                         <div className="mt-3 space-y-3">
-                            {hasArtifactSignals && (
+                            {hasArtifactSignals && !persistProcessIndicators && (
                                 <section className="space-y-2 pt-2" aria-label="Hasil artifak">
                                     {artifactSignals.map((artifact) => (
                                         onArtifactSelect ? (
