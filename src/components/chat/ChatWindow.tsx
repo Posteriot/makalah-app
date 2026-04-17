@@ -523,6 +523,15 @@ function PendingAssistantLaneIndicator() {
   )
 }
 
+export function shouldAutoOpenSettledArtifactFallback(params: {
+  chatStatus: ProcessVisualStatus
+  optimisticPendingValidation: boolean
+  stageStatus?: string
+}): boolean {
+  if (params.chatStatus !== "ready") return false
+  return params.optimisticPendingValidation || params.stageStatus === "pending_validation"
+}
+
 export function ChatWindow({
   conversationId,
   onMobileMenuClick,
@@ -1041,21 +1050,17 @@ export function ChatWindow({
   // path produces zero entries and the panel stays closed. This effect
   // watches Convex's reactive `conversationArtifacts` list and fires the
   // same double-rAF → onArtifactSelect fallback.
-  //
-  // Gate NOTE (review finding #1): we gate on
-  // `stageStatus === "pending_validation"` rather than on
-  // `optimisticPendingValidation` because in the CHAIN-COMPLETION scenario
-  // the model never emits `tool-submitStageForValidation` with
-  // `success: true`, so `hasSubmitForValidation(message)` stays false and
-  // the optimistic flag never flips. `stageStatus` is reactive from
-  // Convex (via usePaperSession) and DOES flip to "pending_validation"
-  // when the server-side CHAIN-COMPLETION persists the submit — that's
-  // the signal we need. We keep `optimisticPendingValidation` in the
-  // condition as a fast-path for happy-path latency, but either one
-  // opens the gate.
   useEffect(() => {
     if (!onArtifactSelect) return
-    if (!optimisticPendingValidation && stageStatus !== "pending_validation") return
+    if (
+      !shouldAutoOpenSettledArtifactFallback({
+        chatStatus: status,
+        optimisticPendingValidation,
+        stageStatus,
+      })
+    ) {
+      return
+    }
     if (!conversationArtifacts || conversationArtifacts.length === 0) return
     if (lastTurnStartRef.current === 0) return
 
@@ -1091,7 +1096,7 @@ export function ChatWindow({
         onArtifactSelect(targetArtifactId)
       })
     })
-  }, [conversationArtifacts, optimisticPendingValidation, stageStatus, onArtifactSelect])
+  }, [conversationArtifacts, optimisticPendingValidation, stageStatus, onArtifactSelect, status])
 
   const isQuotaRejectedError = useMemo(() => isQuotaExceededChatError(error), [error])
   const quotaRejectedOffer = useMemo(

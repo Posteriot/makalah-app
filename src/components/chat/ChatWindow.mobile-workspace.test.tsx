@@ -69,6 +69,9 @@ vi.mock("../../../convex/_generated/api", () => ({
     files: {
       getFilesByIds: "files.getFilesByIds",
     },
+    paperSessions: {
+      resetStageDataForEditResend: "paperSessions.resetStageDataForEditResend",
+    },
     messages: {
       editAndTruncateConversation: "messages.editAndTruncateConversation",
     },
