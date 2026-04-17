@@ -528,7 +528,12 @@ export function shouldAutoOpenSettledArtifactFallback(params: {
   optimisticPendingValidation: boolean
   stageStatus?: string
 }): boolean {
-  if (params.chatStatus !== "ready") return false
+  // Block during active turn states — fallback must not race with streaming.
+  // Allow on terminal states where the artifact may already be persisted:
+  //   - "ready": normal completion
+  //   - "error": turn failed after artifact was persisted (recovery path)
+  // Block "stopped": user manually cancelled — don't auto-open partial work.
+  if (params.chatStatus !== "ready" && params.chatStatus !== "error") return false
   return params.optimisticPendingValidation || params.stageStatus === "pending_validation"
 }
 
