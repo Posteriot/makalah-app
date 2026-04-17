@@ -1655,6 +1655,61 @@ export function ChatWindow({
     })
   }, [historyMessages, setMessages])
 
+  // 3b. Incremental choice-spec rehydration — when a persisted assistant message
+  // gains jsonRendererChoice AFTER the one-shot history sync (e.g. search path
+  // persists fallback spec in onFinish), merge the spec into the live useChat
+  // message so the choice card appears without a page refresh.
+  useEffect(() => {
+    if (!historyMessages || historyMessages.length === 0) return
+    if (syncedConversationRef.current !== conversationId) return
+
+    // Build a map of persisted choice specs keyed by both _id and uiMessageId
+    const persistedChoiceByKey = new Map<string, string>()
+    for (const hMsg of historyMessages) {
+      if (hMsg.role !== "assistant") continue
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rawChoice = (hMsg as any).jsonRendererChoice as string | undefined
+      if (!rawChoice || typeof rawChoice !== "string") continue
+      persistedChoiceByKey.set(String(hMsg._id), rawChoice)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const uiId = (hMsg as any).uiMessageId as string | undefined
+      if (uiId) persistedChoiceByKey.set(uiId, rawChoice)
+    }
+
+    if (persistedChoiceByKey.size === 0) return
+
+    setMessages((prev) => {
+      let changed = false
+      const next = prev.map((message) => {
+        if (message.role !== "assistant") return message
+        const rawChoice = persistedChoiceByKey.get(message.id)
+        if (!rawChoice) return message
+
+        // Check if this message already has a SPEC_DATA_PART_TYPE part
+        const hasSpecPart = message.parts?.some(
+          (p: { type?: string }) => p.type === SPEC_DATA_PART_TYPE
+        )
+        if (hasSpecPart) return message
+
+        // Merge the persisted spec into parts
+        try {
+          const spec = JSON.parse(rawChoice)
+          changed = true
+          return {
+            ...message,
+            parts: [
+              ...(message.parts ?? []),
+              { type: SPEC_DATA_PART_TYPE, data: { type: "flat", spec } },
+            ],
+          }
+        } catch {
+          return message
+        }
+      })
+      return changed ? next : prev
+    })
+  }, [historyMessages, conversationId, setMessages])
+
   // Rehydrate submitted choice keys from history — full-derive persisted set
   // Adds BOTH _id and uiMessageId key variants so checks work with either identifier
   useEffect(() => {

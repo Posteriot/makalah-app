@@ -248,6 +248,32 @@ export function emitTransparentReasoningResetForRetry(params: {
  * for retry / fallback handling. Phase 1.5 runs inside execute so Vercel's
  * streaming timeout doesn't apply (first byte already sent).
  */
+/**
+ * Emit a guaranteed fallback choice spec to the live stream when the compose
+ * model did not produce a valid YAML choice card.
+ *
+ * Returns the emitted Spec if one was injected, or null if no action was taken.
+ */
+export function maybeEmitGuaranteedChoiceSpec(params: {
+  capturedChoiceSpec: Spec | null
+  compileGuaranteedChoiceSpec?: () => Spec | undefined
+  currentStage?: string
+  writer: { write: (chunk: unknown) => void }
+}): Spec | null {
+  if (params.capturedChoiceSpec?.root) return null
+  if (!params.compileGuaranteedChoiceSpec) return null
+
+  const fallbackSpec = params.compileGuaranteedChoiceSpec()
+  if (!fallbackSpec || !fallbackSpec.root) return null
+
+  params.writer.write({
+    type: SPEC_DATA_PART_TYPE,
+    data: { type: "flat", spec: fallbackSpec },
+  })
+  console.info(`[CHOICE-CARD][guaranteed][stream] stage=${params.currentStage ?? "unknown"} source=deterministic-fallback`)
+  return fallbackSpec
+}
+
 export function validateComposeSubstantiveness(composedText: string, sourceCount: number): boolean {
     if (sourceCount === 0) return true
     // composedText is from text-delta chunks AFTER pipeYamlRender.
@@ -962,6 +988,17 @@ export async function executeWebSearch(
               console.info(`[F1-F6-TEST] ChoiceCardSpec { elements: "${elementTypes}", hasSubmitButton: ${hasSubmitBtn}, submitInRootChildren: ${submitInRoot} }`)
             }
 
+            // ── Guaranteed choice card: emit fallback to live stream if model didn't ──
+            const fallbackResult = maybeEmitGuaranteedChoiceSpec({
+              capturedChoiceSpec,
+              compileGuaranteedChoiceSpec: config.compileGuaranteedChoiceSpec,
+              currentStage: config.currentStage,
+              writer,
+            })
+            if (fallbackResult) {
+              capturedChoiceSpec = fallbackResult
+            }
+
             const composeElapsed = Date.now() - composeStartTime
             console.log(`[⏱ LATENCY][${reqId}] Phase2 composeTotal=${composeElapsed}ms textChunks=${textChunkCount} composedChars=${composedText.length}`)
             console.log(`[⏱ STUTTER][${reqId}] summary: maxGap=${maxGapMs}ms gapsOver200ms=${gapsOver500ms} reasoningInterruptions=${reasoningBetweenTextCount} totalReasoningChunks=${reasoningChunkCount} isDrafting=${!!config.isDraftingStage}`)
@@ -1046,6 +1083,7 @@ export async function executeWebSearch(
               capturedChoiceSpec: capturedChoiceSpec && capturedChoiceSpec.root ? capturedChoiceSpec : undefined,
               capturedPlanSpec: capturedPlanSpec ?? fallbackPlanSpec ?? undefined,
               reasoningSnapshot,
+              messageId,
             })
             console.log(`[⏱ LATENCY][${reqId}] onFinish(DB writes)=${Date.now() - onFinishStart}ms`)
             console.log(`[⏱ LIFECYCLE][${reqId}] finish-handler: onFinish done, writing finish event`)

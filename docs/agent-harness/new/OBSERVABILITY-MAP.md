@@ -106,6 +106,8 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 | `[Context Compaction] P3 LLM summarization failed: ...` | `apply-context-budget.ts` | P3 LLM path fails | Terminal |
 | `[PAPER][post-choice-context] stage=...` | `resolve-exact-source-followup.ts` | Post-choice context enrichment | Terminal |
 | `[PAPER][post-choice-search-context] / [-rag]` | `execute-web-search-path.ts` | Search context for post-choice path | Terminal |
+| `[CHOICE-CARD][guaranteed][stream] stage=... source=deterministic-fallback` | `orchestrator.ts` (`maybeEmitGuaranteedChoiceSpec`) | Orchestrator finish handler emits fallback `SPEC_DATA_PART_TYPE` to live stream when compose model didn't produce a valid YAML choice card. Fires BEFORE `onFinish` callback. | Terminal |
+| `[CHOICE-CARD][guaranteed][search] stage=... source=model-or-guaranteed\|none` | `execute-web-search-path.ts` (onFinish) | Search path persistence: logs whether the choice spec being persisted to DB came from model/orchestrator-guaranteed or was absent. | Terminal |
 
 ### Policy — `src/lib/chat-harness/policy/` (Phase 4+6)
 
@@ -239,9 +241,11 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 6. **Browser:** `[UNIFIED-PROCESS-UI]` — what task source?
 
 ### "Choice card not appearing"
-1. **Terminal:** `[CHOICE-CARD][yaml-capture]` — was YAML spec captured?
+1. **Terminal:** `[CHOICE-CARD][yaml-capture]` — was YAML spec captured from model stream?
 2. **Terminal:** `[F1-F6-TEST] ChoiceCardSpec { hasSubmitButton }` — did spec have submit button?
-3. **Browser:** Check React component render
+3. **Terminal (search path):** `[CHOICE-CARD][guaranteed][stream]` — did orchestrator emit fallback to live stream?
+4. **Terminal (search path):** `[CHOICE-CARD][guaranteed][search]` — what spec source was persisted to DB?
+5. **Browser:** Check React component render — `message.parts` should contain `SPEC_DATA_PART_TYPE`
 
 ### "Approval panel not showing"
 1. **Convex Logs:** `[F1-F6-TEST] submitStageForValidation { status }` — did submit succeed?
@@ -446,3 +450,7 @@ paperSessions.approveStage → [PAPER][stage-transition] ...
     - **Executor epoch guard:** `[CHAIN-COMPLETION] aborted: epoch drift` / `[LAMPIRAN-RESCUE] aborted: epoch drift` / `[JUDUL-RESCUE] aborted: epoch drift` — `build-on-finish-handler.ts`.
     - **Browser client:** `[CANCEL-DECISION] choice cancelled` / `approval cancelled` (+ error logs) — `ChatWindow.tsx`.
     - **Debugging scenarios:** "Cancel choice", "Cancel approval", "Chain-completion race after cancel".
+- **2026-04-18 (search choice-card stream fix):** Added guaranteed fallback choice card logs for the search path:
+    - **Orchestrator stream:** `[CHOICE-CARD][guaranteed][stream]` — `orchestrator.ts` (`maybeEmitGuaranteedChoiceSpec`). Fires when compose model didn't emit YAML spec and orchestrator injects fallback into live stream.
+    - **Search persistence:** `[CHOICE-CARD][guaranteed][search]` — `execute-web-search-path.ts`. Logs spec source on DB persist.
+    - **Debugging scenario:** Updated "Choice card not appearing" with steps 3-4 for search-path-specific triage.

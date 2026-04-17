@@ -188,6 +188,21 @@ export async function executeWebSearchPath(
         traceMode: getTraceModeLabel(!!paperModePrompt, true),
         requestStartedAt,
         isDraftingStage,
+        compileGuaranteedChoiceSpec: (paperStageScope && paperSession?.stageStatus === "drafting")
+            ? () => {
+                const { spec: fallbackSpec } = compileChoiceSpec({
+                    stage: paperStageScope,
+                    kind: "single-select",
+                    title: "Bagaimana kita akan melanjutkan?",
+                    options: [
+                        { id: "lanjutkan-diskusi", label: "Lanjutkan diskusi berdasarkan temuan" },
+                    ],
+                    recommendedId: "lanjutkan-diskusi",
+                    appendValidationOption: true,
+                })
+                return fallbackSpec as unknown as Spec
+            }
+            : undefined,
         onFinish: async (result) => {
             const retrieverModelName = result.retrieverName || "unknown"
             const combinedModelName = `${retrieverModelName}+${modelNames.primary.model}`
@@ -214,26 +229,14 @@ export async function executeWebSearchPath(
                 .replace(/(?:^|\n)stage:\s*\w+\s*\nsummary:\s*.+\ntasks:\s*\n(?:\s*-\s*label:\s*.+\n\s*status:\s*(?:complete|in-progress|pending)\s*\n?)+/g, "")
                 .replace(/\n{3,}/g, "\n\n").trim()
 
-            // ──── Guaranteed choice card for search responses ────
-            // If model emitted a valid yaml-spec, preserve it. Otherwise inject
-            // a deterministic fallback so user is never stranded without a card.
-            let searchChoiceSpec = result.capturedChoiceSpec ?? undefined
+            // ──── Choice card for search responses ────
+            // The orchestrator handles guaranteed fallback emission to the live
+            // stream (via compileGuaranteedChoiceSpec callback). Here we just
+            // use whatever spec the orchestrator resolved — model or fallback.
+            const searchChoiceSpec = result.capturedChoiceSpec ?? undefined
             if (paperStageScope && paperSession?.stageStatus === "drafting") {
-                const modelEmitted = !!(searchChoiceSpec && (searchChoiceSpec as { root?: string }).root)
-                if (!modelEmitted) {
-                    const { spec: fallbackSpec } = compileChoiceSpec({
-                        stage: paperStageScope,
-                        kind: "single-select",
-                        title: "Bagaimana kita akan melanjutkan?",
-                        options: [
-                            { id: "lanjutkan-diskusi", label: "Lanjutkan diskusi berdasarkan temuan" },
-                        ],
-                        recommendedId: "lanjutkan-diskusi",
-                        appendValidationOption: true,
-                    })
-                    searchChoiceSpec = fallbackSpec as unknown as typeof searchChoiceSpec
-                }
-                console.info(`[CHOICE-CARD][guaranteed][search] stage=${paperStageScope} source=${modelEmitted ? "model" : "deterministic-fallback"}`)
+                const source = searchChoiceSpec?.root ? "model-or-guaranteed" : "none"
+                console.info(`[CHOICE-CARD][guaranteed][search] stage=${paperStageScope} source=${source}`)
             }
 
             // ──── Save assistant message ────
@@ -254,7 +257,7 @@ export async function executeWebSearchPath(
                 reasoningTrace: result.reasoningSnapshot,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 jsonRendererChoice: searchChoiceSpec && (searchChoiceSpec as { root?: string }).root ? searchChoiceSpec as any : undefined,
-                uiMessageId: undefined,
+                uiMessageId: result.messageId,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 planSnapshot: searchPlanSnapshot as any,
                 fetchMutationWithToken,

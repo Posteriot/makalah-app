@@ -65,6 +65,12 @@ export interface WebSearchOrchestratorConfig {
   requestStartedAt?: number
   /** When true, pipe compose stream through pipeYamlRender and inject CHOICE_YAML_SYSTEM_PROMPT. */
   isDraftingStage?: boolean
+  /**
+   * Called at compose finish when model did NOT emit a valid YAML choice spec.
+   * Returns a deterministic fallback Spec to emit into the live stream and
+   * persist via onFinish, so the client never misses a post-search choice card.
+   */
+  compileGuaranteedChoiceSpec?: () => import("@json-render/core").Spec | undefined
   tavilyApiKey?: string
   convexToken?: string
   /** Max tokens for retriever Phase 1 (lower = faster search, less wasted output). Defaults to 4096. */
@@ -90,6 +96,8 @@ export interface WebSearchResult {
   capturedPlanSpec?: import("@/lib/ai/harness/plan-spec").PlanSpec
   /** Persisted reasoning trace snapshot from compose phase (transparent reasoning only). */
   reasoningSnapshot?: PersistedCuratedTraceSnapshot
+  /** The UI message ID assigned to this search response stream. */
+  messageId?: string
 }
 
 export type SearchExecutionMode =
