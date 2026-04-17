@@ -1247,9 +1247,13 @@ export function MessageBubble({
                     )
                 }
 
+                // Phase 3: choice + approved synthetics never show edit icon
+                // (Batalkan is the only undo mechanism; revision keeps edit per V1 scope)
+                const hideEditForSynthetic = autoAction?.kind === "choice" || autoAction?.kind === "approved"
+
                 return (
                 <div className="flex flex-col items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">
-                    {onEdit && (
+                    {onEdit && !hideEditForSynthetic && (
                         editPermission.allowed ? (
                             <Tooltip>
                                 <TooltipTrigger asChild>
