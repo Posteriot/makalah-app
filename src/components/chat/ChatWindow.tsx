@@ -971,6 +971,20 @@ export function ChatWindow({
       }
       if (createdArtifacts.length > 0 && onArtifactSelect) {
         const targetArtifactId = createdArtifacts[createdArtifacts.length - 1].artifactId
+        // Guard: if the Convex-reactive fallback already claimed this
+        // artifact (its useEffect fires when the WebSocket delivers
+        // stageStatus=pending_validation before the HTTP response
+        // completes), short-circuit to prevent a second rAF chain and
+        // duplicate handleArtifactSelect call.
+        if (lastAutoOpenedArtifactIdRef.current === targetArtifactId) {
+          if (process.env.NODE_ENV !== "production") {
+            console.info("[ARTIFACT-REVEAL] onFinish — skipped (already claimed by fallback)", {
+              ts: Date.now(),
+              artifactId: targetArtifactId,
+            })
+          }
+          return
+        }
         if (process.env.NODE_ENV !== "production") {
           console.info("[ARTIFACT-REVEAL] onFinish — deferring panel open", {
             ts: Date.now(),
@@ -979,9 +993,7 @@ export function ChatWindow({
           })
         }
         // Mark eagerly BEFORE scheduling rAFs so the Convex-reactive
-        // fallback effect (which may fire as `conversationArtifacts`
-        // updates and `stageStatus` flips to pending_validation) sees
-        // the id already claimed and short-circuits (review finding #2).
+        // fallback effect sees the id already claimed and short-circuits.
         lastAutoOpenedArtifactIdRef.current = targetArtifactId
         // Double rAF: first rAF runs before next repaint, second rAF
         // runs after that repaint completes — guaranteeing the final

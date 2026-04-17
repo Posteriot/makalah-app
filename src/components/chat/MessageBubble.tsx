@@ -664,16 +664,27 @@ export function MessageBubble({
     // distinct outcome rather than per render. Replaces former in-render
     // console.log/warn at the bottom of extractChoiceSpec.
     const lastChoiceSpecLogSig = useRef<string | null>(null)
+    // Track streaming state via ref so the useEffect dependency array
+    // size stays constant (React requires stable array length across
+    // renders — changing from [2] to [3] items crashes the hook chain).
+    const isStreamingRef = useRef(persistProcessIndicators)
+    isStreamingRef.current = persistProcessIndicators
     useEffect(() => {
         const sig = `${choiceSpecResult.hasSpecParts}|${choiceSpecResult.parseSuccess}|${choiceSpecResult.elementTypes}|${choiceSpecResult.contractVersion ?? ""}|err=${choiceSpecResult.parseErrors.join(";")}`
         if (lastChoiceSpecLogSig.current === sig) return
         lastChoiceSpecLogSig.current = sig
         if (!choiceSpecResult.spec) {
             if (choiceSpecResult.hasSpecParts && choiceSpecResult.parseErrors.length > 0) {
-                console.warn("[F1-F6-TEST] ChoiceSpec validation FAILED", {
-                    errors: choiceSpecResult.parseErrors,
-                    elementTypes: choiceSpecResult.elementTypes,
-                })
+                // Only warn when streaming is complete — partial specs
+                // during active streaming are structurally expected to
+                // fail Zod validation and produce false-positive noise.
+                // Read from ref to avoid changing the dependency array size.
+                if (!isStreamingRef.current) {
+                    console.warn("[F1-F6-TEST] ChoiceSpec validation FAILED", {
+                        errors: choiceSpecResult.parseErrors,
+                        elementTypes: choiceSpecResult.elementTypes,
+                    })
+                }
             } else if (choiceSpecResult.hasSpecParts) {
                 console.log("[F1-F6-TEST] extractChoiceSpec: no spec found", { messageId: message.id })
             }
