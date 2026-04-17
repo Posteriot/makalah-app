@@ -214,16 +214,16 @@ export async function executeWebSearchPath(
                 .replace(/(?:^|\n)stage:\s*\w+\s*\nsummary:\s*.+\ntasks:\s*\n(?:\s*-\s*label:\s*.+\n\s*status:\s*(?:complete|in-progress|pending)\s*\n?)+/g, "")
                 .replace(/\n{3,}/g, "\n\n").trim()
 
-            // ──── Fallback choice card for search responses ────
-            // If compose model didn't emit a yaml-spec choice card during search,
-            // inject a default so user isn't stranded without interaction options.
-            let searchChoiceSpec = result.capturedChoiceSpec ?? undefined
-            if (
-                !(searchChoiceSpec && (searchChoiceSpec as { root?: string }).root) &&
-                paperStageScope &&
-                paperSession?.stageStatus === "drafting"
-            ) {
-                const { spec: fallbackSpec } = compileChoiceSpec({
+            // ──── Deterministic choice card for search responses ────
+            // Always inject a code-built choice card for search turns.
+            // Model compliance with yaml-spec instruction is non-deterministic
+            // and the search-turn options are generic (continue / validate),
+            // so code-level injection is both more reliable and sufficient.
+            // Any model-emitted yaml-spec is intentionally overridden.
+            let searchChoiceSpec: typeof result.capturedChoiceSpec = undefined
+            if (paperStageScope && paperSession?.stageStatus === "drafting") {
+                const modelEmitted = !!(result.capturedChoiceSpec && (result.capturedChoiceSpec as { root?: string }).root)
+                const { spec: deterministicSpec } = compileChoiceSpec({
                     stage: paperStageScope,
                     kind: "single-select",
                     title: "Bagaimana kita akan melanjutkan?",
@@ -233,8 +233,8 @@ export async function executeWebSearchPath(
                     recommendedId: "lanjutkan-diskusi",
                     appendValidationOption: true,
                 })
-                searchChoiceSpec = fallbackSpec as unknown as typeof searchChoiceSpec
-                console.info(`[CHOICE-CARD][fallback-injected][search] stage=${paperStageScope} reason=compose_did_not_emit_choice_card`)
+                searchChoiceSpec = deterministicSpec as unknown as typeof searchChoiceSpec
+                console.info(`[CHOICE-CARD][deterministic][search] stage=${paperStageScope} modelEmitted=${modelEmitted}`)
             }
 
             // ──── Save assistant message ────
