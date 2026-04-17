@@ -632,7 +632,7 @@ export function ChatWindow({
   const pendingRequestStartedAtRef = useRef<number | null>(null)
   const staleStreamingTimeoutRef = useRef<number | null>(null)
   const sourceFocusTimeoutRef = useRef<number | null>(null)
-  const artifactRevealRafRef = useRef<number | null>(null)
+  const artifactRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Fallback auto-open (E2E iteration 9): track turn start + last opened
   // artifact so a CHAIN-COMPLETION that creates an artifact without
   // emitting a successful tool-output part (e.g. createArtifact refValidation
@@ -1051,29 +1051,29 @@ export function ChatWindow({
           })
         }
 
-        // Double rAF: guarantees final text has painted before artifact
-        // panel opens. After reveal, unblock validation panel.
-        artifactRevealRafRef.current = requestAnimationFrame(() => {
-          artifactRevealRafRef.current = requestAnimationFrame(() => {
-            artifactRevealRafRef.current = null
-            onArtifactSelect(targetArtifactId)
-            setArtifactRevealDone(true)
+        // Delayed reveal: 350ms ensures user perceives text before artifact
+        // panel opens (double rAF was ~32ms — technically correct but
+        // imperceptible when text is short). State gate (artifactRevealDone)
+        // is the sequencing foundation; delay is visual polish on top.
+        artifactRevealTimerRef.current = setTimeout(() => {
+          artifactRevealTimerRef.current = null
+          onArtifactSelect(targetArtifactId)
+          setArtifactRevealDone(true)
+          if (process.env.NODE_ENV !== "production") {
+            console.info("[UI-REVEAL-ORDER] artifact_revealed", {
+              stage: stageLabel, artifactId: targetArtifactId, ts: Date.now(),
+            })
+          }
+          // Validation panel eligible AFTER artifact is revealed
+          if (hasSubmit) {
+            setOptimisticPendingValidation(true)
             if (process.env.NODE_ENV !== "production") {
-              console.info("[UI-REVEAL-ORDER] artifact_revealed", {
-                stage: stageLabel, artifactId: targetArtifactId, ts: Date.now(),
+              console.info("[UI-REVEAL-ORDER] validation_panel_eligible", {
+                stage: stageLabel, ts: Date.now(),
               })
             }
-            // Validation panel eligible AFTER artifact is revealed
-            if (hasSubmit) {
-              setOptimisticPendingValidation(true)
-              if (process.env.NODE_ENV !== "production") {
-                console.info("[UI-REVEAL-ORDER] validation_panel_eligible", {
-                  stage: stageLabel, ts: Date.now(),
-                })
-              }
-            }
-          })
-        })
+          }
+        }, 350)
       } else {
         // No artifact — validation panel eligible immediately
         if (hasSubmit) {
@@ -1165,18 +1165,16 @@ export function ChatWindow({
       })
     }
 
-    artifactRevealRafRef.current = requestAnimationFrame(() => {
-      artifactRevealRafRef.current = requestAnimationFrame(() => {
-        artifactRevealRafRef.current = null
-        onArtifactSelect(targetArtifactId)
-        setArtifactRevealDone(true)
-        if (process.env.NODE_ENV !== "production") {
-          console.info("[UI-REVEAL-ORDER] artifact_revealed (fallback)", {
-            stage: stageLabel, artifactId: targetArtifactId, ts: Date.now(),
-          })
-        }
-      })
-    })
+    artifactRevealTimerRef.current = setTimeout(() => {
+      artifactRevealTimerRef.current = null
+      onArtifactSelect(targetArtifactId)
+      setArtifactRevealDone(true)
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[UI-REVEAL-ORDER] artifact_revealed (fallback)", {
+          stage: stageLabel, artifactId: targetArtifactId, ts: Date.now(),
+        })
+      }
+    }, 350)
   }, [conversationArtifacts, optimisticPendingValidation, stageStatus, onArtifactSelect, status])
 
   const isQuotaRejectedError = useMemo(() => isQuotaExceededChatError(error), [error])
@@ -2124,7 +2122,7 @@ export function ChatWindow({
   useEffect(() => {
     return () => {
       if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current)
-      if (artifactRevealRafRef.current !== null) cancelAnimationFrame(artifactRevealRafRef.current)
+      if (artifactRevealTimerRef.current !== null) clearTimeout(artifactRevealTimerRef.current)
     }
   }, [])
 
