@@ -908,6 +908,8 @@ export const unapproveStage = mutation({
             const lastBoundary = existingBoundaries[existingBoundaries.length - 1];
             if (lastBoundary.stage === targetStage) {
                 updatedBoundaries = existingBoundaries.slice(0, -1);
+            } else {
+                console.warn(`[PAPER][unapprove] boundary stage mismatch: last="${lastBoundary.stage}" expected="${targetStage}", skipping removal`);
             }
         }
 
