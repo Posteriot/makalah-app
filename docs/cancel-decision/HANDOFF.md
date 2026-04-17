@@ -1,10 +1,7 @@
 # Cancel Decision — Session Handoff
 
 > **Dokumen ini adalah jembatan ingatan antar sesi.**
-> Sesi sebelumnya sudah selesai. Dokumen ini memungkinkan sesi baru untuk mempelajari konteks penuh tanpa kehilangan informasi kritis dari sesi sebelumnya.
->
-> **EKSEKUSI PHASE 2 DAN SETERUSNYA HARUS MENUNGGU VALIDASI USER.**
-> Phase 1 sudah di-implement tapi belum di-validasi user. Jangan mulai Phase 2 sebelum user secara eksplisit mengkonfirmasi Phase 1 sudah OK.
+> Semua 3 phase sudah di-implement. Sesi berikutnya fokus pada **merespons Codex audit findings**.
 
 ---
 
@@ -12,87 +9,103 @@
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| **Phase 1** — Cancel Choice Card + Client State Fixes | IMPLEMENTED, AWAITING USER VALIDATION | `ff808cce`..`74daedc3` (7 commits) |
-| **Phase 2** — Cancel Approval + Harness Run Guard | NOT STARTED | — |
-| **Phase 3** — Remove Edit+Resend from Synthetic Messages | NOT STARTED | — |
+| **Phase 1** — Cancel Choice Card + Client State Fixes | ✅ COMPLETE | `ff808cce`..`74daedc3` (7 commits) |
+| **Phase 2** — Cancel Approval + Harness Run Guard | ✅ COMPLETE | `0a50e3b1`..`209ece83` (4 commits) |
+| **Phase 3** — Remove Edit+Resend from Synthetic Messages | ✅ COMPLETE | `153e2ce0` (1 commit) |
 
 **Rollback checkpoint:** `0a4c2a0f` (design doc + plan committed, before any implementation)
+**HEAD:** `1dd1a287` (Phase 3 report)
+
+### Full commit log (14 commits, oldest first)
+
+```
+ff808cce feat(cancel-decision): add decisionEpoch to paperSessions schema
+c2947fdb feat(cancel-decision): add stampDecisionEpoch mutation
+b734e089 feat(cancel-decision): add cancelChoiceDecision mutation
+018e9697 feat(cancel-decision): stamp decisionEpoch in orchestrate pipeline
+9d878488 feat(cancel-decision): add decisionEpoch guard to chain-completion and rescue paths
+eecb49d5 feat(cancel-decision): split submittedChoiceKeys into persisted + optimistic sets
+74daedc3 feat(cancel-decision): add handleCancelChoice handler + Batalkan button for choice messages
+e610c56d docs(cancel-decision): add Phase 1 review prompt for Codex audit
+df69bcdc docs(cancel-decision): add session handoff for Phase 2 continuation
+0a50e3b1 feat(cancel-decision): add unapproveStage mutation + titleStrippedOnApproval flag
+daf7b998 feat(cancel-decision): add handleCancelApproval handler + Batalkan button for approved messages
+816f9b64 docs(cancel-decision): add Phase 2 review prompt for Codex audit
+209ece83 fix(cancel-decision): add boundary mismatch warning in unapproveStage
+153e2ce0 feat(cancel-decision): remove edit+resend from choice and approved synthetic messages
+1dd1a287 docs(cancel-decision): add Phase 3 review prompt for Codex audit
+```
 
 ---
 
-## Dokumen yang Harus Dibaca (urutan penting)
+## Next Step: Codex Audit
 
-1. **`docs/cancel-decision/design.md`** — Design document (single source of truth). 7 Codex review rounds. Semua keputusan arsitektur ada di sini.
+### Apa yang harus dilakukan
 
-2. **`docs/cancel-decision/plan.md`** — Implementation plan. 3 phases, 10 tasks. Phase 2 mulai dari Task 2.1. Plan ini sudah melalui 3 ronde koreksi user:
-   - Fix 1: Epoch stamping dipindah dari `accept-chat-request.ts` ke `orchestrate-sync-run.ts` (paperSessionId belum ada di accept)
-   - Fix 2: UIMessage shape — `message.id` bukan `message._id`, `jsonRendererChoice` ada di historyMessages bukan UIMessage
-   - Fix 3: `submittedChoiceKeys` dipass sebagai boolean `isChoiceSubmitted={...}`, bukan Set
+1. Copy isi review prompts ke Codex (satu per satu atau batch):
+   - `docs/cancel-decision/report/phase-1/REVIEW-PROMPT.md`
+   - `docs/cancel-decision/report/phase-2/REVIEW-PROMPT.md`
+   - `docs/cancel-decision/report/phase-3/REVIEW-PROMPT.md`
 
-3. **`docs/cancel-decision/report/phase-1/REVIEW-PROMPT.md`** — Phase 1 review prompt untuk Codex audit. Berisi checklist + full diff.
+2. Paste findings Codex ke sesi baru Claude
 
----
+3. Claude merespons per finding: fix, reject with evidence, atau acknowledge
 
-## Apa yang Sudah Di-implement (Phase 1)
+### Yang harus dibaca sesi baru (urutan)
 
-### Files Modified
-
-| File | Lines | Summary |
-|------|-------|---------|
-| `convex/schema.ts` | +3 | `decisionEpoch: v.optional(v.number())` |
-| `convex/paperSessions.ts` | +82 | `stampDecisionEpoch` + `cancelChoiceDecision` mutations |
-| `src/lib/chat-harness/executor/types.ts` | +1 | `myEpoch` in OnFinishConfig |
-| `src/lib/chat-harness/runtime/orchestrate-sync-run.ts` | +20 | Epoch stamp + pass (primary + fallback) |
-| `src/lib/chat-harness/executor/build-on-finish-handler.ts` | +30 | `isEpochCurrent()` + 3 guards |
-| `src/components/chat/ChatWindow.tsx` | +84/-8 | Two-set submittedChoiceKeys + handleCancelChoice |
-| `src/components/chat/MessageBubble.tsx` | +46/-1 | Batalkan button for choice messages |
-
-### Internal Review Result
-
-10/10 PASS. 0 blockers. 1 minor observation: design doc section 4.1 "last choice submission" filter belum di-implement (low risk, biasanya 1 choice per stage).
+1. **File ini** (`HANDOFF.md`) — status overview
+2. **Codex findings** (user akan paste)
+3. **`docs/cancel-decision/design.md`** — design doc (single source of truth) jika perlu verifikasi
+4. **Report files** di `docs/cancel-decision/report/phase-{1,2,3}/` — context per phase
 
 ---
 
-## Apa yang Harus Di-implement (Phase 2)
+## Dokumen Referensi
 
-Ref: `docs/cancel-decision/plan.md` — section "Phase 2: Cancel Approval + Harness Run Guard"
-
-### Task 2.1: `titleStrippedOnApproval` flag in `approveStage`
-- Modify: `convex/paperSessions.ts:1261-1268`
-- Simpan flag di stageData saat title "Draf" di-strip
-
-### Task 2.2: `unapproveStage` mutation (PALING KOMPLEKS)
-- Modify: `convex/paperSessions.ts`
-- Reverse-engineering `approveStage` — revert currentStage, stageStatus, stageData, digest, boundaries, artifact title, naskahSnapshot
-- Special case: `completed` → `judul` (final approval revert)
-
-### Task 2.3: `handleCancelApproval` handler + UI
-- Modify: `ChatWindow.tsx` + `MessageBubble.tsx`
-- Sama pattern dengan handleCancelChoice tapi untuk `kind: "approved"`
-- 30-second throttle via `message.createdAt`
-
-### Task 2.4: Phase 2 review
+| Doc | Purpose |
+|-----|---------|
+| `docs/cancel-decision/design.md` | Design document (7 Codex review rounds). Single source of truth |
+| `docs/cancel-decision/plan.md` | Implementation plan. 3 phases, 10 tasks |
+| `docs/cancel-decision/report/phase-1/REVIEW-PROMPT.md` | Phase 1 review: full diff + checklist + audit prompt |
+| `docs/cancel-decision/report/phase-2/REVIEW-PROMPT.md` | Phase 2 review: full diff + checklist + audit prompt |
+| `docs/cancel-decision/report/phase-3/REVIEW-PROMPT.md` | Phase 3 review: full diff + checklist + V1 scope table + audit prompt |
 
 ---
 
-## Pelajaran dari Phase 1 (Jangan Ulangi)
+## Files Modified (All Phases Combined)
 
-1. **UIMessage.id vs Convex._id** — Handler cancel menerima `message.id` (string dari AI SDK). Harus di-map ke Convex `_id` via `historyMessages.find(m => m.uiMessageId === ...)` sebelum dipasang ke `editAndTruncateConversation`.
-
-2. **`jsonRendererChoice` ada di raw Convex messages, BUKAN UIMessage** — Saat rehydrate, spec di-parse dari Convex message dan dijadikan `parts` di UIMessage. Key cleanup harus pakai `historyMessages`.
-
-3. **Epoch stamp di orchestrate, BUKAN accept** — `acceptChatRequest` tidak punya `paperSessionId`. `paperSession` baru di-query di `orchestrate-sync-run.ts:509`.
-
-4. **Icon library: `iconoir-react`** — Project pakai `iconoir-react`, bukan `lucide-react`. Phase 1 pakai `Undo` dari `iconoir-react`.
+| File | Phase(s) | Summary |
+|------|----------|---------|
+| `convex/schema.ts` | 1 | `decisionEpoch: v.optional(v.number())` |
+| `convex/paperSessions.ts` | 1+2 | `stampDecisionEpoch`, `cancelChoiceDecision`, `unapproveStage` mutations + `titleStrippedOnApproval` flag + boundary mismatch warning |
+| `src/lib/chat-harness/executor/types.ts` | 1 | `myEpoch` in OnFinishConfig |
+| `src/lib/chat-harness/runtime/orchestrate-sync-run.ts` | 1 | Epoch stamp + pass to OnFinishConfig |
+| `src/lib/chat-harness/executor/build-on-finish-handler.ts` | 1 | `isEpochCurrent()` + 3 epoch guards |
+| `src/components/chat/ChatWindow.tsx` | 1+2 | Two-set submittedChoiceKeys, `handleCancelChoice`, `handleCancelApproval` |
+| `src/components/chat/MessageBubble.tsx` | 1+2+3 | Batalkan buttons (choice + approved), `hideEditForSynthetic` guard |
 
 ---
 
-## Execution Model
+## Internal Review Results
 
-Subagent-driven development:
-- Backend tasks → `backend-developer` agent
-- Frontend tasks → `frontend-developer` agent
-- Review → `code-reviewer` agent
-- Setiap phase ends with review + user validation
+| Phase | Result | Notes |
+|-------|--------|-------|
+| Phase 1 | 10/10 PASS | 1 minor: "last choice submission" filter not implemented (low risk) |
+| Phase 2 | 12/12 PASS | 2 suggestions applied: boundary mismatch warning, throttle variable naming (naming left as-is) |
+| Phase 3 | 5/5 PASS | Defensive guard covers edge case where cancel props absent |
 
-Tunggu user bilang "lanjut Phase 2" sebelum dispatch agents.
+---
+
+## Pelajaran Kumulatif (Jangan Ulangi)
+
+1. **UIMessage.id vs Convex._id** — Cancel handlers receive `message.id` (AI SDK string). Map to Convex `_id` via `historyMessages.find(m => m.uiMessageId === ...)`.
+
+2. **`jsonRendererChoice` ada di raw Convex messages, BUKAN UIMessage** — Key cleanup harus pakai `historyMessages`.
+
+3. **Epoch stamp di orchestrate, BUKAN accept** — `acceptChatRequest` tidak punya `paperSessionId`.
+
+4. **Icon library: `iconoir-react`** — Project pakai `iconoir-react`, bukan `lucide-react`.
+
+5. **UIMessage tidak punya `createdAt`** — Throttle pakai `allMessages[messageIndex]?.createdAt` (Convex PermissionMessage), bukan `message.createdAt`.
+
+6. **`getPreviousStage` belum di-import** — Plan bilang "already available" tapi ternyata hanya `getNextStage` yang di-import. Selalu verifikasi imports.
