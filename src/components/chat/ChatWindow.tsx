@@ -640,6 +640,10 @@ export function ChatWindow({
   // trigger the artifact panel via Convex reactivity in extractCreatedArtifacts.
   const lastTurnStartRef = useRef<number>(0)
   const lastAutoOpenedArtifactIdRef = useRef<Id<"artifacts"> | null>(null)
+  // Tracks assistant message IDs whose choice was cancelled. Prevents
+  // the full-derive persistedChoiceKeys effect from re-adding the key
+  // before editAndTruncate syncs to the Convex subscription.
+  const cancelledChoiceMessageIdsRef = useRef<Set<string>>(new Set())
   const previousStatusRef = useRef<string>("ready")
   const stoppedManuallyRef = useRef(false)
   const starterPromptLastAttemptAtRef = useRef(new Map<string, number>())
@@ -1115,6 +1119,7 @@ export function ChatWindow({
   useEffect(() => {
     lastTurnStartRef.current = 0
     lastAutoOpenedArtifactIdRef.current = null
+    cancelledChoiceMessageIdsRef.current = new Set()
   }, [safeConversationId])
 
   // Fallback auto-open (E2E iteration 9): when the happy-path tool-output
@@ -1807,6 +1812,20 @@ export function ChatWindow({
       }
       return next.size === prev.size ? prev : next
     })
+    // Clear cancelled entries whose [Choice:] messages are now gone from history
+    // (editAndTruncate synced). Cancelled IDs that are still in `keys` are stale
+    // duplicates — the full-derive already re-added them; keep the cancel override.
+    if (cancelledChoiceMessageIdsRef.current.size > 0) {
+      const stillCancelled = new Set<string>()
+      for (const cid of cancelledChoiceMessageIdsRef.current) {
+        // If the key for this message ID is STILL being derived from history,
+        // keep it in the cancelled set (editAndTruncate hasn't synced yet)
+        if (keys.has(`${cid}::${cid}-choice-spec`)) {
+          stillCancelled.add(cid)
+        }
+      }
+      cancelledChoiceMessageIdsRef.current = stillCancelled
+    }
   }, [historyMessages])
 
   // Cancel Decision: derive which choice message (if any) is currently cancelable.
@@ -2563,6 +2582,10 @@ export function ChatWindow({
               setOptimisticPendingKeys((p) => {
                 const n = new Set(p); n.delete(idKey); if (uiKey) n.delete(uiKey); return n
               })
+              // Mark assistant message as cancelled so the full-derive
+              // effect doesn't re-add the key before editAndTruncate syncs
+              cancelledChoiceMessageIdsRef.current.add(String(prev._id))
+              if (uiId) cancelledChoiceMessageIdsRef.current.add(uiId)
               break
             }
           }
@@ -3033,7 +3056,7 @@ export function ChatWindow({
                         fileNameMap={fileNameMap}
                         fileMetaMap={fileMetaMap}
                         onOpenSources={handleOpenSources}
-                        isChoiceSubmitted={submittedChoiceKeys.has(`${message.id}::${message.id}-choice-spec`)}
+                        isChoiceSubmitted={submittedChoiceKeys.has(`${message.id}::${message.id}-choice-spec`) && !cancelledChoiceMessageIdsRef.current.has(message.id)}
                         onChoiceSubmit={handleChoiceSubmit}
                         onCancelChoice={handleCancelChoice}
                         onCancelApproval={handleCancelApproval}
