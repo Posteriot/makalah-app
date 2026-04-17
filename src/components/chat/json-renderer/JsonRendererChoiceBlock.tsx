@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { JSONUIProvider, Renderer } from "@json-render/react"
 import type { Spec } from "@json-render/core"
 import {
@@ -24,6 +24,16 @@ export function JsonRendererChoiceBlock({
   onSubmit,
 }: JsonRendererChoiceBlockProps) {
   const [localSubmitted, setLocalSubmitted] = useState(false)
+
+  // Reset local latch when parent signals card is no longer submitted
+  // (e.g., after cancel-choice reverts the decision). Without this,
+  // localSubmitted stays true and blocks re-submission until remount.
+  useEffect(() => {
+    if (!isSubmitted && localSubmitted) {
+      setLocalSubmitted(false)
+    }
+  }, [isSubmitted, localSubmitted])
+
   const submitted = isSubmitted || localSubmitted
 
   const renderedSpec = useMemo(
