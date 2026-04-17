@@ -148,6 +148,7 @@ export function buildOnFinishHandler(
         fetchQueryWithToken,
         fetchMutationWithToken,
         requestStartedAt,
+        myEpoch,
         isDraftingStage,
         isHasilPostChoice,
         enableGroundingExtraction,
@@ -157,6 +158,26 @@ export function buildOnFinishHandler(
         runStore,
         eventStore,
     } = config
+
+    /** Check if this request's epoch is still current. Returns false if decision changed. */
+    async function isEpochCurrent(
+        sessionId: string,
+        epoch: number | undefined,
+        label: string
+    ): Promise<boolean> {
+        if (epoch === undefined) return true // No epoch stamped = not a choice request
+        try {
+            const fresh = await fetchQueryWithToken(api.paperSessions.getById, { sessionId })
+            if (fresh && (fresh as { decisionEpoch?: number }).decisionEpoch !== epoch) {
+                console.info(`[${label}] aborted: epoch drift (mine=${epoch}, current=${(fresh as { decisionEpoch?: number }).decisionEpoch})`)
+                return false
+            }
+        } catch {
+            // If we can't check, proceed cautiously
+            console.warn(`[${label}] epoch check failed, proceeding`)
+        }
+        return true
+    }
 
     const logTag = streamCtx.telemetry.failoverUsed ? "[fallback]" : ""
 
@@ -414,7 +435,8 @@ export function buildOnFinishHandler(
         ) {
             console.info(`[PAPER][rescue] stage=lampiran reason=${lampiranRescueCheck.reason} fallbackPolicy=${resolvedWorkflow?.fallbackPolicy ?? "legacy"}${logTag ? ` path=fallback` : ""}`)
             const lampiranRescueStart = Date.now()
-            try {
+            const lampiranEpochOk = await isEpochCurrent(paperSession!._id, myEpoch, "LAMPIRAN-RESCUE")
+            if (lampiranEpochOk) try {
                 const lampiranStageData = (paperSession!.stageData as Record<string, Record<string, unknown> | undefined> | undefined)?.["lampiran"]
                 const alasan = typeof lampiranStageData?.alasanTidakAda === "string" ? lampiranStageData.alasanTidakAda : ""
                 const placeholderContent = alasan
@@ -475,7 +497,8 @@ export function buildOnFinishHandler(
         ) {
             console.info(`[PAPER][rescue] stage=judul reason=${judulRescueCheck.reason} fallbackPolicy=${resolvedWorkflow?.fallbackPolicy ?? "legacy"}${logTag ? ` path=fallback` : ""}`)
             const judulRescueStart = Date.now()
-            try {
+            const judulEpochOk = await isEpochCurrent(paperSession!._id, myEpoch, "JUDUL-RESCUE")
+            if (judulEpochOk) try {
                 let selectedTitle: string | undefined
                 try {
                     const sourceMsg = await retryQuery(
@@ -601,7 +624,8 @@ export function buildOnFinishHandler(
             !paperToolTracker.sawSubmitValidationSuccess
         ) {
             const chainStartTime = Date.now()
-            try {
+            const chainEpochOk = await isEpochCurrent(paperSession!._id, myEpoch, "CHAIN-COMPLETION")
+            if (chainEpochOk) try {
                 const artifactContent = normalizedText.trim() || persistedContent.trim() || "Draft content"
                 const artifactTitle = getStageLabel(paperStageScope as PaperStageId)
 
