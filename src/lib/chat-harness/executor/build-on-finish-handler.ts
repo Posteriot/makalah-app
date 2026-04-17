@@ -671,30 +671,31 @@ export function buildOnFinishHandler(
                 return streamCtx.reasoningTrace.snapshot
             })()
 
-            // Deterministic choice card injection (tools path)
-            // Always inject a code-built choice card for drafting turns.
-            // Model compliance with yaml-spec is non-deterministic — relying
-            // on it causes intermittent missing cards or delayed fallback.
-            // Skip only when validation chain succeeded (session advances).
+            // Guaranteed choice card injection (tools path)
+            // If model emitted a valid yaml-spec, preserve it (richer context-aware options).
+            // If model did NOT emit, inject a deterministic fallback so user is never
+            // stranded without a card. Skip when validation chain succeeded (session advances).
             if (
                 paperStageScope &&
                 paperSession?.stageStatus === "drafting" &&
                 !paperToolTracker?.sawSubmitValidationSuccess
             ) {
                 const modelEmitted = !!(capturedSpecRef.current && capturedSpecRef.current.root)
-                const { spec: deterministicSpec } = compileChoiceSpec({
-                    stage: paperStageScope,
-                    kind: "single-select",
-                    title: "Apa langkah selanjutnya?",
-                    options: [
-                        { id: "lanjutkan-diskusi", label: "Lanjutkan diskusi" },
-                    ],
-                    recommendedId: "lanjutkan-diskusi",
-                    appendValidationOption: true,
-                    workflowAction: "continue_discussion",
-                })
-                capturedSpecRef.current = deterministicSpec as Spec
-                console.info(`[CHOICE-CARD][deterministic] stage=${paperStageScope} modelEmitted=${modelEmitted}`)
+                if (!modelEmitted) {
+                    const { spec: fallbackSpec } = compileChoiceSpec({
+                        stage: paperStageScope,
+                        kind: "single-select",
+                        title: "Apa langkah selanjutnya?",
+                        options: [
+                            { id: "lanjutkan-diskusi", label: "Lanjutkan diskusi" },
+                        ],
+                        recommendedId: "lanjutkan-diskusi",
+                        appendValidationOption: true,
+                        workflowAction: "continue_discussion",
+                    })
+                    capturedSpecRef.current = fallbackSpec as Spec
+                }
+                console.info(`[CHOICE-CARD][guaranteed] stage=${paperStageScope} source=${modelEmitted ? "model" : "deterministic-fallback"}`)
             }
 
             // Auto-complete plan when validation succeeded
