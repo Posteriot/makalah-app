@@ -183,10 +183,18 @@ export function compileChoiceSpec(params: {
     children: childIds,
   }
 
-  const spec: JsonRendererChoiceSpec = {
+  const spec: JsonRendererChoiceSpec & {
+    state?: { selection: { selectedOptionId: string | null; customText: string } }
+  } = {
     root: rootId,
     elements,
+    // Pre-select recommended option so submit button is enabled by default.
+    // Without this, initialState falls back to selectedOptionId:null and the
+    // submit button stays disabled until user explicitly clicks an option.
+    ...(resolvedRecommendedId
+      ? { state: { selection: { selectedOptionId: resolvedRecommendedId, customText: "" } } }
+      : {}),
   }
 
-  return { spec, normalizedOptions }
+  return { spec: spec as JsonRendererChoiceSpec, normalizedOptions }
 }

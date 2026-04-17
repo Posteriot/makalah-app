@@ -189,11 +189,8 @@ describe("compileChoiceSpec", () => {
     const fooOption = result.spec.elements["foo"] as {
       on?: { press?: { action?: string; params?: Record<string, unknown> } }
     }
-    expect(fooOption.on?.press?.action).toBe("setState")
-    expect(fooOption.on?.press?.params?.statePath).toBe("/selection/selectedOptionId")
-    expect(fooOption.on?.press?.params?.value).toBe("foo")
-    // Must NOT use the wrong key.
-    expect(fooOption.on?.press?.params?.path).toBeUndefined()
+    expect(fooOption.on?.press?.action).toBe("toggleOption")
+    expect(fooOption.on?.press?.params?.optionId).toBe("foo")
   })
 
   it('keeps a plain "Lanjutkan diskusi" option (not a validation option)', async () => {
