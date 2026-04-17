@@ -1,6 +1,6 @@
 # Agent Harness V1 — Observability Map (Post-Refactor)
 
-**Status:** Active reference as of HEAD `722faed9` (Phase 8 close, 2026-04-16)
+**Status:** Active reference as of HEAD `d459c4a7` (cancel-decision audit complete, 2026-04-18)
 **Purpose:** Consolidated map of every observability log after Phases 1-8. Since `route.ts` shrank from 4889 → 28 lines, all logs that USED to be inline are now scattered across harness namespaces. This doc answers: "log X sekarang ada di file mana?"
 
 **Companion docs (still valid, pre-Phase-6 scope):**
@@ -87,6 +87,8 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 | `[HARNESS][resume] conversationId mismatch: ...` | step 2 guard | Client pointed resume header at wrong conversation (throws) | Terminal |
 | `[AI-TELEMETRY]` primary failure breadcrumb | fallback path | When primary streamText throws | Terminal (Sentry breadcrumb) |
 | `Gateway stream failed, trying fallback:` | fallback path | streamText error caught | Terminal |
+| `[CANCEL-DECISION] epoch stamped: N for stage=...` | `orchestrate-sync-run.ts:254` | `stampDecisionEpoch` called when `choiceInteractionEvent` present — epoch assigned for this request | Terminal |
+| `[CANCEL-DECISION] stampDecisionEpoch failed: <error>` | `orchestrate-sync-run.ts:256` | Epoch stamp mutation threw (warn, request continues without epoch guard) | Terminal |
 
 ### Context Assembler — `src/lib/chat-harness/context/` (Phase 3)
 
@@ -121,6 +123,10 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 
 | Log | File:Line | Fires When | Tier |
 |---|---|---|---|
+| `[CHAIN-COMPLETION] aborted: epoch drift (mine=N, current=N)` | `build-on-finish-handler.ts:172` | Epoch guard blocked chain-completion/rescue — user cancelled choice since this request started | Terminal |
+| `[LAMPIRAN-RESCUE] aborted: epoch drift (mine=N, current=N)` | `build-on-finish-handler.ts:172` | Epoch guard blocked lampiran rescue | Terminal |
+| `[JUDUL-RESCUE] aborted: epoch drift (mine=N, current=N)` | `build-on-finish-handler.ts:172` | Epoch guard blocked judul rescue | Terminal |
+| `[<label>] epoch check failed, proceeding` | `build-on-finish-handler.ts:177` | Epoch check query failed (warn, proceeds cautiously) | Terminal |
 | `[TOOL-CHAIN-ORDER] expected=[...] actual=[...]` | `build-on-finish-handler.ts` | Tool chain validation | Terminal |
 | `[F1-F6-TEST] ToolChainOrder { correct: true/false, ... }` | `build-on-finish-handler.ts` | Tool chain audit | Terminal |
 | `[F1-F6-TEST] updateStageData { dataKeys, ... }` | `build-tool-registry.ts` (tool tracker) | `updateStageData` tool invoked | Terminal |
@@ -191,6 +197,10 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 | `[F1-DEBUG] handleApprove context: { stageLabel, stageStatus, userId }` | `ChatWindow.tsx:2181` | Same | Browser Console |
 | `[HARNESS][ui] resumed paused run runId=... on approve` | `ChatWindow.tsx:2194` | Phase 8: paused run resumed before approveStage | Browser Console |
 | `[HARNESS][ui] resumed paused run runId=... on revise` | `ChatWindow.tsx:2222` | Phase 8: paused run resumed before requestRevision | Browser Console |
+| `[CANCEL-DECISION] choice cancelled, card re-activated` | `ChatWindow.tsx:2457` | User clicks Batalkan on `[Choice:]` synthetic → cancel handler succeeded | Browser Console |
+| `Failed to cancel choice: <error>` | `ChatWindow.tsx:2460` | `cancelChoiceDecision` or `editAndTruncate` threw | Browser Console |
+| `[CANCEL-DECISION] approval cancelled, validation panel re-shown` | `ChatWindow.tsx:2489` | User clicks Batalkan on `[Approved:]` synthetic → cancel handler succeeded | Browser Console |
+| `Failed to cancel approval: <error>` | `ChatWindow.tsx:2492` | `unapproveStage` or `editAndTruncate` threw | Browser Console |
 | `[UNIFIED-PROCESS-UI] source=model-driven\|hardcoded-fallback progress=N/N` | `MessageBubble.tsx` | Every assistant message during active stage | Browser Console |
 | `[PAPER][edit-resend-reset] Client: stage=... cleared=N fields` | `ChatWindow.tsx:2076` | After resetStageDataForEditResend mutation | Browser Console |
 | `[ARTIFACT-REVEAL] onFinish — deferring panel open { ts, artifactId }` | `ChatWindow.tsx:952` | Artifact created during stream | Browser Console |
@@ -208,6 +218,12 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 | `[revision-auto-rescued-by-backend] stage=... trigger=auto-rescue revisionCount=N previousStatus=pending_validation source=updateStageData\|updateArtifact` | `convex/paperSessions.ts` | autoRescueRevision fires | Convex Logs |
 | `[USER-ACTION] type=approve stage=... decision=...` | `convex/paperSessions.ts` | approveStage logs the user action | Convex Logs |
 | `[USER-ACTION] type=revise stage=... trigger=panel\|model revision=N feedback="..."` | `convex/paperSessions.ts` | requestRevision | Convex Logs |
+| `[PAPER][stamp-epoch] stage=... epoch=N` | `convex/paperSessions.ts:773` | `stampDecisionEpoch` mutation — increments counter at choice submission start | Convex Logs |
+| `[PAPER][cancel-choice] stage=... artifactInvalidated=bool statusReverted=bool epoch=N` | `convex/paperSessions.ts:833` | `cancelChoiceDecision` mutation — reverts stageData, invalidates artifact, increments epoch | Convex Logs |
+| `[PAPER][cancel-choice] artifact patch failed id=...` | `convex/paperSessions.ts:816` | `cancelChoiceDecision` — artifact invalidation failed (warn, non-fatal) | Convex Logs |
+| `[PAPER][unapprove] stage=... clearedNextStage=bool` | `convex/paperSessions.ts:953` | `unapproveStage` mutation — reverts approval, restores pending_validation | Convex Logs |
+| `[PAPER][unapprove] boundary stage mismatch: last="..." expected="...", skipping removal` | `convex/paperSessions.ts:912` | `unapproveStage` — stageMessageBoundaries last entry doesn't match target (warn, non-fatal) | Convex Logs |
+| `[PAPER][unapprove] artifact title re-prefix failed` | `convex/paperSessions.ts:926` | `unapproveStage` — "Draf " prefix re-add failed (warn, non-fatal) | Convex Logs |
 | Harness table mutation invocations (`harnessRuns.createRun`, `harnessEvents.emitEvent`, `harnessDecisions.createDecision`, etc.) | `convex/harness*.ts` | Every harness persistence call | Convex Logs |
 
 ---
@@ -283,6 +299,27 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 > 7. Orchestrator terminal: `[HARNESS][persistence] resumeLane` + `run_resumed` event
 > 8. REVERT the trigger
 
+### "Cancel choice (Batalkan pilihan)" (cancel-decision Phase 1)
+1. **Browser:** `[CANCEL-DECISION] choice cancelled, card re-activated` — handler completed?
+2. **Convex Logs:** `[PAPER][cancel-choice] stage=... artifactInvalidated=... statusReverted=... epoch=N` — mutation fired? What was reverted?
+3. **Convex Logs:** Check `paperSessions` row: `stageStatus` should be `"drafting"`, `stageData[currentStage]` should only have `revisionCount`
+4. **Browser:** Choice card should re-render as interactive (check that `isChoiceSubmitted` is `false`)
+5. **If card still stuck as submitted:** Check browser console for key mismatch — `submittedChoiceKeys` may have a stale key variant. Grep for `optimisticPendingKeys` in React DevTools state.
+
+### "Cancel approval (Batalkan persetujuan)" (cancel-decision Phase 2)
+1. **Browser:** `[CANCEL-DECISION] approval cancelled, validation panel re-shown` — handler completed?
+2. **Convex Logs:** `[PAPER][unapprove] stage=... clearedNextStage=...` — mutation fired? Which stage was restored?
+3. **Convex Logs:** Check `paperSessions` row: `currentStage` should revert to `targetStage`, `stageStatus` should be `"pending_validation"`
+4. **Browser:** Validation panel should auto-reappear (driven by Convex reactivity on `stageStatus`)
+5. **If Batalkan not visible (but expected):** Check `paperSession.stageStatus` — must be `"drafting"` or `completed+approved`. If `pending_validation`, the session already moved past the point where unapproval is allowed.
+6. **If Batalkan visible but within 30s:** Throttle is working. Wait 30 seconds from message creation.
+
+### "Chain-completion race after cancel" (cancel-decision epoch guard)
+1. **Terminal:** `[CANCEL-DECISION] epoch stamped: N for stage=...` — epoch assigned on choice submission?
+2. **Terminal:** `[CHAIN-COMPLETION] aborted: epoch drift` — epoch guard prevented stale chain-completion after cancel?
+3. **If chain-completion ran anyway:** Check `[CANCEL-DECISION] epoch stamped` was present for the original request. If `stampDecisionEpoch failed`, the request had no epoch → guard skipped.
+4. **Convex Logs:** Compare `decisionEpoch` on `paperSessions` row vs `myEpoch` in the terminal log.
+
 ---
 
 ## Log Tag Glossary (by Prefix)
@@ -295,6 +332,8 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 | `[PAPER][outcome-*]` / `[recovery-*]` | executor | 2 |
 | `[PAPER][post-choice-*]` | context | 3 |
 | `[PAPER][stage-transition]` / `[edit-resend-reset]` / `[auto-create]` | Convex paperSessions | domain (pre-refactor) |
+| `[PAPER][stamp-epoch]` / `[PAPER][cancel-choice]` / `[PAPER][unapprove]` | Convex paperSessions | cancel-decision |
+| `[CANCEL-DECISION]` | orchestrator + ChatWindow | cancel-decision |
 | `[F1-F6-TEST]` | shared across context + executor + UI | test fixtures |
 | `[FREE-TEXT-CONTEXT]` | orchestrator step 5 | 7 |
 | `[STEP-TIMING]` / `[TOOL-CHAIN-ORDER]` / `[CHAIN-COMPLETION]` | executor | 2 |
@@ -401,3 +440,9 @@ paperSessions.approveStage → [PAPER][stage-transition] ...
     - `[ARTIFACT-REVEAL][fallback]` Convex-reactive auto-open (iteration 9) — `ChatWindow.tsx`.
 
   Pre-refactor web-search logs (`[⏱ STUTTER]`, `[⏱ LATENCY]`, `[⏱ RETRIEVER]`, `[⏱ LIFECYCLE]`) live in `src/lib/ai/web-search/orchestrator.ts` and are still NOT mapped here — they predate the harness refactor and are left for a separate revision.
+- **2026-04-18 (cancel-decision audit complete):** Added all logs from the cancel-decision feature (3 phases, 14 implementation commits + audit patches):
+    - **Convex mutations:** `[PAPER][stamp-epoch]`, `[PAPER][cancel-choice]`, `[PAPER][unapprove]` (+ 3 warn-level logs for non-fatal failures) — `convex/paperSessions.ts`.
+    - **Orchestrator:** `[CANCEL-DECISION] epoch stamped` / `stampDecisionEpoch failed` — `orchestrate-sync-run.ts`.
+    - **Executor epoch guard:** `[CHAIN-COMPLETION] aborted: epoch drift` / `[LAMPIRAN-RESCUE] aborted: epoch drift` / `[JUDUL-RESCUE] aborted: epoch drift` — `build-on-finish-handler.ts`.
+    - **Browser client:** `[CANCEL-DECISION] choice cancelled` / `approval cancelled` (+ error logs) — `ChatWindow.tsx`.
+    - **Debugging scenarios:** "Cancel choice", "Cancel approval", "Chain-completion race after cancel".
