@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { getNextStage, PaperStageId, STAGE_ORDER } from "./paperSessions/constants";
+import { getNextStage, getPreviousStage, PaperStageId, STAGE_ORDER } from "./paperSessions/constants";
 import {
     requireAuthUser,
     requireAuthUserId,
@@ -836,6 +836,124 @@ export const cancelChoiceDecision = mutation({
 });
 
 /**
+ * Unapprove a stage — revert the last approval decision.
+ * Only allowed in valid post-approval states.
+ * Ref: design doc section 5.2
+ */
+export const unapproveStage = mutation({
+    args: {
+        sessionId: v.id("paperSessions"),
+        userId: v.id("users"),
+    },
+    handler: async (ctx, args) => {
+        const { session } = await requirePaperSessionOwner(ctx, args.sessionId);
+        const now = Date.now();
+
+        // Guard: valid post-approval state
+        const isNormalApproval = session.stageStatus === "drafting";
+        const isFinalApproval = session.currentStage === "completed" && session.stageStatus === "approved";
+        if (!isNormalApproval && !isFinalApproval) {
+            throw new Error(`Cannot unapprove: stageStatus="${session.stageStatus}", currentStage="${session.currentStage}"`);
+        }
+
+        // Derive targetStage
+        let targetStage: PaperStageId;
+        if (isFinalApproval) {
+            // completed → last STAGE_ORDER entry ("judul")
+            targetStage = STAGE_ORDER[STAGE_ORDER.length - 1];
+        } else {
+            const prev = getPreviousStage(session.currentStage as PaperStageId);
+            if (!prev) throw new Error(`Cannot unapprove: no previous stage for "${session.currentStage}"`);
+            targetStage = prev;
+        }
+
+        // Guard: target stage must have validatedAt
+        const stageData = session.stageData as Record<string, Record<string, unknown>>;
+        const targetStageData = stageData[targetStage];
+        if (!targetStageData?.validatedAt) {
+            throw new Error(`Cannot unapprove: stage "${targetStage}" has no validatedAt`);
+        }
+
+        // Save nextStageToClear BEFORE revert
+        const nextStageToClear = session.currentStage;
+
+        // 1. Remove validatedAt from targetStage stageData
+        const updatedStageData = { ...stageData };
+        const { validatedAt: _, ...targetStageWithoutValidated } = targetStageData;
+        updatedStageData[targetStage] = targetStageWithoutValidated;
+
+        // 2. Clear nextStageToClear stageData (may have _plan or draft fields)
+        if (nextStageToClear !== "completed" && updatedStageData[nextStageToClear]) {
+            updatedStageData[nextStageToClear] = {};
+        }
+
+        // 3. Mark last digest entry as superseded
+        const existingDigest = (session.paperMemoryDigest as Array<{
+            stage: string; decision: string; timestamp: number; superseded?: boolean;
+        }>) || [];
+        const updatedDigest = [...existingDigest];
+        for (let i = updatedDigest.length - 1; i >= 0; i--) {
+            if (updatedDigest[i].stage === targetStage && !updatedDigest[i].superseded) {
+                updatedDigest[i] = { ...updatedDigest[i], superseded: true };
+                break;
+            }
+        }
+
+        // 4. Remove last stageMessageBoundaries entry (verify stage matches)
+        const existingBoundaries = (session.stageMessageBoundaries as Array<{
+            stage: string; firstMessageId: string; lastMessageId: string; messageCount: number;
+        }>) || [];
+        let updatedBoundaries = existingBoundaries;
+        if (existingBoundaries.length > 0) {
+            const lastBoundary = existingBoundaries[existingBoundaries.length - 1];
+            if (lastBoundary.stage === targetStage) {
+                updatedBoundaries = existingBoundaries.slice(0, -1);
+            }
+        }
+
+        // 5. Re-add "Draf " prefix to artifact title if stripped on approval
+        if (targetStageData.titleStrippedOnApproval && targetStageData.artifactId) {
+            try {
+                const artifact = await ctx.db.get(targetStageData.artifactId as Id<"artifacts">);
+                if (artifact && artifact.title && !/^draf(?:t)?\b/i.test(artifact.title)) {
+                    await ctx.db.patch(targetStageData.artifactId as Id<"artifacts">, {
+                        title: `Draf ${artifact.title}`,
+                    });
+                }
+            } catch {
+                console.warn(`[PAPER][unapprove] artifact title re-prefix failed`);
+            }
+        }
+
+        // Build patch
+        const patchData: Record<string, unknown> = {
+            currentStage: targetStage,
+            stageStatus: "pending_validation",
+            stageData: updatedStageData,
+            paperMemoryDigest: updatedDigest,
+            stageMessageBoundaries: updatedBoundaries,
+            updatedAt: now,
+        };
+
+        // 6. If targetStage === "judul": clear paperTitle, workingTitle, completedAt
+        if (targetStage === "judul") {
+            patchData.paperTitle = undefined;
+            patchData.workingTitle = undefined;
+            patchData.completedAt = undefined;
+        }
+
+        await ctx.db.patch(args.sessionId, patchData);
+
+        // 7. Rebuild naskahSnapshot
+        await rebuildNaskahSnapshot(ctx, args.sessionId);
+
+        const clearedNextStage = nextStageToClear !== "completed" && !!stageData[nextStageToClear];
+        console.info(`[PAPER][unapprove] stage=${targetStage} clearedNextStage=${clearedNextStage}`);
+        return { targetStage, clearedNextStage };
+    },
+});
+
+/**
  * Update data for the current stage.
  */
 export const updateStageData = mutation({
@@ -1346,6 +1464,11 @@ export const approveStage = mutation({
                 if (finalTitle) {
                     await ctx.db.patch(stageArtifactId as Id<"artifacts">, { title: finalTitle });
                     decisionText = finalTitle;
+                    // Cancel Decision: record that we stripped the prefix for unapproveStage reversal
+                    updatedStageData[currentStage] = {
+                        ...updatedStageData[currentStage],
+                        titleStrippedOnApproval: true,
+                    };
                 }
             }
         } else {
