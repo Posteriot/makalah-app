@@ -242,6 +242,21 @@ export async function orchestrateSyncRun(
     }
     const { resolvedWorkflow, choiceContextNote } = choiceResult
 
+    // Cancel Decision: stamp epoch when this is a choice interaction request
+    let myEpoch: number | undefined
+    if (accepted.choiceInteractionEvent && paperContext.paperSession?._id) {
+        try {
+            const epochResult = await accepted.fetchMutationWithToken(
+                api.paperSessions.stampDecisionEpoch,
+                { sessionId: paperContext.paperSession._id }
+            )
+            myEpoch = (epochResult as { epoch: number }).epoch
+            console.info(`[CANCEL-DECISION] epoch stamped: ${myEpoch} for stage=${paperContext.paperSession.currentStage}`)
+        } catch (epochErr) {
+            console.warn(`[CANCEL-DECISION] stampDecisionEpoch failed:`, epochErr)
+        }
+    }
+
     const isPaperMode = !!paperContext.paperModePrompt
 
     // Skill telemetry context (depends on paperContext + isPaperMode).
@@ -418,6 +433,7 @@ export async function orchestrateSyncRun(
                 fetchQueryWithToken: accepted.fetchQueryWithToken,
                 fetchMutationWithToken: accepted.fetchMutationWithToken,
                 requestStartedAt: accepted.requestStartedAt,
+                myEpoch,
                 isDraftingStage: paperContext.isDraftingStage,
                 isHasilPostChoice: paperContext.isHasilPostChoice,
                 buildLeakageSnippet: buildLeakageSnippetFn,
@@ -481,6 +497,7 @@ export async function orchestrateSyncRun(
             maybeUpdateTitleFromAI: conversation.maybeUpdateTitleFromAI,
             isPaperMode,
             skillTelemetryContext,
+            myEpoch,
             originalError: error,
         })
         return { kind: "stream", response: fallbackResponse }
@@ -723,6 +740,7 @@ async function attemptFallbackExecution(params: {
     }) => Promise<void>
     isPaperMode: boolean
     skillTelemetryContext: Record<string, unknown>
+    myEpoch: number | undefined
     originalError: unknown
 }): Promise<Response> {
     const {
@@ -739,6 +757,7 @@ async function attemptFallbackExecution(params: {
         maybeUpdateTitleFromAI,
         isPaperMode,
         skillTelemetryContext,
+        myEpoch,
         originalError,
     } = params
 
@@ -889,6 +908,7 @@ async function attemptFallbackExecution(params: {
             fetchQueryWithToken: accepted.fetchQueryWithToken,
             fetchMutationWithToken: accepted.fetchMutationWithToken,
             requestStartedAt: accepted.requestStartedAt,
+            myEpoch,
             isDraftingStage: paperContext.isDraftingStage,
             isHasilPostChoice: paperContext.isHasilPostChoice,
             buildLeakageSnippet: buildLeakageSnippetFn,

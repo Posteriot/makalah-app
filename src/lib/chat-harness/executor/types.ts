@@ -120,6 +120,7 @@ export interface OnFinishConfig {
     fetchQueryWithToken: ConvexFetchQuery
     fetchMutationWithToken: ConvexFetchMutation
     requestStartedAt: number | undefined
+    myEpoch: number | undefined  // Cancel decision: epoch at choice submission time
     isDraftingStage: boolean
     isHasilPostChoice: boolean
     buildLeakageSnippet: (text: string, matchIndex: number, matchValue: string) => string
