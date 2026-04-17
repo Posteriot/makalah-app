@@ -1,7 +1,7 @@
 "use client"
 
 import { UIMessage } from "ai"
-import { EditPencil, Xmark, Send, CheckCircle, Copy, Check } from "iconoir-react"
+import { EditPencil, Xmark, Send, CheckCircle, Copy, Check, Undo } from "iconoir-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
 import { SourcesIndicator } from "./SourcesIndicator"
@@ -177,6 +177,8 @@ interface MessageBubbleProps {
         selectedOptionId: string
         customText?: string
     }) => void | Promise<void>
+    onCancelChoice?: (messageId: string, messageIndex: number) => void
+    isStreaming?: boolean
 }
 
 export function MessageBubble({
@@ -196,6 +198,8 @@ export function MessageBubble({
     onOpenSources,
     isChoiceSubmitted,
     onChoiceSubmit,
+    onCancelChoice,
+    isStreaming,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
@@ -1160,6 +1164,46 @@ export function MessageBubble({
                 const copiedBtnStyle: React.CSSProperties = { color: "var(--chat-success)" }
                 const actionBtnClass = "p-1.5 rounded-action transition-colors hover:bg-[color:var(--chat-accent)]"
                 const actionIconClass = "h-4 w-4"
+
+                // Cancel Decision: Batalkan button for choice synthetic messages
+                // autoUserAction is derived from message.parts above (line ~459)
+                const autoAction = autoUserAction
+                if (autoAction?.kind === "choice" && onCancelChoice) {
+                    const cancelAllowed = !isStreaming
+                    return (
+                    <div className="flex flex-col items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">
+                        {cancelAllowed ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        onClick={() => onCancelChoice(message.id, messageIndex)}
+                                        className={actionBtnClass}
+                                        style={{ color: "var(--chat-warning-foreground, var(--chat-muted-foreground))" }}
+                                        aria-label="Batalkan pilihan"
+                                    >
+                                        <Undo className={actionIconClass} strokeWidth={2} />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Batalkan</TooltipContent>
+                            </Tooltip>
+                        ) : null}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={handleCopyUserMessage}
+                                    className={actionBtnClass}
+                                    style={isCopied ? copiedBtnStyle : actionBtnStyle}
+                                    aria-label="Copy message"
+                                >
+                                    {isCopied ? <Check className={actionIconClass} strokeWidth={2} /> : <Copy className={actionIconClass} strokeWidth={2} />}
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">{isCopied ? "Copied" : "Copy"}</TooltipContent>
+                        </Tooltip>
+                    </div>
+                    )
+                }
+
                 return (
                 <div className="flex flex-col items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">
                     {onEdit && (
