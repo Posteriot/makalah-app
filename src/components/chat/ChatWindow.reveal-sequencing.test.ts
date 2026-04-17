@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { shouldAutoOpenSettledArtifactFallback } from "./ChatWindow"
+import { shouldAutoOpenSettledArtifactFallback, isValidationPanelEligible } from "./ChatWindow"
 
 // ────────────────────────────────────────────────────────────────
 // Regression test: UI reveal sequencing invariant
@@ -13,9 +13,10 @@ import { shouldAutoOpenSettledArtifactFallback } from "./ChatWindow"
 //   - `artifactRevealDone`: gates validation panel render
 //   - `status !== 'streaming'`: blocks during active stream
 //   - `shouldAutoOpenSettledArtifactFallback`: gates fallback path
+//   - `isValidationPanelEligible`: production gate used in render
 //
-// These tests lock the invariant so regressions in any gate
-// are caught before they reach users.
+// These tests import the PRODUCTION helpers so regressions in the
+// actual render gate are caught, not just a test-local replica.
 // ────────────────────────────────────────────────────────────────
 
 describe("shouldAutoOpenSettledArtifactFallback", () => {
@@ -76,74 +77,50 @@ describe("shouldAutoOpenSettledArtifactFallback", () => {
   })
 })
 
-describe("reveal sequencing invariant (state contract)", () => {
-  // These tests verify the STATE CONDITIONS that enforce the invariant,
-  // not the React render output (which requires full component mounting).
-  // The invariant: validation panel can only render when:
-  //   status !== 'streaming' && artifactRevealDone && pendingValidation
+describe("isValidationPanelEligible (production gate)", () => {
+  // Tests the ACTUAL exported function used in the ChatWindow render gate.
+  // If the render condition changes, these tests will fail — preventing
+  // silent regressions in the reveal sequencing invariant.
 
-  function canShowValidationPanel(params: {
-    status: string
-    artifactRevealDone: boolean
-    stageStatus?: string
-    optimisticPendingValidation: boolean
-  }): boolean {
-    const isPendingValidation =
-      params.stageStatus === "pending_validation" || params.optimisticPendingValidation
-    return (
-      isPendingValidation &&
-      params.status !== "streaming" &&
-      params.artifactRevealDone
-    )
-  }
-
-  it("blocks validation panel during streaming even if stageStatus=pending_validation", () => {
-    // Tools executed: submitStageForValidation fired during stream,
-    // Convex pushed stageStatus=pending_validation, but stream is still active
-    expect(canShowValidationPanel({
-      status: "streaming",
+  it("blocks during streaming even if stageStatus=pending_validation", () => {
+    expect(isValidationPanelEligible({
+      chatStatus: "streaming",
       artifactRevealDone: true,
       stageStatus: "pending_validation",
       optimisticPendingValidation: false,
     })).toBe(false)
   })
 
-  it("blocks validation panel when artifact reveal is pending", () => {
-    // onFinish fired, artifactRevealDone=false (rAF not yet fired),
-    // status is now 'ready'
-    expect(canShowValidationPanel({
-      status: "ready",
+  it("blocks when artifact reveal is pending", () => {
+    expect(isValidationPanelEligible({
+      chatStatus: "ready",
       artifactRevealDone: false,
       stageStatus: "pending_validation",
       optimisticPendingValidation: false,
     })).toBe(false)
   })
 
-  it("allows validation panel after artifact reveal completes", () => {
-    // rAF fired, artifact panel opened, artifactRevealDone=true,
-    // optimisticPendingValidation set
-    expect(canShowValidationPanel({
-      status: "ready",
+  it("allows after artifact reveal completes", () => {
+    expect(isValidationPanelEligible({
+      chatStatus: "ready",
       artifactRevealDone: true,
       stageStatus: "pending_validation",
       optimisticPendingValidation: true,
     })).toBe(true)
   })
 
-  it("allows validation panel immediately when no artifact was created", () => {
-    // onFinish fired with no artifact, artifactRevealDone stays true,
-    // optimisticPendingValidation set immediately
-    expect(canShowValidationPanel({
-      status: "ready",
+  it("allows immediately when no artifact (artifactRevealDone default true)", () => {
+    expect(isValidationPanelEligible({
+      chatStatus: "ready",
       artifactRevealDone: true,
       stageStatus: "drafting",
       optimisticPendingValidation: true,
     })).toBe(true)
   })
 
-  it("blocks validation panel when neither pending source is true", () => {
-    expect(canShowValidationPanel({
-      status: "ready",
+  it("blocks when neither pending source is true", () => {
+    expect(isValidationPanelEligible({
+      chatStatus: "ready",
       artifactRevealDone: true,
       stageStatus: "drafting",
       optimisticPendingValidation: false,
@@ -151,9 +128,8 @@ describe("reveal sequencing invariant (state contract)", () => {
   })
 
   it("double gate: streaming + artifactRevealDone=false both block", () => {
-    // Mid-stream, tools already fired but rAF not scheduled yet
-    expect(canShowValidationPanel({
-      status: "streaming",
+    expect(isValidationPanelEligible({
+      chatStatus: "streaming",
       artifactRevealDone: false,
       stageStatus: "pending_validation",
       optimisticPendingValidation: true,

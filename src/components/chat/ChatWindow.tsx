@@ -537,6 +537,23 @@ export function shouldAutoOpenSettledArtifactFallback(params: {
   return params.optimisticPendingValidation || params.stageStatus === "pending_validation"
 }
 
+/**
+ * Determines whether the validation panel is eligible to render.
+ * Encodes the reveal sequencing invariant: validation panel can only
+ * appear when the stream is done AND artifact reveal has completed
+ * (or no artifact was created) AND the stage is pending validation.
+ */
+export function isValidationPanelEligible(params: {
+  chatStatus: string
+  artifactRevealDone: boolean
+  stageStatus?: string
+  optimisticPendingValidation: boolean
+}): boolean {
+  if (params.chatStatus === "streaming") return false
+  if (!params.artifactRevealDone) return false
+  return params.optimisticPendingValidation || params.stageStatus === "pending_validation"
+}
+
 export function ChatWindow({
   conversationId,
   onMobileMenuClick,
@@ -3044,7 +3061,7 @@ export function ChatWindow({
                 Footer: () => (
                   <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                     {/* Paper Validation Panel - footer area before input */}
-                    {(isPaperMode && (stageStatus === "pending_validation" || optimisticPendingValidation) && userId && status !== 'streaming' && artifactRevealDone) && (
+                    {(isPaperMode && userId && isValidationPanelEligible({ chatStatus: status, artifactRevealDone, stageStatus, optimisticPendingValidation })) && (
                       <PaperValidationPanel
                         stageLabel={stageLabel}
                         onApprove={handleApprove}
