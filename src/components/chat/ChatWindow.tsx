@@ -1013,7 +1013,14 @@ export function ChatWindow({
             })
           }
           // Fallback already handled reveal — validation panel is eligible
-          if (hasSubmit) setOptimisticPendingValidation(true)
+          if (hasSubmit) {
+            setOptimisticPendingValidation(true)
+            if (process.env.NODE_ENV !== "production") {
+              console.info("[UI-REVEAL-ORDER] validation_panel_eligible", {
+                stage: stageLabel, ts: Date.now(), path: "fallback-claimed",
+              })
+            }
+          }
           return
         }
 
@@ -1080,7 +1087,8 @@ export function ChatWindow({
   useEffect(() => {
     if (status === "streaming") {
       if (optimisticPendingValidation) setOptimisticPendingValidation(false)
-      // Reset reveal gate so validation panel is blocked during new turn
+      // Reset reveal gate to default (no artifact pending) for the new turn.
+      // true = no artifact to wait for; onFinish will set false if needed.
       setArtifactRevealDone(true)
     }
   }, [status, optimisticPendingValidation])
