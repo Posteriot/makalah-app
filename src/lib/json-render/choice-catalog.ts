@@ -57,6 +57,14 @@ export const choiceCatalog = defineCatalog(schema, {
     },
   },
   actions: {
+    toggleOption: {
+      params: z.object({
+        optionId: z.string().min(1),
+        currentSelectedId: z.string().nullable().optional(),
+      }),
+      description:
+        "Toggle option selection. If the option is already selected, deselect it (set to null). Otherwise, select it.",
+    },
     submitChoice: {
       params: z.object({
         selectedOptionId: z.string().min(1),

@@ -143,16 +143,10 @@ export function compileChoiceSpec(params: {
       children: [],
       on: {
         press: {
-          action: "setState",
-          // AI SDK / @json-render built-in setState action reads
-          // `params.statePath`. Using `params.path` (the earlier key) is a
-          // silent no-op at runtime, which manifests as a choice card
-          // whose option buttons appear clickable but never update
-          // /selection/selectedOptionId — the submit button then returns
-          // early because selectedOptionId remains empty.
+          action: "toggleOption",
           params: {
-            statePath: "/selection/selectedOptionId",
-            value: opt.id,
+            optionId: opt.id,
+            currentSelectedId: { $state: "/selection/selectedOptionId" },
           },
         },
       },
