@@ -205,8 +205,11 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 | `Failed to cancel approval: <error>` | `ChatWindow.tsx:2492` | `unapproveStage` or `editAndTruncate` threw | Browser Console |
 | `[UNIFIED-PROCESS-UI] source=model-driven\|hardcoded-fallback progress=N/N` | `MessageBubble.tsx` | Every assistant message during active stage | Browser Console |
 | `[PAPER][edit-resend-reset] Client: stage=... cleared=N fields` | `ChatWindow.tsx:2076` | After resetStageDataForEditResend mutation | Browser Console |
-| `[ARTIFACT-REVEAL] onFinish — deferring panel open { ts, artifactId }` | `ChatWindow.tsx:952` | Artifact created during stream | Browser Console |
+| `[ARTIFACT-REVEAL] onFinish — deferring panel open { ts, artifactId }` | `ChatWindow.tsx` (onFinish) | Artifact created during stream | Browser Console |
 | `[ARTIFACT-REVEAL][fallback] Convex-reactive auto-open { ts, artifactId, turnStartedAt, createdAt, stageStatus }` | `ChatWindow.tsx` (fallback useEffect) | Auto-open path that fires when the happy-path `extractCreatedArtifacts` is empty (model `createArtifact` returned `success=false` and server CHAIN-COMPLETION persisted the artifact without emitting a tool-output). Gated on `stageStatus === "pending_validation"` or `optimisticPendingValidation` + newest artifact `_creationTime > lastTurnStartRef`. (E2E iteration 9) | Browser Console |
+| `[UI-REVEAL-ORDER] response_settled { stage, ts, hasArtifact, hasSubmit }` | `ChatWindow.tsx` (onFinish) | Stream finished — first beat of the reveal sequence. Fires before artifact or validation panel. | Browser Console |
+| `[UI-REVEAL-ORDER] artifact_revealed { stage, artifactId, ts }` | `ChatWindow.tsx` (onFinish rAF / fallback rAF) | Artifact panel opened — second beat. Fires after double rAF ensures text has painted. Unblocks validation panel via `artifactRevealDone` state. | Browser Console |
+| `[UI-REVEAL-ORDER] validation_panel_eligible { stage, ts }` | `ChatWindow.tsx` (onFinish) | Validation panel unblocked — third beat. `optimisticPendingValidation` set AFTER artifact reveal completes. Only fires for drafting stages with `submitStageForValidation`. | Browser Console |
 
 ### Convex Dashboard Logs
 
@@ -286,11 +289,16 @@ Post-refactor, logs fire from 3 tiers. Knowing the tier tells you WHERE to look 
 4. **Terminal:** `[⏱ CHUNK-TAP] layer=afterUITextCoalesce` — confirm coalescer is still wired; if this layer is missing, pipeUITextCoalesce was accidentally removed.
 
 ### "Artifact panel appears during text, not after" (E2E iteration 10)
-1. **Terminal:** `grep "\[⏱ ARTIFACT-ORDERING\].*verdict=reversed" <log>` — artifact fires before last text, pathological.
+1. **Terminal:** `grep "\[⏱ ARTIFACT-ORDERING\].*verdict=reversed" <log>` — artifact fires before last text, pathological. Note: this is BACKEND tool order, not user-facing reveal order. After the reveal-sequencing fix, `verdict=reversed` means the model called tools before text but the UI still presents text → artifact → validation.
 2. **Terminal:** `grep "\[⏱ ARTIFACT-ORDERING\].*verdict=concurrent" <log>` — tools interleaved with text; usually acceptable if model emits commentary after the tool, but worth inspecting.
 3. **Terminal:** `[⏱ TOOL-BOUNDARY] tool_call_finish toolName=createArtifact` + subsequent `post_tool_text_resume gapMs=...` — did model emit text after the tool call? If yes and `orderingGapMs` is small/negative, model is streaming post-tool commentary; if no and verdict=reversed, the artifact event was the final thing emitted before finish and the text you saw earlier was everything.
 4. **Browser:** `[ARTIFACT-REVEAL] onFinish — deferring panel open` (happy path) vs `[ARTIFACT-REVEAL][fallback] Convex-reactive auto-open` (CHAIN-COMPLETION path) — which path opened the panel?
-5. **Convex Dashboard:** artifacts table createdAt — did the artifact row land during the turn or after?
+5. **Browser:** `[UI-REVEAL-ORDER]` sequence — verify 3-beat reveal order:
+   - `response_settled` fires first (onFinish)
+   - `artifact_revealed` fires second (after double rAF)
+   - `validation_panel_eligible` fires third (after artifact revealed)
+   - If `validation_panel_eligible` fires before `artifact_revealed`, the state gate is broken.
+6. **Convex Dashboard:** artifacts table createdAt — did the artifact row land during the turn or after?
 
 ### "Pause/resume flow" (Phase 8)
 > Phase 8 infrastructure is LATENT — no enforcer currently sets `requiresApproval=true`. To manually test:
@@ -454,3 +462,6 @@ paperSessions.approveStage → [PAPER][stage-transition] ...
     - **Orchestrator stream:** `[CHOICE-CARD][guaranteed][stream]` — `orchestrator.ts` (`maybeEmitGuaranteedChoiceSpec`). Fires when compose model didn't emit YAML spec and orchestrator injects fallback into live stream.
     - **Search persistence:** `[CHOICE-CARD][guaranteed][search]` — `execute-web-search-path.ts`. Logs spec source on DB persist.
     - **Debugging scenario:** Updated "Choice card not appearing" with steps 3-4 for search-path-specific triage.
+- **2026-04-18 (artifact/validation reveal sequencing):** Added state-driven UI reveal ordering:
+    - **Browser client:** `[UI-REVEAL-ORDER] response_settled`, `artifact_revealed`, `validation_panel_eligible` — `ChatWindow.tsx`. Three-beat sequence replacing simultaneous reveal. `artifactRevealDone` state gates validation panel until artifact panel has opened.
+    - **Debugging scenario:** Updated "Artifact panel appears during text, not after" with UI-layer reveal order triage.

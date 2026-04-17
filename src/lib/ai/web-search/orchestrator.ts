@@ -254,11 +254,12 @@ export function emitTransparentReasoningResetForRetry(params: {
  *
  * Returns the emitted Spec if one was injected, or null if no action was taken.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function maybeEmitGuaranteedChoiceSpec(params: {
   capturedChoiceSpec: Spec | null
   compileGuaranteedChoiceSpec?: () => Spec | undefined
   currentStage?: string
-  writer: { write: (chunk: unknown) => void }
+  writer: { write: (chunk: any) => void }
 }): Spec | null {
   if (params.capturedChoiceSpec?.root) return null
   if (!params.compileGuaranteedChoiceSpec) return null

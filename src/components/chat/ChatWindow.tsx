@@ -587,6 +587,11 @@ export function ChatWindow({
   // Optimistic bridge: show approval panel immediately when onFinish detects
   // submitStageForValidation in message, without waiting for Convex subscription
   const [optimisticPendingValidation, setOptimisticPendingValidation] = useState(false)
+  // State-driven reveal sequencing: gates validation panel until artifact
+  // reveal completes. Default true (no artifact to wait for). Set to false
+  // in onFinish when an artifact was created, set back to true after the
+  // artifact panel has been opened.
+  const [artifactRevealDone, setArtifactRevealDone] = useState(true)
   const [chatViewportNode, setChatViewportNode] = useState<HTMLDivElement | null>(null)
   const [chatViewportWidth, setChatViewportWidth] = useState(0)
   type ActiveSheet = "proses" | "sources" | null
@@ -989,46 +994,72 @@ export function ChatWindow({
     transport,
     onFinish: ({ message }) => {
       const createdArtifacts = extractCreatedArtifacts(message)
-      // Optimistic: bridge Convex subscription latency so approval panel
-      // appears immediately when turn finishes (before panel layout shift)
-      if (isPaperMode && hasSubmitForValidation(message)) {
-        setOptimisticPendingValidation(true)
+      const hasSubmit = isPaperMode && hasSubmitForValidation(message)
+
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[UI-REVEAL-ORDER] response_settled", {
+          stage: stageLabel, ts: Date.now(), hasArtifact: createdArtifacts.length > 0, hasSubmit,
+        })
       }
+
       if (createdArtifacts.length > 0 && onArtifactSelect) {
         const targetArtifactId = createdArtifacts[createdArtifacts.length - 1].artifactId
-        // Guard: if the Convex-reactive fallback already claimed this
-        // artifact (its useEffect fires when the WebSocket delivers
-        // stageStatus=pending_validation before the HTTP response
-        // completes), short-circuit to prevent a second rAF chain and
-        // duplicate handleArtifactSelect call.
+
+        // Guard: if the Convex-reactive fallback already claimed this artifact
         if (lastAutoOpenedArtifactIdRef.current === targetArtifactId) {
           if (process.env.NODE_ENV !== "production") {
             console.info("[ARTIFACT-REVEAL] onFinish — skipped (already claimed by fallback)", {
-              ts: Date.now(),
-              artifactId: targetArtifactId,
+              ts: Date.now(), artifactId: targetArtifactId,
             })
           }
+          // Fallback already handled reveal — validation panel is eligible
+          if (hasSubmit) setOptimisticPendingValidation(true)
           return
         }
+
+        // Block validation panel until artifact reveal completes
+        setArtifactRevealDone(false)
+        lastAutoOpenedArtifactIdRef.current = targetArtifactId
+
         if (process.env.NODE_ENV !== "production") {
           console.info("[ARTIFACT-REVEAL] onFinish — deferring panel open", {
-            ts: Date.now(),
-            artifactId: targetArtifactId,
-            artifactCount: createdArtifacts.length,
+            ts: Date.now(), artifactId: targetArtifactId, artifactCount: createdArtifacts.length,
           })
         }
-        // Mark eagerly BEFORE scheduling rAFs so the Convex-reactive
-        // fallback effect sees the id already claimed and short-circuits.
-        lastAutoOpenedArtifactIdRef.current = targetArtifactId
-        // Double rAF: first rAF runs before next repaint, second rAF
-        // runs after that repaint completes — guaranteeing the final
-        // text has painted before the panel layout shift occurs
+
+        // Double rAF: guarantees final text has painted before artifact
+        // panel opens. After reveal, unblock validation panel.
         artifactRevealRafRef.current = requestAnimationFrame(() => {
           artifactRevealRafRef.current = requestAnimationFrame(() => {
             artifactRevealRafRef.current = null
             onArtifactSelect(targetArtifactId)
+            setArtifactRevealDone(true)
+            if (process.env.NODE_ENV !== "production") {
+              console.info("[UI-REVEAL-ORDER] artifact_revealed", {
+                stage: stageLabel, artifactId: targetArtifactId, ts: Date.now(),
+              })
+            }
+            // Validation panel eligible AFTER artifact is revealed
+            if (hasSubmit) {
+              setOptimisticPendingValidation(true)
+              if (process.env.NODE_ENV !== "production") {
+                console.info("[UI-REVEAL-ORDER] validation_panel_eligible", {
+                  stage: stageLabel, ts: Date.now(),
+                })
+              }
+            }
           })
         })
+      } else {
+        // No artifact — validation panel eligible immediately
+        if (hasSubmit) {
+          setOptimisticPendingValidation(true)
+          if (process.env.NODE_ENV !== "production") {
+            console.info("[UI-REVEAL-ORDER] validation_panel_eligible", {
+              stage: stageLabel, ts: Date.now(), noArtifact: true,
+            })
+          }
+        }
       }
     },
     onError: (err) => {
@@ -1045,10 +1076,12 @@ export function ChatWindow({
     }
   })
 
-  // Clear optimistic flag when new streaming starts (user approved/revised)
+  // Clear optimistic flags when new streaming starts (user approved/revised)
   useEffect(() => {
-    if (optimisticPendingValidation && status === "streaming") {
-      setOptimisticPendingValidation(false)
+    if (status === "streaming") {
+      if (optimisticPendingValidation) setOptimisticPendingValidation(false)
+      // Reset reveal gate so validation panel is blocked during new turn
+      setArtifactRevealDone(true)
     }
   }, [status, optimisticPendingValidation])
 
@@ -1096,6 +1129,7 @@ export function ChatWindow({
     // cannot also trigger; `useArtifactTabs.openTab` is idempotent but we
     // avoid duplicated [ARTIFACT-REVEAL] logs and double rAF chains.
     lastAutoOpenedArtifactIdRef.current = targetArtifactId
+    setArtifactRevealDone(false)
     if (process.env.NODE_ENV !== "production") {
       console.info("[ARTIFACT-REVEAL][fallback] Convex-reactive auto-open", {
         ts: Date.now(),
@@ -1110,6 +1144,12 @@ export function ChatWindow({
       artifactRevealRafRef.current = requestAnimationFrame(() => {
         artifactRevealRafRef.current = null
         onArtifactSelect(targetArtifactId)
+        setArtifactRevealDone(true)
+        if (process.env.NODE_ENV !== "production") {
+          console.info("[UI-REVEAL-ORDER] artifact_revealed (fallback)", {
+            stage: stageLabel, artifactId: targetArtifactId, ts: Date.now(),
+          })
+        }
       })
     })
   }, [conversationArtifacts, optimisticPendingValidation, stageStatus, onArtifactSelect, status])
@@ -2996,7 +3036,7 @@ export function ChatWindow({
                 Footer: () => (
                   <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                     {/* Paper Validation Panel - footer area before input */}
-                    {(isPaperMode && (stageStatus === "pending_validation" || optimisticPendingValidation) && userId && status !== 'streaming') && (
+                    {(isPaperMode && (stageStatus === "pending_validation" || optimisticPendingValidation) && userId && status !== 'streaming' && artifactRevealDone) && (
                       <PaperValidationPanel
                         stageLabel={stageLabel}
                         onApprove={handleApprove}
