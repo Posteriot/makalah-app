@@ -817,11 +817,22 @@ export const cancelChoiceDecision = mutation({
             }
         }
 
-        // Clear stageData (preserve revisionCount only)
+        // Clear stageData (preserve revisionCount + search references)
+        // Cancel invalidates decisions (artifact, validation), not accumulated research.
         const revisionCount = typeof currentStageData.revisionCount === "number"
             ? currentStageData.revisionCount : 0;
+        const preserved: Record<string, unknown> = { revisionCount };
+
+        const nativeRefField = STAGE_NATIVE_REF_FIELD[currentStage];
+        if (nativeRefField && currentStageData[nativeRefField] !== undefined) {
+            preserved[nativeRefField] = currentStageData[nativeRefField];
+        }
+        if (currentStageData.webSearchReferences !== undefined) {
+            preserved.webSearchReferences = currentStageData.webSearchReferences;
+        }
+
         const updatedStageData = { ...stageData };
-        updatedStageData[currentStage] = { revisionCount };
+        updatedStageData[currentStage] = preserved;
 
         await ctx.db.patch(args.sessionId, {
             stageData: updatedStageData,
