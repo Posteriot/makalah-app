@@ -425,6 +425,26 @@ export async function executeWebSearch(
         const sdkSourcesCount = await Promise.resolve(searchResult.sources)
           .then((value) => Array.isArray(value) ? value.length : 0)
           .catch(() => -1)
+
+        // ── Diagnostic dump for zero-citation failures ──
+        // Captures full context to diagnose intermittent GG empty-response bug.
+        // Safe to log: no API keys, no user PII beyond query text.
+        const finishReason = await Promise.resolve(searchResult.finishReason).catch(() => "unknown")
+        const responseHeaders = await Promise.resolve(searchResult.response)
+          .then((r) => {
+            const h: Record<string, string> = {}
+            if (r?.headers) {
+              for (const [k, v] of Object.entries(r.headers)) {
+                if (typeof v === "string") h[k] = v
+              }
+            }
+            return h
+          })
+          .catch(() => ({}))
+        const usageSnapshot = await Promise.resolve(searchResult.usage)
+          .then((u) => u ? { inputTokens: u.inputTokens, outputTokens: u.outputTokens } : null)
+          .catch(() => null)
+
         console.warn(`[Orchestrator][${reqId}] zero-citation failure`, {
           retriever: retriever.name,
           textChars: searchText.length,
@@ -432,6 +452,27 @@ export async function executeWebSearch(
           finalCitationCount: sources.length,
           sdkSourcesCount,
           providerMetadataKeys: providerMetadataSnapshot,
+        })
+        console.warn(`[Orchestrator][${reqId}] zero-citation diagnostic`, {
+          finishReason,
+          usageSnapshot,
+          responseHeaders,
+          modelId: retrieverConfig.modelId,
+          hasApiKey: Boolean(retrieverConfig.apiKey),
+          apiKeyPrefix: retrieverConfig.apiKey ? retrieverConfig.apiKey.slice(0, 8) + "..." : "NONE",
+          messageCount: searchMessages.length,
+          messageRoles: searchMessages.map((m: { role: string }) => m.role),
+          lastUserMsgChars: (() => {
+            for (let j = searchMessages.length - 1; j >= 0; j--) {
+              const msg = searchMessages[j] as { role: string; content: unknown }
+              if (msg.role === "user") {
+                return typeof msg.content === "string" ? msg.content.length : JSON.stringify(msg.content).length
+              }
+            }
+            return 0
+          })(),
+          samplingOptions: retrieverSamplingOptions,
+          textPreview: searchText.slice(0, 200) || "(empty)",
         })
         console.warn(`[Orchestrator][${reqId}] Retriever "${retriever.name}" returned 0 citations — treating as failure, trying next`)
         continue

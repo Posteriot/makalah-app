@@ -2031,6 +2031,14 @@ export function ChatWindow({
     // It gets reset when status transitions to "submitted" (message sent).
   }, [status])
 
+  // Reset skeleton flag when conversation loads and messages arrive —
+  // prevents skeleton from persisting if auto-send never fires.
+  useEffect(() => {
+    if (!isConversationLoading && messages.length > 0 && isAwaitingAssistantStart) {
+      setIsAwaitingAssistantStart(false)
+    }
+  }, [isConversationLoading, messages.length, isAwaitingAssistantStart])
+
   useEffect(() => {
     const prevStatus = previousStatusRef.current
     const hadGeneratingStatus = prevStatus === "submitted" || prevStatus === "streaming"
