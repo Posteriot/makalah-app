@@ -644,6 +644,9 @@ export function ChatWindow({
   // the full-derive persistedChoiceKeys effect from re-adding the key
   // before editAndTruncate syncs to the Convex subscription.
   const cancelledChoiceMessageIdsRef = useRef<Set<string>>(new Set())
+  // Guard: block phantom approve click after cancel-approval re-mounts the validation panel.
+  // Set true in handleCancelApproval, cleared after two animation frames (React commit + paint).
+  const cancellingApprovalRef = useRef(false)
   // Dedup [CHOICE-GATE] log: only log when result changes per messageId
   const choiceGateLastResultRef = useRef<Map<string, boolean>>(new Map())
   const previousStatusRef = useRef<string>("ready")
@@ -2488,6 +2491,11 @@ export function ChatWindow({
 
   const handleApprove = async () => {
     if (!userId) return
+    // Guard: block phantom approve that fires when validation panel re-mounts after cancel-approval
+    if (cancellingApprovalRef.current) {
+      console.warn("[handleApprove] blocked — cancel-approval cooldown active")
+      return
+    }
     // [F1-DEBUG] Trace who/what triggered this approval — check browser console
     console.trace("[F1-DEBUG] handleApprove TRIGGERED — who called this?")
     console.log("[F1-DEBUG] handleApprove context:", { stageLabel, stageStatus: paperSession?.stageStatus, userId })
@@ -2611,6 +2619,8 @@ export function ChatWindow({
 
   const handleCancelApproval = useCallback(async (uiMessageId: string, syntheticMessageIndex: number) => {
     if (!userId || !paperSession?._id || !conversationId) return
+    // Block phantom approve clicks during the cancel→re-mount cycle
+    cancellingApprovalRef.current = true
     try {
       // 1. Revert Convex state
       await unapproveStage({ sessionId: paperSession._id, userId })
@@ -2638,6 +2648,14 @@ export function ChatWindow({
       Sentry.captureException(error, { tags: { subsystem: "paper.cancel-approval" } })
       console.error("Failed to cancel approval:", error)
       toast.error("Gagal membatalkan persetujuan.")
+    } finally {
+      // Clear after two animation frames: React commit + browser paint.
+      // This ensures the validation panel has fully mounted before approve is re-enabled.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          cancellingApprovalRef.current = false
+        })
+      })
     }
   }, [userId, paperSession?._id, conversationId, historyMessages, unapproveStage, editAndTruncate, setMessages])
 
