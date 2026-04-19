@@ -1851,7 +1851,7 @@ export function ChatWindow({
 
   // Cancel Decision: derive which approved message (if any) is currently cancelable.
   // Only the latest [Approved:] is eligible, and only when session state allows unapproval.
-  // Backend guard mirrors: stageStatus === "drafting" (normal) or completed+approved (final).
+  // Gates: drafting (normal), approved+not-completed (mid-transition), completed+approved (final).
   const cancelableApprovalMessageId = useMemo(() => {
     if (!paperSession) return null
     // Allow cancel when:
