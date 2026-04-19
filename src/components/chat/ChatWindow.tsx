@@ -29,7 +29,7 @@ import { TemplateGrid, type Template } from "./messages/TemplateGrid"
 import { QuotaWarningBanner } from "./QuotaWarningBanner"
 import { MobileEditDeleteSheet } from "./mobile/MobileEditDeleteSheet"
 import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
-import type { PaperStageId } from "../../../convex/paperSessions/constants"
+import { STAGE_ORDER, type PaperStageId } from "../../../convex/paperSessions/constants"
 import { buildChoiceInteractionEvent, buildChoiceSyntheticText } from "@/lib/chat/choice-submit"
 import type { JsonRendererChoiceRenderPayload, WorkflowAction } from "@/lib/json-render/choice-payload"
 import { SPEC_DATA_PART_TYPE } from "@json-render/core"
@@ -689,6 +689,8 @@ export function ChatWindow({
     pausedHarnessRun,
     resolveAndResume,
   } = usePaperSession(safeConversationId ?? undefined, userId ?? undefined)
+
+  const prevStageRef = useRef(paperSession?.currentStage)
 
   // Clear optimistic flag once Convex subscription confirms pending_validation
   useEffect(() => {
@@ -1871,6 +1873,25 @@ export function ChatWindow({
     }
     return null
   }, [messages, paperSession])
+
+  // Rollback detection: when currentStage goes backward, clear local messages
+  // to prevent stale choice cards from being interactive.
+  useEffect(() => {
+    if (!paperSession?.currentStage || !prevStageRef.current) {
+      prevStageRef.current = paperSession?.currentStage
+      return
+    }
+    const prevIdx = STAGE_ORDER.indexOf(prevStageRef.current as PaperStageId)
+    const currIdx = STAGE_ORDER.indexOf(paperSession.currentStage as PaperStageId)
+    if (currIdx < prevIdx && currIdx >= 0) {
+      // Stage went BACKWARD — rollback detected
+      console.info(`[ROLLBACK][client] stage went backward: ${prevStageRef.current} → ${paperSession.currentStage}`)
+      // Force re-derive from historyMessages on next render cycle.
+      // This eliminates ALL stale choice cards, plan snapshots, and artifact references.
+      setMessages([])
+    }
+    prevStageRef.current = paperSession?.currentStage
+  }, [paperSession?.currentStage, setMessages])
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
