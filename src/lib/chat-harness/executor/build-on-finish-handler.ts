@@ -614,8 +614,18 @@ export function buildOnFinishHandler(
             measureStep("enrichSources", Date.now() - enrichSourcesStart)
         }
 
+        // ── Rollback guard ──
+        // After rollbackToStage, paperStageScope is stale (set at request start).
+        // Skip stage-specific post-processing that would target the wrong stage.
+        const rollbackHappened = paperToolTracker?.sawRollbackToStage === true
+
+        if (rollbackHappened) {
+            console.info(`[ROLLBACK] onFinish: skipping guaranteed-choice, plan persistence, chain-completion (rollback changed stage scope)`)
+        }
+
         // ── Harness chain completion ──
         if (
+            !rollbackHappened &&
             paperStageScope &&
             paperSession?._id &&
             isDraftingStage &&
@@ -700,7 +710,9 @@ export function buildOnFinishHandler(
             // If model emitted a valid yaml-spec, preserve it (richer context-aware options).
             // If model did NOT emit, inject a deterministic fallback so user is never
             // stranded without a card. Skip when validation chain succeeded (session advances).
+            // Also skip after rollback — paperStageScope is stale.
             if (
+                !rollbackHappened &&
                 paperStageScope &&
                 paperSession?.stageStatus === "drafting" &&
                 !paperToolTracker?.sawSubmitValidationSuccess
@@ -826,7 +838,7 @@ export function buildOnFinishHandler(
         }
 
         // ── Persist captured plan to stageData ──
-        if (capturedPlanSpecRef.current && paperSession?._id && paperStageScope) {
+        if (!rollbackHappened && capturedPlanSpecRef.current && paperSession?._id && paperStageScope) {
             const finalPlan = autoCompletePlanOnValidation(capturedPlanSpecRef.current, paperToolTracker.sawSubmitValidationSuccess)
             const updatePlanStart = Date.now()
             try {
