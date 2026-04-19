@@ -5,7 +5,7 @@ import { EditPencil, Xmark, Send, CheckCircle, Copy, Check, Undo } from "iconoir
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
 import { SourcesIndicator } from "./SourcesIndicator"
-import { useState, useRef, useMemo, useEffect } from "react"
+import { useState, useRef, useMemo, useEffect, useCallback } from "react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { MessageAttachment } from "./MessageAttachment"
@@ -18,6 +18,16 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogCancel,
+    AlertDialogAction,
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import { isImageType } from "@/lib/types/attached-file"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
@@ -212,6 +222,7 @@ export function MessageBubble({
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
     const [isCopied, setIsCopied] = useState(false)
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const editAreaRef = useRef<HTMLDivElement>(null)
 
@@ -1179,12 +1190,13 @@ export function MessageBubble({
                 if (autoAction?.kind === "choice" && onCancelChoice && cancelableChoiceMessageIds?.has(message.id)) {
                     const cancelAllowed = !isStreaming
                     return (
+                    <>
                     <div className="flex flex-col items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">
                         {cancelAllowed ? (
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <button
-                                        onClick={() => onCancelChoice(message.id, messageIndex)}
+                                        onClick={() => setShowCancelConfirm(true)}
                                         className={actionBtnClass}
                                         style={{ color: "var(--chat-warning-foreground, var(--chat-muted-foreground))" }}
                                         aria-label="Batalkan pilihan"
@@ -1209,6 +1221,39 @@ export function MessageBubble({
                             <TooltipContent side="left">{isCopied ? "Copied" : "Copy"}</TooltipContent>
                         </Tooltip>
                     </div>
+                    <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+                        <AlertDialogContent className="bg-[var(--chat-card)] border-[color:var(--chat-border)] rounded-lg max-w-md">
+                            <AlertDialogHeader>
+                                <AlertDialogTitle className="text-sm font-semibold text-[var(--chat-foreground)]">
+                                    Batalkan Pilihan?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription className="text-xs text-[var(--chat-muted-foreground)]">
+                                    Semua respons dan keputusan setelah pilihan ini akan dihapus. Tindakan ini tidak dapat dikembalikan.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter className="flex gap-2 sm:justify-center">
+                                <AlertDialogCancel
+                                    className={cn(
+                                        "gap-2 h-9 px-4 rounded-action",
+                                        "border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]",
+                                        "bg-transparent hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
+                                    )}
+                                >
+                                    Kembali
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={() => onCancelChoice(message.id, messageIndex)}
+                                    className={cn(
+                                        "gap-2 h-9 px-4 rounded-action",
+                                        "chat-validation-approve-button"
+                                    )}
+                                >
+                                    Batalkan Pilihan
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                    </>
                     )
                 }
 
