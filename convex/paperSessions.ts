@@ -849,11 +849,14 @@ export const unapproveStage = mutation({
         const { session } = await requirePaperSessionOwner(ctx, args.sessionId);
         const now = Date.now();
 
-        // Guard: valid post-approval state
-        const isNormalApproval = session.stageStatus === "drafting";
+        // Guard: allow unapprove in any post-approval state except "revision"
+        // (user actively revising means they've moved past the approval decision).
+        // Valid states: "drafting" (model streaming), "pending_validation" (model done),
+        // "approved" (mid-transition or completed).
         const isFinalApproval = session.currentStage === "completed" && session.stageStatus === "approved";
-        if (!isNormalApproval && !isFinalApproval) {
-            throw new Error(`Cannot unapprove: stageStatus="${session.stageStatus}", currentStage="${session.currentStage}"`);
+        const isRevision = session.stageStatus === "revision";
+        if (isRevision) {
+            throw new Error(`Cannot unapprove: stageStatus="${session.stageStatus}" — revision in progress`);
         }
 
         // Derive targetStage

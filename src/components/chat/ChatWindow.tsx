@@ -1851,17 +1851,15 @@ export function ChatWindow({
 
   // Cancel Decision: derive which approved message (if any) is currently cancelable.
   // Only the latest [Approved:] is eligible, and only when session state allows unapproval.
-  // Gates: drafting (normal), approved+not-completed (mid-transition), completed+approved (final).
+  // Gate: allowed in all states except "revision" (user actively revising).
   const cancelableApprovalMessageId = useMemo(() => {
     if (!paperSession) return null
-    // Allow cancel when:
-    // 1. Normal post-approval: stage advanced, new stage is "drafting"
-    // 2. Mid-transition: current stage still "approved" (before advance completes)
-    // 3. Final approval: paper completed
-    const isNormalApproval = paperSession.stageStatus === "drafting"
-    const isMidTransition = paperSession.stageStatus === "approved" && paperSession.currentStage !== "completed"
-    const isFinalApproval = paperSession.currentStage === "completed" && paperSession.stageStatus === "approved"
-    if (!isNormalApproval && !isMidTransition && !isFinalApproval) return null
+    // Allow cancel in any post-approval state except "revision" (user already
+    // chose to revise the current stage, so going back makes no sense).
+    // Key states: "drafting" (model streaming), "pending_validation" (model done,
+    // validation panel visible), "approved" (mid-transition or completed).
+    const status = paperSession.stageStatus as string
+    if (status === "revision") return null
     // Find the latest [Approved:] — by construction this is the one for the current previous stage
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i]
