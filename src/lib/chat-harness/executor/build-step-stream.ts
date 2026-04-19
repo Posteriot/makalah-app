@@ -978,7 +978,9 @@ export function buildStepStream(params: {
                     // how long the model thought before emitting the next
                     // text-delta. Answers "was the 15.9s gap tool execution
                     // or model post-tool thinking?"
+                    let isPostToolResume = false
                     if (lastToolCallFinishAt !== null) {
+                        isPostToolResume = true
                         const postToolGap = nowMs - lastToolCallFinishAt
                         console.info(`${toolBoundaryTag} post_tool_text_resume gapMs=${postToolGap}ms chunk#${toolsTextChunkCount}`)
                         lastToolCallFinishAt = null
@@ -990,7 +992,11 @@ export function buildStepStream(params: {
                         console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} firstTextDelta=${nowMs - toolsStreamStart}ms (time-to-first-text from streamText start)`)
                     } else {
                         const gap = nowMs - toolsLastTextChunkTime
-                        if (gap > toolsMaxGapMs) toolsMaxGapMs = gap
+                        // Post-tool gaps are legitimate model reasoning pauses
+                        // (observed 10-15s in multi-tool turns). Exclude them
+                        // from maxGapMs so STREAM-SMOOTHNESS only flags actual
+                        // pipeline stalls, not expected post-tool thinking time.
+                        if (!isPostToolResume && gap > toolsMaxGapMs) toolsMaxGapMs = gap
                         if (gap > 200) {
                             toolsGapsOver200ms += 1
                             console.info(`[⏱ TOOLS-STREAM][${toolsStreamReqId}]${logTag} gap=${gap}ms after chunk#${toolsTextChunkCount} reasoningBetween=${toolsLastChunkWasReasoning}`)
