@@ -297,8 +297,7 @@ export function MessageBubble({
             ? getMessageStage(messageCreatedAt, stageData)
             : currentStage  // Streaming message (no createdAt yet) → use current stage
 
-        // Per-message plan snapshot: if this message has a planSnapshot, overlay it onto
-        // stageData so deriveTaskList reads the historical plan, not the latest global one.
+        // Path 1: Message has its own plan snapshot — use it (overlay onto stageData)
         const msgPlanSnapshot = allMessages[messageIndex]?.planSnapshot
         if (msgPlanSnapshot) {
             const overlayStageData = {
@@ -311,6 +310,16 @@ export function MessageBubble({
             return deriveTaskList(messageStage as PaperStageId, overlayStageData)
         }
 
+        // Path 2: No planSnapshot on this message AND no _plan in stageData for its stage.
+        // This means there's genuinely no plan data from ANY source.
+        // Don't render hardcoded-fallback tasks — wait for real data to arrive
+        // via reactive query (updatePlan → _plan) or message re-persist (planSnapshot).
+        const hasNoPlan = !(stageData[messageStage] as Record<string, unknown> | undefined)?._plan
+        if (hasNoPlan) {
+            return null
+        }
+
+        // Path 3: Stage has _plan in stageData (from a previous turn) — use it
         return deriveTaskList(messageStage as PaperStageId, stageData)
     }, [isPaperMode, stageData, currentStage, allMessages, messageIndex])
 
