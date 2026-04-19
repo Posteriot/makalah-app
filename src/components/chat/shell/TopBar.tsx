@@ -135,6 +135,7 @@ export function TopBar({
                 <TooltipTrigger asChild>
                   <Link
                     href={`/naskah/${conversationId}`}
+                    target="_blank"
                     className={cn(
                       "inline-flex items-center gap-2 rounded-action px-3 py-1.5 text-sm",
                       "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
@@ -175,6 +176,7 @@ export function TopBar({
           {showChatLink && conversationId && (
             <Link
               href={`/chat/${conversationId}`}
+              target="_blank"
               className={cn(
                 "inline-flex items-center rounded-action px-3 py-1.5 text-sm",
                 "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
