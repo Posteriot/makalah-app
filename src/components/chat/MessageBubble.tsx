@@ -1247,8 +1247,8 @@ export function MessageBubble({
                                     onClick={() => onCancelChoice(message.id, messageIndex)}
                                     className={cn(
                                         "gap-2 h-9 px-4 rounded-action",
-                                        "border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]",
-                                        "bg-[var(--chat-card)] hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
+                                        "border border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]",
+                                        "!bg-[var(--chat-card)] hover:!bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
                                     )}
                                 >
                                     Batalkan Pilihan

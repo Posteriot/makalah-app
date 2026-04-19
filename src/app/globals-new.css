@@ -757,7 +757,8 @@
  * ========================================================================== */
 
 [data-chat-scope] [data-slot="button"].chat-validation-approve-button,
-[data-chat-scope] [data-slot="alert-dialog-action"].chat-validation-approve-button {
+[data-chat-scope] [data-slot="alert-dialog-action"].chat-validation-approve-button,
+[data-chat-scope] [data-slot="alert-dialog-cancel"].chat-validation-approve-button {
   background-color: var(--chat-success);
   color: var(--chat-success-foreground);
   border: none;
@@ -766,12 +767,14 @@
 }
 
 [data-chat-scope] [data-slot="button"].chat-validation-approve-button:hover,
-[data-chat-scope] [data-slot="alert-dialog-action"].chat-validation-approve-button:hover {
+[data-chat-scope] [data-slot="alert-dialog-action"].chat-validation-approve-button:hover,
+[data-chat-scope] [data-slot="alert-dialog-cancel"].chat-validation-approve-button:hover {
   background-color: color-mix(in oklch, var(--chat-success) 88%, black);
 }
 
 [data-chat-scope] [data-slot="button"].chat-validation-approve-button:focus-visible,
-[data-chat-scope] [data-slot="alert-dialog-action"].chat-validation-approve-button:focus-visible {
+[data-chat-scope] [data-slot="alert-dialog-action"].chat-validation-approve-button:focus-visible,
+[data-chat-scope] [data-slot="alert-dialog-cancel"].chat-validation-approve-button:focus-visible {
   outline: none;
   box-shadow:
     0 0 0 2px var(--chat-success),
