@@ -602,13 +602,30 @@ async function resolvePaperContext(params: {
                 `treat it as a finalize signal: updateStageData → createArtifact → submitStageForValidation.`,
             )
         } else if (totalTasks === 0 && !hasArtifact) {
-            lines.push(
-                ``,
-                `EXCEPTION: This appears to be the first turn in a newly entered stage.`,
-                `You MUST emit a fresh \`\`\`plan-spec\`\`\` defining your execution plan for this stage,`,
-                `followed by discussion text and a \`\`\`yaml-spec\`\`\` choice card with the user's first options.`,
-                `The "do not re-present options" rule does NOT apply here — this is a fresh stage start.`,
-            )
+            // Distinguish genuine first-turn-of-stage from mid-stage plan loss.
+            // If stageData has content keys (work already done), plan was likely lost — soften instruction.
+            const stageWorkKeys = sd ? Object.keys(sd).filter(k =>
+                !["_plan", "revisionCount", "webSearchReferences", "referensiAwal"].includes(k)
+            ) : []
+            const isGenuineFirstTurn = stageWorkKeys.length === 0
+
+            if (isGenuineFirstTurn) {
+                lines.push(
+                    ``,
+                    `EXCEPTION: This appears to be the first turn in a newly entered stage.`,
+                    `You MUST emit a fresh \`\`\`plan-spec\`\`\` defining your execution plan for this stage,`,
+                    `followed by discussion text and a \`\`\`yaml-spec\`\`\` choice card with the user's first options.`,
+                    `The "do not re-present options" rule does NOT apply here — this is a fresh stage start.`,
+                )
+            } else {
+                lines.push(
+                    ``,
+                    `NOTE: Your execution plan for this stage appears to be missing.`,
+                    `You MUST emit a \`\`\`plan-spec\`\`\` block to re-establish your execution plan,`,
+                    `then continue with discussion text and a \`\`\`yaml-spec\`\`\` choice card.`,
+                )
+                console.warn(`[FREE-TEXT-CONTEXT] plan-missing mid-stage detected (stage=${paperStageScope} stageWorkKeys=[${stageWorkKeys.join(",")}])`)
+            }
         }
 
         lines.push(`═══════════════════════════════`)
