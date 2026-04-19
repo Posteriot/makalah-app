@@ -15,6 +15,7 @@ import { recordUsageAfterOperation, type OperationType } from "@/lib/billing/enf
 import { verifyStepOutcome } from "../verification"
 import { UNFENCED_PLAN_REGEX, planSpecSchema, autoCompletePlanOnValidation } from "@/lib/ai/harness/plan-spec"
 import { compileChoiceSpec } from "@/lib/json-render/compile-choice-spec"
+import type { WorkflowAction } from "@/lib/json-render/choice-payload"
 import { getStageLabel } from "../../../../convex/paperSessions/constants"
 import { shouldAttemptRescue } from "@/lib/chat/choice-request"
 import { saveAssistantMessage } from "./save-assistant-message"
@@ -706,20 +707,68 @@ export function buildOnFinishHandler(
             ) {
                 const modelEmitted = !!(capturedSpecRef.current && capturedSpecRef.current.root)
                 if (!modelEmitted) {
+                    const stageLabel = getStageLabel(paperStageScope as PaperStageId)
+                    const plan = capturedPlanSpecRef.current
+
+                    // Derive options from plan task state
+                    let options: Array<{ id: string; label: string }>
+                    let recommendedId: string
+                    let workflowAction: WorkflowAction
+
+                    if (plan && plan.tasks.length > 0) {
+                        const allComplete = plan.tasks.every(t => t.status === "complete")
+                        const inProgressTask = plan.tasks.find(t => t.status === "in-progress")
+
+                        if (allComplete) {
+                            // All tasks done → recommend finalize
+                            options = [
+                                { id: "finalisasi", label: `Finalisasi ${stageLabel}` },
+                                { id: "lanjutkan-diskusi", label: "Lanjutkan diskusi" },
+                            ]
+                            recommendedId = "finalisasi"
+                            workflowAction = "finalize_stage"
+                        } else if (inProgressTask) {
+                            // Has in-progress task → label from current task
+                            const taskLabel = inProgressTask.label.length > 60
+                                ? inProgressTask.label.slice(0, 57) + "..."
+                                : inProgressTask.label
+                            options = [
+                                { id: "lanjutkan-tugas", label: taskLabel },
+                                { id: "lanjutkan-diskusi", label: "Lanjutkan diskusi" },
+                            ]
+                            recommendedId = "lanjutkan-tugas"
+                            workflowAction = "continue_discussion"
+                        } else {
+                            // Has plan but all pending → generic with explore
+                            options = [
+                                { id: "lanjutkan-diskusi", label: "Lanjutkan diskusi" },
+                                { id: "eksplorasi", label: "Eksplorasi lebih lanjut" },
+                            ]
+                            recommendedId = "lanjutkan-diskusi"
+                            workflowAction = "continue_discussion"
+                        }
+                    } else {
+                        // No plan or early stage → default pair
+                        options = [
+                            { id: "lanjutkan-diskusi", label: "Lanjutkan diskusi" },
+                            { id: "eksplorasi", label: "Eksplorasi lebih lanjut" },
+                        ]
+                        recommendedId = "lanjutkan-diskusi"
+                        workflowAction = "continue_discussion"
+                    }
+
                     const { spec: fallbackSpec } = compileChoiceSpec({
                         stage: paperStageScope,
                         kind: "single-select",
-                        title: "Apa langkah selanjutnya?",
-                        options: [
-                            { id: "lanjutkan-diskusi", label: "Lanjutkan diskusi" },
-                        ],
-                        recommendedId: "lanjutkan-diskusi",
+                        title: `Langkah selanjutnya untuk ${stageLabel}`,
+                        options,
+                        recommendedId,
                         appendValidationOption: true,
-                        workflowAction: "continue_discussion",
+                        workflowAction,
                     })
                     capturedSpecRef.current = fallbackSpec as Spec
                 }
-                console.info(`[CHOICE-CARD][guaranteed] stage=${paperStageScope} source=${modelEmitted ? "model" : "deterministic-fallback"}`)
+                console.info(`[CHOICE-CARD][guaranteed] stage=${paperStageScope} source=${modelEmitted ? "model" : "plan-aware-fallback"}`)
             }
 
             // Auto-complete plan when validation succeeded
