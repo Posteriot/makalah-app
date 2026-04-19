@@ -940,6 +940,10 @@ export const unapproveStage = mutation({
             }
         }
 
+        // Increment epoch (invalidates any in-flight chain-completion/rescue in new stage)
+        const currentEpoch = session.decisionEpoch ?? 0;
+        const newEpoch = currentEpoch + 1;
+
         // Build patch
         const patchData: Record<string, unknown> = {
             currentStage: targetStage,
@@ -947,6 +951,7 @@ export const unapproveStage = mutation({
             stageData: updatedStageData,
             paperMemoryDigest: updatedDigest,
             stageMessageBoundaries: updatedBoundaries,
+            decisionEpoch: newEpoch,
             updatedAt: now,
         };
 
@@ -963,7 +968,7 @@ export const unapproveStage = mutation({
         await rebuildNaskahSnapshot(ctx, args.sessionId);
 
         const clearedNextStage = nextStageToClear !== "completed" && !!stageData[nextStageToClear];
-        console.info(`[PAPER][unapprove] stage=${targetStage} clearedNextStage=${clearedNextStage} nextStageArtifactInvalidated=${nextStageArtifactInvalidated}`);
+        console.info(`[PAPER][unapprove] stage=${targetStage} clearedNextStage=${clearedNextStage} nextStageArtifactInvalidated=${nextStageArtifactInvalidated} epoch=${newEpoch}`);
         return { targetStage, clearedNextStage };
     },
 });
