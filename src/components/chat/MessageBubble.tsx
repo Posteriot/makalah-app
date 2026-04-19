@@ -180,8 +180,8 @@ interface MessageBubbleProps {
     onCancelChoice?: (messageId: string, messageIndex: number) => void
     onCancelApproval?: (messageId: string, messageIndex: number) => void
     isStreaming?: boolean
-    /** ID of the single message eligible for choice cancel (computed in ChatWindow) */
-    cancelableChoiceMessageId?: string | null
+    /** IDs of messages eligible for choice cancel (computed in ChatWindow) */
+    cancelableChoiceMessageIds?: Set<string>
     /** ID of the single message eligible for approval cancel (computed in ChatWindow) */
     cancelableApprovalMessageId?: string | null
 }
@@ -206,7 +206,7 @@ export function MessageBubble({
     onCancelChoice,
     onCancelApproval,
     isStreaming,
-    cancelableChoiceMessageId,
+    cancelableChoiceMessageIds,
     cancelableApprovalMessageId,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
@@ -1176,7 +1176,7 @@ export function MessageBubble({
                 // Cancel Decision: Batalkan button for choice synthetic messages
                 // autoUserAction is derived from message.parts above (line ~459)
                 const autoAction = autoUserAction
-                if (autoAction?.kind === "choice" && onCancelChoice && message.id === cancelableChoiceMessageId) {
+                if (autoAction?.kind === "choice" && onCancelChoice && cancelableChoiceMessageIds?.has(message.id)) {
                     const cancelAllowed = !isStreaming
                     return (
                     <div className="flex flex-col items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">

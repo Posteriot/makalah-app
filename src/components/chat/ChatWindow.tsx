@@ -1828,22 +1828,23 @@ export function ChatWindow({
     }
   }, [historyMessages])
 
-  // Cancel Decision: derive which choice message (if any) is currently cancelable.
-  // Only the latest [Choice:] synthetic with no subsequent [Approved:] or [Revisi untuk] is eligible.
-  // Boundaries: [Approved:] = stage advanced, [Revisi untuk] = revision flow entered (Phase 1 doesn't handle revision cancel).
-  const cancelableChoiceMessageId = useMemo(() => {
-    if (!paperSession || paperSession.currentStage === "completed") return null
-    // Scan backward: if we hit [Approved:] or [Revisi untuk] before [Choice:], nothing is cancelable
+  // Cancel Decision: derive which choice messages are currently cancelable.
+  // All [Choice:] synthetics in the current stage are eligible, up to
+  // the first [Approved:] or [Revisi untuk] boundary (those mark stage
+  // advancement / revision flow that shouldn't be undone via choice cancel).
+  const cancelableChoiceMessageIds = useMemo(() => {
+    const ids = new Set<string>()
+    if (!paperSession || paperSession.currentStage === "completed") return ids
+    // Scan backward: collect all [Choice:] messages until we hit a boundary
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i]
       if (msg.role !== "user") continue
       const textPart = msg.parts?.find((p) => p.type === "text") as { text?: string } | undefined
       const text = textPart?.text ?? ""
-      if (text.startsWith("[Approved:")) return null
-      if (text.startsWith("[Revisi untuk")) return null
-      if (text.startsWith("[Choice:")) return msg.id
+      if (text.startsWith("[Approved:") || text.startsWith("[Revisi untuk")) break
+      if (text.startsWith("[Choice:")) ids.add(msg.id)
     }
-    return null
+    return ids
   }, [messages, paperSession])
 
   // Cancel Decision: derive which approved message (if any) is currently cancelable.
@@ -3070,7 +3071,7 @@ export function ChatWindow({
                         onCancelChoice={handleCancelChoice}
                         onCancelApproval={handleCancelApproval}
                         isStreaming={status === "streaming"}
-                        cancelableChoiceMessageId={cancelableChoiceMessageId}
+                        cancelableChoiceMessageIds={cancelableChoiceMessageIds}
                         cancelableApprovalMessageId={cancelableApprovalMessageId}
                       />
                     </div>
