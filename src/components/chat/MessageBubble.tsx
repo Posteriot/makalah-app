@@ -1222,7 +1222,10 @@ export function MessageBubble({
                         </Tooltip>
                     </div>
                     <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
-                        <AlertDialogContent className="bg-[var(--chat-card)] border-[color:var(--chat-border)] rounded-lg max-w-md">
+                        <AlertDialogContent
+                            data-chat-scope=""
+                            className="bg-[var(--chat-card)] border-[color:var(--chat-border)] rounded-lg max-w-md"
+                        >
                             <AlertDialogHeader>
                                 <AlertDialogTitle className="text-sm font-semibold text-[var(--chat-foreground)]">
                                     Batalkan Pilihan?
@@ -1235,8 +1238,7 @@ export function MessageBubble({
                                 <AlertDialogCancel
                                     className={cn(
                                         "gap-2 h-9 px-4 rounded-action",
-                                        "border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]",
-                                        "bg-transparent hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
+                                        "chat-validation-approve-button"
                                     )}
                                 >
                                     Kembali
@@ -1245,7 +1247,8 @@ export function MessageBubble({
                                     onClick={() => onCancelChoice(message.id, messageIndex)}
                                     className={cn(
                                         "gap-2 h-9 px-4 rounded-action",
-                                        "chat-validation-approve-button"
+                                        "border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]",
+                                        "bg-[var(--chat-card)] hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
                                     )}
                                 >
                                     Batalkan Pilihan
