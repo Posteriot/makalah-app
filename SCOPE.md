@@ -17,14 +17,3 @@ This branch uses an explicitly broad execution scope.
 
 **Harness plan system: model-driven task tracking**
 
-E2E test paused. Focus exclusively on:
-1. Design harness plan system (plan capture, state injection, UI switch from hardcoded to model-driven)
-2. Implement on this branch
-3. Update system prompt + 14 skills for model awareness
-4. Codex review before finalize
-5. E2E test restart from scratch in next session
-
-NOT in scope this session:
-- E2E test continuation
-- Deploy to prod
-- Unrelated feature work
