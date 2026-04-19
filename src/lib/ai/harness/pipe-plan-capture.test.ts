@@ -166,6 +166,26 @@ describe("pipePlanCapture", () => {
     expect(plan.stage).toBe("research")
   })
 
+  it("does not falsely capture normal prose starting with 'stage: '", async () => {
+    const proseText = "stage: three of the experiment involved testing multiple variables\nThe results showed significant improvement across all groups."
+    const input = streamFromChunks([
+      textChunk(proseText),
+    ])
+    const output = await collectOutput(pipePlanCapture(input))
+
+    // Should NOT produce a plan data part
+    const planParts = output.filter((p: any) => p.type === PLAN_DATA_PART_TYPE)
+    expect(planParts).toHaveLength(0)
+
+    // All original text should pass through
+    const allText = output
+      .filter((p: any) => p.type === "text-delta")
+      .map((p: any) => p.textDelta ?? p.delta)
+      .join("")
+    expect(allText).toContain("stage: three")
+    expect(allText).toContain("significant improvement")
+  })
+
   it("passes non-text chunks through untouched in all states", async () => {
     const toolCallChunk = { type: "tool-call", toolName: "search", args: {} }
     const customChunk = { type: "step-finish", finishReason: "stop" }
