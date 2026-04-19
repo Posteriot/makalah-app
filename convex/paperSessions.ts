@@ -882,8 +882,21 @@ export const unapproveStage = mutation({
         const { validatedAt: _, ...targetStageWithoutValidated } = targetStageData;
         updatedStageData[targetStage] = targetStageWithoutValidated;
 
-        // 2. Clear nextStageToClear stageData (may have _plan or draft fields)
+        // 2. Invalidate artifact in nextStageToClear (if any), then clear stageData
+        let nextStageArtifactInvalidated = false;
         if (nextStageToClear !== "completed" && updatedStageData[nextStageToClear]) {
+            const nextStageData = updatedStageData[nextStageToClear];
+            const nextArtifactId = nextStageData.artifactId as string | undefined;
+            if (nextArtifactId) {
+                try {
+                    await ctx.db.patch(nextArtifactId as Id<"artifacts">, {
+                        invalidatedAt: now,
+                    });
+                    nextStageArtifactInvalidated = true;
+                } catch {
+                    console.warn(`[PAPER][unapprove] next-stage artifact invalidation failed id=${nextArtifactId}`);
+                }
+            }
             updatedStageData[nextStageToClear] = {};
         }
 
@@ -950,7 +963,7 @@ export const unapproveStage = mutation({
         await rebuildNaskahSnapshot(ctx, args.sessionId);
 
         const clearedNextStage = nextStageToClear !== "completed" && !!stageData[nextStageToClear];
-        console.info(`[PAPER][unapprove] stage=${targetStage} clearedNextStage=${clearedNextStage}`);
+        console.info(`[PAPER][unapprove] stage=${targetStage} clearedNextStage=${clearedNextStage} nextStageArtifactInvalidated=${nextStageArtifactInvalidated}`);
         return { targetStage, clearedNextStage };
     },
 });
