@@ -222,6 +222,7 @@ export function MessageBubble({
     const [editContent, setEditContent] = useState("")
     const [isCopied, setIsCopied] = useState(false)
     const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+    const [showApprovalCancelConfirm, setShowApprovalCancelConfirm] = useState(false)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const editAreaRef = useRef<HTMLDivElement>(null)
 
@@ -1262,20 +1263,17 @@ export function MessageBubble({
 
                 // Cancel Decision: Batalkan button for approved synthetic messages
                 if (autoAction?.kind === "approved" && onCancelApproval && message.id === cancelableApprovalMessageId) {
-                    // 30-second throttle via allMessages[messageIndex].createdAt (design doc 5.5.3)
-                    const messageCreatedAt = allMessages[messageIndex]?.createdAt ?? 0
-                    const messageAge = messageCreatedAt ? Date.now() - messageCreatedAt : 0
-                    const throttled = !messageCreatedAt || messageAge < 30_000
-                    const cancelAllowed = !isStreaming && !throttled
+                    const cancelAllowed = !isStreaming
                     return (
+                    <>
                     <div className="flex flex-col items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">
                         {cancelAllowed ? (
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <button
-                                        onClick={() => onCancelApproval(message.id, messageIndex)}
+                                        onClick={() => setShowApprovalCancelConfirm(true)}
                                         className={actionBtnClass}
-                                        style={{ color: "var(--chat-warning-foreground, var(--chat-muted-foreground))" }}
+                                        style={{ color: "var(--chat-muted-foreground)" }}
                                         aria-label="Batalkan persetujuan"
                                     >
                                         <Undo className={actionIconClass} strokeWidth={2} />
@@ -1298,6 +1296,43 @@ export function MessageBubble({
                             <TooltipContent side="left">{isCopied ? "Copied" : "Copy"}</TooltipContent>
                         </Tooltip>
                     </div>
+                    <Dialog open={showApprovalCancelConfirm} onOpenChange={setShowApprovalCancelConfirm}>
+                        <DialogContent
+                            data-chat-scope=""
+                            showCloseButton={false}
+                            className="bg-[var(--chat-card)] border-[color:var(--chat-border)] rounded-lg max-w-md"
+                        >
+                            <DialogHeader>
+                                <DialogTitle className="text-sm font-semibold text-[var(--chat-foreground)]">
+                                    Batalkan Persetujuan?
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-[var(--chat-muted-foreground)]">
+                                    Stage akan kembali ke validasi. Semua progres di stage berikutnya akan hilang. Tindakan ini tidak dapat dikembalikan.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter className="flex gap-2 sm:justify-center">
+                                <DialogClose
+                                    className={cn(
+                                        "gap-2 h-9 px-4 rounded-action inline-flex items-center justify-center",
+                                        "chat-validation-approve-button"
+                                    )}
+                                >
+                                    Kembali
+                                </DialogClose>
+                                <button
+                                    onClick={() => { setShowApprovalCancelConfirm(false); onCancelApproval(message.id, messageIndex) }}
+                                    className={cn(
+                                        "gap-2 h-9 px-4 rounded-action inline-flex items-center justify-center text-sm font-medium",
+                                        "border border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]",
+                                        "bg-[var(--chat-card)] hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
+                                    )}
+                                >
+                                    Batalkan Persetujuan
+                                </button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                    </>
                     )
                 }
 
