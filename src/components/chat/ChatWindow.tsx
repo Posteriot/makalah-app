@@ -1834,19 +1834,17 @@ export function ChatWindow({
   }, [historyMessages])
 
   // Cancel Decision: derive which choice messages are currently cancelable.
-  // All [Choice:] synthetics in the current stage are eligible, up to
-  // the first [Approved:] or [Revisi untuk] boundary (those mark stage
-  // advancement / revision flow that shouldn't be undone via choice cancel).
+  // ALL [Choice:] synthetics across ALL stages are eligible — no boundary stops.
+  // Cancel must work on any confirmed card (ref: feedback_cancel_all_turns.md).
   const cancelableChoiceMessageIds = useMemo(() => {
     const ids = new Set<string>()
     if (!paperSession || paperSession.currentStage === "completed") return ids
-    // Scan backward: collect all [Choice:] messages until we hit a boundary
+    // Scan ALL messages — no break on [Approved:] or [Revisi untuk]
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i]
       if (msg.role !== "user") continue
       const textPart = msg.parts?.find((p) => p.type === "text") as { text?: string } | undefined
       const text = textPart?.text ?? ""
-      if (text.startsWith("[Approved:") || text.startsWith("[Revisi untuk")) break
       if (text.startsWith("[Choice:")) ids.add(msg.id)
     }
     return ids
@@ -2565,7 +2563,24 @@ export function ChatWindow({
   const handleCancelChoice = useCallback(async (uiMessageId: string, syntheticMessageIndex: number) => {
     if (!userId || !paperSession?._id || !conversationId) return
     try {
-      // 1. Revert Convex state
+      // Detect cross-stage cancel: check if any [Approved:] message exists
+      // AFTER the cancelled choice's index. If so, we need to revert approvals first.
+      const approvalsAfter = messages.slice(syntheticMessageIndex + 1).filter(
+        (m) => m.role === "user" && m.parts?.some(
+          (p) => p.type === "text" && (p as { text?: string }).text?.startsWith("[Approved:")
+        )
+      )
+      const isFromPastStage = approvalsAfter.length > 0
+
+      if (isFromPastStage) {
+        // Cross-stage cancel: revert each approval (most recent first) to roll back
+        // currentStage to the stage where this choice lives
+        for (let j = 0; j < approvalsAfter.length; j++) {
+          await unapproveStage({ sessionId: paperSession._id, userId })
+        }
+      }
+
+      // 1. Revert Convex state (now targets the correct stage after rollback)
       await cancelChoiceDecision({ sessionId: paperSession._id, userId })
 
       // 2. Map UIMessage.id → Convex message._id for truncation
@@ -2617,13 +2632,13 @@ export function ChatWindow({
       // 5. Clear optimistic pending validation if it was set
       setOptimisticPendingValidation(false)
 
-      console.info("[CANCEL-DECISION] choice cancelled, card re-activated")
+      console.info(`[CANCEL-DECISION] choice cancelled, card re-activated${isFromPastStage ? ` (cross-stage rollback, ${approvalsAfter.length} approval(s) reverted)` : ""}`)
     } catch (error) {
       Sentry.captureException(error, { tags: { subsystem: "paper.cancel-choice" } })
       console.error("Failed to cancel choice:", error)
       toast.error("Gagal membatalkan pilihan.")
     }
-  }, [userId, paperSession?._id, conversationId, historyMessages, cancelChoiceDecision, editAndTruncate, setMessages])
+  }, [userId, paperSession?._id, conversationId, messages, historyMessages, cancelChoiceDecision, unapproveStage, editAndTruncate, setMessages])
 
   const handleCancelApproval = useCallback(async (uiMessageId: string, syntheticMessageIndex: number) => {
     if (!userId || !paperSession?._id || !conversationId) return
