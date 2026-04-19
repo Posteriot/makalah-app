@@ -144,9 +144,16 @@ export function pipePlanCapture(
     const match = closeFenceRe.exec(buffer)
 
     if (!match) {
-      // Fence not closed — accumulate
-      captureContent += buffer
-      buffer = ""
+      // Fence not closed — accumulate.
+      // Keep trailing \n in buffer so close-fence detection works
+      // when backticks arrive in the next chunk.
+      if (buffer.endsWith("\n")) {
+        captureContent += buffer.slice(0, -1)
+        buffer = "\n"
+      } else {
+        captureContent += buffer
+        buffer = ""
+      }
       return
     }
 
@@ -246,6 +253,20 @@ export function pipePlanCapture(
           const { done, value } = await reader.read()
           if (done) {
             // Flush remaining
+            if (state === "fenced") {
+              const fullContent = captureContent + buffer
+              const part = tryParsePlan(fullContent, "fenced")
+              if (part) {
+                controller.enqueue(part)
+              } else {
+                // Parse failed — emit raw content as text (no fence markers prepended).
+                // Downstream pipeYamlRender may still find yaml-spec blocks in it.
+                emitText(controller, fullContent)
+              }
+              buffer = ""
+              captureContent = ""
+              console.warn(`[PLAN-CAPTURE] stream ended in fenced state — ${part ? "parsed" : "re-emitted as text"} (${fullContent.length} chars)`)
+            }
             if (state === "unfenced" && captureContent.length > 0) {
               finalizeUnfenced(controller)
             }
