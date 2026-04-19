@@ -830,6 +830,11 @@ export const cancelChoiceDecision = mutation({
             updatedAt: Date.now(),
         });
 
+        // Naskah rebuild hook — atomic with the cancel. If rebuild
+        // throws, the entire mutation rolls back so the snapshot can
+        // never drift from the cleared stageData.
+        await rebuildNaskahSnapshot(ctx, args.sessionId);
+
         console.info(`[PAPER][cancel-choice] stage=${currentStage} artifactInvalidated=${artifactInvalidated} statusReverted=${statusReverted} epoch=${newEpoch}`);
         return { stage: currentStage, artifactInvalidated, statusReverted };
     },
