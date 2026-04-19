@@ -644,6 +644,8 @@ export function ChatWindow({
   // the full-derive persistedChoiceKeys effect from re-adding the key
   // before editAndTruncate syncs to the Convex subscription.
   const cancelledChoiceMessageIdsRef = useRef<Set<string>>(new Set())
+  // Dedup [CHOICE-GATE] log: only log when result changes per messageId
+  const choiceGateLastResultRef = useRef<Map<string, boolean>>(new Map())
   const previousStatusRef = useRef<string>("ready")
   const stoppedManuallyRef = useRef(false)
   const starterPromptLastAttemptAtRef = useRef(new Map<string, number>())
@@ -3063,7 +3065,11 @@ export function ChatWindow({
                           const cancelled = cancelledChoiceMessageIdsRef.current.has(message.id)
                           const result = inKeys && !cancelled
                           if (process.env.NODE_ENV !== "production" && inKeys) {
-                            console.info(`[CHOICE-GATE] msgId=${message.id} inKeys=${inKeys} cancelled=${cancelled} result=${result} cancelledSet=[${[...cancelledChoiceMessageIdsRef.current].join(",")}]`)
+                            const prev = choiceGateLastResultRef.current.get(message.id)
+                            if (prev !== result) {
+                              choiceGateLastResultRef.current.set(message.id, result)
+                              console.info(`[CHOICE-GATE] msgId=${message.id} inKeys=${inKeys} cancelled=${cancelled} result=${result} cancelledSet=[${[...cancelledChoiceMessageIdsRef.current].join(",")}]`)
+                            }
                           }
                           return result
                         })()}
