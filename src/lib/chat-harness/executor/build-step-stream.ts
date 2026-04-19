@@ -153,14 +153,16 @@ function buildLeakageSnippet(text: string, matchIndex: number, matchValue: strin
  *   and occasional longer tokens (URLs, technical terms) without
  *   flagging every turn.
  * - `MAX_INTER_CHUNK_GAP_MS`: a chunk-to-chunk gap longer than this
- *   is perceived as a stall. 2000ms is picked to tolerate legitimate
- *   reasoning pauses (model thinks mid-turn) without masking the
- *   pathological multi-second freezes we saw in early iterations.
+ *   is perceived as a stall. 2500ms tolerates legitimate reasoning
+ *   pauses — both mid-turn thinking and pre-tool transition gaps
+ *   (model deciding which tool to call, observed at ~2000-2100ms)
+ *   — without masking pathological multi-second pipeline freezes.
+ *   Post-tool gaps are already excluded separately via isPostToolResume.
  */
 const STREAM_SMOOTHNESS_THRESHOLDS = {
     minAvgCharsPerChunk: 3,
     maxAvgCharsPerChunk: 20,
-    maxInterChunkGapMs: 2000,
+    maxInterChunkGapMs: 2500,
 } as const
 
 function emitStreamSmoothnessVerdict(params: {
