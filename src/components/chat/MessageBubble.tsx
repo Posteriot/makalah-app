@@ -1197,7 +1197,7 @@ export function MessageBubble({
                                     <button
                                         onClick={() => setShowCancelConfirm(true)}
                                         className={actionBtnClass}
-                                        style={{ color: "var(--chat-warning-foreground, var(--chat-muted-foreground))" }}
+                                        style={{ color: "var(--chat-muted-foreground)" }}
                                         aria-label="Batalkan pilihan"
                                     >
                                         <Undo className={actionIconClass} strokeWidth={2} />
