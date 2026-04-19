@@ -73,6 +73,31 @@ describe("buildChoiceContextNote", () => {
     expect(note).toContain("no submitStageForValidation")
   })
 
+  it("continue-discussion mandates plan-spec and yaml-spec emission", () => {
+    const note = buildChoiceContextNote(baseEvent, {
+      resolvedWorkflow: makeResolved({
+        action: "continue_discussion",
+        workflowClass: "discussion_choice",
+        toolStrategy: "none",
+        prosePolicy: "discussion_only",
+        fallbackPolicy: "no_rescue",
+        reason: "workflow_action_continue_discussion",
+      }),
+    })
+    expect(note).toContain("plan-spec")
+    expect(note).toContain("yaml-spec")
+  })
+
+  it("finalize path does NOT contain yaml-spec (already prohibits choice card)", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "topik",
+      selectedOptionIds: ["topik-ai-personalisasi"],
+    }, { resolvedWorkflow: makeResolved({ action: "finalize_stage" }) })
+    expect(note).toContain("Mode: post-choice-finalize")
+    expect(note).not.toContain("yaml-spec")
+  })
+
   it("builds continue-discussion note for legacy fallback (no resolvedWorkflow, no forceFinalize)", () => {
     const note = buildChoiceContextNote(baseEvent)
     expect(note).toContain("continue-discussion")

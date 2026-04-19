@@ -601,6 +601,14 @@ async function resolvePaperContext(params: {
                 `If the user's message indicates agreement or readiness to proceed,`,
                 `treat it as a finalize signal: updateStageData → createArtifact → submitStageForValidation.`,
             )
+        } else if (totalTasks === 0 && !hasArtifact) {
+            lines.push(
+                ``,
+                `EXCEPTION: This appears to be the first turn in a newly entered stage.`,
+                `You MUST emit a fresh \`\`\`plan-spec\`\`\` defining your execution plan for this stage,`,
+                `followed by discussion text and a \`\`\`yaml-spec\`\`\` choice card with the user's first options.`,
+                `The "do not re-present options" rule does NOT apply here — this is a fresh stage start.`,
+            )
         }
 
         lines.push(`═══════════════════════════════`)

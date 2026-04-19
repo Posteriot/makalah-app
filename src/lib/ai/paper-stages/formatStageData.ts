@@ -111,6 +111,7 @@ function formatPlanContext(stageData: Record<string, unknown>, currentStage: str
         lines.push(
             "No plan yet. You MUST emit a ```plan-spec``` block in this response",
             "to define your task plan for this stage.",
+            "After the plan, you MUST also produce discussion text and end with a ```yaml-spec``` choice card.",
         )
         lines.push("═══════════════════════════════════════")
         return lines.join("\n")

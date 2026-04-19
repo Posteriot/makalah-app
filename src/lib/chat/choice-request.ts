@@ -327,6 +327,8 @@ export function buildChoiceContextNote(
     "- Do NOT start artifact lifecycle (no createArtifact, no updateArtifact, no submitStageForValidation).",
     "- Do NOT write final-handoff phrasing (e.g. 'berikut draf', 'draf yang akan diajukan', 'silakan review di panel').",
     "- Respond by: summarizing the user's choice, explaining consequences, sharpening direction, or continuing discussion.",
+    "- You MUST emit a ```plan-spec``` block updating your execution plan status.",
+    "- You MUST end your response with a ```yaml-spec``` choice card presenting the user's next options.",
     "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
   )
 
