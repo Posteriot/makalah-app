@@ -1854,9 +1854,14 @@ export function ChatWindow({
   // Backend guard mirrors: stageStatus === "drafting" (normal) or completed+approved (final).
   const cancelableApprovalMessageId = useMemo(() => {
     if (!paperSession) return null
+    // Allow cancel when:
+    // 1. Normal post-approval: stage advanced, new stage is "drafting"
+    // 2. Mid-transition: current stage still "approved" (before advance completes)
+    // 3. Final approval: paper completed
     const isNormalApproval = paperSession.stageStatus === "drafting"
+    const isMidTransition = paperSession.stageStatus === "approved" && paperSession.currentStage !== "completed"
     const isFinalApproval = paperSession.currentStage === "completed" && paperSession.stageStatus === "approved"
-    if (!isNormalApproval && !isFinalApproval) return null
+    if (!isNormalApproval && !isMidTransition && !isFinalApproval) return null
     // Find the latest [Approved:] — by construction this is the one for the current previous stage
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i]
