@@ -130,7 +130,13 @@ export function validateChoiceInteractionEvent(params: {
   if (!isPaperMode) throw new Error("Choice submit is only valid in paper mode.")
   if (event.conversationId !== conversationId) throw new Error("interactionEvent.conversationId does not match active conversation.")
   if (!currentStage || currentStage === "completed") throw new Error("Choice submit requires an active paper stage.")
-  if (event.stage !== currentStage) throw new Error("interactionEvent.stage does not match active paper stage.")
+  if (event.stage !== currentStage) {
+    // Auto-correct: client's paperSession.currentStage may lag behind server after
+    // unapproveStage (Convex reactive query race). The server's currentStage is
+    // authoritative — override the stale client value instead of crashing.
+    console.warn(`[CHOICE-VALIDATION] stage mismatch auto-corrected: event.stage=${event.stage} → ${currentStage} (reactive query lag after unapprove)`)
+    ;(event as { stage: string }).stage = currentStage
+  }
   if (stageStatus && stageStatus !== "drafting") {
     throw new Error(
       `CHOICE_REJECTED_STALE_STATE: Choice rejected — stageStatus is "${stageStatus}", expected "drafting". ` +
