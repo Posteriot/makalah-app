@@ -7,7 +7,8 @@ describe("extractLegacySourcesFromText", () => {
     const result = extractLegacySourcesFromText(text)
 
     expect(result.some((item) => item.url.startsWith("https://riset.example"))).toBe(true)
-    expect(result.some((item) => item.url.startsWith("https://data.gov"))).toBe(true)
+    // bare "data.gov" (no path) is now correctly rejected as ambiguous 2-label domain
+    expect(result.some((item) => item.url.startsWith("https://data.gov"))).toBe(false)
     expect(result.some((item) => item.url.startsWith("https://www.stat.test"))).toBe(true)
   })
 
@@ -45,16 +46,12 @@ describe("extractLegacySourcesFromText", () => {
     ])
   })
 
-  it("strips surrounding punctuation while keeping a valid bare domain", () => {
+  it("rejects bare two-label domain without path as ambiguous", () => {
     const text = "Rujuk ke (example.com). untuk versi ringkas."
     const result = extractLegacySourcesFromText(text)
 
-    expect(result).toEqual([
-      {
-        url: "https://example.com/",
-        title: "example.com",
-      },
-    ])
+    // bare "example.com" (no path) is rejected — ambiguous during streaming fallback
+    expect(result).toEqual([])
   })
 
   it("does not treat APA n.d token as a source domain in narrative text", () => {
@@ -64,6 +61,14 @@ describe("extractLegacySourcesFromText", () => {
 
   it("does not extract n.d token from APA-style reference note", () => {
     const result = extractLegacySourcesFromText("Rujukan APA: (n.d.) dan bukan link web.")
+    expect(result).toEqual([])
+  })
+
+  it("does not extract ambiguous bare two-label tokens like ambil.ide", () => {
+    const text = "Model sering menghasilkan token seperti ambil.ide atau cari.net tanpa konteks URL."
+    const result = extractLegacySourcesFromText(text)
+
+    // bare "ambil.ide" and "cari.net" (no path, no protocol) are rejected
     expect(result).toEqual([])
   })
 

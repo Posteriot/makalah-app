@@ -33,6 +33,7 @@ const buildExactAvailability = (document: ExactSourceDocument | null) => ({
  * Mutable tracker set from tool execute functions, read at stream finish for observability.
  */
 export type PaperToolTracker = {
+    createArtifactClaimed: boolean
     sawUpdateStageData: boolean
     sawCreateArtifactSuccess: boolean
     sawUpdateArtifactSuccess: boolean
@@ -43,6 +44,7 @@ export type PaperToolTracker = {
 }
 
 export const createPaperToolTracker = (): PaperToolTracker => ({
+    createArtifactClaimed: false,
     sawUpdateStageData: false,
     sawCreateArtifactSuccess: false,
     sawUpdateArtifactSuccess: false,
@@ -238,7 +240,7 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                         message: `Successfully saved progress for stage ${stage}.`,
                         nextAction: hasArtifact
                             ? "Data saved. Artifact already exists — call updateArtifact if content changed, then call submitStageForValidation()."
-                            : "⚠️ MANDATORY: call createArtifact() RIGHT NOW in this same response, then call submitStageForValidation(). Do NOT generate text, do NOT stop — call the tools IMMEDIATELY.",
+                            : "⚠️ MANDATORY: call createArtifact() next, then call submitStageForValidation(). Do NOT stop until both tools are called.",
                     };
                 } catch (error) {
                     console.error("Error in updateStageData tool:", error);
