@@ -19,15 +19,14 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import {
-    AlertDialog,
-    AlertDialogContent,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogCancel,
-    AlertDialogAction,
-} from "@/components/ui/alert-dialog"
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+    DialogClose,
+} from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { isImageType } from "@/lib/types/attached-file"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
@@ -1221,41 +1220,42 @@ export function MessageBubble({
                             <TooltipContent side="left">{isCopied ? "Copied" : "Copy"}</TooltipContent>
                         </Tooltip>
                     </div>
-                    <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
-                        <AlertDialogContent
+                    <Dialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+                        <DialogContent
                             data-chat-scope=""
+                            showCloseButton={false}
                             className="bg-[var(--chat-card)] border-[color:var(--chat-border)] rounded-lg max-w-md"
                         >
-                            <AlertDialogHeader>
-                                <AlertDialogTitle className="text-sm font-semibold text-[var(--chat-foreground)]">
+                            <DialogHeader>
+                                <DialogTitle className="text-sm font-semibold text-[var(--chat-foreground)]">
                                     Batalkan Pilihan?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription className="text-xs text-[var(--chat-muted-foreground)]">
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-[var(--chat-muted-foreground)]">
                                     Semua respons dan keputusan setelah pilihan ini akan dihapus. Tindakan ini tidak dapat dikembalikan.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter className="flex gap-2 sm:justify-center">
-                                <AlertDialogCancel
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter className="flex gap-2 sm:justify-center">
+                                <DialogClose
                                     className={cn(
-                                        "gap-2 h-9 px-4 rounded-action",
+                                        "gap-2 h-9 px-4 rounded-action inline-flex items-center justify-center",
                                         "chat-validation-approve-button"
                                     )}
                                 >
                                     Kembali
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                    onClick={() => onCancelChoice(message.id, messageIndex)}
+                                </DialogClose>
+                                <button
+                                    onClick={() => { setShowCancelConfirm(false); onCancelChoice(message.id, messageIndex) }}
                                     className={cn(
-                                        "gap-2 h-9 px-4 rounded-action",
+                                        "gap-2 h-9 px-4 rounded-action inline-flex items-center justify-center text-sm font-medium",
                                         "border border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]",
-                                        "!bg-[var(--chat-card)] hover:!bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
+                                        "bg-[var(--chat-card)] hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
                                     )}
                                 >
                                     Batalkan Pilihan
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                                </button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                     </>
                     )
                 }
