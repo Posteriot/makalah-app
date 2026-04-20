@@ -17,6 +17,7 @@ import {
 } from "./paperSessions/daftarPustakaCompiler";
 import { validateStageDataKeys, sanitizeNestedArrayFields } from "./paperSessions/stageDataWhitelist";
 import { STAGE_REQUIRED_FIELDS, isFieldPresent } from "./paperSessions/stage_required_fields";
+import { rebuildNaskahSnapshot } from "./naskahRebuild";
 
 const DEFAULT_WORKING_TITLE = "Paper Tanpa Judul";
 const MAX_WORKING_TITLE_LENGTH = 80;
@@ -840,7 +841,18 @@ export const cancelChoiceDecision = mutation({
             updatedAt: Date.now(),
         });
 
-        // Naskah rebuild hook — atomic with the cancel. If rebuild
+        // Naskah snapshot rebuild — non-blocking. Failure logs error
+        // but does NOT roll back the cancel.
+        try {
+            await rebuildNaskahSnapshot(ctx, args.sessionId);
+        } catch (error) {
+            console.error(
+                `[NASKAH][rebuild-failed] trigger=cancelChoiceDecision ` +
+                `sessionId=${args.sessionId} stage=${currentStage} ` +
+                `error=${error instanceof Error ? error.message : String(error)}`
+            );
+        }
+
         console.info(`[PAPER][cancel-choice] stage=${currentStage} artifactInvalidated=${artifactInvalidated} statusReverted=${statusReverted} epoch=${newEpoch}`);
         return { stage: currentStage, artifactInvalidated, statusReverted };
     },
@@ -977,6 +989,17 @@ export const unapproveStage = mutation({
         }
 
         await ctx.db.patch(args.sessionId, patchData);
+
+        // Naskah snapshot rebuild — non-blocking.
+        try {
+            await rebuildNaskahSnapshot(ctx, args.sessionId);
+        } catch (error) {
+            console.error(
+                `[NASKAH][rebuild-failed] trigger=unapproveStage ` +
+                `sessionId=${args.sessionId} stage=${targetStage} ` +
+                `error=${error instanceof Error ? error.message : String(error)}`
+            );
+        }
 
         const clearedNextStage = nextStageToClear !== "completed" && !!stageData[nextStageToClear];
         console.info(`[PAPER][unapprove] stage=${targetStage} clearedNextStage=${clearedNextStage} nextStageArtifactInvalidated=${nextStageArtifactInvalidated} epoch=${newEpoch}`);
@@ -1575,8 +1598,18 @@ export const approveStage = mutation({
 
         await ctx.db.patch(args.sessionId, patchData);
 
-        // Naskah rebuild hook — atomic with the approval. If rebuild
-        // throws, the entire mutation rolls back so the snapshot can
+        // Naskah snapshot rebuild — non-blocking. Failure logs error
+        // but does NOT roll back the approval.
+        try {
+            await rebuildNaskahSnapshot(ctx, args.sessionId);
+        } catch (error) {
+            console.error(
+                `[NASKAH][rebuild-failed] trigger=approveStage ` +
+                `sessionId=${args.sessionId} stage=${currentStage} ` +
+                `error=${error instanceof Error ? error.message : String(error)}`
+            );
+        }
+
         console.info(`[USER-ACTION] type=approve stage=${currentStage} decision="${decisionText.slice(0, 80)}"`)
         console.info(`[PAPER][stage-transition] ${currentStage} → ${nextStage} (${nextStage === "completed" ? "session completed" : "drafting"})`);
 
@@ -2173,6 +2206,17 @@ export const rewindToStage = mutation({
             // Clear completion timestamp when rewinding from completed
             ...(currentStage === "completed" ? { completedAt: undefined } : {}),
         });
+
+        // Naskah snapshot rebuild — non-blocking.
+        try {
+            await rebuildNaskahSnapshot(ctx, args.sessionId);
+        } catch (error) {
+            console.error(
+                `[NASKAH][rebuild-failed] trigger=rewindToStage ` +
+                `sessionId=${args.sessionId} stage=${args.targetStage} ` +
+                `error=${error instanceof Error ? error.message : String(error)}`
+            );
+        }
 
         return {
             success: true,
