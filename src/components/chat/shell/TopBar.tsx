@@ -128,38 +128,25 @@ export function TopBar({
         <div className="flex items-center gap-2 pt-1">
           {showNaskahLink && conversationId && (
             naskahAvailable ? (
-              <Tooltip
-                open={showNaskahTooltip}
-                onOpenChange={setShowNaskahTooltip}
+              <Link
+                href={`/naskah/${conversationId}`}
+                target="_blank"
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-action px-3 py-1.5 text-xs font-medium",
+                  "bg-[var(--chat-info)] text-white",
+                  "hover:bg-[oklch(0.53_0.158_241.966)]",
+                  "transition-all duration-150",
+                  showNaskahTooltip && "animate-pulse",
+                )}
               >
-                <TooltipTrigger asChild>
-                  <Link
-                    href={`/naskah/${conversationId}`}
-                    target="_blank"
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-action px-3 py-1.5 text-xs font-medium",
-                      "bg-[var(--chat-info)] text-white",
-                      "hover:brightness-110",
-                      "transition-all duration-150",
-                    )}
-                  >
-                    <span>Pratinjau</span>
-                    {naskahUpdatePending && (
-                      <span
-                        data-testid="naskah-update-dot"
-                        className="inline-flex h-2 w-2 rounded-full bg-white/80"
-                      />
-                    )}
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  data-testid="naskah-available-tooltip"
-                  className="font-mono text-xs"
-                >
-                  Pratinjau naskah tersedia
-                </TooltipContent>
-              </Tooltip>
+                <span>Naskah jadi</span>
+                {naskahUpdatePending && (
+                  <span
+                    data-testid="naskah-update-dot"
+                    className="inline-flex h-2 w-2 rounded-full bg-white/80"
+                  />
+                )}
+              </Link>
             ) : (
               <span
                 aria-disabled="true"
@@ -169,7 +156,7 @@ export function TopBar({
                   "cursor-default select-none",
                 )}
               >
-                Pratinjau
+                Naskah jadi
               </span>
             )
           )}
