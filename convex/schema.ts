@@ -776,6 +776,9 @@ export default defineSchema({
     // Invalidated stages (for reference)
     invalidatedStages: v.optional(v.array(v.string())), // e.g., ["topik", "outline"]
 
+    // Mode used for this rewind operation
+    mode: v.optional(v.string()), // "rewind" | "cancel-approval" | "cancel-choice"
+
     // Timestamps
     createdAt: v.number(),
   })
