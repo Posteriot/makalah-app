@@ -3042,12 +3042,13 @@ export function ChatWindow({
         <div className="flex-1 overflow-hidden relative py-2">
           {(() => {
             if (process.env.NODE_ENV !== "production" && conversationId) {
-              const showSkeleton = (isHistoryLoading || isConversationLoading || isAwaitingAssistantStart) && messages.length === 0
-              const showTemplate = !showSkeleton && messages.length === 0
+              const showLoadingSkeleton = (isHistoryLoading || isConversationLoading || isAwaitingAssistantStart) && messages.length === 0
+              const showSyncSkeleton = !showLoadingSkeleton && messages.length === 0 && conversationId && historyMessages.length > 0
+              const showTemplate = !showLoadingSkeleton && !showSyncSkeleton && messages.length === 0
               const showMessages = messages.length > 0
               if (!showMessages) {
                 console.info("[CHAT-VIEW] conv view", {
-                  branch: showSkeleton ? "SKELETON" : showTemplate ? "TEMPLATE" : "MESSAGES",
+                  branch: showLoadingSkeleton ? "SKELETON" : showSyncSkeleton ? "SYNC_SKELETON" : showTemplate ? "TEMPLATE" : "MESSAGES",
                   msgLen: messages.length,
                   isHistoryLoading,
                   isConversationLoading,
@@ -3071,11 +3072,11 @@ export function ChatWindow({
                 <Skeleton className="h-24 w-[70%] rounded-action" />
               </div>
             </div>
-          ) : messages.length === 0 && conversationId ? (
-            // Existing conversation but messages not yet loaded — show skeleton, not TemplateGrid
+          ) : messages.length === 0 && conversationId && historyMessages.length > 0 ? (
+            // History loaded but not yet synced to useChat — brief skeleton until setMessages runs
             <div className="space-y-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }} ref={() => {
               if (process.env.NODE_ENV !== "production") {
-                console.info("[CHAT-VIEW] conversation-skeleton — messages not loaded yet, blocking TemplateGrid", { conversationId })
+                console.info("[CHAT-VIEW] conversation-skeleton — history sync pending", { conversationId, historyLen: historyMessages.length })
               }
             }}>
               <div className="flex justify-start">
@@ -3089,7 +3090,7 @@ export function ChatWindow({
               </div>
             </div>
           ) : messages.length === 0 ? (
-            // True empty state — no conversation, show TemplateGrid
+            // Empty state — new conversation, deleted history, or no conversation — show TemplateGrid
             <div className="flex flex-col items-center justify-center h-full" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
               <TemplateGrid
                 onTemplateSelect={handleTemplateSelect}
