@@ -2063,6 +2063,8 @@ export const rewindToStage = mutation({
         }
 
         // For cancel-choice mode: preserve specific fields in target stage
+        // (overwrites clearStageDataForCancel's result for targetStage intentionally —
+        //  cancel-choice needs different preservation logic than cancel-approval)
         if (mode === "cancel-choice") {
             const targetData = stageData[args.targetStage] ?? {};
             const preserved: Record<string, unknown> = {};
@@ -2071,16 +2073,6 @@ export const rewindToStage = mutation({
             const nativeRefField = STAGE_NATIVE_REF_FIELD[args.targetStage];
             if (nativeRefField && targetData[nativeRefField] !== undefined) preserved[nativeRefField] = targetData[nativeRefField];
             updatedStageData[args.targetStage] = preserved;
-
-            // Invalidate target stage's artifact
-            const targetArtifactId = targetData.artifactId as string | undefined;
-            if (targetArtifactId) {
-                try {
-                    await ctx.db.patch(targetArtifactId as Id<"artifacts">, { invalidatedAt: now });
-                } catch {
-                    console.warn(`[PAPER][rewind-cancel-choice] target artifact invalidation failed id=${targetArtifactId}`);
-                }
-            }
         }
 
         // For cancel modes: re-add "Draf " prefix to target stage artifact title
@@ -2106,12 +2098,17 @@ export const rewindToStage = mutation({
             stagesToInvalidate
         );
 
-        // Invalidate artifacts for affected stages
+        // Invalidate artifacts for affected stages.
+        // cancel-approval: exclude targetStage — its artifact stays valid for re-approval
+        // in the validation panel. (Old unapproveStage also preserved it.)
+        const stagesToInvalidateArtifacts = mode === "cancel-approval"
+            ? stagesToInvalidate.filter((s) => s !== args.targetStage)
+            : stagesToInvalidate;
         const invalidatedArtifactIds = await invalidateArtifactsForStages(
             ctx as unknown as Parameters<typeof invalidateArtifactsForStages>[0],
             session.conversationId as unknown as string,
             stageData,
-            stagesToInvalidate,
+            stagesToInvalidateArtifacts,
             args.targetStage
         );
 
