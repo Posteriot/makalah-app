@@ -5,8 +5,6 @@ import { fetchQuery, fetchMutation, fetchAction } from "convex/nextjs"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { retryMutation, retryQuery } from "../convex/retry"
-import { computeRollbackPlan } from "../chat-harness/rollback/compute-rollback-plan"
-import type { PaperStageId } from "../../../convex/paperSessions/constants"
 
 type ExactSourceParagraph = {
     index: number
@@ -541,82 +539,42 @@ The tool will:
             },
         }),
 
-        rollbackToStage: tool({
-            description: `Roll back the paper session to a previous stage. This WIPES all stages after the target — their data, artifacts, and messages are deleted permanently.
+        resetToStage: tool({
+            description: `Reset the paper session back to a target stage. The target stage and all stages after it are reset: artifacts invalidated, stage data cleared (search references preserved). Conversation messages are preserved as context.
 
-CONSTRAINTS:
-- Minimum target: "topik" (to change gagasan, user should start a new chat)
-- You MUST show a yaml-spec confirmation card BEFORE calling this tool
-- The confirmation card MUST list which stages will be wiped
-- Only call this tool AFTER the user confirms via the choice card
-- Valid target stages: topik, outline, abstrak, pendahuluan, tinjauan_literatur, metodologi, hasil, diskusi, kesimpulan, pembaruan_abstrak, daftar_pustaka, lampiran
+Use when the user wants to go back, redo, or change a previous stage. Any stage is valid including gagasan.
 
-WHEN TO USE:
-- User explicitly asks to go back to a previous stage
-- User asks to redo or change work from a completed stage
-- User expresses dissatisfaction with a past stage's output and wants to redo it
+This tool executes immediately — no confirmation card needed. Messages are preserved and artifacts are soft-deleted (recoverable).`,
 
-WHEN NOT TO USE:
-- User asks to edit the CURRENT stage (use normal discussion flow)
-- User asks to edit gagasan (suggest starting a new chat)
-- User asks a question about a past stage (just answer, don't rollback)
-
-TWO-STEP USAGE (MANDATORY):
-1. FIRST call with dryRun: true to check feasibility. Read the result.
-   - If valid: show a yaml-spec confirmation card to the user with the plan details.
-   - If invalid: inform the user of the reason WITHOUT showing a confirmation card.
-2. AFTER user confirms via the choice card: call AGAIN with dryRun: false to execute.
-NEVER show a confirmation card without a successful dry run first.
-NEVER execute (dryRun: false) without user confirmation via choice card.`,
             inputSchema: z.object({
-                targetStage: z.string().describe("The stage to roll back to (e.g., 'pendahuluan', 'topik')"),
-                dryRun: z.boolean().describe("If true, only validate and return the plan without executing. If false, execute the rollback."),
+                targetStage: z.string().describe("The stage ID to reset to (e.g., 'gagasan', 'topik', 'pendahuluan')"),
             }),
-            execute: async ({ targetStage, dryRun }) => {
+
+            execute: async ({ targetStage }) => {
                 try {
-                    // 1. Get fresh session state
+                    // 1. Get fresh session
                     const session = await retryQuery(
                         () => fetchQuery(api.paperSessions.getByConversation, {
-                            conversationId: context.conversationId
+                            conversationId: context.conversationId,
                         }, convexOptions),
                         "paperSessions.getByConversation"
                     )
                     if (!session) return { success: false, error: "Paper session not found" }
 
-                    // 2. Compute rollback plan
-                    const plan = computeRollbackPlan(
-                        session.currentStage as PaperStageId | "completed",
-                        targetStage,
+                    // 2. Call existing rewindToStage mutation
+                    // Handles: validation, artifact invalidation, rewindHistory, digest, naskah rebuild
+                    await retryMutation(
+                        () => fetchMutation(api.paperSessions.rewindToStage, {
+                            sessionId: session._id,
+                            userId: context.userId,
+                            targetStage,
+                        }, convexOptions),
+                        "paperSessions.rewindToStage"
                     )
-                    if (!plan.valid) return { success: false, error: plan.reason }
 
-                    // Dry run: return plan without executing
-                    if (dryRun) {
-                        console.info(`[ROLLBACK] dry-run: ${plan.description} (would wipe ${plan.stagesToWipe.join(", ")})`)
-                        return {
-                            success: true,
-                            dryRun: true,
-                            rolledBackTo: plan.targetStage,
-                            wipedStages: plan.stagesToWipe,
-                            description: plan.description,
-                            consequences: plan.consequences,
-                        }
-                    }
-
-                    // 3. Execute unapprove loop
-                    for (let i = 0; i < plan.unapproveCount; i++) {
-                        await retryMutation(
-                            () => fetchMutation(api.paperSessions.unapproveStage, {
-                                sessionId: session._id,
-                                userId: context.userId,
-                            }, convexOptions),
-                            "paperSessions.unapproveStage"
-                        )
-                    }
-
-                    // 4. Cancel choice decision in target stage (reset for re-work)
-                    // Wrap in try-catch: stage may be in pending_validation after unapprove,
-                    // which cancelChoiceDecision handles, but edge cases exist
+                    // 3. Call existing cancelChoiceDecision to clear stageData
+                    // Handles: clear stageData (preserve webSearchReferences + nativeRefField),
+                    // invalidate remaining artifact refs, increment epoch
                     try {
                         await retryMutation(
                             () => fetchMutation(api.paperSessions.cancelChoiceDecision, {
@@ -625,24 +583,18 @@ NEVER execute (dryRun: false) without user confirmation via choice card.`,
                             }, convexOptions),
                             "paperSessions.cancelChoiceDecision"
                         )
-                    } catch (cancelError) {
-                        console.warn(`[ROLLBACK] cancelChoiceDecision failed (non-fatal): ${cancelError instanceof Error ? cancelError.message : cancelError}`)
+                    } catch (cancelErr) {
+                        console.warn(`[RESET-TO-STAGE] cancelChoiceDecision non-fatal: ${cancelErr instanceof Error ? cancelErr.message : cancelErr}`)
                     }
 
-                    // 5. Mark in tracker
+                    // 4. Mark in tracker
                     if (context.toolTracker) context.toolTracker.sawRollbackToStage = true
 
-                    console.info(`[ROLLBACK] executed: ${plan.description} (wiped ${plan.stagesToWipe.join(", ")})`)
-
-                    return {
-                        success: true,
-                        rolledBackTo: plan.targetStage,
-                        wipedStages: plan.stagesToWipe,
-                        description: plan.description,
-                    }
+                    console.info(`[RESET-TO-STAGE] ${session.currentStage} → ${targetStage}`)
+                    return { success: true, resetTo: targetStage, previousStage: session.currentStage }
                 } catch (error) {
-                    console.error("[ROLLBACK] failed:", error)
-                    return { success: false, error: error instanceof Error ? error.message : "Rollback failed" }
+                    console.error("[RESET-TO-STAGE] failed:", error)
+                    return { success: false, error: error instanceof Error ? error.message : "Reset failed" }
                 }
             },
         }),
