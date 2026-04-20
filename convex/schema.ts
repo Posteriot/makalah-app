@@ -563,6 +563,7 @@ export default defineSchema({
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
+        titleStrippedOnApproval: v.optional(v.boolean()),
       })),
       topik: v.optional(v.object({
         ringkasan: v.optional(v.string()),
@@ -587,6 +588,7 @@ export default defineSchema({
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
+        titleStrippedOnApproval: v.optional(v.boolean()),
       })),
 
       // Phase 2: Outline Stage
@@ -608,6 +610,7 @@ export default defineSchema({
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
+        titleStrippedOnApproval: v.optional(v.boolean()),
       })),
       pendahuluan: v.optional(v.object({
         ringkasan: v.optional(v.string()),
@@ -632,6 +635,7 @@ export default defineSchema({
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
+        titleStrippedOnApproval: v.optional(v.boolean()),
       })),
       tinjauan_literatur: v.optional(v.object({
         ringkasan: v.optional(v.string()),
@@ -658,6 +662,7 @@ export default defineSchema({
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
+        titleStrippedOnApproval: v.optional(v.boolean()),
       })),
       metodologi: v.optional(v.object({
         ringkasan: v.optional(v.string()),
@@ -677,6 +682,7 @@ export default defineSchema({
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
+        titleStrippedOnApproval: v.optional(v.boolean()),
       })),
 
       // Phase 4: Results & Analysis
@@ -775,6 +781,85 @@ export default defineSchema({
   })
     .index("by_session", ["sessionId", "createdAt"])
     .index("by_user", ["userId", "createdAt"]),
+
+  // ════════════════════════════════════════════════════════════════
+  // Naskah Snapshots - read-only compiled paper view per session
+  // Each row is a materialized snapshot produced by the naskah compiler
+  // (src/lib/naskah/compiler.ts) when validation-relevant state changes.
+  // ════════════════════════════════════════════════════════════════
+  naskahSnapshots: defineTable({
+    sessionId: v.id("paperSessions"),
+    revision: v.number(), // Monotonic per session
+    compiledAt: v.number(),
+    status: v.union(v.literal("growing"), v.literal("stable")),
+
+    title: v.string(),
+    titleSource: v.union(
+      v.literal("judul_final"),
+      v.literal("paper_title"),
+      v.literal("working_title"),
+      v.literal("topik_definitif"),
+      v.literal("fallback"),
+    ),
+
+    sections: v.array(
+      v.object({
+        key: v.union(
+          v.literal("abstrak"),
+          v.literal("pendahuluan"),
+          v.literal("tinjauan_literatur"),
+          v.literal("metodologi"),
+          v.literal("hasil"),
+          v.literal("diskusi"),
+          v.literal("kesimpulan"),
+          v.literal("daftar_pustaka"),
+          v.literal("lampiran"),
+        ),
+        label: v.string(),
+        content: v.string(),
+        sourceStage: v.string(),
+        sourceArtifactId: v.optional(v.string()),
+      }),
+    ),
+
+    pageEstimate: v.number(),
+
+    sourceArtifactRefs: v.array(
+      v.object({
+        stage: v.string(),
+        artifactId: v.optional(v.id("artifacts")),
+        revisionCount: v.optional(v.number()),
+        usedForRender: v.boolean(),
+        resolution: v.union(
+          v.literal("artifact"),
+          v.literal("inline"),
+          v.literal("dropped"),
+          v.literal("overridden"),
+        ),
+      }),
+    ),
+
+    isAvailable: v.boolean(),
+    reasonIfUnavailable: v.optional(
+      v.union(
+        v.literal("empty_session"),
+        v.literal("no_validated_abstrak"),
+        v.literal("abstrak_guard_failed"),
+      ),
+    ),
+  })
+    .index("by_session", ["sessionId", "revision"]),
+
+  // ════════════════════════════════════════════════════════════════
+  // Naskah Views - per-user view state for manual refresh contract
+  // ════════════════════════════════════════════════════════════════
+  naskahViews: defineTable({
+    sessionId: v.id("paperSessions"),
+    userId: v.id("users"),
+    lastViewedRevision: v.number(),
+    viewedAt: v.number(),
+  })
+    .index("by_session_user", ["sessionId", "userId"]),
 
   // ════════════════════════════════════════════════════════════════
   // Pricing Plans - Marketing page pricing tiers

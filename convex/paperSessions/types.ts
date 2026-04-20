@@ -50,6 +50,7 @@ export const GagasanData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });
 
 export const TopikData = v.object({
@@ -70,6 +71,7 @@ export const TopikData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });
 
 // Phase 2: Core Stages
@@ -83,6 +85,7 @@ export const AbstrakData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });
 
 export const PendahuluanData = v.object({
@@ -99,6 +102,7 @@ export const PendahuluanData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });
 
 export const TinjauanLiteraturData = v.object({
@@ -121,6 +125,7 @@ export const TinjauanLiteraturData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });
 
 export const MetodologiData = v.object({
@@ -136,6 +141,7 @@ export const MetodologiData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });
 
 // Phase 3: Results & Analysis
@@ -154,6 +160,7 @@ export const HasilData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });
 
 export const DiskusiData = v.object({
@@ -173,6 +180,7 @@ export const DiskusiData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });
 
 export const KesimpulanData = v.object({
@@ -188,6 +196,7 @@ export const KesimpulanData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });
 
 // Phase 5: Refinement
@@ -202,6 +211,7 @@ export const PembaruanAbstrakData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });
 
 // Phase 6: Finalization Stages
@@ -231,6 +241,7 @@ export const DaftarPustakaData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });
 
 // Stage 11: Lampiran (Appendices)
@@ -253,6 +264,7 @@ export const LampiranData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });
 
 // Stage 12: Judul (Title Selection)
@@ -272,6 +284,7 @@ export const JudulData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });
 
 // Stage 13: Outline (Full Paper Structure)
@@ -294,6 +307,7 @@ export const OutlineData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });
 
 // Generic structure for future stages
@@ -302,4 +316,5 @@ export const GenericStageData = v.object({
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
+    titleStrippedOnApproval: v.optional(v.boolean()),
 });

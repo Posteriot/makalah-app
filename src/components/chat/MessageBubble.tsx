@@ -192,8 +192,8 @@ interface MessageBubbleProps {
     isStreaming?: boolean
     /** IDs of messages eligible for choice cancel (computed in ChatWindow) */
     cancelableChoiceMessageIds?: Set<string>
-    /** ID of the single message eligible for approval cancel (computed in ChatWindow) */
-    cancelableApprovalMessageId?: string | null
+    /** IDs of messages eligible for approval cancel (computed in ChatWindow) */
+    cancelableApprovalMessageIds?: Set<string>
 }
 
 export function MessageBubble({
@@ -217,7 +217,7 @@ export function MessageBubble({
     onCancelApproval,
     isStreaming,
     cancelableChoiceMessageIds,
-    cancelableApprovalMessageId,
+    cancelableApprovalMessageIds,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
@@ -1113,7 +1113,8 @@ export function MessageBubble({
         : (fallbackSplitContent.publicContent || rawDisplayText)
     // Strip unfenced plan-spec YAML that leaked through streaming (model didn't use code fences)
     const publicDisplayText = publicDisplayTextRaw
-        ?.replace(/```plan-spec[\s\S]*?```/g, "")
+        ?.replace(/<think>[\s\S]*?<\/think>/g, "")
+        .replace(/```plan-spec[\s\S]*?```/g, "")
         .replace(/(?:^|\n)stage:\s*\w+\s*\nsummary:\s*.+\ntasks:\s*\n(?:\s*-\s*label:\s*.+\n\s*status:\s*(?:complete|in-progress|pending)\s*\n?)+/g, "")
         .replace(/\n{3,}/g, "\n\n").trim()
     const normalizedLegacyCitedText = (() => {
@@ -1281,7 +1282,7 @@ export function MessageBubble({
                 }
 
                 // Cancel Decision: Batalkan button for approved synthetic messages
-                if (autoAction?.kind === "approved" && onCancelApproval && message.id === cancelableApprovalMessageId) {
+                if (autoAction?.kind === "approved" && onCancelApproval && cancelableApprovalMessageIds?.has(message.id)) {
                     const cancelAllowed = !isStreaming
                     return (
                     <>

@@ -12,6 +12,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: mockPush,
   }),
+  usePathname: () => "/chat/test123",
 }))
 
 vi.mock("@/lib/hooks/useConversations", () => ({
@@ -46,6 +47,14 @@ vi.mock("@/components/ui/sheet", () => ({
   SheetContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SheetHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SheetTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+vi.mock("@/lib/hooks/usePaperSession", () => ({
+  usePaperSession: () => ({ session: undefined, isLoading: false }),
+}))
+
+vi.mock("@/lib/hooks/useNaskah", () => ({
+  useNaskah: () => ({ availability: undefined, updatePending: false, isLoading: false }),
 }))
 
 vi.mock("../ChatSidebar", () => ({
