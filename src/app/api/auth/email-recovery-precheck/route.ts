@@ -219,6 +219,6 @@ export async function POST(req: NextRequest) {
     }
 
     console.error("[EmailRecoveryPrecheck] Unexpected precheck error", error)
-    return respondWithJitter({ ok: false, code: "CAPTCHA_FAILED" })
+    return respondWithJitter({ ok: false, code: "SERVICE_UNAVAILABLE" })
   }
 }
