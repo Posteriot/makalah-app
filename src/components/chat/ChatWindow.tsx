@@ -1881,8 +1881,9 @@ export function ChatWindow({
     return null
   }, [messages, paperSession])
 
-  // Rollback detection: when currentStage goes backward, clear local messages
-  // to prevent stale choice cards from being interactive.
+  // Rollback detection: observability log when currentStage goes backward.
+  // Messages are PRESERVED (v2 design) — stale choice cards from old stages
+  // are handled server-side by stage mismatch auto-correct (choice-request.ts:133).
   useEffect(() => {
     if (!paperSession?.currentStage || !prevStageRef.current) {
       prevStageRef.current = paperSession?.currentStage
@@ -1891,14 +1892,10 @@ export function ChatWindow({
     const prevIdx = STAGE_ORDER.indexOf(prevStageRef.current as PaperStageId)
     const currIdx = STAGE_ORDER.indexOf(paperSession.currentStage as PaperStageId)
     if (currIdx < prevIdx && currIdx >= 0) {
-      // Stage went BACKWARD — rollback detected
       console.info(`[ROLLBACK][client] stage went backward: ${prevStageRef.current} → ${paperSession.currentStage}`)
-      // Force re-derive from historyMessages on next render cycle.
-      // This eliminates ALL stale choice cards, plan snapshots, and artifact references.
-      setMessages([])
     }
     prevStageRef.current = paperSession?.currentStage
-  }, [paperSession?.currentStage, setMessages])
+  }, [paperSession?.currentStage])
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
