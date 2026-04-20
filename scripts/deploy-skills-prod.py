@@ -6,8 +6,8 @@ import sys
 import os
 
 ADMIN_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48"
-CHANGE_NOTE = "updated-5: unified choice workflow contract"
-SRC_DIR = ".references/system-prompt-skills-active/updated-5"
+CHANGE_NOTE = "updated-7: agent harness v1 + auth recovery + rollback plan"
+SRC_DIR = ".references/system-prompt-skills-active/updated-7"
 CONVEX_FLAGS = ["--prod"]
 
 SKILLS = [
@@ -113,7 +113,7 @@ def main():
                         "version": stale["version"],
                     })
                     print(f"    archived stale draft v{stale['version']}")
-            except RuntimeError:
+            except Exception:
                 pass  # non-critical — stale drafts don't break activation
 
         except RuntimeError as e:
