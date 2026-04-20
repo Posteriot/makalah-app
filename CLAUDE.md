@@ -62,3 +62,5 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Anti-regex for language understanding.** Do not use regex to parse, classify, or interpret natural language input. LLMs handle language — regex does not.
 - **Pro-deterministic parser for technical formats.** Use deterministic parsers (JSON.parse, structured schemas, AST parsers) for well-defined technical formats.
 - **State workflow must be driven by semantic JSON + runtime guards, not keywords.** Workflow state transitions must be determined by structured data and explicit runtime validation, never by keyword matching or regex pattern detection.
+
+

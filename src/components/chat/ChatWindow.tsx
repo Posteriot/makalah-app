@@ -29,7 +29,7 @@ import { TemplateGrid, type Template } from "./messages/TemplateGrid"
 import { QuotaWarningBanner } from "./QuotaWarningBanner"
 import { MobileEditDeleteSheet } from "./mobile/MobileEditDeleteSheet"
 import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
-import { STAGE_ORDER, type PaperStageId } from "../../../convex/paperSessions/constants"
+import { STAGE_ORDER, getStageIdFromLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
 import { buildChoiceInteractionEvent, buildChoiceSyntheticText } from "@/lib/chat/choice-submit"
 import type { JsonRendererChoiceRenderPayload, WorkflowAction } from "@/lib/json-render/choice-payload"
 import { SPEC_DATA_PART_TYPE } from "@json-render/core"
@@ -47,6 +47,8 @@ import {
 } from "@/lib/technical-report/chatSnapshot"
 import { resolveTechnicalReportSearchStatus } from "@/lib/technical-report/searchStatus"
 import * as Sentry from "@sentry/nextjs"
+
+const APPROVED_REGEX = /^\[Approved:\s*(.+?)\]/;
 
 /** Minimal artifact shape from Convex query (only fields we need for signal reconstruction) */
 interface ConversationArtifact {
@@ -68,6 +70,17 @@ type ChatSourceForSheet = {
   verificationStatus?: "verified_content" | "unverified_link" | "unavailable"
   documentKind?: "html" | "pdf" | "unknown"
   note?: string
+}
+
+type CancelObservation = {
+  kind: "cancel-approval" | "cancel-choice"
+  startedAt: number
+  sourceStage: string
+  sourceStatus: string | null | undefined
+  targetStage: PaperStageId
+  isCrossStage: boolean
+  approvalsAfterCount?: number
+  stageSequence: string[]
 }
 
 interface ChatWindowProps {
@@ -648,6 +661,7 @@ export function ChatWindow({
   // Guard: block phantom approve click after cancel-approval re-mounts the validation panel.
   // Set true in handleCancelApproval, cleared after two animation frames (React commit + paint).
   const cancellingApprovalRef = useRef(false)
+  const cancelObservationRef = useRef<CancelObservation | null>(null)
   // Dedup [CHOICE-GATE] log: only log when result changes per messageId
   const choiceGateLastResultRef = useRef<Map<string, boolean>>(new Map())
   const previousStatusRef = useRef<string>("ready")
@@ -956,7 +970,7 @@ export function ChatWindow({
   const editAndTruncate = useMutation(api.messages.editAndTruncateConversation)
   const resetStageDataForEditResendMutation = useMutation(api.paperSessions.resetStageDataForEditResend)
   const cancelChoiceDecision = useMutation(api.paperSessions.cancelChoiceDecision)
-  const unapproveStage = useMutation(api.paperSessions.unapproveStage)
+  const rewindToStageMutation = useMutation(api.paperSessions.rewindToStage)
 
   // Refs to always read latest attachment state at request time (bypasses useChat stale transport bug)
   const attachedFilesRef = useRef(attachedFiles)
@@ -1925,6 +1939,46 @@ export function ChatWindow({
     prevStageRef.current = paperSession?.currentStage
   }, [paperSession?.currentStage])
 
+  useEffect(() => {
+    const observation = cancelObservationRef.current
+    if (!observation || !paperSession?.currentStage) return
+
+    const latestStage = paperSession.currentStage
+    if (observation.stageSequence[observation.stageSequence.length - 1] !== latestStage) {
+      observation.stageSequence.push(latestStage)
+      console.info("[PAPER][cancel-observe][client] stage_sync", {
+        kind: observation.kind,
+        sourceStage: observation.sourceStage,
+        sourceStatus: observation.sourceStatus,
+        targetStage: observation.targetStage,
+        currentStage: latestStage,
+        currentStatus: paperSession.stageStatus,
+        stageSequence: observation.stageSequence,
+        elapsedMs: Date.now() - observation.startedAt,
+      })
+    }
+
+    if (latestStage !== observation.targetStage) return
+
+    const targetStageData = (paperSession.stageData?.[observation.targetStage] ?? {}) as Record<string, unknown>
+    console.info("[PAPER][cancel-observe][client] settled", {
+      kind: observation.kind,
+      sourceStage: observation.sourceStage,
+      sourceStatus: observation.sourceStatus,
+      targetStage: observation.targetStage,
+      currentStage: latestStage,
+      currentStatus: paperSession.stageStatus,
+      isCrossStage: observation.isCrossStage,
+      approvalsAfterCount: observation.approvalsAfterCount ?? 0,
+      stageSequence: observation.stageSequence,
+      targetArtifactId: targetStageData.artifactId ?? null,
+      targetValidatedAt: targetStageData.validatedAt ?? null,
+      targetTitleStrippedOnApproval: targetStageData.titleStrippedOnApproval ?? null,
+      elapsedMs: Date.now() - observation.startedAt,
+    })
+    cancelObservationRef.current = null
+  }, [paperSession?.currentStage, paperSession?.stageStatus, paperSession?.stageData])
+
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
 
@@ -2626,32 +2680,102 @@ export function ChatWindow({
       const isFromPastStage = approvalsAfter.length > 0
 
       if (isFromPastStage) {
-        // Cross-stage cancel: revert each approval (most recent first) to roll back
-        // currentStage to the stage where this choice lives
-        for (let j = 0; j < approvalsAfter.length; j++) {
-          await unapproveStage({ sessionId: paperSession._id, userId })
+        // Cross-stage: first approval after choice = the stage where choice was made
+        const firstApproval = approvalsAfter[0]
+        const firstApprovalText = firstApproval.parts?.find(
+          (p) => p.type === "text" && (p as { text?: string }).text?.startsWith("[Approved:")
+        ) as { text: string } | undefined
+        const labelMatch = firstApprovalText?.text.match(APPROVED_REGEX)
+        const targetStage = labelMatch?.[1] ? getStageIdFromLabel(labelMatch[1]) : undefined
+        if (!targetStage) {
+          throw new Error(`Cannot derive stage ID from approval: "${firstApprovalText?.text ?? "no text"}"`)
         }
-      }
 
-      // 1. Revert Convex state (now targets the correct stage after rollback)
-      await cancelChoiceDecision({ sessionId: paperSession._id, userId })
+        cancelObservationRef.current = {
+          kind: "cancel-choice",
+          startedAt: Date.now(),
+          sourceStage: String(paperSession.currentStage),
+          sourceStatus: paperSession.stageStatus,
+          targetStage,
+          isCrossStage: true,
+          approvalsAfterCount: approvalsAfter.length,
+          stageSequence: [String(paperSession.currentStage)],
+        }
+        console.info("[PAPER][cancel-observe][client] start", {
+          kind: "cancel-choice",
+          path: "cross-stage",
+          sourceStage: paperSession.currentStage,
+          sourceStatus: paperSession.stageStatus,
+          targetStage,
+          approvalsAfterCount: approvalsAfter.length,
+          syntheticMessageIndex,
+        })
 
-      // 2. Map UIMessage.id → Convex message._id for truncation
-      const convexMsg = historyMessages?.find(
-        (m) => m.uiMessageId === uiMessageId || String(m._id) === uiMessageId
-      )
-      if (convexMsg) {
-        await editAndTruncate({
-          messageId: convexMsg._id as Id<"messages">,
-          content: "", // Required arg, not used
-          conversationId: conversationId as Id<"conversations">,
+        // PRIMARY: atomic rollback (if this fails, nothing happened — outer catch handles)
+        const rollbackResult = await rewindToStageMutation({
+          sessionId: paperSession._id,
+          userId,
+          targetStage,
+          mode: "cancel-choice",
+        })
+        console.info("[PAPER][cancel-observe][client] mutation_success", {
+          kind: "cancel-choice",
+          path: "cross-stage",
+          targetStage,
+          result: rollbackResult,
+        })
+      } else {
+        cancelObservationRef.current = {
+          kind: "cancel-choice",
+          startedAt: Date.now(),
+          sourceStage: String(paperSession.currentStage),
+          sourceStatus: paperSession.stageStatus,
+          targetStage: paperSession.currentStage as PaperStageId,
+          isCrossStage: false,
+          stageSequence: [String(paperSession.currentStage)],
+        }
+        console.info("[PAPER][cancel-observe][client] start", {
+          kind: "cancel-choice",
+          path: "same-stage",
+          sourceStage: paperSession.currentStage,
+          sourceStatus: paperSession.stageStatus,
+          syntheticMessageIndex,
+        })
+        // Same-stage cancel: no rollback needed, only cancel the choice
+        const cancelResult = await cancelChoiceDecision({ sessionId: paperSession._id, userId })
+        console.info("[PAPER][cancel-observe][client] mutation_success", {
+          kind: "cancel-choice",
+          path: "same-stage",
+          result: cancelResult,
         })
       }
 
-      // 3. Truncate local messages (UIMessage state)
+      // SECONDARY: message cleanup (failure here is recoverable)
+      try {
+        const convexMsg = historyMessages?.find(
+          (m) => m.uiMessageId === uiMessageId || String(m._id) === uiMessageId
+        )
+        if (convexMsg) {
+          await editAndTruncate({
+            messageId: convexMsg._id as Id<"messages">,
+            content: "",
+            conversationId: conversationId as Id<"conversations">,
+          })
+          console.info("[PAPER][cancel-observe][client] truncate_success", {
+            kind: "cancel-choice",
+            uiMessageId,
+            convexMessageId: convexMsg._id,
+          })
+        }
+      } catch (truncateError) {
+        Sentry.captureException(truncateError, { tags: { subsystem: "paper.cancel-truncate" } })
+        console.warn("[CANCEL] editAndTruncate failed, local state will update anyway:", truncateError)
+      }
+
+      // ALWAYS: update local UI state regardless of truncation success
       setMessages((prev) => prev.slice(0, syntheticMessageIndex))
 
-      // 4. Remove ALL equivalent key variants from both choice key sets
+      // Remove ALL equivalent key variants from both choice key sets
       if (historyMessages) {
         const syntheticIdx = historyMessages.findIndex(
           (m) => m.uiMessageId === uiMessageId || String(m._id) === uiMessageId
@@ -2683,59 +2807,99 @@ export function ChatWindow({
         }
       }
 
-      // 5. Clear optimistic pending validation if it was set
+      // Clear optimistic pending validation if it was set
       setOptimisticPendingValidation(false)
 
       console.info(`[CANCEL-DECISION] choice cancelled, card re-activated${isFromPastStage ? ` (cross-stage rollback, ${approvalsAfter.length} approval(s) reverted)` : ""}`)
     } catch (error) {
+      cancelObservationRef.current = null
       Sentry.captureException(error, { tags: { subsystem: "paper.cancel-choice" } })
       console.error("Failed to cancel choice:", error)
       toast.error("Gagal membatalkan pilihan.")
     }
-  }, [userId, paperSession?._id, conversationId, messages, historyMessages, cancelChoiceDecision, unapproveStage, editAndTruncate, setMessages])
+  }, [userId, paperSession?._id, conversationId, messages, historyMessages, cancelChoiceDecision, rewindToStageMutation, editAndTruncate, setMessages])
 
   const handleCancelApproval = useCallback(async (uiMessageId: string, syntheticMessageIndex: number) => {
     if (!userId || !paperSession?._id || !conversationId) return
     // Block phantom approve clicks during the cancel→re-mount cycle
     cancellingApprovalRef.current = true
     try {
-      // Detect cross-stage cancel: count [Approved:] messages AFTER the one being cancelled.
-      // Each represents a stage that must be reverted first (most recent first).
-      const approvalsAfter = messages.slice(syntheticMessageIndex + 1).filter(
-        (m) => m.role === "user" && m.parts?.some(
-          (p) => p.type === "text" && (p as { text?: string }).text?.startsWith("[Approved:")
+      // Derive targetStage from the approval message being cancelled
+      const approvalMessage = messages[syntheticMessageIndex]
+      const approvalText = approvalMessage.parts?.find(
+        (p) => p.type === "text" && (p as { text?: string }).text?.startsWith("[Approved:")
+      ) as { text: string } | undefined
+      const labelMatch = approvalText?.text.match(APPROVED_REGEX)
+      const targetStage = labelMatch?.[1] ? getStageIdFromLabel(labelMatch[1]) : undefined
+      if (!targetStage) {
+        throw new Error(`Cannot derive stage ID from approval: "${approvalText?.text ?? "no text"}"`)
+      }
+
+      cancelObservationRef.current = {
+        kind: "cancel-approval",
+        startedAt: Date.now(),
+        sourceStage: String(paperSession.currentStage),
+        sourceStatus: paperSession.stageStatus,
+        targetStage,
+        isCrossStage: paperSession.currentStage !== targetStage,
+        stageSequence: [String(paperSession.currentStage)],
+      }
+      console.info("[PAPER][cancel-observe][client] start", {
+        kind: "cancel-approval",
+        sourceStage: paperSession.currentStage,
+        sourceStatus: paperSession.stageStatus,
+        targetStage,
+        isCrossStage: paperSession.currentStage !== targetStage,
+        syntheticMessageIndex,
+      })
+
+      // PRIMARY: atomic rollback (if this fails, nothing happened — outer catch handles)
+      const rollbackResult = await rewindToStageMutation({
+        sessionId: paperSession._id,
+        userId,
+        targetStage,
+        mode: "cancel-approval",
+      })
+      console.info("[PAPER][cancel-observe][client] mutation_success", {
+        kind: "cancel-approval",
+        targetStage,
+        result: rollbackResult,
+      })
+
+      // SECONDARY: message cleanup (failure here is recoverable)
+      try {
+        const convexMsg = historyMessages?.find(
+          (m) => m.uiMessageId === uiMessageId || String(m._id) === uiMessageId
         )
-      )
-
-      // 1. Revert intermediate approvals (if cross-stage) + the target approval
-      const totalUnapprovals = approvalsAfter.length + 1
-      for (let j = 0; j < totalUnapprovals; j++) {
-        await unapproveStage({ sessionId: paperSession._id, userId })
+        if (convexMsg) {
+          await editAndTruncate({
+            messageId: convexMsg._id as Id<"messages">,
+            content: "",
+            conversationId: conversationId as Id<"conversations">,
+          })
+          console.info("[PAPER][cancel-observe][client] truncate_success", {
+            kind: "cancel-approval",
+            uiMessageId,
+            convexMessageId: convexMsg._id,
+          })
+        }
+      } catch (truncateError) {
+        Sentry.captureException(truncateError, { tags: { subsystem: "paper.cancel-truncate" } })
+        console.warn("[CANCEL] editAndTruncate failed, local state will update anyway:", truncateError)
       }
 
-      // 2. Map UIMessage.id → Convex message._id for truncation
-      const convexMsg = historyMessages?.find(
-        (m) => m.uiMessageId === uiMessageId || String(m._id) === uiMessageId
-      )
-      if (convexMsg) {
-        await editAndTruncate({
-          messageId: convexMsg._id as Id<"messages">,
-          content: "",
-          conversationId: conversationId as Id<"conversations">,
-        })
-      }
-
-      // 3. Truncate local messages (UIMessage state)
+      // ALWAYS: update local UI state regardless of truncation success
       setMessages((prev) => prev.slice(0, syntheticMessageIndex))
 
-      // 4. Validation panel auto-reappears via Convex reactivity
+      // Validation panel auto-reappears via Convex reactivity
       // (stageStatus = "pending_validation" triggers panel render)
 
-      // 5. Clear optimistic pending validation if it was set
+      // Clear optimistic pending validation if it was set
       setOptimisticPendingValidation(false)
 
-      console.info(`[CANCEL-DECISION] approval cancelled, validation panel re-shown${approvalsAfter.length > 0 ? ` (cross-stage rollback, ${approvalsAfter.length} intermediate approval(s) reverted)` : ""}`)
+      console.info(`[CANCEL-DECISION] approval cancelled, validation panel re-shown (rewind to ${targetStage})`)
     } catch (error) {
+      cancelObservationRef.current = null
       Sentry.captureException(error, { tags: { subsystem: "paper.cancel-approval" } })
       console.error("Failed to cancel approval:", error)
       toast.error("Gagal membatalkan persetujuan.")
@@ -2748,7 +2912,7 @@ export function ChatWindow({
         })
       })
     }
-  }, [userId, paperSession?._id, conversationId, messages, historyMessages, unapproveStage, editAndTruncate, setMessages])
+  }, [userId, paperSession?._id, conversationId, messages, historyMessages, rewindToStageMutation, editAndTruncate, setMessages])
 
   // Handler for template selection
   const handleTemplateSelect = (template: Template) => {
