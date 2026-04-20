@@ -31,5 +31,9 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "worktrees"]
+  "exclude": [
+    "node_modules",
+    "worktrees",
+    "docs/frontend-marketing-resign-v2/mockup/remotion-hero"
+  ]
 }
