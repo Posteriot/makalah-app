@@ -331,11 +331,11 @@ export async function executeWebSearch(
       const searchResult = streamText({
         model,
         messages: searchMessages,
-        ...(tools ? { tools: tools as Parameters<typeof streamText>[0]["tools"] } : {}),
+        ...(tools ? { tools: tools as Parameters<typeof streamText>[0]["tools"], toolChoice: "required" as const } : {}),
         ...retrieverSamplingOptions,
       })
       const resultCreatedAt = Date.now()
-      console.log(`[⏱ RETRIEVER][${reqId}] result_created name=${retriever.name} t=${resultCreatedAt - retrieverStart}ms`)
+      console.log(`[⏱ RETRIEVER][${reqId}] result_created name=${retriever.name} t=${resultCreatedAt - retrieverStart}ms toolChoice=${tools ? "required" : "none"}`)
 
       // ── Retriever timeline probes: measure when each promise resolves ──
       // These run concurrently with the text await below. The timestamps
