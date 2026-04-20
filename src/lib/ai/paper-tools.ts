@@ -559,11 +559,20 @@ WHEN TO USE:
 WHEN NOT TO USE:
 - User asks to edit the CURRENT stage (use normal discussion flow)
 - User asks to edit gagasan (suggest starting a new chat)
-- User asks a question about a past stage (just answer, don't rollback)`,
+- User asks a question about a past stage (just answer, don't rollback)
+
+TWO-STEP USAGE (MANDATORY):
+1. FIRST call with dryRun: true to check feasibility. Read the result.
+   - If valid: show a yaml-spec confirmation card to the user with the plan details.
+   - If invalid: inform the user of the reason WITHOUT showing a confirmation card.
+2. AFTER user confirms via the choice card: call AGAIN with dryRun: false to execute.
+NEVER show a confirmation card without a successful dry run first.
+NEVER execute (dryRun: false) without user confirmation via choice card.`,
             inputSchema: z.object({
                 targetStage: z.string().describe("The stage to roll back to (e.g., 'pendahuluan', 'topik')"),
+                dryRun: z.boolean().describe("If true, only validate and return the plan without executing. If false, execute the rollback."),
             }),
-            execute: async ({ targetStage }) => {
+            execute: async ({ targetStage, dryRun }) => {
                 try {
                     // 1. Get fresh session state
                     const session = await retryQuery(
@@ -580,6 +589,19 @@ WHEN NOT TO USE:
                         targetStage,
                     )
                     if (!plan.valid) return { success: false, error: plan.reason }
+
+                    // Dry run: return plan without executing
+                    if (dryRun) {
+                        console.info(`[ROLLBACK] dry-run: ${plan.description} (would wipe ${plan.stagesToWipe.join(", ")})`)
+                        return {
+                            success: true,
+                            dryRun: true,
+                            rolledBackTo: plan.targetStage,
+                            wipedStages: plan.stagesToWipe,
+                            description: plan.description,
+                            consequences: plan.consequences,
+                        }
+                    }
 
                     // 3. Execute unapprove loop
                     for (let i = 0; i < plan.unapproveCount; i++) {
