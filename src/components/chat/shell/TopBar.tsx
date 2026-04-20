@@ -201,14 +201,14 @@ export function TopBar({
           {/* Artifact File Indicator */}
           <button
             type="button"
-            onClick={hasArtifacts ? onArtifactToggle : undefined}
-            disabled={!hasArtifacts}
+            onClick={hasArtifacts && onArtifactToggle ? onArtifactToggle : undefined}
+            disabled={!hasArtifacts || !onArtifactToggle}
             className={cn(
               "relative mr-0.5 inline-flex h-8 min-w-[2.4rem] items-center justify-center rounded-action px-1",
               "transition-colors duration-150",
-              hasArtifacts && isArtifactPanelOpen
+              hasArtifacts && onArtifactToggle && isArtifactPanelOpen
                 ? "bg-[var(--chat-info)] text-white hover:bg-[oklch(0.53_0.158_241.966)] cursor-pointer"
-                : hasArtifacts
+                : hasArtifacts && onArtifactToggle
                   ? "text-[color:color-mix(in_oklab,var(--chat-foreground)_88%,var(--chat-muted-foreground))] hover:bg-[var(--chat-accent)] cursor-pointer"
                   : "text-[var(--chat-muted-foreground)] opacity-45 cursor-default",
             )}
@@ -223,9 +223,9 @@ export function TopBar({
               className={cn(
                 "pointer-events-none absolute -bottom-0 -right-[0.12rem] inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1",
                 "text-[9px] font-semibold font-mono leading-none",
-                hasArtifacts && isArtifactPanelOpen
+                hasArtifacts && onArtifactToggle && isArtifactPanelOpen
                   ? "bg-white text-[var(--chat-info)]"
-                  : hasArtifacts
+                  : hasArtifacts && onArtifactToggle
                     ? "bg-[var(--chat-info)] text-white dark:text-[color:color-mix(in_oklab,var(--chat-foreground)_92%,white)]"
                     : "bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
               )}
