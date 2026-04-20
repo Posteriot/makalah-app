@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Deploy stage skills + system prompt from updated-6 to dev DB (wary-ferret-59)."""
+"""Deploy stage skills + system prompt from updated-7 to dev DB (wary-ferret-59)."""
 import json
 import subprocess
 import sys
 import os
 
 ADMIN_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48"
-CHANGE_NOTE = "updated-6: search turn choice card mandate + plan snapshot observability"
-SRC_DIR = ".references/system-prompt-skills-active/updated-6"
+CHANGE_NOTE = "updated-7: rollback capability + fallback choice card improvements"
+SRC_DIR = ".references/system-prompt-skills-active/updated-7"
 
 SKILLS = [
     ("01-gagasan-skill.md", "gagasan-skill"),
