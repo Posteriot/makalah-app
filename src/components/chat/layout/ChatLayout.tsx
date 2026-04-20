@@ -358,6 +358,8 @@ export function ChatLayout({
             routeContext={resolvedRouteContext}
             naskahAvailable={availability?.isAvailable ?? false}
             naskahUpdatePending={updatePending}
+            onArtifactToggle={onArtifactPanelToggle}
+            isArtifactPanelOpen={isArtifactPanelOpen}
           />
           <div className="flex-1 overflow-hidden">{children}</div>
         </main>
