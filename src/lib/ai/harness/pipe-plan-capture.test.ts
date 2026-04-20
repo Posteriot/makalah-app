@@ -17,8 +17,16 @@ function streamFromChunks(chunks: unknown[]): ReadableStream<unknown> {
   })
 }
 
-function textChunk(text: string) {
-  return { type: "text-delta", textDelta: text }
+function textStart(id = "t1") {
+  return { type: "text-start", id }
+}
+
+function textEnd(id = "t1") {
+  return { type: "text-end", id }
+}
+
+function textChunk(text: string, id = "t1") {
+  return { type: "text-delta", id, delta: text }
 }
 
 async function collectOutput(stream: ReadableStream<unknown>): Promise<unknown[]> {
@@ -49,8 +57,10 @@ const VALID_PLAN_YAML = [
 describe("pipePlanCapture", () => {
   it("parses a normal fenced plan-spec with close fence in same chunk", async () => {
     const input = streamFromChunks([
+      textStart(),
       textChunk("Hello world\n"),
       textChunk(`${PLAN_FENCE_OPEN}\n${VALID_PLAN_YAML}\n\`\`\`\nAfter fence`),
+      textEnd(),
     ])
 
     const output = await collectOutput(pipePlanCapture(input))
@@ -68,19 +78,24 @@ describe("pipePlanCapture", () => {
     expect(plan.summary).toBe("Investigating the problem")
     expect(plan.tasks).toHaveLength(2)
 
-    // Text before and after should be emitted
+    // Text before and after should be emitted with correct id
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const textParts = output.filter((p: any) => p.type === "text-delta")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const allText = textParts.map((p: any) => p.textDelta).join("")
+    const allText = textParts.map((p: any) => p.delta).join("")
     expect(allText).toContain("Hello world")
     expect(allText).toContain("After fence")
+    // Every emitted text-delta must carry the block id
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const p of textParts) expect((p as any).id).toBe("t1")
   })
 
   it("handles close fence split across chunks (\\n in chunk N, ``` in chunk N+1)", async () => {
     const input = streamFromChunks([
+      textStart(),
       textChunk(`${PLAN_FENCE_OPEN}\n${VALID_PLAN_YAML}\n`),
       textChunk("```\nDone"),
+      textEnd(),
     ])
 
     const output = await collectOutput(pipePlanCapture(input))
@@ -102,6 +117,7 @@ describe("pipePlanCapture", () => {
 
     const rawContent = "this is not valid yaml plan: [[[{"
     const input = streamFromChunks([
+      textStart(),
       textChunk(`${PLAN_FENCE_OPEN}\n${rawContent}`),
     ])
 
@@ -114,12 +130,14 @@ describe("pipePlanCapture", () => {
     )
     expect(planParts).toHaveLength(0)
 
-    // Content should be re-emitted as text
+    // Content should be re-emitted as text with id
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const textParts = output.filter((p: any) => p.type === "text-delta")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const allText = textParts.map((p: any) => p.textDelta).join("")
+    const allText = textParts.map((p: any) => p.delta).join("")
     expect(allText).toContain(rawContent)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const p of textParts) expect((p as any).id).toBe("t1")
 
     // Warning should be logged
     expect(warnSpy).toHaveBeenCalledWith(
@@ -134,6 +152,7 @@ describe("pipePlanCapture", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
 
     const input = streamFromChunks([
+      textStart(),
       textChunk(`${PLAN_FENCE_OPEN}\n${VALID_PLAN_YAML}`),
       // Stream ends — no close fence
     ])
@@ -161,9 +180,11 @@ describe("pipePlanCapture", () => {
 
   it("detects unfenced plan-spec (regression guard)", async () => {
     const input = streamFromChunks([
+      textStart(),
       textChunk("Some intro text\n"),
       textChunk(`${VALID_PLAN_YAML}\n`),
       textChunk("More text after plan\n"),
+      textEnd(),
     ])
 
     const output = await collectOutput(pipePlanCapture(input))
@@ -182,7 +203,9 @@ describe("pipePlanCapture", () => {
   it("does not falsely capture normal prose starting with 'stage: '", async () => {
     const proseText = "stage: three of the experiment involved testing multiple variables\nThe results showed significant improvement across all groups."
     const input = streamFromChunks([
+      textStart(),
       textChunk(proseText),
+      textEnd(),
     ])
     const output = await collectOutput(pipePlanCapture(input))
 
@@ -191,12 +214,12 @@ describe("pipePlanCapture", () => {
     const planParts = output.filter((p: any) => p.type === PLAN_DATA_PART_TYPE)
     expect(planParts).toHaveLength(0)
 
-    // All original text should pass through
+    // All original text should pass through with id
     const allText = output
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((p: any) => p.type === "text-delta")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((p: any) => p.textDelta ?? p.delta)
+      .map((p: any) => p.delta)
       .join("")
     expect(allText).toContain("stage: three")
     expect(allText).toContain("significant improvement")
@@ -208,6 +231,7 @@ describe("pipePlanCapture", () => {
 
     const input = streamFromChunks([
       toolCallChunk,
+      textStart(),
       textChunk("Hello"),
       customChunk,
       textChunk(`${PLAN_FENCE_OPEN}\nstage: x\n`),
@@ -224,5 +248,38 @@ describe("pipePlanCapture", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stepFinishes = output.filter((p: any) => p.type === "step-finish")
     expect(stepFinishes).toHaveLength(1)
+  })
+
+  it("emits text-delta with id matching the active text block", async () => {
+    const input = streamFromChunks([
+      textStart("block-42"),
+      textChunk("Hello world", "block-42"),
+      textEnd("block-42"),
+    ])
+
+    const output = await collectOutput(pipePlanCapture(input))
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const textParts = output.filter((p: any) => p.type === "text-delta")
+    expect(textParts.length).toBeGreaterThan(0)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const p of textParts) expect((p as any).id).toBe("block-42")
+  })
+
+  it("flushes buffer before forwarding text-end", async () => {
+    const input = streamFromChunks([
+      textStart(),
+      textChunk("buffered content"),
+      textEnd(),
+    ])
+
+    const output = await collectOutput(pipePlanCapture(input))
+
+    // text-end must come AFTER all text-delta chunks
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const types = output.map((p: any) => p.type)
+    const lastTextDeltaIdx = types.lastIndexOf("text-delta")
+    const textEndIdx = types.indexOf("text-end")
+    expect(lastTextDeltaIdx).toBeLessThan(textEndIdx)
   })
 })
