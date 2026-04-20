@@ -1,21 +1,30 @@
-# Handoff Prompt: Frontend Marketing Redesign v2
+# Handoff Prompt: Frontend Marketing Redesign v2 — COMPLETE MOCKUP PHASE
 
 **Konteks Utama:**
-Kamu sedang berada di worktree branch `frontend-marketing-resign-v2`. Sesi ini adalah lanjutan dari tugas sebelumnya.
+Kamu sedang melanjutkan proyek redesain landing page Makalah AI. Sesi sebelumnya telah menyelesaikan **High-Fidelity Mockup (HTML/CSS/JS)** yang sudah disetujui dan di-polish secara maksimal.
 
-**Scope Tugas:**
-Meredesain keseluruhan tampilan frontend marketing makalahapp. Kamu harus mereplikasi struktur, layout, dan kualitas estetika dari referensi desain: `https://screen.studio/`.
+**LOKASI KERJA (MANDATORY):**
+Seluruh pengerjaan fitur/redesign ini **WAJIB** dilakukan di dalam folder worktree: 
+` /Users/eriksupit/Desktop/makalahapp/.worktrees/frontend-marketing-resign-v2 `
+**JANGAN** bekerja di root repository utama. Segala perubahan file harus dilakukan di path ini.
+
+**Status Saat Ini:**
+- **Mockup Selesai**: Struktur lengkap (Hero, Benefits Bento, Workflow, Refrasa, Pricing, Footer) tersedia di `/docs/frontend-marketing-resign-v2/mockup/`.
+- **Aestetika Premium**: Sudah diterapkan efek *Noise Texture*, *Ambient Glow*, *Bento Mouse-Tracking Glow*, *Parallax Background*, dan *Glassmorphism*.
+- **Data Aktual**: Teks dan aset sudah sinkron dengan `makalah.ai` live (menggunakan data dari Convex & CMS).
+
+**Scope Tugas Selanjutnya (Implementation Phase):**
+Transformasikan mockup statis tersebut ke dalam komponen React/Next.js di dalam `src/components/marketing/` pada worktree ini.
 
 **Constraints (Aturan Ketat):**
-1. **Desain Sistem:** Kamu WAJIB menggunakan varian warna, fonts, border, dan utilities yang sudah tersedia di dalam `src/app/globals-new.css` (bukan yang lain). Jangan sembarangan menggunakan varian warna Tailwind base jika warna tersebut sudah diatur secara custom di globals-new.css.
-2. **Kualitas Premium:** Sesuaikan estetika supaya terlihat mahal (vibrant, dark modes, glassmorphism, micro-animations) sebagaimana disyaratkan di petunjuk utama.
-3. **Bahasa Komunikasi:** Ingat `AGENTS.md`. Gunakan gaya bahasa Jakarta (gue-lo) untuk interaksi user, teks informal tapi jelas.
-4. **Alur Kerja:** Jangan mengubah code terlebih dahulu! Buatlah observasi yang mendalam dan *Implementation Plan* sebelum mulai mengetik layout baru. 
+1. **Source of Truth**: Gunakan `/docs/frontend-marketing-resign-v2/mockup/` sebagai panduan visual dan struktural utama.
+2. **Design System**: Gunakan token warna dan variabel dari `src/app/globals-new.css`.
+3. **Aset**: Gunakan aset logo dan image dari folder `/public/` di dalam worktree ini.
+4. **Logika Bisnis**: Pastikan komponen baru tetap terhubung dengan data fetching (Convex) sebagaimana komponen lama.
 
 **Langkah Pertama yang Harus Kamu Lakukan (Next Steps):**
-1. Baca skill `/replicate` dan buat analisis mengenai layout dari Screen Studio.
-2. Analisis dan pahami variables yang ada di `src/app/globals-new.css`.
-3. Buatlah rencana eksekusi rancangan fitur yang akan dibuat.
-4. Tanyakan kepada user (lo bisa pakai ask_question) apabila ada yang abu-abu sebelum lo bikin `implementation_plan.md`.
+1. Buka dan pelajari file `index.html` dan `styles.css` di `docs/frontend-marketing-resign-v2/mockup/` untuk memahami cara kerja glow dan grid-nya.
+2. Buat **Implementation Plan** untuk migrasi section per section ke React components.
+3. Selalu tanya user (pake gaya Jakarta gue-lo) sebelum membuat keputusan arsitektural besar.
 
-Good luck, lanjutkan pekerjaan dengan penuh presisi.
+Good luck. Jaga kualitas estetika "Screen.studio/Linear" ini pas masuk ke fase kode React.
