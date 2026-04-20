@@ -32,9 +32,10 @@ export function pipePlanCapture(
   let captureContent = ""
   // Text before the unfenced plan start that hasn't been flushed yet
   let prePlanText = ""
-  // AI SDK client expects { textDelta } on output. Input may arrive as
-  // { delta } (from upstream pipeYamlRender) — we read both but ALWAYS
-  // emit as { textDelta } to satisfy the client-side Zod schema.
+  // Pipeline: pipePlanCapture → pipeYamlRender → client
+  // pipeYamlRender reads { delta } (line 326 of @json-render/yaml)
+  // AI SDK client reads { textDelta }
+  // We must emit BOTH properties so both consumers work.
 
   function tryParsePlan(content: string, source: "fenced" | "unfenced"): PlanDataPart | null {
     try {
@@ -67,7 +68,10 @@ export function pipePlanCapture(
 
   function emitText(controller: ReadableStreamDefaultController, text: string) {
     if (text.length > 0) {
-      controller.enqueue({ type: "text-delta", textDelta: text })
+      // Both properties required:
+      // - delta: consumed by downstream pipeYamlRender (@json-render/yaml line 326)
+      // - textDelta: consumed by AI SDK client-side Zod schema
+      controller.enqueue({ type: "text-delta", textDelta: text, delta: text })
     }
   }
 
