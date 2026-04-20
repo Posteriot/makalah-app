@@ -74,34 +74,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize animation loop
     smoothAnimationLoop();
 
-    // 5. Pricing Toggle Interactivity
-    const pricingToggle = document.getElementById('pricing-toggle');
-    const monthlyLabel = document.getElementById('monthly-label');
-    const annualLabel = document.getElementById('annual-label');
-
-    if (pricingToggle) {
-        pricingToggle.addEventListener('click', () => {
-            pricingToggle.classList.toggle('annual');
-            monthlyLabel.classList.toggle('active');
-            annualLabel.classList.toggle('active');
-            
-            // UI only feedback: can be expanded to update price numbers
-            const prices = document.querySelectorAll('.price');
-            prices.forEach(p => {
-                p.style.transform = 'scale(0.95)';
-                setTimeout(() => p.style.transform = 'scale(1)', 150);
-            });
-        });
-
-        if (monthlyLabel && annualLabel) {
-            monthlyLabel.addEventListener('click', () => {
-                if (!monthlyLabel.classList.contains('active')) pricingToggle.click();
-            });
-            annualLabel.addEventListener('click', () => {
-                if (!annualLabel.classList.contains('active')) pricingToggle.click();
-            });
-        }
-    }
 
     // 6. Mobile Menu Toggle
     const hamburger = document.querySelector('.hamburger-menu');
