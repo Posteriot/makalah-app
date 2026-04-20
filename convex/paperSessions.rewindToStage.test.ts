@@ -201,6 +201,17 @@ describe("rewindToStage", () => {
     // Digest: gagasan, topik, outline entries superseded
     const updatedDigest = sessionPatch!.patch.paperMemoryDigest as Array<{ stage: string; superseded?: boolean }>;
     expect(updatedDigest.filter(d => d.superseded)).toHaveLength(3);
+
+    // Target stage artifact NOT invalidated (cancel-approval preserves it for re-approval)
+    const artifactPatches = patches.filter(p => p.id === "art_gagasan");
+    const hasInvalidatedAt = artifactPatches.some(p => p.patch.invalidatedAt !== undefined);
+    expect(hasInvalidatedAt).toBe(false);
+
+    // Intermediate + currentStage artifacts ARE invalidated
+    const intermediateArtifactPatches = patches.filter(p =>
+      ["art_topik", "art_outline", "art_abstrak"].includes(p.id)
+    );
+    expect(intermediateArtifactPatches.length).toBeGreaterThanOrEqual(3);
   });
 
   // 4. mode: "cancel-choice", cross-stage
