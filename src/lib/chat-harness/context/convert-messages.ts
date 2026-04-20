@@ -25,8 +25,8 @@ export async function convertAndSanitizeMessages(params: {
 
     // ── Extract last user content ────────────────────────────────
     const lastUserMessage = messages[messages.length - 1]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const lastUserContent = lastUserMessage?.role === "user"
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ? ((lastUserMessage as any).content ||
             lastUserMessage.parts?.find((p): p is { type: "text"; text: string } => p.type === "text")?.text ||
             "")

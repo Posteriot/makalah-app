@@ -100,6 +100,7 @@ describe("computeRollbackPlan", () => {
   })
 
   it("rejects unknown current stage", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = expectRejected(computeRollbackPlan("nonexistent" as any, "topik"))
     expect(result.reason).toContain("Unknown current stage")
   })
