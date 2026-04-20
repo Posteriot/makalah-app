@@ -677,16 +677,31 @@ export function ChatWindow({
   // Recovery: if Convex auth stays stuck in loading state for too long after
   // server restart (corrupted hydration, stale WebSocket, etc.), force a page
   // reload so auth can re-initialize from scratch.
+  // Circuit breaker: sessionStorage counter caps at 2 reloads to prevent
+  // infinite loop when auth is genuinely unreachable (outage, bad token).
   useEffect(() => {
     if (!isConvexAuthLoading || !safeConversationId) return
+    const RELOAD_KEY = "convex_auth_reload_count"
     const timer = setTimeout(() => {
-      if (process.env.NODE_ENV !== "production") {
-        console.warn("[CHAT-VIEW] Convex auth stuck loading for 8s — forcing page reload for recovery")
+      const count = parseInt(sessionStorage.getItem(RELOAD_KEY) ?? "0", 10)
+      if (count >= 2) {
+        console.error("[CHAT-VIEW] Convex auth stuck after 2 reload attempts — stopping recovery")
+        sessionStorage.removeItem(RELOAD_KEY)
+        return
       }
+      console.warn("[CHAT-VIEW] Convex auth stuck loading for 8s — forcing page reload for recovery")
+      sessionStorage.setItem(RELOAD_KEY, String(count + 1))
       window.location.reload()
     }, 8_000)
     return () => clearTimeout(timer)
   }, [isConvexAuthLoading, safeConversationId])
+
+  // Clear reload counter when auth succeeds — reset circuit breaker for next incident
+  useEffect(() => {
+    if (isAuthenticated) {
+      sessionStorage.removeItem("convex_auth_reload_count")
+    }
+  }, [isAuthenticated])
 
   const {
     session: paperSession,
