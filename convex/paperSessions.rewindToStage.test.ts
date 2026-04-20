@@ -337,7 +337,7 @@ describe("rewindToStage", () => {
   it("edge: cancel from completed state handles correctly", async () => {
     const session = makeSession({
       currentStage: "completed",
-      stageStatus: "pending_validation",
+      stageStatus: "approved",
       stageData: {
         gagasan: { validatedAt: 1000, artifactId: "art_gagasan" },
         topik: { validatedAt: 2000, artifactId: "art_topik" },
@@ -357,8 +357,9 @@ describe("rewindToStage", () => {
 
     expect(result).toMatchObject({ success: true, previousStage: "completed", newStage: "judul" });
 
-    // completedAt should be cleared
+    // completedAt must be explicitly set to undefined in the patch (not just absent)
     const sessionPatch = patches.find(p => p.id === "paperSessions_1");
+    expect(Object.keys(sessionPatch!.patch)).toContain("completedAt");
     expect(sessionPatch!.patch.completedAt).toBeUndefined();
   });
 
