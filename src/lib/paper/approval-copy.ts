@@ -1,6 +1,6 @@
 import {
-  STAGE_ORDER,
   getNextStage,
+  getStageIdFromLabel,
   getStageLabel,
   type PaperStageId,
 } from "../../../convex/paperSessions/constants"
@@ -20,7 +20,7 @@ export function buildApprovedStageMessageFromLabel(stageLabel: string): string |
   const normalizedLabel = stageLabel.trim()
   if (!normalizedLabel) return null
 
-  const stageId = STAGE_ORDER.find((candidate) => getStageLabel(candidate) === normalizedLabel)
+  const stageId = getStageIdFromLabel(normalizedLabel)
   if (!stageId) return null
 
   return buildApprovedStageMessage(stageId)

@@ -56,6 +56,7 @@ import type * as migrations_assignRolesAndTiers from "../migrations/assignRolesA
 import type * as migrations_backfillCreditBalances from "../migrations/backfillCreditBalances.js";
 import type * as migrations_backfillPaymentsProviderFields from "../migrations/backfillPaymentsProviderFields.js";
 import type * as migrations_backfillProviderKeys from "../migrations/backfillProviderKeys.js";
+import type * as migrations_backfillSupersededArtifacts from "../migrations/backfillSupersededArtifacts.js";
 import type * as migrations_backfillWorkingTitle from "../migrations/backfillWorkingTitle.js";
 import type * as migrations_checkDocumentationOrdering from "../migrations/checkDocumentationOrdering.js";
 import type * as migrations_cleanupDuplicateSeedUser from "../migrations/cleanupDuplicateSeedUser.js";
@@ -184,6 +185,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/backfillCreditBalances": typeof migrations_backfillCreditBalances;
   "migrations/backfillPaymentsProviderFields": typeof migrations_backfillPaymentsProviderFields;
   "migrations/backfillProviderKeys": typeof migrations_backfillProviderKeys;
+  "migrations/backfillSupersededArtifacts": typeof migrations_backfillSupersededArtifacts;
   "migrations/backfillWorkingTitle": typeof migrations_backfillWorkingTitle;
   "migrations/checkDocumentationOrdering": typeof migrations_checkDocumentationOrdering;
   "migrations/cleanupDuplicateSeedUser": typeof migrations_cleanupDuplicateSeedUser;

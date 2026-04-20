@@ -561,8 +561,8 @@ This tool executes immediately — no confirmation card needed. Messages are pre
                     )
                     if (!session) return { success: false, error: "Paper session not found" }
 
-                    // 2. Call rewindToStage IF target is a PREVIOUS stage.
-                    // Skip if already at target (just clear stageData via cancelChoiceDecision).
+                    // 2. Cross-stage: single atomic rewindToStage with mode "cancel-choice"
+                    // Same-stage: just cancel the choice decision (already atomic)
                     const alreadyAtTarget = session.currentStage === targetStage
                     if (!alreadyAtTarget) {
                         await retryMutation(
@@ -570,15 +570,12 @@ This tool executes immediately — no confirmation card needed. Messages are pre
                                 sessionId: session._id,
                                 userId: context.userId,
                                 targetStage,
+                                mode: "cancel-choice",
                             }, convexOptions),
                             "paperSessions.rewindToStage"
                         )
-                    }
-
-                    // 3. Call cancelChoiceDecision to clear stageData
-                    // Handles: clear stageData (preserve webSearchReferences + nativeRefField),
-                    // invalidate remaining artifact refs, increment epoch
-                    try {
+                    } else {
+                        // Same-stage: just cancel the choice decision (already atomic)
                         await retryMutation(
                             () => fetchMutation(api.paperSessions.cancelChoiceDecision, {
                                 sessionId: session._id,
@@ -586,8 +583,6 @@ This tool executes immediately — no confirmation card needed. Messages are pre
                             }, convexOptions),
                             "paperSessions.cancelChoiceDecision"
                         )
-                    } catch (cancelErr) {
-                        console.warn(`[RESET-TO-STAGE] cancelChoiceDecision non-fatal: ${cancelErr instanceof Error ? cancelErr.message : cancelErr}`)
                     }
 
                     // 4. Mark in tracker

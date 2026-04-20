@@ -546,6 +546,14 @@ export const update = mutationGeneric({
       invalidatedByRewindToStage: undefined,
     })
 
+    // Mark old version as superseded so it no longer appears in artifact lists.
+    // Without this, rewind/cancel that invalidates the NEW version would leave
+    // the old version visible (it was never explicitly invalidated).
+    await db.patch(artifactId, {
+      invalidatedAt: now,
+      invalidatedByRewindToStage: undefined,
+    })
+
     // Update paper session stageData reference to point to new version.
     // This ensures AI context (paper-mode-prompt.ts) uses the latest artifact content.
     // Note: stageData stores artifact IDs as strings (loosely-typed JSON record),

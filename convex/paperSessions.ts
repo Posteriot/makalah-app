@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { getNextStage, getPreviousStage, PaperStageId, STAGE_ORDER } from "./paperSessions/constants";
+import { getNextStage, PaperStageId, STAGE_ORDER } from "./paperSessions/constants";
 import {
     requireAuthUser,
     requireAuthUserId,
@@ -857,156 +857,6 @@ export const cancelChoiceDecision = mutation({
         return { stage: currentStage, artifactInvalidated, statusReverted };
     },
 });
-
-/**
- * Unapprove a stage — revert the last approval decision.
- * Only allowed in valid post-approval states.
- * Ref: design doc section 5.2
- */
-export const unapproveStage = mutation({
-    args: {
-        sessionId: v.id("paperSessions"),
-        userId: v.id("users"),
-    },
-    handler: async (ctx, args) => {
-        const { session } = await requirePaperSessionOwner(ctx, args.sessionId);
-        const now = Date.now();
-
-        // Guard: allow unapprove in any post-approval state except "revision"
-        // (user actively revising means they've moved past the approval decision).
-        // Valid states: "drafting" (model streaming), "pending_validation" (model done),
-        // "approved" (mid-transition or completed).
-        const isFinalApproval = session.currentStage === "completed" && session.stageStatus === "approved";
-        const isRevision = session.stageStatus === "revision";
-        if (isRevision) {
-            throw new Error(`Cannot unapprove: stageStatus="${session.stageStatus}" — revision in progress`);
-        }
-
-        // Derive targetStage
-        let targetStage: PaperStageId;
-        if (isFinalApproval) {
-            // completed → last STAGE_ORDER entry ("judul")
-            targetStage = STAGE_ORDER[STAGE_ORDER.length - 1];
-        } else {
-            const prev = getPreviousStage(session.currentStage as PaperStageId);
-            if (!prev) throw new Error(`Cannot unapprove: no previous stage for "${session.currentStage}"`);
-            targetStage = prev;
-        }
-
-        // Guard: target stage must have validatedAt
-        const stageData = session.stageData as Record<string, Record<string, unknown>>;
-        const targetStageData = stageData[targetStage];
-        if (!targetStageData?.validatedAt) {
-            throw new Error(`Cannot unapprove: stage "${targetStage}" has no validatedAt`);
-        }
-
-        // Save nextStageToClear BEFORE revert
-        const nextStageToClear = session.currentStage;
-
-        // 1. Remove validatedAt from targetStage stageData
-        const updatedStageData = { ...stageData };
-        const { validatedAt: _, ...targetStageWithoutValidated } = targetStageData;
-        updatedStageData[targetStage] = targetStageWithoutValidated;
-
-        // 2. Invalidate artifact in nextStageToClear (if any), then clear stageData
-        let nextStageArtifactInvalidated = false;
-        if (nextStageToClear !== "completed" && updatedStageData[nextStageToClear]) {
-            const nextStageData = updatedStageData[nextStageToClear];
-            const nextArtifactId = nextStageData.artifactId as string | undefined;
-            if (nextArtifactId) {
-                try {
-                    await ctx.db.patch(nextArtifactId as Id<"artifacts">, {
-                        invalidatedAt: now,
-                    });
-                    nextStageArtifactInvalidated = true;
-                } catch {
-                    console.warn(`[PAPER][unapprove] next-stage artifact invalidation failed id=${nextArtifactId}`);
-                }
-            }
-            updatedStageData[nextStageToClear] = {};
-        }
-
-        // 3. Mark last digest entry as superseded
-        const existingDigest = (session.paperMemoryDigest as Array<{
-            stage: string; decision: string; timestamp: number; superseded?: boolean;
-        }>) || [];
-        const updatedDigest = [...existingDigest];
-        for (let i = updatedDigest.length - 1; i >= 0; i--) {
-            if (updatedDigest[i].stage === targetStage && !updatedDigest[i].superseded) {
-                updatedDigest[i] = { ...updatedDigest[i], superseded: true };
-                break;
-            }
-        }
-
-        // 4. Remove last stageMessageBoundaries entry (verify stage matches)
-        const existingBoundaries = (session.stageMessageBoundaries as Array<{
-            stage: string; firstMessageId: string; lastMessageId: string; messageCount: number;
-        }>) || [];
-        let updatedBoundaries = existingBoundaries;
-        if (existingBoundaries.length > 0) {
-            const lastBoundary = existingBoundaries[existingBoundaries.length - 1];
-            if (lastBoundary.stage === targetStage) {
-                updatedBoundaries = existingBoundaries.slice(0, -1);
-            } else {
-                console.warn(`[PAPER][unapprove] boundary stage mismatch: last="${lastBoundary.stage}" expected="${targetStage}", skipping removal`);
-            }
-        }
-
-        // 5. Re-add "Draf " prefix to artifact title if stripped on approval
-        if (targetStageData.titleStrippedOnApproval && targetStageData.artifactId) {
-            try {
-                const artifact = await ctx.db.get(targetStageData.artifactId as Id<"artifacts">);
-                if (artifact && artifact.title && !/^draf(?:t)?\b/i.test(artifact.title)) {
-                    await ctx.db.patch(targetStageData.artifactId as Id<"artifacts">, {
-                        title: `Draf ${artifact.title}`,
-                    });
-                }
-            } catch {
-                console.warn(`[PAPER][unapprove] artifact title re-prefix failed`);
-            }
-        }
-
-        // Increment epoch (invalidates any in-flight chain-completion/rescue in new stage)
-        const currentEpoch = session.decisionEpoch ?? 0;
-        const newEpoch = currentEpoch + 1;
-
-        // Build patch
-        const patchData: Record<string, unknown> = {
-            currentStage: targetStage,
-            stageStatus: "pending_validation",
-            stageData: updatedStageData,
-            paperMemoryDigest: updatedDigest,
-            stageMessageBoundaries: updatedBoundaries,
-            decisionEpoch: newEpoch,
-            updatedAt: now,
-        };
-
-        // 6. If targetStage === "judul": clear paperTitle, workingTitle, completedAt
-        if (targetStage === "judul") {
-            patchData.paperTitle = undefined;
-            patchData.workingTitle = undefined;
-            patchData.completedAt = undefined;
-        }
-
-        await ctx.db.patch(args.sessionId, patchData);
-
-        // Naskah snapshot rebuild — non-blocking.
-        try {
-            await rebuildNaskahSnapshot(ctx, args.sessionId);
-        } catch (error) {
-            console.error(
-                `[NASKAH][rebuild-failed] trigger=unapproveStage ` +
-                `sessionId=${args.sessionId} stage=${targetStage} ` +
-                `error=${error instanceof Error ? error.message : String(error)}`
-            );
-        }
-
-        const clearedNextStage = nextStageToClear !== "completed" && !!stageData[nextStageToClear];
-        console.info(`[PAPER][unapprove] stage=${targetStage} clearedNextStage=${clearedNextStage} nextStageArtifactInvalidated=${nextStageArtifactInvalidated} epoch=${newEpoch}`);
-        return { targetStage, clearedNextStage };
-    },
-});
-
 /**
  * Update data for the current stage.
  */
@@ -1518,7 +1368,7 @@ export const approveStage = mutation({
                 if (finalTitle) {
                     await ctx.db.patch(stageArtifactId as Id<"artifacts">, { title: finalTitle });
                     decisionText = finalTitle;
-                    // Cancel Decision: record that we stripped the prefix for unapproveStage reversal
+                    // Cancel Decision: record that we stripped the prefix for rewindToStage reversal
                     updatedStageData[currentStage] = {
                         ...updatedStageData[currentStage],
                         titleStrippedOnApproval: true,
@@ -2114,6 +1964,28 @@ async function invalidateArtifactsForStages(
 }
 
 /**
+ * Clear stageData for cancel modes (cancel-approval, cancel-choice).
+ * For targetStage: only removes validatedAt (preserves other data).
+ * For other invalidated stages: clears to empty object.
+ */
+function clearStageDataForCancel(
+    stageData: Record<string, Record<string, unknown>>,
+    stagesToInvalidate: string[],
+    targetStage: string
+): Record<string, Record<string, unknown>> {
+    const updated = { ...stageData };
+    for (const stage of stagesToInvalidate) {
+        if (stage === targetStage) {
+            const { validatedAt: _, ...rest } = updated[stage] ?? {};
+            updated[stage] = rest;
+        } else {
+            updated[stage] = {};
+        }
+    }
+    return updated;
+}
+
+/**
  * Task 2.3 & 2.5: Rewind paper session to a previous stage.
  *
  * Guards:
@@ -2127,20 +1999,37 @@ async function invalidateArtifactsForStages(
  * - Invalidate artifacts for affected stages
  * - Create rewindHistory record
  * - Update currentStage and stageStatus
+ *
+ * Modes:
+ * - "rewind" (default): Full multi-stage rewind with validatedAt clearing only
+ * - "cancel-approval": Undo approval of a single stage, sets pending_validation
+ * - "cancel-choice": Undo choice decision, clears stageData preserving native refs
  */
 export const rewindToStage = mutation({
     args: {
         sessionId: v.id("paperSessions"),
         userId: v.id("users"),
         targetStage: v.string(),
+        mode: v.optional(v.union(
+            v.literal("rewind"),
+            v.literal("cancel-approval"),
+            v.literal("cancel-choice")
+        )),
     },
     handler: async (ctx, args) => {
+        const mode = args.mode ?? "rewind";
+
         await requireAuthUserId(ctx, args.userId);
         const session = await ctx.db.get(args.sessionId);
         if (!session) throw new Error("Session not found");
         if (session.userId !== args.userId) throw new Error("Unauthorized");
 
         const currentStage = session.currentStage;
+
+        // Guard: Cannot cancel while revision is in progress
+        if (mode !== "rewind" && session.stageStatus === "revision") {
+            throw new Error(`Cannot cancel: revision in progress on "${currentStage}"`);
+        }
 
         // Guard: Validate target stage
         const validation = isValidRewindTarget(currentStage, args.targetStage);
@@ -2160,8 +2049,48 @@ export const rewindToStage = mutation({
         // Get stages to invalidate (from target to current, exclusive of current)
         const stagesToInvalidate = getStagesToInvalidate(args.targetStage, currentStage);
 
-        // Clear validatedAt for invalidated stages
-        const updatedStageData = clearValidatedAt(stageData, stagesToInvalidate);
+        // For cancel modes, include currentStage in invalidation set
+        if (mode !== "rewind" && currentStage !== "completed") {
+            stagesToInvalidate.push(currentStage);
+        }
+
+        // Clear/update stageData based on mode
+        let updatedStageData: Record<string, Record<string, unknown>>;
+        if (mode === "rewind") {
+            updatedStageData = clearValidatedAt(stageData, stagesToInvalidate);
+        } else {
+            updatedStageData = clearStageDataForCancel(stageData, stagesToInvalidate, args.targetStage);
+        }
+
+        // For cancel-choice mode: preserve specific fields in target stage
+        // (overwrites clearStageDataForCancel's result for targetStage intentionally —
+        //  cancel-choice needs different preservation logic than cancel-approval)
+        if (mode === "cancel-choice") {
+            const targetData = stageData[args.targetStage] ?? {};
+            const preserved: Record<string, unknown> = {};
+            if (typeof targetData.revisionCount === "number") preserved.revisionCount = targetData.revisionCount;
+            if (targetData.webSearchReferences !== undefined) preserved.webSearchReferences = targetData.webSearchReferences;
+            const nativeRefField = STAGE_NATIVE_REF_FIELD[args.targetStage];
+            if (nativeRefField && targetData[nativeRefField] !== undefined) preserved[nativeRefField] = targetData[nativeRefField];
+            updatedStageData[args.targetStage] = preserved;
+        }
+
+        // For cancel modes: re-add "Draf " prefix to target stage artifact title
+        if (mode !== "rewind") {
+            const targetData = stageData[args.targetStage] ?? {};
+            if (targetData.titleStrippedOnApproval && targetData.artifactId) {
+                try {
+                    const artifact = await ctx.db.get(targetData.artifactId as Id<"artifacts">);
+                    if (artifact && artifact.title && !/^draf(?:t)?\b/i.test(artifact.title)) {
+                        await ctx.db.patch(targetData.artifactId as Id<"artifacts">, {
+                            title: `Draf ${artifact.title}`,
+                        });
+                    }
+                } catch {
+                    console.warn(`[PAPER][rewind-cancel] artifact title re-prefix failed`);
+                }
+            }
+        }
 
         // Mark paperMemoryDigest entries as superseded
         const updatedDigest = markDigestAsSuperseded(
@@ -2169,14 +2098,39 @@ export const rewindToStage = mutation({
             stagesToInvalidate
         );
 
-        // Invalidate artifacts for affected stages
+        // Invalidate artifacts for affected stages.
+        // cancel-approval: exclude targetStage — its artifact stays valid for re-approval
+        // in the validation panel. (Old unapproveStage also preserved it.)
+        const stagesToInvalidateArtifacts = mode === "cancel-approval"
+            ? stagesToInvalidate.filter((s) => s !== args.targetStage)
+            : stagesToInvalidate;
         const invalidatedArtifactIds = await invalidateArtifactsForStages(
             ctx as unknown as Parameters<typeof invalidateArtifactsForStages>[0],
             session.conversationId as unknown as string,
             stageData,
-            stagesToInvalidate,
+            stagesToInvalidateArtifacts,
             args.targetStage
         );
+
+        // For cancel modes: remove stageMessageBoundaries entries (stack-pop semantics)
+        let updatedBoundaries: Array<{
+            stage: string; firstMessageId: string; lastMessageId: string; messageCount: number;
+        }> | undefined;
+        if (mode !== "rewind") {
+            const existingBoundaries = (session.stageMessageBoundaries as Array<{
+                stage: string; firstMessageId: string; lastMessageId: string; messageCount: number;
+            }>) || [];
+            const invalidatedSet = new Set(stagesToInvalidate);
+            updatedBoundaries = [...existingBoundaries];
+            while (updatedBoundaries.length > 0) {
+                const last = updatedBoundaries[updatedBoundaries.length - 1];
+                if (invalidatedSet.has(last.stage)) {
+                    updatedBoundaries.pop();
+                } else {
+                    break;
+                }
+            }
+        }
 
         // Create rewindHistory record
         await ctx.db.insert("rewindHistory", {
@@ -2187,6 +2141,7 @@ export const rewindToStage = mutation({
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             invalidatedArtifactIds: invalidatedArtifactIds as any,
             invalidatedStages: stagesToInvalidate,
+            mode,
             createdAt: now,
         });
 
@@ -2196,16 +2151,47 @@ export const rewindToStage = mutation({
             console.info(`[PAPER][rewind] Large rewind: ${currentStage} → ${args.targetStage}, invalidating ${invalidatedCount} stages`);
         }
 
+        // Determine stageStatus based on mode
+        const newStageStatus = mode === "cancel-approval" ? "pending_validation" : "drafting";
+
+        // Increment decisionEpoch for cancel modes
+        const currentEpoch = (session.decisionEpoch as number | undefined) ?? 0;
+        const nextEpoch = mode !== "rewind" ? currentEpoch + 1 : currentEpoch;
+        const targetArtifactId = targetStageData?.artifactId as string | undefined;
+        const targetArtifactPreserved = mode === "cancel-approval";
+
         // Update session
         await ctx.db.patch(args.sessionId, {
             currentStage: args.targetStage,
-            stageStatus: "drafting",
+            stageStatus: newStageStatus,
             stageData: updatedStageData,
             paperMemoryDigest: updatedDigest,
             updatedAt: now,
             // Clear completion timestamp when rewinding from completed
             ...(currentStage === "completed" ? { completedAt: undefined } : {}),
+            // Increment decisionEpoch for cancel modes
+            ...(mode !== "rewind" ? { decisionEpoch: nextEpoch } : {}),
+            // Update stageMessageBoundaries for cancel modes
+            ...(updatedBoundaries !== undefined ? { stageMessageBoundaries: updatedBoundaries } : {}),
         });
+
+        if (mode !== "rewind") {
+            console.info("[PAPER][cancel-observe][server]", {
+                mode,
+                sessionId: args.sessionId,
+                fromStage: currentStage,
+                toStage: args.targetStage,
+                newStageStatus,
+                invalidatedStages: stagesToInvalidate,
+                invalidatedArtifactIds,
+                targetArtifactId: targetArtifactId ?? null,
+                targetArtifactPreserved,
+                targetValidatedAtRemoved: targetStageData?.validatedAt !== undefined,
+                decisionEpochBefore: currentEpoch,
+                decisionEpochAfter: nextEpoch,
+                boundaryCountAfter: updatedBoundaries?.length ?? null,
+            });
+        }
 
         // Naskah snapshot rebuild — non-blocking.
         try {

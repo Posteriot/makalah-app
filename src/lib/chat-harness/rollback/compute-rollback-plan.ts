@@ -9,7 +9,7 @@ export interface RollbackPlan {
   currentStage: PaperStageId
   /** Stages that will be wiped (in execution order: most recent first) */
   stagesToWipe: PaperStageId[]
-  /** Number of unapproveStage calls needed */
+  /** Number of stages to rewind (used by rewindToStage) */
   unapproveCount: number
   /** Human-readable description of what will happen */
   description: string
@@ -62,7 +62,7 @@ export function computeRollbackPlan(
   }
 
   // --- Compute stages to wipe ---
-  // unapproveStage goes one step back each time.
+  // rewindToStage handles multi-stage rewind atomically.
   // From currentStage, we unapprove until we reach the stage AFTER targetStage,
   // then cancelChoiceDecision on targetStage.
   //
