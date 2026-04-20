@@ -561,18 +561,21 @@ This tool executes immediately — no confirmation card needed. Messages are pre
                     )
                     if (!session) return { success: false, error: "Paper session not found" }
 
-                    // 2. Call existing rewindToStage mutation
-                    // Handles: validation, artifact invalidation, rewindHistory, digest, naskah rebuild
-                    await retryMutation(
-                        () => fetchMutation(api.paperSessions.rewindToStage, {
-                            sessionId: session._id,
-                            userId: context.userId,
-                            targetStage,
-                        }, convexOptions),
-                        "paperSessions.rewindToStage"
-                    )
+                    // 2. Call rewindToStage IF target is a PREVIOUS stage.
+                    // Skip if already at target (just clear stageData via cancelChoiceDecision).
+                    const alreadyAtTarget = session.currentStage === targetStage
+                    if (!alreadyAtTarget) {
+                        await retryMutation(
+                            () => fetchMutation(api.paperSessions.rewindToStage, {
+                                sessionId: session._id,
+                                userId: context.userId,
+                                targetStage,
+                            }, convexOptions),
+                            "paperSessions.rewindToStage"
+                        )
+                    }
 
-                    // 3. Call existing cancelChoiceDecision to clear stageData
+                    // 3. Call cancelChoiceDecision to clear stageData
                     // Handles: clear stageData (preserve webSearchReferences + nativeRefField),
                     // invalidate remaining artifact refs, increment epoch
                     try {
