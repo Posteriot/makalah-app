@@ -672,7 +672,21 @@ export function ChatWindow({
     ? (conversationId as Id<"conversations">)
     : null
 
-  const { isAuthenticated } = useConvexAuth()
+  const { isAuthenticated, isLoading: isConvexAuthLoading } = useConvexAuth()
+
+  // Recovery: if Convex auth stays stuck in loading state for too long after
+  // server restart (corrupted hydration, stale WebSocket, etc.), force a page
+  // reload so auth can re-initialize from scratch.
+  useEffect(() => {
+    if (!isConvexAuthLoading || !safeConversationId) return
+    const timer = setTimeout(() => {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[CHAT-VIEW] Convex auth stuck loading for 8s — forcing page reload for recovery")
+      }
+      window.location.reload()
+    }, 8_000)
+    return () => clearTimeout(timer)
+  }, [isConvexAuthLoading, safeConversationId])
 
   const {
     session: paperSession,
@@ -757,9 +771,9 @@ export function ChatWindow({
     isAuthSettled &&
     (safeConversationId === null || conversation === null)
 
-  // 1. Fetch history from Convex
+  // 1. Fetch history from Convex — gate on isAuthenticated like all other queries
   const { messages: historyMessages, isLoading: isHistoryLoading } = useMessages(
-    safeConversationId ? safeConversationId : null
+    safeConversationId && isAuthenticated ? safeConversationId : null
   )
 
   const activeAttachmentContext = useQuery(
