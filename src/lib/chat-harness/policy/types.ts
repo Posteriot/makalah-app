@@ -3,8 +3,6 @@ import type { PaperStageId } from "../../../../convex/paperSessions/constants"
 import type { ParsedChoiceInteractionEvent } from "@/lib/chat/choice-request"
 import type { ResolvedChoiceWorkflow } from "@/lib/chat/choice-request"
 import type { PaperToolTracker } from "@/lib/ai/paper-tools"
-import type { ExactSourceRoutingResult } from "../context/types"
-import type { ConvexFetchQuery, ConvexFetchMutation } from "../types"
 
 // ────────────────────────────────────────────────────────────────
 // Enforcer Types

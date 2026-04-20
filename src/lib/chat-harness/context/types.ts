@@ -1,9 +1,6 @@
 import type { ModelMessage, LanguageModel } from "ai"
-import type { Id } from "../../../../convex/_generated/dataModel"
-import type { PaperStageId } from "../../../../convex/paperSessions/constants"
 import type { SearchExecutionMode } from "@/lib/ai/web-search"
 import type { ExactSourceFollowupResolution, ExactSourceSummary } from "@/lib/ai/exact-source-followup"
-import type { ConvexFetchQuery, ConvexFetchMutation } from "../types"
 
 // ────────────────────────────────────────────────────────────────
 // Instruction Stack

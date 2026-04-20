@@ -5,7 +5,7 @@ import { EditPencil, Xmark, Send, CheckCircle, Copy, Check, Undo } from "iconoir
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
 import { SourcesIndicator } from "./SourcesIndicator"
-import { useState, useRef, useMemo, useEffect, useCallback } from "react"
+import { useState, useRef, useMemo, useEffect } from "react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { MessageAttachment } from "./MessageAttachment"

@@ -39,7 +39,7 @@ const decisionTypeValidator = v.union(
     v.literal("selection"),
 )
 
-const decisionStatusValidator = v.union(
+const _decisionStatusValidator = v.union(
     v.literal("pending"),
     v.literal("resolved"),
     v.literal("declined"),

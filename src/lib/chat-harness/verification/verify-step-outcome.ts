@@ -27,7 +27,6 @@ import type { PaperTurnObservability } from "../executor/types"
 import type { PaperStageId } from "../../../../convex/paperSessions/constants"
 import type { ParsedChoiceInteractionEvent } from "@/lib/chat/choice-request"
 import type { ResolvedChoiceWorkflow } from "@/lib/chat/choice-request"
-import type { PlanSpec } from "@/lib/ai/harness/plan-spec"
 import type { Id } from "../../../../convex/_generated/dataModel"
 import { sanitizeChoiceOutcome } from "@/lib/chat/choice-outcome-guard"
 import type { StepVerificationResult, PaperSessionForVerification } from "./types"
@@ -73,7 +72,7 @@ export async function verifyStepOutcome(params: {
         paperTurnObservability,
         resolvedWorkflow,
         choiceInteractionEvent,
-        paperSession,
+        paperSession: _paperSession,
         paperStageScope,
         isDraftingStage,
         isCompileThenFinalize,

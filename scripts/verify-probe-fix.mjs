@@ -11,7 +11,7 @@
  * Reports whether unhandledRejection fires.
  */
 
-const RETRIEVER_TIMEOUT_MS = 5000
+const _RETRIEVER_TIMEOUT_MS = 5000
 
 // Track unhandledRejection events
 let unhandledCount = 0

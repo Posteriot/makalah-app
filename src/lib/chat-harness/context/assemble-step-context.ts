@@ -1,12 +1,11 @@
-import type { LanguageModel, ModelMessage } from "ai"
+import type { ModelMessage } from "ai"
 import type { Id } from "../../../../convex/_generated/dataModel"
 import type { PaperStageId } from "../../../../convex/paperSessions/constants"
 import { getContextWindow } from "@/lib/ai/context-budget"
 import type { ParsedChoiceInteractionEvent } from "@/lib/chat/choice-request"
-import type { ExactSourceFollowupResolution } from "@/lib/ai/exact-source-followup"
 import type { ResolvedChoiceWorkflow } from "@/lib/chat/choice-request"
 import type { ConvexFetchQuery, ConvexFetchMutation } from "../types"
-import type { ResolvedStepContext, RecentSource } from "./types"
+import type { ResolvedStepContext } from "./types"
 
 // Module imports
 import { convertAndSanitizeMessages } from "./convert-messages"
@@ -433,7 +432,7 @@ export async function assembleStepContext(
         profile: "narrative",
     })
 
-    const reasoningTraceEnabled = reasoningSettings.traceMode === "curated" || reasoningSettings.traceMode === "transparent"
+    const _reasoningTraceEnabled = reasoningSettings.traceMode === "curated" || reasoningSettings.traceMode === "transparent"
     const forcedToolTelemetryName = searchDecision.shouldForceGetCurrentPaperState
         ? "getCurrentPaperState"
         : undefined

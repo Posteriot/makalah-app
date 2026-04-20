@@ -1836,6 +1836,7 @@ export function ChatWindow({
             // _id variant (used after history hydration where message.id = _id)
             keys.add(`${prev._id}::${prev._id}-choice-spec`)
             // uiMessageId variant (used during live session where message.id = AI SDK id)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const uiId = (prev as any).uiMessageId as string | undefined
             if (uiId && uiId !== String(prev._id)) {
               keys.add(`${uiId}::${uiId}-choice-spec`)
@@ -2665,6 +2666,7 @@ export function ChatWindow({
               // Remove _id variant
               const idKey = `${prev._id}::${prev._id}-choice-spec`
               // Remove uiMessageId variant (live session uses this)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const uiId = (prev as any).uiMessageId as string | undefined
               const uiKey = uiId && uiId !== String(prev._id) ? `${uiId}::${uiId}-choice-spec` : null
               setPersistedChoiceKeys((p) => {

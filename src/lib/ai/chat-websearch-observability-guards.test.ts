@@ -3,7 +3,7 @@ import fs from "node:fs"
 import path from "node:path"
 
 const repoRoot = path.resolve(__dirname, "..", "..", "..")
-const routePath = path.join(repoRoot, "src/app/api/chat/route.ts")
+const _routePath = path.join(repoRoot, "src/app/api/chat/route.ts")
 const searchDecisionPath = path.join(repoRoot, "src/lib/chat-harness/context/resolve-search-decision.ts")
 const telemetryPath = path.join(repoRoot, "src/lib/ai/telemetry.ts")
 

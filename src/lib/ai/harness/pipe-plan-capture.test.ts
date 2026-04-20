@@ -57,17 +57,21 @@ describe("pipePlanCapture", () => {
 
     // Should have text before, plan data part, text after
     const planParts = output.filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (p: any) => p.type === PLAN_DATA_PART_TYPE
     )
     expect(planParts).toHaveLength(1)
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const plan = (planParts[0] as any).data.spec
     expect(plan.stage).toBe("research")
     expect(plan.summary).toBe("Investigating the problem")
     expect(plan.tasks).toHaveLength(2)
 
     // Text before and after should be emitted
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const textParts = output.filter((p: any) => p.type === "text-delta")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allText = textParts.map((p: any) => p.textDelta).join("")
     expect(allText).toContain("Hello world")
     expect(allText).toContain("After fence")
@@ -82,10 +86,12 @@ describe("pipePlanCapture", () => {
     const output = await collectOutput(pipePlanCapture(input))
 
     const planParts = output.filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (p: any) => p.type === PLAN_DATA_PART_TYPE
     )
     expect(planParts).toHaveLength(1)
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const plan = (planParts[0] as any).data.spec
     expect(plan.stage).toBe("research")
     expect(plan.tasks).toHaveLength(2)
@@ -103,12 +109,15 @@ describe("pipePlanCapture", () => {
 
     // No plan data part — parse fails
     const planParts = output.filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (p: any) => p.type === PLAN_DATA_PART_TYPE
     )
     expect(planParts).toHaveLength(0)
 
     // Content should be re-emitted as text
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const textParts = output.filter((p: any) => p.type === "text-delta")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allText = textParts.map((p: any) => p.textDelta).join("")
     expect(allText).toContain(rawContent)
 
@@ -132,10 +141,12 @@ describe("pipePlanCapture", () => {
     const output = await collectOutput(pipePlanCapture(input))
 
     const planParts = output.filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (p: any) => p.type === PLAN_DATA_PART_TYPE
     )
     expect(planParts).toHaveLength(1)
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const plan = (planParts[0] as any).data.spec
     expect(plan.stage).toBe("research")
     expect(plan.tasks).toHaveLength(2)
@@ -158,10 +169,12 @@ describe("pipePlanCapture", () => {
     const output = await collectOutput(pipePlanCapture(input))
 
     const planParts = output.filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (p: any) => p.type === PLAN_DATA_PART_TYPE
     )
     expect(planParts).toHaveLength(1)
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const plan = (planParts[0] as any).data.spec
     expect(plan.stage).toBe("research")
   })
@@ -174,12 +187,15 @@ describe("pipePlanCapture", () => {
     const output = await collectOutput(pipePlanCapture(input))
 
     // Should NOT produce a plan data part
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const planParts = output.filter((p: any) => p.type === PLAN_DATA_PART_TYPE)
     expect(planParts).toHaveLength(0)
 
     // All original text should pass through
     const allText = output
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((p: any) => p.type === "text-delta")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((p: any) => p.textDelta ?? p.delta)
       .join("")
     expect(allText).toContain("stage: three")
@@ -201,9 +217,11 @@ describe("pipePlanCapture", () => {
 
     const output = await collectOutput(pipePlanCapture(input))
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const toolCalls = output.filter((p: any) => p.type === "tool-call")
     expect(toolCalls).toHaveLength(2)
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stepFinishes = output.filter((p: any) => p.type === "step-finish")
     expect(stepFinishes).toHaveLength(1)
   })
