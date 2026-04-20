@@ -267,6 +267,13 @@ export function buildOnFinishHandler(
             : ""
         const rawText = (allStepsText || (typeof text === "string" ? text : "")).trim()
         const normalizedText = rawText.replace(
+            // Strip <think>...</think> blocks — model reasoning that leaked into
+            // text output. Streaming path handles this via pipeThinkTagStrip, but
+            // onFinish receives raw text before transforms. Must strip here too
+            // to prevent persisted messages from rendering reasoning in chat.
+            /<think>[\s\S]*?<\/think>/g,
+            ""
+        ).replace(
             /```yaml-spec[\s\S]*?```/g,
             ""
         ).replace(
