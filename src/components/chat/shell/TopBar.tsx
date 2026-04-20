@@ -137,16 +137,17 @@ export function TopBar({
                     href={`/naskah/${conversationId}`}
                     target="_blank"
                     className={cn(
-                      "inline-flex items-center gap-2 rounded-action px-3 py-1.5 text-sm",
-                      "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
-                      "transition-colors duration-150",
+                      "inline-flex items-center gap-2 rounded-action px-3 py-1.5 text-xs font-medium",
+                      "bg-[var(--chat-info)] text-white",
+                      "hover:brightness-110",
+                      "transition-all duration-150",
                     )}
                   >
                     <span>Pratinjau</span>
                     {naskahUpdatePending && (
                       <span
                         data-testid="naskah-update-dot"
-                        className="inline-flex h-2.5 w-2.5 rounded-full bg-[var(--chat-info)]"
+                        className="inline-flex h-2 w-2 rounded-full bg-white/80"
                       />
                     )}
                   </Link>
@@ -163,8 +164,8 @@ export function TopBar({
               <span
                 aria-disabled="true"
                 className={cn(
-                  "inline-flex items-center rounded-action px-3 py-1.5 text-sm",
-                  "text-[var(--chat-muted-foreground)] opacity-40",
+                  "inline-flex items-center rounded-action px-3 py-1.5 text-xs font-medium",
+                  "bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]",
                   "cursor-default select-none",
                 )}
               >
