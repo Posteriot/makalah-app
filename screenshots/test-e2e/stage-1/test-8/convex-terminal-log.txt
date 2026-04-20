@@ -1,0 +1,285 @@
+eriksupit@eriks-MacBook-Pro agent-harness % npm rundev
+Unknown command: "rundev"
+
+To see a list of supported npm commands, run:
+  npm help
+eriksupit@eriks-MacBook-Pro agent-harness % npm run dev
+
+> web@0.1.0 dev
+> node --dns-result-order=ipv4first node_modules/next/dist/bin/next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.68:3000
+- Environments: .env.local
+- Experiments (use with caution):
+  · clientTraceMetadata
+
+✓ Starting...
+✓ Ready in 3.2s
+ GET / 200 in 3.0s (compile: 2.1s, proxy.ts: 202ms, render: 660ms)
+ GET /api/auth/get-session 200 in 3.5s (compile: 2.1s, proxy.ts: 8ms, render: 1353ms)
+ GET /sign-in?redirect_url=%2Fchat 200 in 911ms (compile: 775ms, proxy.ts: 18ms, render: 118ms)
+ GET /api/auth/convex/token 200 in 980ms (compile: 26ms, proxy.ts: 12ms, render: 942ms)
+ GET /api/auth/get-session 200 in 509ms (compile: 41ms, proxy.ts: 48ms, render: 420ms)
+ GET /api/auth/convex/token 200 in 1015ms (compile: 14ms, proxy.ts: 90ms, render: 911ms)
+ GET /api/auth/convex/token 200 in 500ms (compile: 49ms, proxy.ts: 17ms, render: 434ms)
+ GET /api/auth/convex/token 200 in 434ms (compile: 25ms, proxy.ts: 22ms, render: 387ms)
+○ Compiling /chat ...
+[EMPTY-STATE] rendering empty state {
+  conversationId: null,
+  isCreatingChat: false,
+  isAuthenticated: false,
+  userId: 'null'
+}
+ GET /chat 200 in 4.5s (compile: 3.1s, proxy.ts: 19ms, render: 1374ms)
+ GET /api/auth/get-session 200 in 437ms (compile: 36ms, proxy.ts: 22ms, render: 379ms)
+ GET /api/auth/convex/token 200 in 393ms (compile: 11ms, proxy.ts: 5ms, render: 377ms)
+ GET /api/auth/convex/token 200 in 442ms (compile: 12ms, proxy.ts: 5ms, render: 425ms)
+ GET /chat/j57eh4fbpp3nn1yqp95emzhmcs855nzd 200 in 663ms (compile: 616ms, proxy.ts: 9ms, render: 39ms)
+[USER-INPUT] type=prompt text="Ayo bikin paper. Ini ideku: Pengaruh penggunaan chatbot llm sejenis chatgpt oleh siswa SD, apakah berdampak pada kemundu..."
+[HARNESS][persistence] createRun runId=r97asr0n3ty1ttcp029gev2b4s855g58 ownerToken=b69f8156-ed62-445d-947f-120f89f3ee3f
+[HARNESS][event] run_started eventId=274d311c-2e50-4f9a-abce-bbd6b211cbcb correlationId=chat-1776632437453-ua592e65 runId=r97asr0n3ty1ttcp029gev2b4s855g58
+[HARNESS][event] user_message_received eventId=8516e229-45e1-474b-a839-a22ac0bb9598 correlationId=chat-1776632437453-ua592e65 runId=r97asr0n3ty1ttcp029gev2b4s855g58
+[⏱ PAPER_PROMPT] requestId=chat-1776632437453-ua592e65 conversationId=j57eh4fbpp3nn1yqp95emzhmcs855nzd phase=paperPrompt.getSession total=367ms found=true
+[⏱ PAPER_PROMPT] requestId=chat-1776632437453-ua592e65 conversationId=j57eh4fbpp3nn1yqp95emzhmcs855nzd phase=paperPrompt.resolveStageInstructions total=409ms source=skill
+[⏱ PAPER_PROMPT] requestId=chat-1776632437453-ua592e65 conversationId=j57eh4fbpp3nn1yqp95emzhmcs855nzd phase=paperPrompt.getInvalidatedArtifacts total=489ms count=0
+[⏱ PAPER_PROMPT] requestId=chat-1776632437453-ua592e65 conversationId=j57eh4fbpp3nn1yqp95emzhmcs855nzd phase=paperPrompt.listArtifacts total=868ms count=0
+[⏱ PAPER_PROMPT] requestId=chat-1776632437453-ua592e65 conversationId=j57eh4fbpp3nn1yqp95emzhmcs855nzd phase=paperPrompt.parallelBatch total=869ms stageInstructions=fulfilled artifacts=fulfilled invalidated=fulfilled
+[PLAN-CONTEXT] stage=gagasan injected=no-plan-yet t=1776632442873
+[F1-F6-TEST] PaperPrompt {
+  stage: 'gagasan',
+  status: 'drafting',
+  stageInstructionSource: 'skill',
+  activeSkillId: 'gagasan-skill',
+  hasArtifactSummaries: false,
+  hasCurrentArtifact: false
+}
+[⏱ PAPER_PROMPT] requestId=chat-1776632437453-ua592e65 conversationId=j57eh4fbpp3nn1yqp95emzhmcs855nzd phase=paperPrompt.total total=1240ms hasPrompt=true stage=gagasan
+[PAPER][session-resolve] stage=gagasan status=drafting hasPrompt=true skillFallback=false stageInstructionSource=skill postEditResendReset=true
+[FREE-TEXT-CONTEXT] stage=gagasan plan=none hasArtifact=false finalizeHint=false
+[EXACT-SOURCE-RESOLUTION] mode=none reason=not-an-exact-source-request
+[F1-F6-TEST] SearchPolicy { stage: 'gagasan', policy: 'active' }
+[SearchDecision] Gagasan first turn: blocking auto-search — model discusses first, offers search via choice card
+[SearchExecution] mode=off, searchRequired=false, chain=[google-grounding,perplexity]
+[HARNESS-FLOW] gagasan-first-turn: discuss-first → tools path (no search). Model will emit plan + discussion + search choice card.
+[Context Budget] 13,122 tokens estimated (2% of 800,000 threshold) | 8 messages | window: 1,000,000
+[HARNESS][persistence] recordPolicyState runId=r97asr0n3ty1ttcp029gev2b4s855g58 currentBoundary=read_only
+[HARNESS][event] execution_boundary_evaluated eventId=3554285f-9cca-452b-a6bc-b087b6e0f261 correlationId=chat-1776632437453-ua592e65 runId=r97asr0n3ty1ttcp029gev2b4s855g58
+[HARNESS][persistence] startStep runId=r97asr0n3ty1ttcp029gev2b4s855g58 stepIndex=1
+[⏱ TOOLS-STREAM][chat-1776632437453-ua592e65] streamText_started
+[⏱ TOOL-BOUNDARY][chat-1776632437453-ua592e65] step_start stepNumber=0 activeTools=all elapsedSinceStreamStart=26ms
+[HARNESS][event] step_started eventId=c078a96b-16ae-4e96-a9df-cbb1f69f6663 correlationId=chat-1776632437453-ua592e65 runId=r97asr0n3ty1ttcp029gev2b4s855g58
+[⏱ TOOLS-STREAM][chat-1776632437453-ua592e65] firstTextDelta=3670ms (time-to-first-text from streamText start)
+[⏱ TOOLS-STREAM][chat-1776632437453-ua592e65] gap=328ms after chunk#138 reasoningBetween=false
+[PLAN-CAPTURE] parsed (fenced) stage=gagasan tasks=4
+[⏱ TOOLS-STREAM][chat-1776632437453-ua592e65] gap=822ms after chunk#171 reasoningBetween=false
+[⏱ TOOL-BOUNDARY][chat-1776632437453-ua592e65] step_finish finishReason=stop tools=[none] usage=in:14286/out:762 elapsedSinceStreamStart=5970ms
+[⏱ CHUNK-TAP][chat-1776632437453-ua592e65] layer=afterToUIMessageStream cause=finish textChunks=11 textChars=2617 totalChunks=20
+[⏱ CHUNK-TAP][chat-1776632437453-ua592e65] layer=afterPipePlanCapture cause=finish textChunks=9 textChars=2164 totalChunks=19
+[⏱ CHUNK-TAP][chat-1776632437453-ua592e65] layer=afterPipeYamlRender cause=finish textChunks=1244 textChars=1244 totalChunks=1291
+[⏱ CHUNK-TAP][chat-1776632437453-ua592e65] layer=afterUITextCoalesce cause=finish textChunks=171 textChars=1244 totalChunks=311
+[⏱ TOOLS-STREAM][chat-1776632437453-ua592e65] finish_received elapsedFromStart=5982ms
+[CHOICE-CARD][yaml-capture] stage=gagasan specKeys=root,elements,state
+[F1-F6-TEST] ChoiceCardSpec { elements: "card:ChoiceCardShell, option-1:ChoiceOptionButton, submit-btn:ChoiceSubmitButton", hasSubmitButton: true }
+[⏱ TOOLS-STREAM][chat-1776632437453-ua592e65] finish_written t=5987ms composeTotal=2317ms
+[⏱ TOOLS-STREAM][chat-1776632437453-ua592e65] summary: total=5987ms textChunks=171 composedChars=1244 maxGap=822ms gapsOver200ms=2 reasoningChunks=95 reasoningInterruptions=1
+[⏱ STREAM-SMOOTHNESS][chat-1776632437453-ua592e65] pass=y reason=ok avgCharsPerChunk=7.27 maxInterChunkGapMs=822 textChunks=171 composedChars=1244
+[⏱ ARTIFACT-ORDERING][chat-1776632437453-ua592e65] verdict=no_artifact artifactToolCount=0 lastTextAtMs=1776632455987 firstArtifactAtMs=null lastArtifactAtMs=null orderingGapMs=null
+[STEP-TIMING] step=0 stage=gagasan tools=[] elapsed=7329ms (final)
+ POST /api/chat 200 in 21.1s (compile: 1101ms, proxy.ts: 8ms, render: 20.0s)
+[HARNESS][event] verification_started eventId=475ebebf-1f4b-410a-969b-6b09a968e0ee correlationId=chat-1776632437453-ua592e65 runId=r97asr0n3ty1ttcp029gev2b4s855g58
+[HARNESS][event] verification_completed eventId=9572ffe2-a7af-49b4-bc1b-5ad7bbd92dc5 correlationId=chat-1776632437453-ua592e65 runId=r97asr0n3ty1ttcp029gev2b4s855g58
+[⏱ ONFINISH][chat-1776632437453-ua592e65] step=verifyStep elapsed=1399ms
+[VERIFICATION][blocker] stage=gagasan: plan incomplete — validation not submitted
+[CHOICE-CARD][guaranteed] stage=gagasan source=model
+[PLAN-SNAPSHOT] stage=gagasan tasks=4 autoCompleted=false detail=[0:complete:Mendiskusikan ide awal dan ruang lingkup, 1:in-progress:Mencari referensi awal (akademik dan non, 2:pending:Menganalisis referensi untuk menemukan c, 3:pending:Merumuskan ide kasar, analisis, dan sudu]
+[⏱ ONFINISH][chat-1776632437453-ua592e65] step=saveAssistantMsg elapsed=708ms
+[CONVEX M(paperSessions:updatePlan)] [INFO] '[PAPER][updatePlan] stage=gagasan tasks=4'
+[PLAN-CAPTURE] persisted stage=gagasan tasks=4 elapsed=23805ms
+[⏱ ONFINISH][chat-1776632437453-ua592e65] step=updatePlan elapsed=464ms
+[⏱ ONFINISH][chat-1776632437453-ua592e65] step=recordUsage elapsed=850ms
+[⏱ ONFINISH][chat-1776632437453-ua592e65] step=logTelemetry elapsed=1ms
+[⏱ ONFINISH][chat-1776632437453-ua592e65] step=updateTitleScheduled elapsed=1ms
+[HARNESS][persistence] completeStep stepId=r572n655ajbs3jn5zfpn163fys854e2d status=completed blockers=1
+[⏱ ONFINISH][chat-1776632437453-ua592e65] step=completeStep elapsed=519ms
+[⏱ ONFINISH][chat-1776632437453-ua592e65] step=aggregateEmits elapsed=0ms
+[⏱ ONFINISH][chat-1776632437453-ua592e65] total=3948ms breakdown=verifyStep=1399,saveAssistantMsg=708,updatePlan=464,recordUsage=850,logTelemetry=1,updateTitleScheduled=1,completeStep=519,aggregateEmits=0
+[HARNESS][event] step_completed eventId=3737ae6e-2958-4566-a9f6-01baefe5270d correlationId=chat-1776632437453-ua592e65 runId=r97asr0n3ty1ttcp029gev2b4s855g58
+[HARNESS][event] agent_output_received eventId=cf839b49-0e33-49ae-a28e-1b1406767221 correlationId=chat-1776632437453-ua592e65 runId=r97asr0n3ty1ttcp029gev2b4s855g58
+[CHOICE-CARD][event-received] type=paper.choice.submit stage=gagasan selected=option-1 workflowAction=continue_discussion
+[USER-INPUT] type=choice-selection stage=gagasan selected=option-1
+[HARNESS][persistence] createRun runId=r97f6wnq3y6yp8hksmq4kmngtd854mxy ownerToken=2dc4e3f7-c9a6-4d23-b81c-7dbd9fdf0c56
+[HARNESS][event] run_started eventId=4aec66ad-5faa-41a9-801c-fb228d863264 correlationId=chat-1776632465675-iqpb1rvf runId=r97f6wnq3y6yp8hksmq4kmngtd854mxy
+[HARNESS][event] user_message_received eventId=63fc8be7-a7c0-4c0c-8659-b62e4f728f90 correlationId=chat-1776632465675-iqpb1rvf runId=r97f6wnq3y6yp8hksmq4kmngtd854mxy
+[⏱ PAPER_PROMPT] requestId=chat-1776632465675-iqpb1rvf conversationId=j57eh4fbpp3nn1yqp95emzhmcs855nzd phase=paperPrompt.getSession total=368ms found=true
+[⏱ PAPER_PROMPT] requestId=chat-1776632465675-iqpb1rvf conversationId=j57eh4fbpp3nn1yqp95emzhmcs855nzd phase=paperPrompt.resolveStageInstructions total=383ms source=skill
+[⏱ PAPER_PROMPT] requestId=chat-1776632465675-iqpb1rvf conversationId=j57eh4fbpp3nn1yqp95emzhmcs855nzd phase=paperPrompt.listArtifacts total=426ms count=0
+[⏱ PAPER_PROMPT] requestId=chat-1776632465675-iqpb1rvf conversationId=j57eh4fbpp3nn1yqp95emzhmcs855nzd phase=paperPrompt.getInvalidatedArtifacts total=924ms count=0
+[⏱ PAPER_PROMPT] requestId=chat-1776632465675-iqpb1rvf conversationId=j57eh4fbpp3nn1yqp95emzhmcs855nzd phase=paperPrompt.parallelBatch total=927ms stageInstructions=fulfilled artifacts=fulfilled invalidated=fulfilled
+[PLAN-CONTEXT] stage=gagasan injected=plan progress=1/4 t=1776632470623
+[F1-F6-TEST] PaperPrompt {
+  stage: 'gagasan',
+  status: 'drafting',
+  stageInstructionSource: 'skill',
+  activeSkillId: 'gagasan-skill',
+  hasArtifactSummaries: false,
+  hasCurrentArtifact: false
+}
+[⏱ PAPER_PROMPT] requestId=chat-1776632465675-iqpb1rvf conversationId=j57eh4fbpp3nn1yqp95emzhmcs855nzd phase=paperPrompt.total total=1299ms hasPrompt=true stage=gagasan
+[PAPER][session-resolve] stage=gagasan status=drafting hasPrompt=true skillFallback=false stageInstructionSource=skill
+[HARNESS][event] user_decision_received eventId=01debb01-96c5-4374-948a-d8f03ebb3efd correlationId=chat-1776632465675-iqpb1rvf runId=r97f6wnq3y6yp8hksmq4kmngtd854mxy
+[HARNESS][event] workflow_transition_requested eventId=86390fd9-a023-44a2-b539-60b08a818a66 correlationId=chat-1776632465675-iqpb1rvf runId=r97f6wnq3y6yp8hksmq4kmngtd854mxy
+[HARNESS][event] workflow_transition_applied eventId=c2d08c19-c2a7-4d12-a646-fc74c1dd0575 correlationId=chat-1776632465675-iqpb1rvf runId=r97f6wnq3y6yp8hksmq4kmngtd854mxy
+[CHOICE][exploration-loop] stage=gagasan action=continue_discussion reason=workflow_action_continue_discussion contract=v2
+[PAPER][post-choice-context] {
+  stage: 'gagasan',
+  stageStatus: 'drafting',
+  workflowAction: 'continue_discussion',
+  decisionMode: 'unknown',
+  resolvedAction: 'continue_discussion',
+  workflowClass: 'discussion_choice',
+  contractVersion: 'v2',
+  reason: 'workflow_action_continue_discussion',
+  hasCurrentArtifact: false
+}
+[CONVEX M(paperSessions:stampDecisionEpoch)] [INFO] '[PAPER][stamp-epoch] stage=gagasan epoch=1'
+[CANCEL-DECISION] epoch stamped: 1 for stage=gagasan
+[EXACT-SOURCE-RESOLUTION] mode=none reason=not-an-exact-source-request
+[F1-F6-TEST] SearchPolicy { stage: 'gagasan', policy: 'active' }
+[PAPER][post-choice-search-context] {
+  stage: 'gagasan',
+  searchAlreadyDone: false,
+  recentSourcesCount: 0,
+  hasRecentSourcesInDb: false,
+  ragChunksAvailable: null
+}
+[PAPER][post-choice-search-context-rag] {
+  stage: 'gagasan',
+  searchAlreadyDone: false,
+  recentSourcesCount: 0,
+  hasRecentSourcesInDb: false,
+  ragChunksAvailable: false
+}
+[⏱ LATENCY] searchRouter=1355ms decision=SEARCH intent=search confidence=1
+[SearchDecision] Unified router: User explicitly requested to search for initial references regarding the impact of LLM chatbots on elementary school students. This is a direct search request and aligns with the 'gagasan' stage policy which requires initial references., confidence: 1, searchAlreadyDone: false, searchRequestedByPolicy: true
+[F1-F6-TEST] SearchDecision {
+  stage: 'gagasan',
+  policy: 'active',
+  search: true,
+  reason: "User explicitly requested to search for initial references regarding the impact of LLM chatbots on elementary school students. This is a direct search request and aligns with the 'gagasan' stage policy which requires initial references.",
+  note: 'none'
+}
+[SearchExecution] mode=google-grounding, searchRequired=true, chain=[google-grounding,perplexity]
+[Context Budget] 13,723 tokens estimated (2% of 800,000 threshold) | 9 messages | window: 1,000,000
+[⏱ RETRIEVER][chat-1776632465675-iqpb1rvf] result_created name=google-grounding t=1ms
+ GET /api/auth/get-session 200 in 1053ms (compile: 34ms, proxy.ts: 10ms, render: 1008ms)
+[⏱ RETRIEVER][chat-1776632465675-iqpb1rvf] sources_ready name=google-grounding t=13208ms count=42
+[⏱ RETRIEVER][chat-1776632465675-iqpb1rvf] metadata_ready name=google-grounding t=13209ms keys=google
+[⏱ RETRIEVER][chat-1776632465675-iqpb1rvf] text_ready name=google-grounding t=13209ms chars=4863
+[⏱ RETRIEVER][chat-1776632465675-iqpb1rvf] extract_start name=google-grounding t=13210ms
+[google-grounding][extract-debug] metadata snapshot {
+  sdkSourcesCount: 42,
+  providerKeys: [ 'google' ],
+  googleKeys: [
+    'promptFeedback',
+    'groundingMetadata',
+    'urlContextMetadata',
+    'safetyRatings',
+    'usageMetadata'
+  ],
+  hasGroundingMetadata: true,
+  groundingChunks: 42,
+  groundingSupports: 19
+}
+[normalizeGoogleGrounding][debug] {
+  chunksRaw: 42,
+  validChunkSources: 42,
+  invalidChunkUrlCount: 0,
+  supportsRaw: 19,
+  validSupports: 19,
+  citationsBeforeFilter: 105,
+  fallbackNoSupportsUsed: false
+}
+[normalizeGoogleGrounding][debug-filter] { citationsBeforeFilter: 105, citationsAfterFilter: 105 }
+[google-grounding][extract-debug] citation pipeline { rawCount: 105, dedupedCount: 42, cappedCount: 20 }
+[⏱ RETRIEVER][chat-1776632465675-iqpb1rvf] extract_done name=google-grounding t=13220ms citations=20
+[⏱ RETRIEVER][chat-1776632465675-iqpb1rvf] summary name=google-grounding created=1ms text=13210ms sources=13208ms metadata=13209ms extract=10ms total=13220ms citations=20
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] Phase1 retriever="google-grounding" textGen=13210ms extractSources=10ms total=13220ms citations=20 text=4863chars
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] Phase1 TOTAL=13221ms tried=google-grounding winner=google-grounding
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] Phase1.5 proxyResolve top7=2982ms proxies=7
+[Orchestrator][chat-1776632465675-iqpb1rvf] Phase 1.5: fetching content for 7 URLs...
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] FetchWeb PRIMARY [1/7] ✓ 174ms route=html_standard https://fies.sch.id/pengaruh-teknologi-ai-terhadap-pendidikan-sekolah-
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] FetchWeb PRIMARY [7/7] ✓ 449ms route=html_standard https://www.discoveryeducation.com/blog/educational-leadership/ai-in-e
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] FetchWeb PRIMARY [4/7] ✓ 531ms route=html_standard https://s2dikdas.fip.unesa.ac.id/post/penerapan-ai-dalam-meningkatkan-
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] FetchWeb PRIMARY [2/7] ✓ 577ms route=html_standard https://s3pendidikandasar.fip.unesa.ac.id/post/peran-chatgpt-dalam-men
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] FetchWeb PRIMARY [3/7] ✓ 984ms route=html_standard https://smpitbm.sch.id/blog/detail/blog-manfaat-dan-kerugian-ai-bagi-p
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] FetchWeb PRIMARY [5/7] ✓ 1325ms route=html_standard https://integranxt.com/blog/the-impact-of-large-language-models-on-edu
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] FetchWeb PRIMARY [6/7] ✓ 2073ms route=html_standard https://vaidik.ai/impact-of-large-language-models-on-education/
+[FetchWeb] [chat-1776632465675-iqpb1rvf] Done: 7/7 succeeded (fetch=7, tavily=0)
+[Orchestrator][chat-1776632465675-iqpb1rvf] Phase 1.5 done in 2088ms
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] Phase1.5 FetchWeb total=2109ms enriched=7/20 urls=7
+[SearchContext] Built context: 20 sources (7 verified), 60196 chars total
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] Phase2 contextBuild=1ms sysMsgCount=6 totalMsgCount=9
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] Phase2 firstToken=3426ms (time-to-first-text from compose start)
+[⏱ STUTTER][chat-1776632465675-iqpb1rvf] gap=303ms after chunk#88 reasoningBetween=false isDrafting=true
+[⏱ STUTTER][chat-1776632465675-iqpb1rvf] gap=270ms after chunk#128 reasoningBetween=false isDrafting=true
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] proxyResolve (parallel) 4596ms for 13 URLs
+[⏱ STUTTER][chat-1776632465675-iqpb1rvf] gap=299ms after chunk#159 reasoningBetween=false isDrafting=true
+[⏱ STUTTER][chat-1776632465675-iqpb1rvf] gap=252ms after chunk#195 reasoningBetween=false isDrafting=true
+[⏱ STUTTER][chat-1776632465675-iqpb1rvf] gap=406ms after chunk#232 reasoningBetween=false isDrafting=true
+[⏱ STUTTER][chat-1776632465675-iqpb1rvf] gap=270ms after chunk#276 reasoningBetween=false isDrafting=true
+[PLAN-CAPTURE] parsed (fenced) stage=gagasan tasks=3
+[CHOICE-CARD][yaml-capture] compose stage=gagasan specKeys=root,elements,state
+[F1-F6-TEST] ChoiceCardSpec { elements: "card:ChoiceCardShell, option-1:ChoiceOptionButton, option-2:ChoiceOptionButton, option-3:ChoiceOptionButton, submit-btn:ChoiceSubmitButton", hasSubmitButton: true, submitInRootChildren: true }
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] Phase2 composeTotal=7653ms textChunks=280 composedChars=2021
+[⏱ STUTTER][chat-1776632465675-iqpb1rvf] summary: maxGap=406ms gapsOver200ms=6 reasoningInterruptions=1 totalReasoningChunks=93 isDrafting=true
+[⏱ LIFECYCLE][chat-1776632465675-iqpb1rvf] finish-handler: citations+reasoning written, starting persistence
+[CONVEX M(paperSessions:updatePlan)] [INFO] '[PAPER][updatePlan] stage=gagasan tasks=3'
+[PLAN-CAPTURE] persisted (search path) stage=gagasan tasks=3 elapsed=?ms
+[CHOICE-CARD][guaranteed][search] stage=gagasan source=model-or-guaranteed
+[PLAN-SNAPSHOT][search] stage=gagasan tasks=3 detail=[0:complete:Mengidentifikasi potensi dampak positif , 1:complete:Mengidentifikasi potensi dampak negatif , 2:in-progress:Merumuskan opsi fokus penelitian berdasa]
+[CONVEX M(paperSessions:appendSearchReferences)] [LOG] '[appendSearchReferences] Appended 19 refs to stage gagasan (also to referensiAwal)'
+[Paper] Auto-persisted 19 search refs to stageData
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] onFinish(DB writes)=1525ms
+[⏱ LIFECYCLE][chat-1776632465675-iqpb1rvf] finish-handler: onFinish done, writing finish event
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] ORCHESTRATOR MAIN=27503ms (Phase1=27503ms includes all)
+[F1-F6-TEST] ComposeGuard PASS { sourceCount: 20, composedLength: 2019 }
+[⏱ LIFECYCLE][chat-1776632465675-iqpb1rvf] finish-handler: finish event written, stream closing
+[⏱ LIFECYCLE][chat-1776632465675-iqpb1rvf] post-finish: starting detached exact-source persistence
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] Exact source persist starting (detached): 7 sources
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] EXECUTE SETTLE=27506ms (stream will close, client transitions to ready)
+ POST /api/chat 200 in 41s (compile: 15ms, proxy.ts: 8ms, render: 41s)
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] Exact source persist [1/7] https://fies.sch.id/pengaruh-teknologi-ai-terhadap-pendidika... 537ms
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] Exact source persist [2/7] https://s3pendidikandasar.fip.unesa.ac.id/post/peran-chatgpt... 414ms
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] Exact source persist [3/7] https://smpitbm.sch.id/blog/detail/blog-manfaat-dan-kerugian... 412ms
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] Exact source persist [4/7] https://s2dikdas.fip.unesa.ac.id/post/penerapan-ai-dalam-men... 423ms
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] Exact source persist [5/7] https://integranxt.com/blog/the-impact-of-large-language-mod... 423ms
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] Exact source persist [6/7] https://vaidik.ai/impact-of-large-language-models-on-educati... 421ms
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] Exact source persist [7/7] https://www.discoveryeducation.com/blog/educational-leadersh... 440ms
+[⏱ LATENCY] [chat-1776632465675-iqpb1rvf] Exact source persist ALL DONE total=3071ms sources=7
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] RAG ingest starting (fire-and-forget): 7 sources
+[Ingestion Cleanup] source=web before=4033 after=4033 diff=0
+[⏱ LATENCY] RAG ingest source=https://fies.sch.id/pengaruh-teknologi-ai-terhadap-pendidika chunks=3 chunk=2ms embed=1259ms store=478ms total=1739ms contentChars=4033
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] RAG ingest [1/7] https://fies.sch.id/pengaruh-teknologi-ai-terhadap-pendidika... 2127ms
+[Ingestion Cleanup] source=web before=6500 after=6500 diff=0
+[⏱ LATENCY] RAG ingest source=https://s3pendidikandasar.fip.unesa.ac.id/post/peran-chatgpt chunks=4 chunk=0ms embed=2316ms store=539ms total=2855ms contentChars=6500
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] RAG ingest [2/7] https://s3pendidikandasar.fip.unesa.ac.id/post/peran-chatgpt... 3284ms
+[Ingestion Cleanup] source=web before=2825 after=2825 diff=0
+[⏱ LATENCY] RAG ingest source=https://smpitbm.sch.id/blog/detail/blog-manfaat-dan-kerugian chunks=2 chunk=0ms embed=1331ms store=440ms total=1771ms contentChars=2825
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] RAG ingest [3/7] https://smpitbm.sch.id/blog/detail/blog-manfaat-dan-kerugian... 2158ms
+[Ingestion Cleanup] source=web before=8253 after=8253 diff=0
+[⏱ LATENCY] RAG ingest source=https://s2dikdas.fip.unesa.ac.id/post/penerapan-ai-dalam-men chunks=5 chunk=0ms embed=1835ms store=602ms total=2437ms contentChars=8253
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] RAG ingest [4/7] https://s2dikdas.fip.unesa.ac.id/post/penerapan-ai-dalam-men... 2818ms
+[Ingestion Cleanup] source=web before=8520 after=8520 diff=0
+[⏱ LATENCY] RAG ingest source=https://integranxt.com/blog/the-impact-of-large-language-mod chunks=5 chunk=0ms embed=1215ms store=598ms total=1813ms contentChars=8520
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] RAG ingest [5/7] https://integranxt.com/blog/the-impact-of-large-language-mod... 2202ms
+[Ingestion Cleanup] source=web before=7867 after=7867 diff=0
+[⏱ LATENCY] RAG ingest source=https://vaidik.ai/impact-of-large-language-models-on-educati chunks=6 chunk=0ms embed=878ms store=710ms total=1588ms contentChars=7867
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] RAG ingest [6/7] https://vaidik.ai/impact-of-large-language-models-on-educati... 1972ms
+[Ingestion Cleanup] source=web before=11929 after=11929 diff=0
+[⏱ LATENCY] RAG ingest source=https://www.discoveryeducation.com/blog/educational-leadersh chunks=24 chunk=0ms embed=2275ms store=926ms total=3201ms contentChars=11929
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] RAG ingest [7/7] https://www.discoveryeducation.com/blog/educational-leadersh... 3576ms
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] RAG ingest ALL DONE total=18138ms sources=7
+[⏱ LATENCY][chat-1776632465675-iqpb1rvf] DETACHED ALL DONE total=48715ms (from request start, includes persist+RAG)
+
