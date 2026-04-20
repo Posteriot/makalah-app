@@ -32,16 +32,18 @@ document.addEventListener('DOMContentLoaded', () => {
         revealObserver.observe(el);
     });
 
-    // 3. Mouse move effect for Hero Glow & Bento Cards
+    // 3. Mouse move effect & Parallax Scroll (Smooth Lerp)
     const glowBg = document.querySelector('.glow-bg');
     const bentoCards = document.querySelectorAll('.bento-card');
 
+    let mouseX = 0, mouseY = 0;
+    let targetX = 0, targetY = 0;
+    let currentScroll = window.scrollY || window.pageYOffset;
+    let targetScroll = currentScroll;
+
     document.addEventListener('mousemove', (e) => {
-        if (glowBg) {
-            const xVal = (e.clientX / window.innerWidth - 0.5) * 40;
-            const yVal = (e.clientY / window.innerHeight - 0.5) * 40;
-            glowBg.style.transform = `translate(${xVal}px, ${yVal}px)`;
-        }
+        targetX = (e.clientX / window.innerWidth - 0.5) * 40;
+        targetY = (e.clientY / window.innerHeight - 0.5) * 40;
 
         bentoCards.forEach(card => {
             const rect = card.getBoundingClientRect();
@@ -52,13 +54,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 4. Parallax Scroll for Background Glow
     window.addEventListener('scroll', () => {
-        const scrolled = window.pageYOffset;
-        if (glowBg) {
-            glowBg.style.top = `${scrolled * 0.3}px`;
-        }
+        // Scroll event kept if future scroll interactions are needed
     });
+
+    function smoothAnimationLoop() {
+        mouseX += (targetX - mouseX) * 0.08;
+        mouseY += (targetY - mouseY) * 0.08;
+
+        if (glowBg) {
+            // Only apply mouse translation. Parallax scroll creates viewport detachment 
+            // and ruins the fixed grid background illusion under the header.
+            glowBg.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0)`;
+        }
+
+        requestAnimationFrame(smoothAnimationLoop);
+    }
+    
+    // Initialize animation loop
+    smoothAnimationLoop();
 
     // 5. Pricing Toggle Interactivity
     const pricingToggle = document.getElementById('pricing-toggle');
@@ -77,6 +91,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 p.style.transform = 'scale(0.95)';
                 setTimeout(() => p.style.transform = 'scale(1)', 150);
             });
+        });
+
+        if (monthlyLabel && annualLabel) {
+            monthlyLabel.addEventListener('click', () => {
+                if (!monthlyLabel.classList.contains('active')) pricingToggle.click();
+            });
+            annualLabel.addEventListener('click', () => {
+                if (!annualLabel.classList.contains('active')) pricingToggle.click();
+            });
+        }
+    }
+
+    // 6. Mobile Menu Toggle
+    const hamburger = document.querySelector('.hamburger-menu');
+    const mobileMenu = document.querySelector('.mobile-menu');
+    
+    if (hamburger && mobileMenu) {
+        hamburger.addEventListener('click', () => {
+            mobileMenu.classList.toggle('active');
+            const isExpanded = hamburger.getAttribute('aria-expanded') === 'true';
+            hamburger.setAttribute('aria-expanded', !isExpanded);
         });
     }
 });

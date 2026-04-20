@@ -29,6 +29,20 @@
                 <a href="/about">Tentang</a>
                 <a href="/sign-in" class="btn-auth">Masuk</a>
             </div>
+            <button class="hamburger-menu" aria-label="Menu" aria-expanded="false">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="mobile-menu">
+            <a href="/pricing">Harga</a>
+            <a href="/chat">Chat</a>
+            <a href="/documentation">Dokumentasi</a>
+            <a href="/about">Tentang</a>
+            <a href="/sign-in" class="btn-auth">Masuk</a>
         </div>
     </nav>
 
@@ -41,47 +55,25 @@
             <div class="hero-content">
                 <div class="badge">ANDA PAWANG, AI TUKANG</div>
                 <h1 class="hero-title">
-                    Ngobrol+Riset<br>
-                    +Brainstorming<br>
-                    +Kolaboratif<br>
-                    =<span class="highlight">Paper_Akademik</span>
+                    Kolaborasi Pikiran,<br>
+                    Eksekusi <span class="highlight">Otomatis.</span>
                 </h1>
-                <p class="hero-subtitle">Nggak perlu prompt &amp; workflow ruwet. Gagasan apa saja bisa diolah Agen Makalah menjadi paper utuh</p>
+                <p class="hero-subtitle">Makalah AI bukan sekadar generator tulisan, melainkan mitra sparring intelektual. Transformasikan mentahan gagasan jadi paper berstandar akademik mumpuni—lengkap dengan riset literatur auto-sitasi—melalui obrolan organik.</p>
                 <div class="hero-cta">
                     <a href="#" class="btn-primary">
                         <span class="btn-shine"></span>
-                        AYO MULAI
+                        AYO MULAI <span class="arrow">&rarr;</span>
                     </a>
                 </div>
             </div>
 
-            <div class="hero-mockup-wrapper reveal-delay">
-                <div class="ambient-glow"></div>
-                <div class="mockup-window">
-                    <div class="mockup-header">
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                        <span class="mockup-title">makalah.ai / paper-session</span>
-                    </div>
-                    <div class="mockup-content">
-                        <img src="../../../public/images/hero-paper-session-mock.png" alt="Mockup sesi paper Makalah AI" class="real-mockup-img">
-                    </div>
+            <div class="video-projection-frame reveal-delay">
+                <div class="video-ambient-glow"></div>
+                <div class="video-container">
+                    <video class="video-poster-img" src="remotion-hero/out/HeroLoop.mp4" poster="../../../public/images/hero-video-poster.png" autoplay loop muted playsinline></video>
                 </div>
             </div>
 
-            <!-- Logo Cloud Social Proof -->
-            <div class="logo-cloud-section reveal">
-                <p class="logo-cloud-title">Dipercaya oleh peneliti dari institusi akademik terkemuka</p>
-                <div class="logo-cloud-grid">
-                    <span class="u-logo">UI</span>
-                    <span class="u-logo">ITB</span>
-                    <span class="u-logo">UGM</span>
-                    <span class="u-logo">BINUS</span>
-                    <span class="u-logo">UNPAD</span>
-                    <span class="u-logo">IPB</span>
-                </div>
-            </div>
         </section>
 
         <!-- =========================================================
@@ -198,11 +190,11 @@
                     <h2 class="section-title">Investasi untuk<br>Masa Depan Akademik.</h2>
                     
                     <div class="pricing-toggle-container">
-                        <span class="toggle-label active" id="monthly-label">Bulanan</span>
-                        <div class="pricing-toggle-switch" id="pricing-toggle">
+                        <span class="toggle-label active" id="monthly-label" role="button" tabindex="0">Bulanan</span>
+                        <div class="pricing-toggle-switch" id="pricing-toggle" role="switch" aria-checked="false" tabindex="0">
                             <div class="toggle-nob"></div>
                         </div>
-                        <span class="toggle-label" id="annual-label">Tahunan <span class="discount-badge">Hemat 20%</span></span>
+                        <span class="toggle-label" id="annual-label" role="button" tabindex="0">Tahunan <span class="discount-badge">Hemat 20%</span></span>
                     </div>
                 </div>
 
