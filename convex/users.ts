@@ -105,11 +105,13 @@ export const listAllUsers = queryGeneric({
     requestorUserId: v.id("users"),
     includeDeleted: v.optional(v.boolean()),
   },
-  handler: async ({ db }, { requestorUserId }) => {
+  handler: async (ctx, { requestorUserId }) => {
+    // JWT binding: verify caller identity matches requestorUserId
+    await requireAuthUserId(ctx, requestorUserId)
     // Permission check: requires admin or superadmin
-    await requireRole(db, requestorUserId, "admin")
+    await requireRole(ctx.db, requestorUserId, "admin")
 
-    const users = await db.query("users").order("desc").collect()
+    const users = await ctx.db.query("users").order("desc").collect()
 
     return users.map((u) => ({
       _id: u._id,
@@ -130,10 +132,12 @@ export const getUserStats = queryGeneric({
   args: {
     requestorUserId: v.id("users"),
   },
-  handler: async ({ db }, { requestorUserId }) => {
-    await requireRole(db, requestorUserId, "admin")
+  handler: async (ctx, { requestorUserId }) => {
+    // JWT binding: verify caller identity matches requestorUserId
+    await requireAuthUserId(ctx, requestorUserId)
+    await requireRole(ctx.db, requestorUserId, "admin")
 
-    const users = await db.query("users").collect()
+    const users = await ctx.db.query("users").collect()
 
     return {
       total: users.length,
@@ -159,10 +163,12 @@ export const listUsersPaginated = queryGeneric({
     requestorUserId: v.id("users"),
     paginationOpts: paginationOptsValidator,
   },
-  handler: async ({ db }, { requestorUserId, paginationOpts }) => {
-    await requireRole(db, requestorUserId, "admin")
+  handler: async (ctx, { requestorUserId, paginationOpts }) => {
+    // JWT binding: verify caller identity matches requestorUserId
+    await requireAuthUserId(ctx, requestorUserId)
+    await requireRole(ctx.db, requestorUserId, "admin")
 
-    const result = await db
+    const result = await ctx.db
       .query("users")
       .order("desc")
       .paginate(paginationOpts)
@@ -190,9 +196,11 @@ export const getUserForAdminManagement = queryGeneric({
     requestorUserId: v.id("users"),
     targetUserId: v.id("users"),
   },
-  handler: async ({ db }, { requestorUserId, targetUserId }) => {
-    await requireRole(db, requestorUserId, "admin")
-    const user = await db.get(targetUserId)
+  handler: async (ctx, { requestorUserId, targetUserId }) => {
+    // JWT binding: verify caller identity matches requestorUserId
+    await requireAuthUserId(ctx, requestorUserId)
+    await requireRole(ctx.db, requestorUserId, "admin")
+    const user = await ctx.db.get(targetUserId)
     if (!user) return null
 
     return {
