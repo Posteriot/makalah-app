@@ -63,18 +63,3 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Pro-deterministic parser for technical formats.** Use deterministic parsers (JSON.parse, structured schemas, AST parsers) for well-defined technical formats.
 - **State workflow must be driven by semantic JSON + runtime guards, not keywords.** Workflow state transitions must be determined by structured data and explicit runtime validation, never by keyword matching or regex pattern detection.
 
-### AGENT ROLE ASSIGNMENT
-- **Claude Code (this agent):** Brainstormer, planner, task creator, and executor for all implementation work on this branch.
-- **Codex (OpenAI):** Audit and code review. Also if needed: Brainstormer, planner, task creator. Claude Code must not self-review — all review and audit tasks are delegated to Codex.
-
-### DEFERRED ISSUES (MANDATORY READ)
-- **Read `docs/deffered-issues/deferred-issues.md` at session start.** Contains open issues from E2E testing: Google Grounding intermittent 0-citation (diagnostic logging in place, awaiting next failure data), and lower-priority UX items (artifact ordering, latency).
-
-### ACTIVE BRANCH SCOPE
-
-
-### IMPLEMENTATOR/PLANNER/EXECUTOR MANDATE FOR THIS WORKTREE
-
-You are the brainstormer, planner, and executor for this branch.
-
-**Files in scope:**
