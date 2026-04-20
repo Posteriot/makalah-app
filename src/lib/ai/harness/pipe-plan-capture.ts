@@ -32,10 +32,9 @@ export function pipePlanCapture(
   let captureContent = ""
   // Text before the unfenced plan start that hasn't been flushed yet
   let prePlanText = ""
-  // Track chunk text property name. AI SDK uses { textDelta }, but when
-  // pipeYamlRender is upstream it re-emits as { delta }. Default "textDelta"
-  // is overridden on first chunk if { delta } is detected.
-  let chunkTextKey: "textDelta" | "delta" = "textDelta"
+  // AI SDK client expects { textDelta } on output. Input may arrive as
+  // { delta } (from upstream pipeYamlRender) — we read both but ALWAYS
+  // emit as { textDelta } to satisfy the client-side Zod schema.
 
   function tryParsePlan(content: string, source: "fenced" | "unfenced"): PlanDataPart | null {
     try {
@@ -68,7 +67,7 @@ export function pipePlanCapture(
 
   function emitText(controller: ReadableStreamDefaultController, text: string) {
     if (text.length > 0) {
-      controller.enqueue({ type: "text-delta", [chunkTextKey]: text })
+      controller.enqueue({ type: "text-delta", textDelta: text })
     }
   }
 
@@ -291,9 +290,6 @@ export function pipePlanCapture(
             controller.enqueue(value)
             continue
           }
-
-          // Lock output format to match input format
-          if (chunk.delta !== undefined) chunkTextKey = "delta"
 
           buffer += textContent
 
