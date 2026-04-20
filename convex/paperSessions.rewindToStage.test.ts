@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./authHelpers", () => ({
   requireAuthUser: vi.fn(),
@@ -85,7 +85,7 @@ async function callRewindToStage(ctx: any, args: any) {
 describe("rewindToStage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockedRebuildNaskah.mockResolvedValue(undefined);
+    mockedRebuildNaskah.mockResolvedValue({ written: false, revision: null });
   });
 
   // 1. mode: "rewind" (default) — existing behavior preserved

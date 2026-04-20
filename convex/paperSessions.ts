@@ -2156,6 +2156,9 @@ export const rewindToStage = mutation({
 
         // Increment decisionEpoch for cancel modes
         const currentEpoch = (session.decisionEpoch as number | undefined) ?? 0;
+        const nextEpoch = mode !== "rewind" ? currentEpoch + 1 : currentEpoch;
+        const targetArtifactId = targetStageData?.artifactId as string | undefined;
+        const targetArtifactPreserved = mode === "cancel-approval";
 
         // Update session
         await ctx.db.patch(args.sessionId, {
@@ -2167,10 +2170,28 @@ export const rewindToStage = mutation({
             // Clear completion timestamp when rewinding from completed
             ...(currentStage === "completed" ? { completedAt: undefined } : {}),
             // Increment decisionEpoch for cancel modes
-            ...(mode !== "rewind" ? { decisionEpoch: currentEpoch + 1 } : {}),
+            ...(mode !== "rewind" ? { decisionEpoch: nextEpoch } : {}),
             // Update stageMessageBoundaries for cancel modes
             ...(updatedBoundaries !== undefined ? { stageMessageBoundaries: updatedBoundaries } : {}),
         });
+
+        if (mode !== "rewind") {
+            console.info("[PAPER][cancel-observe][server]", {
+                mode,
+                sessionId: args.sessionId,
+                fromStage: currentStage,
+                toStage: args.targetStage,
+                newStageStatus,
+                invalidatedStages: stagesToInvalidate,
+                invalidatedArtifactIds,
+                targetArtifactId: targetArtifactId ?? null,
+                targetArtifactPreserved,
+                targetValidatedAtRemoved: targetStageData?.validatedAt !== undefined,
+                decisionEpochBefore: currentEpoch,
+                decisionEpochAfter: nextEpoch,
+                boundaryCountAfter: updatedBoundaries?.length ?? null,
+            });
+        }
 
         // Naskah snapshot rebuild — non-blocking.
         try {
