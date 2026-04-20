@@ -6,7 +6,6 @@ vi.mock("next/headers", () => ({
 
 import {
   getTokenFromBetterAuthCookies,
-  isAuthenticatedFromBetterAuthCookies,
 } from "@/lib/auth-server"
 
 describe("auth-server session validation", () => {
@@ -20,8 +19,8 @@ describe("auth-server session validation", () => {
     )
 
     await expect(
-      isAuthenticatedFromBetterAuthCookies("session=abc"),
-    ).resolves.toBe(false)
+      getTokenFromBetterAuthCookies("session=abc"),
+    ).resolves.toBeNull()
   })
 
   it("accepts valid BetterAuth cookies when token endpoint returns a token", async () => {
@@ -32,16 +31,7 @@ describe("auth-server session validation", () => {
           headers: { "content-type": "application/json" },
         }),
       )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ token: "convex-token" }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-      )
 
-    await expect(
-      isAuthenticatedFromBetterAuthCookies("session=abc"),
-    ).resolves.toBe(true)
     await expect(
       getTokenFromBetterAuthCookies("session=abc"),
     ).resolves.toBe("convex-token")
@@ -50,9 +40,6 @@ describe("auth-server session validation", () => {
   it("keeps soft-pass behavior on transient network failure", async () => {
     vi.spyOn(global, "fetch").mockRejectedValue(new Error("ETIMEDOUT"))
 
-    await expect(
-      isAuthenticatedFromBetterAuthCookies("session=abc"),
-    ).resolves.toBe(true)
     await expect(
       getTokenFromBetterAuthCookies("session=abc"),
     ).resolves.toBeNull()
@@ -64,9 +51,6 @@ describe("auth-server session validation", () => {
     )
 
     await expect(
-      isAuthenticatedFromBetterAuthCookies("session=abc"),
-    ).resolves.toBe(true)
-    await expect(
       getTokenFromBetterAuthCookies("session=abc"),
     ).resolves.toBeNull()
   })
@@ -74,9 +58,6 @@ describe("auth-server session validation", () => {
   it("treats timeout (AbortError) as network error", async () => {
     vi.spyOn(global, "fetch").mockRejectedValue(new DOMException("Signal timed out", "TimeoutError"))
 
-    await expect(
-      isAuthenticatedFromBetterAuthCookies("session=abc"),
-    ).resolves.toBe(true)
     await expect(
       getTokenFromBetterAuthCookies("session=abc"),
     ).resolves.toBeNull()
