@@ -42,10 +42,12 @@ export default function SignUpPage() {
     clearError()
     setIsLoading(true)
     try {
+      const redirectUrl = callbackURL
       await signIn.social({
         provider: "google",
         callbackURL,
         requestSignUp: true,
+        errorCallbackURL: `/sign-in?redirect_url=${encodeURIComponent(redirectUrl)}`,
       })
       // Navigates away
     } catch {
@@ -209,6 +211,7 @@ export default function SignUpPage() {
                 {showPassword ? <EyeClosed className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            <p className="text-xs text-muted-foreground mt-1">Minimal 8 karakter</p>
           </div>
 
           {error && (

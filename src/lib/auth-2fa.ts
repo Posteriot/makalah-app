@@ -17,7 +17,8 @@ function getSessionStorage(): Storage | null {
 export function setPending2FA(data: Pending2FA): void {
   const storage = getSessionStorage()
   if (!storage) return
-  storage.setItem(PENDING_2FA_KEY, JSON.stringify(data))
+  const withTTL = { ...data, expiresAt: Date.now() + 5 * 60 * 1000 }
+  storage.setItem(PENDING_2FA_KEY, JSON.stringify(withTTL))
 }
 
 export function getPending2FA(): Pending2FA | null {
@@ -26,7 +27,15 @@ export function getPending2FA(): Pending2FA | null {
   const stored = storage.getItem(PENDING_2FA_KEY)
   if (!stored) return null
   try {
-    return JSON.parse(stored) as Pending2FA
+    const data = JSON.parse(stored)
+    if (data.expiresAt && Date.now() > data.expiresAt) {
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[AUTH-HARDENING] pending_2fa expired — cleared from sessionStorage")
+      }
+      clearPending2FA()
+      return null
+    }
+    return data as Pending2FA
   } catch {
     return null
   }

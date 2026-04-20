@@ -56,13 +56,6 @@ export async function isAuthenticated(): Promise<boolean> {
   return !!token;
 }
 
-export async function isAuthenticatedFromBetterAuthCookies(
-  betterAuthCookies: string | null
-): Promise<boolean> {
-  const validation = await validateBetterAuthCookies(betterAuthCookies);
-  return validation.status === "authenticated" || validation.status === "network_error";
-}
-
 /**
  * Get a Convex JWT token from BetterAuth.
  *

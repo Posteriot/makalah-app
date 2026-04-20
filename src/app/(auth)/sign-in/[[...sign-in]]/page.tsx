@@ -121,7 +121,15 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (!isOTTFlow || session) return
-    const timer = setTimeout(() => setOttTimedOut(true), 5000)
+    const timer = setTimeout(() => {
+      setOttTimedOut(true)
+      const url = new URL(window.location.href)
+      url.searchParams.delete("ott")
+      window.history.replaceState({}, "", url.toString())
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[AUTH-HARDENING] OTT timeout — stripped ?ott= from URL")
+      }
+    }, 5000)
     return () => clearTimeout(timer)
   }, [isOTTFlow, session])
 

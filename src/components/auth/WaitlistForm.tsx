@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useMutation } from "convex/react"
+import { ConvexError } from "convex/values"
 import { api } from "@convex/_generated/api"
 import { Mail, User, CheckCircle, WarningTriangle } from "iconoir-react"
 import { sendConfirmationEmail } from "@/app/(auth)/waitinglist/actions"
@@ -46,8 +47,12 @@ export function WaitlistForm() {
       setFormState("success")
     } catch (err) {
       setFormState("idle")
-      if (err instanceof Error) {
-        setError(err.message)
+      if (err instanceof ConvexError) {
+        // Application-level errors from Convex mutations — already Indonesian
+        setError(err.data as string)
+      } else if (err instanceof Error) {
+        // Infrastructure errors (network, timeout, Convex runtime) — generic fallback
+        setError("Terjadi kesalahan. Silakan coba lagi.")
       } else {
         setError("Terjadi kesalahan. Silakan coba lagi.")
       }
@@ -87,8 +92,10 @@ export function WaitlistForm() {
     <form onSubmit={handleSubmit} className="w-full space-y-4">
       <div className="space-y-2">
         <div className="relative">
+          <label htmlFor="waitlist-first-name" className="sr-only">Nama depan</label>
           <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
+            id="waitlist-first-name"
             type="text"
             placeholder="Nama depan"
             value={firstName}
@@ -102,8 +109,10 @@ export function WaitlistForm() {
           />
         </div>
         <div className="relative">
+          <label htmlFor="waitlist-last-name" className="sr-only">Nama belakang</label>
           <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
+            id="waitlist-last-name"
             type="text"
             placeholder="Nama belakang"
             value={lastName}
@@ -117,8 +126,10 @@ export function WaitlistForm() {
           />
         </div>
         <div className="relative">
+          <label htmlFor="waitlist-email" className="sr-only">Email</label>
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
+            id="waitlist-email"
             type="email"
             placeholder="Masukkan email kamu"
             value={email}

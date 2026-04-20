@@ -25,7 +25,11 @@ export function isLocalDevOrigin(origin: string): boolean {
 export function getTrustedOrigins(request?: Request): string[] {
   const trustedOrigins = [...staticTrustedOrigins]
   const origin = request?.headers.get("origin") ?? ""
-  if (isLocalDevOrigin(origin) && !trustedOrigins.includes(origin)) {
+  if (
+    process.env.NODE_ENV !== "production" &&
+    isLocalDevOrigin(origin) &&
+    !trustedOrigins.includes(origin)
+  ) {
     trustedOrigins.push(origin)
   }
   return trustedOrigins
