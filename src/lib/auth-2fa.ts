@@ -29,6 +29,9 @@ export function getPending2FA(): Pending2FA | null {
   try {
     const data = JSON.parse(stored)
     if (data.expiresAt && Date.now() > data.expiresAt) {
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[AUTH-HARDENING] pending_2fa expired — cleared from sessionStorage")
+      }
       clearPending2FA()
       return null
     }
