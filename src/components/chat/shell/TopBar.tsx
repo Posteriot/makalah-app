@@ -36,6 +36,10 @@ interface TopBarProps {
   naskahUpdatePending?: boolean
   /** Which page context is active inside the chat shell */
   routeContext?: "chat" | "naskah"
+  /** Callback to toggle artifact panel */
+  onArtifactToggle?: () => void
+  /** Whether artifact panel is currently open */
+  isArtifactPanelOpen?: boolean
 }
 
 /**
@@ -55,6 +59,8 @@ export function TopBar({
   naskahAvailable = false,
   naskahUpdatePending = false,
   routeContext = "chat",
+  onArtifactToggle,
+  isArtifactPanelOpen = false,
 }: TopBarProps) {
   const { resolvedTheme, setTheme } = useTheme()
   const { user, isLoading } = useCurrentUser()
@@ -193,41 +199,40 @@ export function TopBar({
           )}
 
           {/* Artifact File Indicator */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div
-                className={cn(
-                  "relative mr-0.5 inline-flex h-8 min-w-[2.4rem] items-center justify-center rounded-action px-1",
-                  hasArtifacts
-                    ? "text-[color:color-mix(in_oklab,var(--chat-foreground)_88%,var(--chat-muted-foreground))]"
-                    : "text-[var(--chat-muted-foreground)] opacity-45"
-                )}
-                aria-label={
-                  hasArtifacts
-                    ? `${artifactCount} artifak tersedia`
-                    : "Belum ada artifak"
-                }
-              >
-                <Page className="h-[18px] w-[18px]" aria-hidden="true" />
-                <span
-                  className={cn(
-                    "pointer-events-none absolute -bottom-0 -right-[0.12rem] inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1",
-                    "text-[9px] font-semibold font-mono leading-none",
-                    hasArtifacts
-                      ? "bg-[var(--chat-info)] text-white dark:text-[color:color-mix(in_oklab,var(--chat-foreground)_92%,white)]"
-                      : "bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
-                  )}
-                >
-                  {compactArtifactCount}
-                </span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent className="font-mono text-xs">
-              {!hasArtifacts
-                ? "Belum ada artifak pada sesi ini"
-                : `${artifactCount} artifak pada sesi ini`}
-            </TooltipContent>
-          </Tooltip>
+          <button
+            type="button"
+            onClick={hasArtifacts ? onArtifactToggle : undefined}
+            disabled={!hasArtifacts}
+            className={cn(
+              "relative mr-0.5 inline-flex h-8 min-w-[2.4rem] items-center justify-center rounded-action px-1",
+              "transition-colors duration-150",
+              hasArtifacts && isArtifactPanelOpen
+                ? "bg-[var(--chat-info)] text-white hover:bg-[oklch(0.53_0.158_241.966)] cursor-pointer"
+                : hasArtifacts
+                  ? "text-[color:color-mix(in_oklab,var(--chat-foreground)_88%,var(--chat-muted-foreground))] hover:bg-[var(--chat-accent)] cursor-pointer"
+                  : "text-[var(--chat-muted-foreground)] opacity-45 cursor-default",
+            )}
+            aria-label={
+              hasArtifacts
+                ? `${artifactCount} artifak tersedia`
+                : "Belum ada artifak"
+            }
+          >
+            <Page className="h-[18px] w-[18px]" aria-hidden="true" />
+            <span
+              className={cn(
+                "pointer-events-none absolute -bottom-0 -right-[0.12rem] inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1",
+                "text-[9px] font-semibold font-mono leading-none",
+                hasArtifacts && isArtifactPanelOpen
+                  ? "bg-white text-[var(--chat-info)]"
+                  : hasArtifacts
+                    ? "bg-[var(--chat-info)] text-white dark:text-[color:color-mix(in_oklab,var(--chat-foreground)_92%,white)]"
+                    : "bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
+              )}
+            >
+              {compactArtifactCount}
+            </span>
+          </button>
 
           {/* User Dropdown / Settings entry */}
           <UserDropdown
