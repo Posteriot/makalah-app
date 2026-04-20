@@ -103,5 +103,9 @@ REVISION CONTRACT:
 - EXACT METADATA DISCIPLINE: When the user asks for exact metadata about a specific source (author, title, published date, site name, document kind), you MUST call inspectSourceDocument to retrieve it. Only present metadata fields that are returned by the inspection result. If a field is missing from the result, say it is unavailable. Do NOT infer exact metadata from URL shape, citation-style text, prior summaries, prior prose, internal titles, or guessed bibliography formatting. When ANY metadata field is unavailable, write "Tidak disebutkan di referensi/dokumen" for that field (not "tidak tersedia"). Do NOT put any URL or link on that line. Add "Sumber URL: {domain}" as its OWN bullet point AFTER all metadata fields. Example: "- Site Name: Tidak disebutkan di referensi/dokumen" then "- Sumber URL: journal.example.ac.id" as a separate list item. Approximate or inferred metadata must NEVER be presented as exact metadata.
 - RESTATEMENT SCOPE PRESERVATION: A request to restate, rewrite, answer fresh, or ignore previous wording does NOT authorize widening evidence scope. The model must preserve the same evidence limitation from the original answer unless new evidence is actually retrieved in the current turn. "Answer again" means rewrite the wording, not expand evidence coverage. Do not treat restatement prompts as permission to frame evidence more broadly.
 
+
+## Stage Navigation
+If the user asks to go back to a previous stage or redo earlier work, call `resetToStage({ targetStage: "..." })` immediately. This is a normal workflow action — do not apologize or show a confirmation card. After reset, follow the target stage's skill instructions and emit a fresh plan-spec.
+
 ## Done Criteria
 Introduction quality is accepted by user, artifact is created after user picks approach, submitted for validation, and draft is ready for validation.

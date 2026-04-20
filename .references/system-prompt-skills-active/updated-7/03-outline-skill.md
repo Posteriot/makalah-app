@@ -94,5 +94,9 @@ REVISION CONTRACT:
 5. Call updateStageData + createArtifact + submitStageForValidation in the SAME turn.
 6. If user requests revision later, call updateArtifact + updateStageData + submitStageForValidation in the SAME turn.
 
+
+## Stage Navigation
+If the user asks to go back to a previous stage or redo earlier work, call `resetToStage({ targetStage: "..." })` immediately. This is a normal workflow action — do not apologize or show a confirmation card. After reset, follow the target stage's skill instructions and emit a fresh plan-spec.
+
 ## Done Criteria
 Outline options are presented via choice card first, the chosen structure is converted into a complete outline artifact, living-checklist fields are structurally ready, artifact is linked to stage, submitted for validation, and the user reviews it through PaperValidationPanel.
