@@ -33,6 +33,7 @@ import { STAGE_ORDER, type PaperStageId } from "../../../convex/paperSessions/co
 import { buildChoiceInteractionEvent, buildChoiceSyntheticText } from "@/lib/chat/choice-submit"
 import type { JsonRendererChoiceRenderPayload, WorkflowAction } from "@/lib/json-render/choice-payload"
 import { SPEC_DATA_PART_TYPE } from "@json-render/core"
+import { buildApprovedStageMessage } from "@/lib/paper/approval-copy"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import {
   buildChatQuotaOfferFromError,
@@ -691,6 +692,12 @@ export function ChatWindow({
   } = usePaperSession(safeConversationId ?? undefined, userId ?? undefined)
 
   const prevStageRef = useRef(paperSession?.currentStage)
+  const currentPaperStage = paperSession?.currentStage as PaperStageId | undefined
+  const approvedStageMessage = currentPaperStage
+    ? buildApprovedStageMessage(currentPaperStage)
+    : stageLabel
+      ? `Tahap ${stageLabel} disetujui.`
+      : "Tahap disetujui."
 
   // Clear optimistic flag once Convex subscription confirms pending_validation
   useEffect(() => {
@@ -2543,8 +2550,8 @@ export function ChatWindow({
       }
 
       await approveStage(userId)
-      // Auto-send message agar AI aware dan bisa lanjutkan ke tahap berikutnya
-      sendMessageWithPendingIndicator(`[Approved: ${stageLabel}] Lanjut ke tahap berikutnya.`)
+      // Auto-send message agar AI aware dan bisa lanjut dengan konteks stage yang faktual.
+      sendMessageWithPendingIndicator(`[Approved: ${stageLabel}] ${approvedStageMessage}`)
     } catch (error) {
       Sentry.captureException(error, { tags: { subsystem: "paper.approve" } })
       console.error("Failed to approve stage:", error)
@@ -3166,6 +3173,7 @@ export function ChatWindow({
                     {(isPaperMode && userId && isValidationPanelEligible({ chatStatus: status, artifactRevealDone, stageStatus, optimisticPendingValidation })) && (
                       <PaperValidationPanel
                         stageLabel={stageLabel}
+                        approveSuccessMessage={approvedStageMessage}
                         onApprove={handleApprove}
                         onRevise={handleRevise}
                         isLoading={isLoading}

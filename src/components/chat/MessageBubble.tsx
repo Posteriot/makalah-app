@@ -32,6 +32,7 @@ import { isImageType } from "@/lib/types/attached-file"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { extractLegacySourcesFromText } from "@/lib/citations/legacy-source-extractor"
 import { splitInternalThought } from "@/lib/ai/internal-thought-separator"
+import { buildApprovedStageMessageFromLabel } from "@/lib/paper/approval-copy"
 import { JsonRendererChoiceBlock } from "./json-renderer/JsonRendererChoiceBlock"
 import {
     parseChoiceSpecForRender,
@@ -228,6 +229,15 @@ export function MessageBubble({
 
     const isUser = message.role === 'user'
     const isAssistant = message.role === 'assistant'
+    const resolveApprovedBubbleText = (action: Extract<NonNullable<AutoUserAction>, { kind: "approved" }>) => {
+        const normalizedFollowupText = action.followupText.trim()
+        const isLegacyGenericFollowup = normalizedFollowupText === "" || normalizedFollowupText === "Lanjut ke tahap berikutnya."
+        if (!isLegacyGenericFollowup) {
+            return normalizedFollowupText
+        }
+
+        return buildApprovedStageMessageFromLabel(action.stageLabel) || `Tahap ${action.stageLabel} disetujui.`
+    }
 
     const parseAutoUserAction = (rawContent: string): AutoUserAction => {
         const approvedMatch = rawContent.match(/^\[Approved:\s*(.+?)\]\s*([\s\S]*)$/)
@@ -1543,17 +1553,11 @@ export function MessageBubble({
                                 <div className="flex items-center gap-2">
                                     <CheckCircle className="h-4 w-4 text-[var(--chat-muted-foreground)]" />
                                     <span className="text-[11px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-foreground)]">
-                                        Tahap disetujui
+                                        Tahap tervalidasi
                                     </span>
                                 </div>
-                                <div className="mt-1 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
-                                    Lifecycle artifak: terkunci
-                                </div>
-                                <div className="mt-1.5 text-sm font-semibold text-[var(--chat-foreground)]">
-                                    {autoUserAction.stageLabel}
-                                </div>
-                                <div className="mt-0.5 text-xs font-mono text-[var(--chat-foreground)]">
-                                    {autoUserAction.followupText || "Lanjut ke tahap berikutnya."}
+                                <div className="mt-1.5 text-xs font-mono leading-relaxed text-[var(--chat-foreground)]">
+                                    {resolveApprovedBubbleText(autoUserAction)}
                                 </div>
                             </div>
                         ) : autoUserAction.kind === "choice" ? (
