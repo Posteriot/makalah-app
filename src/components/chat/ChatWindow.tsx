@@ -1892,23 +1892,21 @@ export function ChatWindow({
   // Cancel Decision: derive which approved message (if any) is currently cancelable.
   // Only the latest [Approved:] is eligible, and only when session state allows unapproval.
   // Gate: allowed in all states except "revision" (user actively revising).
-  const cancelableApprovalMessageId = useMemo(() => {
-    if (!paperSession) return null
-    // Allow cancel in any post-approval state except "revision" (user already
-    // chose to revise the current stage, so going back makes no sense).
-    // Key states: "drafting" (model streaming), "pending_validation" (model done,
-    // validation panel visible), "approved" (mid-transition or completed).
+  const cancelableApprovalMessageIds = useMemo(() => {
+    const ids = new Set<string>()
+    if (!paperSession || paperSession.currentStage === "completed") return ids
     const status = paperSession.stageStatus as string
-    if (status === "revision") return null
-    // Find the latest [Approved:] — by construction this is the one for the current previous stage
+    if (status === "revision") return ids
+    // Scan ALL messages — collect ALL [Approved:] synthetics.
+    // Cancel must work on any validated stage (ref: choice card pattern, commit 19e7e473).
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i]
       if (msg.role !== "user") continue
       const textPart = msg.parts?.find((p) => p.type === "text") as { text?: string } | undefined
       const text = textPart?.text ?? ""
-      if (text.startsWith("[Approved:")) return msg.id
+      if (text.startsWith("[Approved:")) ids.add(msg.id)
     }
-    return null
+    return ids
   }, [messages, paperSession])
 
   // Rollback detection: observability log when currentStage goes backward.
@@ -2701,8 +2699,19 @@ export function ChatWindow({
     // Block phantom approve clicks during the cancel→re-mount cycle
     cancellingApprovalRef.current = true
     try {
-      // 1. Revert Convex state
-      await unapproveStage({ sessionId: paperSession._id, userId })
+      // Detect cross-stage cancel: count [Approved:] messages AFTER the one being cancelled.
+      // Each represents a stage that must be reverted first (most recent first).
+      const approvalsAfter = messages.slice(syntheticMessageIndex + 1).filter(
+        (m) => m.role === "user" && m.parts?.some(
+          (p) => p.type === "text" && (p as { text?: string }).text?.startsWith("[Approved:")
+        )
+      )
+
+      // 1. Revert intermediate approvals (if cross-stage) + the target approval
+      const totalUnapprovals = approvalsAfter.length + 1
+      for (let j = 0; j < totalUnapprovals; j++) {
+        await unapproveStage({ sessionId: paperSession._id, userId })
+      }
 
       // 2. Map UIMessage.id → Convex message._id for truncation
       const convexMsg = historyMessages?.find(
@@ -2722,7 +2731,10 @@ export function ChatWindow({
       // 4. Validation panel auto-reappears via Convex reactivity
       // (stageStatus = "pending_validation" triggers panel render)
 
-      console.info("[CANCEL-DECISION] approval cancelled, validation panel re-shown")
+      // 5. Clear optimistic pending validation if it was set
+      setOptimisticPendingValidation(false)
+
+      console.info(`[CANCEL-DECISION] approval cancelled, validation panel re-shown${approvalsAfter.length > 0 ? ` (cross-stage rollback, ${approvalsAfter.length} intermediate approval(s) reverted)` : ""}`)
     } catch (error) {
       Sentry.captureException(error, { tags: { subsystem: "paper.cancel-approval" } })
       console.error("Failed to cancel approval:", error)
@@ -2736,7 +2748,7 @@ export function ChatWindow({
         })
       })
     }
-  }, [userId, paperSession?._id, conversationId, historyMessages, unapproveStage, editAndTruncate, setMessages])
+  }, [userId, paperSession?._id, conversationId, messages, historyMessages, unapproveStage, editAndTruncate, setMessages])
 
   // Handler for template selection
   const handleTemplateSelect = (template: Template) => {
@@ -3178,7 +3190,7 @@ export function ChatWindow({
                         onCancelApproval={handleCancelApproval}
                         isStreaming={status === "streaming"}
                         cancelableChoiceMessageIds={cancelableChoiceMessageIds}
-                        cancelableApprovalMessageId={cancelableApprovalMessageId}
+                        cancelableApprovalMessageIds={cancelableApprovalMessageIds}
                       />
                     </div>
                   </div>
