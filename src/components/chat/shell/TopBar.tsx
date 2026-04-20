@@ -1,8 +1,6 @@
 // src/components/chat/shell/TopBar.tsx
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import Link from "next/link"
 import { useTheme } from "next-themes"
 import {
   SunLight,
@@ -28,14 +26,6 @@ interface TopBarProps {
   onToggleSidebar: () => void
   /** Number of artifacts (0 = panel toggle disabled) */
   artifactCount: number
-  /** Current conversation id when inside a conversation-scoped page */
-  conversationId?: string | null
-  /** Whether naskah is available for this session */
-  naskahAvailable?: boolean
-  /** Whether a newer naskah snapshot exists */
-  naskahUpdatePending?: boolean
-  /** Which page context is active inside the chat shell */
-  routeContext?: "chat" | "naskah"
 }
 
 /**
@@ -51,10 +41,6 @@ export function TopBar({
   isSidebarCollapsed,
   onToggleSidebar,
   artifactCount,
-  conversationId,
-  naskahAvailable = false,
-  naskahUpdatePending = false,
-  routeContext = "chat",
 }: TopBarProps) {
   const { resolvedTheme, setTheme } = useTheme()
   const { user, isLoading } = useCurrentUser()
@@ -65,29 +51,6 @@ export function TopBar({
 
   const hasArtifacts = artifactCount > 0
   const compactArtifactCount = artifactCount > 99 ? "99+" : `${artifactCount}`
-  const showNaskahLink =
-    routeContext === "chat" && Boolean(conversationId)
-  const showChatLink = routeContext === "naskah" && Boolean(conversationId)
-
-  // Auto-show tooltip when naskahAvailable transitions false → true.
-  // Fires once per transition, auto-closes after 5 seconds.
-  const prevAvailableRef = useRef(naskahAvailable)
-  const [showNaskahTooltip, setShowNaskahTooltip] = useState(false)
-
-  useEffect(() => {
-    const wasAvailable = prevAvailableRef.current
-    prevAvailableRef.current = naskahAvailable
-
-    if (!wasAvailable && naskahAvailable) {
-      // Sync external state change (prop transition) into local UI
-      // state — the canonical exception to the "no setState in effect"
-      // rule. The tooltip is a transient UI reaction to a prop event.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setShowNaskahTooltip(true)
-      const timer = setTimeout(() => setShowNaskahTooltip(false), 5_000)
-      return () => clearTimeout(timer)
-    }
-  }, [naskahAvailable])
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -126,66 +89,7 @@ export function TopBar({
 
         {/* Right: Controls */}
         <div className="flex items-center gap-2 pt-1">
-          {showNaskahLink && conversationId && (
-            naskahAvailable ? (
-              <Tooltip
-                open={showNaskahTooltip}
-                onOpenChange={setShowNaskahTooltip}
-              >
-                <TooltipTrigger asChild>
-                  <Link
-                    href={`/naskah/${conversationId}`}
-                    target="_blank"
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-action px-3 py-1.5 text-sm",
-                      "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
-                      "transition-colors duration-150",
-                    )}
-                  >
-                    <span>Pratinjau</span>
-                    {naskahUpdatePending && (
-                      <span
-                        data-testid="naskah-update-dot"
-                        className="inline-flex h-2.5 w-2.5 rounded-full bg-[var(--chat-info)]"
-                      />
-                    )}
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  data-testid="naskah-available-tooltip"
-                  className="font-mono text-xs"
-                >
-                  Pratinjau naskah tersedia
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <span
-                aria-disabled="true"
-                className={cn(
-                  "inline-flex items-center rounded-action px-3 py-1.5 text-sm",
-                  "text-[var(--chat-muted-foreground)] opacity-40",
-                  "cursor-default select-none",
-                )}
-              >
-                Pratinjau
-              </span>
-            )
-          )}
 
-          {showChatLink && conversationId && (
-            <Link
-              href={`/chat/${conversationId}`}
-              target="_blank"
-              className={cn(
-                "inline-flex items-center rounded-action px-3 py-1.5 text-sm",
-                "text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
-                "transition-colors duration-150",
-              )}
-            >
-              Percakapan
-            </Link>
-          )}
 
           {/* Theme Toggle */}
           {!isLoading && user && (

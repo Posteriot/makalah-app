@@ -17,7 +17,6 @@ import {
 } from "./paperSessions/daftarPustakaCompiler";
 import { validateStageDataKeys, sanitizeNestedArrayFields } from "./paperSessions/stageDataWhitelist";
 import { STAGE_REQUIRED_FIELDS, isFieldPresent } from "./paperSessions/stage_required_fields";
-import { rebuildNaskahSnapshot } from "./naskahRebuild";
 
 const DEFAULT_WORKING_TITLE = "Paper Tanpa Judul";
 const MAX_WORKING_TITLE_LENGTH = 80;
@@ -842,10 +841,6 @@ export const cancelChoiceDecision = mutation({
         });
 
         // Naskah rebuild hook — atomic with the cancel. If rebuild
-        // throws, the entire mutation rolls back so the snapshot can
-        // never drift from the cleared stageData.
-        await rebuildNaskahSnapshot(ctx, args.sessionId);
-
         console.info(`[PAPER][cancel-choice] stage=${currentStage} artifactInvalidated=${artifactInvalidated} statusReverted=${statusReverted} epoch=${newEpoch}`);
         return { stage: currentStage, artifactInvalidated, statusReverted };
     },
@@ -982,9 +977,6 @@ export const unapproveStage = mutation({
         }
 
         await ctx.db.patch(args.sessionId, patchData);
-
-        // 7. Rebuild naskahSnapshot
-        await rebuildNaskahSnapshot(ctx, args.sessionId);
 
         const clearedNextStage = nextStageToClear !== "completed" && !!stageData[nextStageToClear];
         console.info(`[PAPER][unapprove] stage=${targetStage} clearedNextStage=${clearedNextStage} nextStageArtifactInvalidated=${nextStageArtifactInvalidated} epoch=${newEpoch}`);
@@ -1585,9 +1577,6 @@ export const approveStage = mutation({
 
         // Naskah rebuild hook — atomic with the approval. If rebuild
         // throws, the entire mutation rolls back so the snapshot can
-        // never drift from the validated stageData.
-        await rebuildNaskahSnapshot(ctx, args.sessionId);
-
         console.info(`[USER-ACTION] type=approve stage=${currentStage} decision="${decisionText.slice(0, 80)}"`)
         console.info(`[PAPER][stage-transition] ${currentStage} → ${nextStage} (${nextStage === "completed" ? "session completed" : "drafting"})`);
 
@@ -2184,11 +2173,6 @@ export const rewindToStage = mutation({
             // Clear completion timestamp when rewinding from completed
             ...(currentStage === "completed" ? { completedAt: undefined } : {}),
         });
-
-        // Naskah rebuild hook — atomic with the rewind. If rebuild
-        // throws, the entire mutation rolls back so the snapshot can
-        // never drift from the invalidated stageData.
-        await rebuildNaskahSnapshot(ctx, args.sessionId);
 
         return {
             success: true,
