@@ -46,6 +46,7 @@ import type * as emailTemplates from "../emailTemplates.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as lib_betterAuthIdentityGuard from "../lib/betterAuthIdentityGuard.js";
+import type * as lib_messageValidators from "../lib/messageValidators.js";
 import type * as messages from "../messages.js";
 import type * as migrations_addRoleToExistingUsers from "../migrations/addRoleToExistingUsers.js";
 import type * as migrations_assignRolesAndTiers from "../migrations/assignRolesAndTiers.js";
@@ -167,6 +168,7 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   http: typeof http;
   "lib/betterAuthIdentityGuard": typeof lib_betterAuthIdentityGuard;
+  "lib/messageValidators": typeof lib_messageValidators;
   messages: typeof messages;
   "migrations/addRoleToExistingUsers": typeof migrations_addRoleToExistingUsers;
   "migrations/assignRolesAndTiers": typeof migrations_assignRolesAndTiers;

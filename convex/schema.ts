@@ -1,14 +1,21 @@
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
+import { planSnapshotValidator } from "./lib/messageValidators"
 import {
+  AbstrakData,
+  GagasanData,
   DiskusiData,
   HasilData,
   KesimpulanData,
+  MetodologiData,
   PembaruanAbstrakData,
+  PendahuluanData,
   DaftarPustakaData,
   LampiranData,
   JudulData,
   OutlineData,
+  TinjauanLiteraturData,
+  TopikData,
 } from "./paperSessions/types"
 
 export const documentationListItem = v.object({
@@ -175,6 +182,8 @@ export default defineSchema({
     jsonRendererChoice: v.optional(v.string()),
     // Legacy V1: persisted recommendation payload (backward compat)
     jsonRendererRecommendation: v.optional(v.string()),
+    // Legacy paper workflow snapshot kept for backward compatibility with older deployments
+    planSnapshot: v.optional(planSnapshotValidator),
     // UI message ID for history rehydration
     uiMessageId: v.optional(v.string()),
   })
@@ -532,146 +541,22 @@ export default defineSchema({
     // Workflow State
     currentStage: v.string(), // PaperStage enum (gagasan, topik, etc.)
     stageStatus: v.string(), // StageStatus (drafting, pending_validation, approved, revision)
+    decisionEpoch: v.optional(v.number()), // Legacy workflow epoch kept for backward compatibility
 
     // Accumulated data for all 14 stages
     stageData: v.object({
       // Phase 1: Foundation Stages
-      gagasan: v.optional(v.object({
-        ringkasan: v.optional(v.string()),
-        ringkasanDetail: v.optional(v.string()), // Legacy detail summary (kept for compatibility)
-        ideKasar: v.optional(v.string()), // Optional: may not exist during initial revision
-        analisis: v.optional(v.string()),
-        angle: v.optional(v.string()),
-        novelty: v.optional(v.string()),
-        referensiAwal: v.optional(v.array(v.object({
-          title: v.string(),
-          authors: v.optional(v.string()),
-          year: v.optional(v.number()),
-          url: v.optional(v.string()),
-          publishedAt: v.optional(v.number()), // Timestamp from web search source metadata
-        }))),
-        webSearchReferences: v.optional(v.array(v.object({
-          url: v.string(),
-          title: v.string(),
-          publishedAt: v.optional(v.number()),
-        }))),
-        artifactId: v.optional(v.id("artifacts")),
-        validatedAt: v.optional(v.number()),
-        revisionCount: v.optional(v.number()),
-      })),
-      topik: v.optional(v.object({
-        ringkasan: v.optional(v.string()),
-        ringkasanDetail: v.optional(v.string()),
-        definitif: v.optional(v.string()), // Optional: may not exist during initial revision
-        angleSpesifik: v.optional(v.string()),
-        argumentasiKebaruan: v.optional(v.string()),
-        researchGap: v.optional(v.string()), // Gap spesifik yang akan diisi
-        referensiPendukung: v.optional(v.array(v.object({
-          title: v.string(),
-          authors: v.optional(v.string()),
-          year: v.optional(v.number()),
-          url: v.optional(v.string()),
-          publishedAt: v.optional(v.number()), // Timestamp from web search source metadata
-        }))),
-        webSearchReferences: v.optional(v.array(v.object({
-          url: v.string(),
-          title: v.string(),
-          publishedAt: v.optional(v.number()),
-        }))),
-        artifactId: v.optional(v.id("artifacts")),
-        validatedAt: v.optional(v.number()),
-        revisionCount: v.optional(v.number()),
-      })),
+      gagasan: v.optional(GagasanData),
+      topik: v.optional(TopikData),
 
       // Phase 2: Outline Stage
       outline: v.optional(OutlineData),
 
       // Phase 3: Core Stages
-      abstrak: v.optional(v.object({
-        ringkasan: v.optional(v.string()),
-        ringkasanDetail: v.optional(v.string()),
-        ringkasanPenelitian: v.optional(v.string()),
-        keywords: v.optional(v.array(v.string())),
-        wordCount: v.optional(v.number()),
-        webSearchReferences: v.optional(v.array(v.object({
-          url: v.string(),
-          title: v.string(),
-          publishedAt: v.optional(v.number()),
-        }))),
-        artifactId: v.optional(v.id("artifacts")),
-        validatedAt: v.optional(v.number()),
-        revisionCount: v.optional(v.number()),
-      })),
-      pendahuluan: v.optional(v.object({
-        ringkasan: v.optional(v.string()),
-        ringkasanDetail: v.optional(v.string()),
-        latarBelakang: v.optional(v.string()),
-        rumusanMasalah: v.optional(v.string()),
-        researchGapAnalysis: v.optional(v.string()),
-        tujuanPenelitian: v.optional(v.string()),
-        signifikansiPenelitian: v.optional(v.string()), // Mengapa penelitian ini penting
-        hipotesis: v.optional(v.string()), // Hipotesis atau pertanyaan penelitian
-        sitasiAPA: v.optional(v.array(v.object({
-          inTextCitation: v.string(),
-          fullReference: v.string(),
-          url: v.optional(v.string()),
-        }))),
-        webSearchReferences: v.optional(v.array(v.object({
-          url: v.string(),
-          title: v.string(),
-          publishedAt: v.optional(v.number()),
-        }))),
-        artifactId: v.optional(v.id("artifacts")),
-        validatedAt: v.optional(v.number()),
-        revisionCount: v.optional(v.number()),
-      })),
-      tinjauan_literatur: v.optional(v.object({
-        ringkasan: v.optional(v.string()),
-        ringkasanDetail: v.optional(v.string()),
-        kerangkaTeoretis: v.optional(v.string()),
-        reviewLiteratur: v.optional(v.string()),
-        gapAnalysis: v.optional(v.string()),
-        justifikasiPenelitian: v.optional(v.string()), // Mengapa penelitian ini diperlukan
-        referensi: v.optional(v.array(v.object({
-          title: v.string(),
-          authors: v.optional(v.string()),
-          year: v.optional(v.number()),
-          url: v.optional(v.string()),
-          publishedAt: v.optional(v.number()), // Timestamp from web search source metadata
-          inTextCitation: v.string(),
-          isFromPhase1: v.boolean(),
-        }))),
-        webSearchReferences: v.optional(v.array(v.object({
-          url: v.string(),
-          title: v.string(),
-          publishedAt: v.optional(v.number()),
-        }))),
-        artifactId: v.optional(v.id("artifacts")),
-        validatedAt: v.optional(v.number()),
-        revisionCount: v.optional(v.number()),
-      })),
-      metodologi: v.optional(v.object({
-        ringkasan: v.optional(v.string()),
-        ringkasanDetail: v.optional(v.string()),
-        desainPenelitian: v.optional(v.string()),
-        metodePerolehanData: v.optional(v.string()),
-        teknikAnalisis: v.optional(v.string()),
-        etikaPenelitian: v.optional(v.string()),
-        alatInstrumen: v.optional(v.string()), // Alat atau instrumen penelitian
-        pendekatanPenelitian: v.optional(v.union(
-          v.literal("kualitatif"),
-          v.literal("kuantitatif"),
-          v.literal("mixed")
-        )),
-        webSearchReferences: v.optional(v.array(v.object({
-          url: v.string(),
-          title: v.string(),
-          publishedAt: v.optional(v.number()),
-        }))),
-        artifactId: v.optional(v.id("artifacts")),
-        validatedAt: v.optional(v.number()),
-        revisionCount: v.optional(v.number()),
-      })),
+      abstrak: v.optional(AbstrakData),
+      pendahuluan: v.optional(PendahuluanData),
+      tinjauan_literatur: v.optional(TinjauanLiteraturData),
+      metodologi: v.optional(MetodologiData),
 
       // Phase 4: Results & Analysis
       hasil: v.optional(HasilData),

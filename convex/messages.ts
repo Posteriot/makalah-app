@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireAuthUser, requireAuthUserId, requireConversationOwner, getConversationIfOwner } from "./authHelpers"
+import { planSnapshotValidator } from "./lib/messageValidators"
 
 const reasoningTraceMetaValidator = v.object({
     mode: v.optional(v.union(v.literal("normal"), v.literal("paper"), v.literal("websearch"))),
@@ -133,6 +134,8 @@ export const createMessage = mutation({
         jsonRendererChoice: v.optional(v.string()),
         // Legacy V1 (backward compat)
         jsonRendererRecommendation: v.optional(v.string()),
+        // Legacy paper workflow snapshot kept for backward compatibility with older deployments
+        planSnapshot: v.optional(planSnapshotValidator),
         uiMessageId: v.optional(v.string()),
     },
     handler: async (ctx, args) => {

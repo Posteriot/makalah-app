@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { STAGE_ORDER } from "./constants";
+import { planSnapshotValidator } from "../lib/messageValidators";
 
 export type PaperStage = typeof STAGE_ORDER[number] | "completed";
 
@@ -23,6 +24,7 @@ const SitasiAPAShape = {
 const legacyRingkasanFields = {
     ringkasan: v.optional(v.string()),
     ringkasanDetail: v.optional(v.string()),
+    _plan: v.optional(planSnapshotValidator),
 };
 
 // Validators for each stage (used in schema and mutations)
