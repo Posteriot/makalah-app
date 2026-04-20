@@ -32,10 +32,10 @@ export function pipePlanCapture(
   let captureContent = ""
   // Text before the unfenced plan start that hasn't been flushed yet
   let prePlanText = ""
-  // Pipeline: pipePlanCapture → pipeYamlRender → client
-  // pipeYamlRender reads { delta } (line 326 of @json-render/yaml)
-  // AI SDK client reads { textDelta }
-  // We must emit BOTH properties so both consumers work.
+  // Track the current text block id from upstream text-start chunks.
+  // AI SDK v6 requires every text-delta to carry the id of its parent
+  // text block — omitting it causes AI_TypeValidationError on the client.
+  let currentTextId = ""
 
   function tryParsePlan(content: string, source: "fenced" | "unfenced"): PlanDataPart | null {
     try {
@@ -68,10 +68,7 @@ export function pipePlanCapture(
 
   function emitText(controller: ReadableStreamDefaultController, text: string) {
     if (text.length > 0) {
-      // Both properties required:
-      // - delta: consumed by downstream pipeYamlRender (@json-render/yaml line 326)
-      // - textDelta: consumed by AI SDK client-side Zod schema
-      controller.enqueue({ type: "text-delta", textDelta: text, delta: text })
+      controller.enqueue({ type: "text-delta", id: currentTextId, delta: text })
     }
   }
 
@@ -281,15 +278,33 @@ export function pipePlanCapture(
             break
           }
 
-          const chunk = value as { type?: string; textDelta?: string; delta?: string }
+          const chunk = value as { type?: string; id?: string; textDelta?: string; delta?: string }
+
+          // Track text block id from upstream text-start events
+          if (chunk.type === "text-start" && chunk.id) {
+            currentTextId = chunk.id
+          }
+
+          // Flush buffered text BEFORE forwarding text-end so text-delta
+          // chunks never arrive after their block has closed (protocol violation)
+          if (chunk.type === "text-end") {
+            if (state === "unfenced" && captureContent.length > 0) {
+              finalizeUnfenced(controller)
+            }
+            if (state === "normal" && buffer.length > 0) {
+              emitText(controller, buffer)
+              buffer = ""
+            }
+            controller.enqueue(value)
+            continue
+          }
 
           if (chunk.type !== "text-delta") {
             controller.enqueue(value)
             continue
           }
 
-          // Handle both property names (textDelta from AI SDK, delta from pipeYamlRender)
-          const textContent = chunk.textDelta ?? chunk.delta
+          const textContent = chunk.id ? (chunk.delta ?? chunk.textDelta) : (chunk.textDelta ?? chunk.delta)
           if (typeof textContent !== "string") {
             controller.enqueue(value)
             continue
