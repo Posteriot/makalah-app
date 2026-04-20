@@ -157,7 +157,12 @@ function Verify2FAPage() {
 
   // Reset submit guard when page is restored from bfcache (browser back button)
   useEffect(() => {
-    const handlePageShow = () => { isSubmitting.current = false }
+    const handlePageShow = () => {
+      isSubmitting.current = false
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[AUTH-HARDENING] bfcache restore — reset isSubmitting")
+      }
+    }
     window.addEventListener("pageshow", handlePageShow)
     return () => window.removeEventListener("pageshow", handlePageShow)
   }, [])
