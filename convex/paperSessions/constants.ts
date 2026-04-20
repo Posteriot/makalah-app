@@ -61,3 +61,8 @@ export function getStageLabel(stage: LegacyPaperStageId | "completed"): string {
     };
     return labels[stage];
 }
+
+export function getStageIdFromLabel(label: string): PaperStageId | undefined {
+    const trimmed = label.trim();
+    return STAGE_ORDER.find((candidate) => getStageLabel(candidate) === trimmed);
+}
