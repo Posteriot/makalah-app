@@ -132,7 +132,7 @@ export function validateChoiceInteractionEvent(params: {
   if (!currentStage || currentStage === "completed") throw new Error("Choice submit requires an active paper stage.")
   if (event.stage !== currentStage) {
     // Auto-correct: client's paperSession.currentStage may lag behind server after
-    // unapproveStage (Convex reactive query race). The server's currentStage is
+    // rewindToStage/cancelChoiceDecision (Convex reactive query race). The server's currentStage is
     // authoritative — override the stale client value instead of crashing.
     console.warn(`[CHOICE-VALIDATION] stage mismatch auto-corrected: event.stage=${event.stage} → ${currentStage} (reactive query lag after unapprove)`)
     ;(event as { stage: string }).stage = currentStage
