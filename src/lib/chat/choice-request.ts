@@ -1,5 +1,9 @@
 import { z } from "zod"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
+import type { ResolvedChoiceWorkflow } from "./choice-workflow-registry"
+
+export { resolveChoiceWorkflow, shouldAttemptRescue } from "./choice-workflow-registry"
+export type { ResolvedChoiceWorkflow, ResolveChoiceWorkflowInput } from "./choice-workflow-registry"
 
 const VALIDATE_OPTION_ID = "sudah-cukup-lanjut-validasi"
 
@@ -27,6 +31,10 @@ const STAGE_MATURITY_KEYS: Partial<Record<PaperStageId, string[]>> = {
 
 /**
  * Determine if a post-choice turn should finalize (artifact + submit) or stay exploratory.
+ *
+ * @deprecated Use `resolveChoiceWorkflow` from `./choice-workflow-registry` instead.
+ * This function remains for backward compatibility during migration. Task 4 will
+ * wire the route to use the new resolver; this function will be removed afterward.
  *
  * Priority order:
  * 1. decisionMode from choice card metadata (primary — model declares intent)
@@ -89,6 +97,13 @@ const choiceInteractionEventSchema = z.object({
   kind: z.literal("single-select"),
   selectedOptionIds: z.array(z.string().min(1)).min(1),
   customText: z.string().optional(),
+  workflowAction: z.enum([
+    "continue_discussion",
+    "finalize_stage",
+    "compile_then_finalize",
+    "special_finalize",
+    "validation_ready",
+  ]).optional(),
   decisionMode: z.enum(["exploration", "commit"]).optional(),
   submittedAt: z.number(),
 })
@@ -115,7 +130,13 @@ export function validateChoiceInteractionEvent(params: {
   if (!isPaperMode) throw new Error("Choice submit is only valid in paper mode.")
   if (event.conversationId !== conversationId) throw new Error("interactionEvent.conversationId does not match active conversation.")
   if (!currentStage || currentStage === "completed") throw new Error("Choice submit requires an active paper stage.")
-  if (event.stage !== currentStage) throw new Error("interactionEvent.stage does not match active paper stage.")
+  if (event.stage !== currentStage) {
+    // Auto-correct: client's paperSession.currentStage may lag behind server after
+    // unapproveStage (Convex reactive query race). The server's currentStage is
+    // authoritative — override the stale client value instead of crashing.
+    console.warn(`[CHOICE-VALIDATION] stage mismatch auto-corrected: event.stage=${event.stage} → ${currentStage} (reactive query lag after unapprove)`)
+    ;(event as { stage: string }).stage = currentStage
+  }
   if (stageStatus && stageStatus !== "drafting") {
     throw new Error(
       `CHOICE_REJECTED_STALE_STATE: Choice rejected — stageStatus is "${stageStatus}", expected "drafting". ` +
@@ -126,7 +147,12 @@ export function validateChoiceInteractionEvent(params: {
 
 export function buildChoiceContextNote(
   event: ParsedChoiceInteractionEvent,
-  options?: { hasExistingArtifact?: boolean; forceFinalize?: boolean }
+  options?: {
+    hasExistingArtifact?: boolean
+    resolvedWorkflow?: ResolvedChoiceWorkflow
+    /** @deprecated Use resolvedWorkflow instead */
+    forceFinalize?: boolean
+  }
 ): string {
   const selectedOptionIds = event.selectedOptionIds.map((id) => id.trim().toLowerCase())
   const requestedValidation =
@@ -137,6 +163,11 @@ export function buildChoiceContextNote(
         /^approve(?:-|$)/.test(id) ||
         /(?:validasi|validation)(?:-|$)/.test(id)
     )
+
+  // Warn if using legacy forceFinalize path
+  if (options?.forceFinalize !== undefined && !options?.resolvedWorkflow) {
+    console.warn("[buildChoiceContextNote] Using legacy forceFinalize path. Migrate to resolvedWorkflow.")
+  }
 
   const baseLines = [
     "USER_CHOICE_DECISION:",
@@ -149,7 +180,11 @@ export function buildChoiceContextNote(
     baseLines.push(`- Custom note: ${event.customText.trim()}`)
   }
 
-  if (requestedValidation) {
+  // 1. Validation-ready path: resolvedWorkflow OR option ID fallback
+  if (
+    options?.resolvedWorkflow?.action === "validation_ready"
+    || requestedValidation
+  ) {
     baseLines.push("- Mode: validation-ready")
 
     // daftar_pustaka has a special compilation step that must run before submit
@@ -158,14 +193,18 @@ export function buildChoiceContextNote(
         "- Next action: call compileDaftarPustaka with mode 'persist'. This compiles and deduplicates references server-side.",
         "- After compileDaftarPustaka succeeds, call createArtifact with the compiled bibliography content.",
         "- Then call submitStageForValidation.",
-        "- Do NOT call updateStageData directly — compileDaftarPustaka handles data persistence internally."
+        "- Do NOT call updateStageData directly — compileDaftarPustaka handles data persistence internally.",
+        "- Do NOT mention technical issues, retries, temporary failures, or partial-save problems in chat if the tools succeed.",
+        "- Keep the final chat response to a short confirmation plus pointer to the validation panel."
       )
     } else {
       baseLines.push(
         "- Next action: summarize the stage decision, then call updateStageData, createArtifact, and submitStageForValidation in sequence. Do not open new branches.",
         "- If the current stage draft is not yet saved, you MUST call updateStageData first.",
         "- If the current stage does not have an artifact yet, you MUST call createArtifact after updateStageData.",
-        "- Once stage data and artifact both exist, call submitStageForValidation in the same response."
+        "- Once stage data and artifact both exist, call submitStageForValidation in the same response.",
+        "- Do NOT mention technical issues, retries, temporary failures, or partial-save problems in chat if the tools succeed.",
+        "- Do NOT preview the draft content in chat before the artifact tool succeeds. Keep the final chat response to a short confirmation plus pointer to the validation panel."
       )
     }
 
@@ -175,7 +214,7 @@ export function buildChoiceContextNote(
     return baseLines.join("\n")
   }
 
-  // Lampiran "tidak ada" path: create minimal placeholder artifact
+  // 2. Lampiran "tidak ada" path: create minimal placeholder artifact
   const NO_APPENDIX_IDS = new Set(["tidak-ada-lampiran", "option-tidak-ada-lampiran", "no-appendix"])
   if (event.stage === "lampiran" && selectedOptionIds.some(id => NO_APPENDIX_IDS.has(id))) {
     baseLines.push(
@@ -187,13 +226,14 @@ export function buildChoiceContextNote(
       "  3. submitStageForValidation",
       "- Do NOT output another choice card.",
       "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
+      "- Do NOT mention technical issues, retries, temporary failures, or partial-save problems in chat if the tools succeed.",
       "- Keep chat response to 1-2 sentences confirming no appendix needed.",
       "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
     )
     return baseLines.join("\n")
   }
 
-  // Judul post-choice: user selected a title option
+  // 3. Judul post-choice: user selected a title option
   if (event.stage === "judul") {
     baseLines.push(
       "- Mode: post-choice-title-selection",
@@ -207,13 +247,15 @@ export function buildChoiceContextNote(
       "  3. submitStageForValidation",
       "- Do NOT output another choice card.",
       "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
+      "- Do NOT mention technical issues, retries, temporary failures, or partial-save problems in chat if the tools succeed.",
+      "- Do NOT preview title-analysis content in chat before the artifact tool succeeds.",
       "- Keep chat response to 1-3 sentences confirming the selected title.",
       "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
     )
     return baseLines.join("\n")
   }
 
-  // Hasil post-choice: artifact-first mandatory contract
+  // 4. Hasil post-choice: artifact-first mandatory contract
   if (event.stage === "hasil") {
     baseLines.push(
       "- Mode: post-choice-artifact-first",
@@ -236,9 +278,34 @@ export function buildChoiceContextNote(
     return baseLines.join("\n")
   }
 
-  // Finalize decision comes solely from the resolved helper (forceFinalize).
-  // Do NOT check ALWAYS_FINALIZE_STAGES here — that would bypass decisionMode override.
-  if (options?.forceFinalize) {
+  // 5. Daftar pustaka compile-first path
+  if (options?.resolvedWorkflow?.action === "compile_then_finalize" && event.stage === "daftar_pustaka") {
+    baseLines.push(
+      "- Mode: post-choice-compile-finalize",
+      "- The user has selected a bibliography compilation direction. This is a commit point.",
+      "- You MUST call tools in this EXACT order:",
+      "  1. compileDaftarPustaka({ mode: 'persist' })",
+      options?.hasExistingArtifact
+        ? "  2. updateArtifact (artifact already exists — update it with the compiled bibliography content)"
+        : "  2. createArtifact (create the bibliography artifact from the compiled bibliography content)",
+      "  3. submitStageForValidation",
+      "- Do NOT call updateStageData directly in this path — compileDaftarPustaka handles bibliography persistence.",
+      "- Do NOT output another choice card in this response.",
+      "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
+      "- Do NOT mention technical issues, retries, temporary failures, or partial-save problems in chat if the tools succeed.",
+      "- Do NOT preview bibliography body content in chat before the artifact tool succeeds. Keep the final chat response to a short confirmation plus pointer to the validation panel.",
+      "- Mention the validation panel ONLY if submitStageForValidation succeeds.",
+      "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
+    )
+    return baseLines.join("\n")
+  }
+
+  // 6. Derive finalize decision from resolved workflow (primary) or legacy forceFinalize (fallback)
+  const shouldFinalize = options?.resolvedWorkflow
+    ? options.resolvedWorkflow.action !== "continue_discussion"
+    : options?.forceFinalize
+
+  if (shouldFinalize) {
     baseLines.push(
       "- Mode: post-choice-finalize",
       "- The user has selected a concrete stage direction from the choice card. This is a commit point, not an exploration loop.",
@@ -251,15 +318,23 @@ export function buildChoiceContextNote(
       "  3. submitStageForValidation",
       "- Do NOT output another choice card in this response.",
       "- Do NOT stop after partial save. All 3 tool calls MUST complete in this response.",
+      "- Do NOT mention technical issues, retries, temporary failures, or partial-save problems in chat if the tools succeed.",
+      "- Do NOT preview the draft content in chat before the artifact tool succeeds. Keep the final chat response to a short confirmation plus pointer to the validation panel.",
       "- Mention the validation panel ONLY if submitStageForValidation succeeds.",
       "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
     )
     return baseLines.join("\n")
   }
 
+  // 7. Continue discussion path — hard prose contract (Patch 6)
   baseLines.push(
-    "- Mode: decision-to-draft",
-    "- Next action: translate the user's selected direction into a concrete stage draft. If the content becomes mature enough, updateStageData and createArtifact are allowed in this response. Do not submit validation automatically.",
+    `- Mode: continue-discussion (action=${options?.resolvedWorkflow?.action ?? "legacy"})`,
+    "- This is a discussion turn, NOT a commit point.",
+    "- Do NOT start artifact lifecycle (no createArtifact, no updateArtifact, no submitStageForValidation).",
+    "- Do NOT write final-handoff phrasing (e.g. 'berikut draf', 'draf yang akan diajukan', 'silakan review di panel').",
+    "- Respond by: summarizing the user's choice, explaining consequences, sharpening direction, or continuing discussion.",
+    "- You MUST emit a ```plan-spec``` block updating your execution plan status.",
+    "- You MUST end your response with a ```yaml-spec``` choice card presenting the user's next options.",
     "- User-facing reply must stay in natural prose only. Do not expose JSON, schema keys, code fences, pseudo-code, or tool internals."
   )
 

@@ -81,4 +81,36 @@ describe("auth-server session validation", () => {
       getTokenFromBetterAuthCookies("session=abc"),
     ).resolves.toBeNull()
   })
+
+  it("retries once and succeeds after a transient network failure", async () => {
+    vi.spyOn(global, "fetch")
+      .mockRejectedValueOnce(new Error("ETIMEDOUT"))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ token: "convex-token" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+
+    await expect(
+      getTokenFromBetterAuthCookies("session=abc"),
+    ).resolves.toBe("convex-token")
+  })
+
+  it("retries once and succeeds after a transient 5xx response", async () => {
+    vi.spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response("Internal Server Error", { status: 502 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ token: "convex-token" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+
+    await expect(
+      getTokenFromBetterAuthCookies("session=abc"),
+    ).resolves.toBe("convex-token")
+  })
 })

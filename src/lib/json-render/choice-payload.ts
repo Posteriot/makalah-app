@@ -90,8 +90,28 @@ const eventBindingsSchema = z.record(
 
 const nullableString = z.string().nullable().optional()
 
+const workflowActionValues = [
+  "continue_discussion",
+  "finalize_stage",
+  "compile_then_finalize",
+  "special_finalize",
+  "validation_ready",
+] as const
+
+export type WorkflowAction = (typeof workflowActionValues)[number]
+
+export const workflowActionSchema = z.enum(workflowActionValues)
+
 const choiceCardShellPropsSchema = z.object({
   title: z.string().min(1),
+  workflowAction: workflowActionSchema,
+  decisionMode: z.enum(["exploration", "commit"]).optional(),
+})
+
+const renderChoiceCardShellPropsSchema = z.object({
+  title: z.string().min(1),
+  workflowAction: workflowActionSchema.optional(),
+  decisionMode: z.enum(["exploration", "commit"]).optional(),
 })
 
 const choiceOptionButtonPropsSchema = z.object({
@@ -130,6 +150,13 @@ const componentTypeSchema = z.enum([
 
 const componentPropsSchemaMap = {
   ChoiceCardShell: choiceCardShellPropsSchema,
+  ChoiceOptionButton: choiceOptionButtonPropsSchema,
+  ChoiceTextarea: choiceTextareaPropsSchema,
+  ChoiceSubmitButton: choiceSubmitButtonPropsSchema,
+} as const
+
+const renderComponentPropsSchemaMap = {
+  ChoiceCardShell: renderChoiceCardShellPropsSchema,
   ChoiceOptionButton: choiceOptionButtonPropsSchema,
   ChoiceTextarea: choiceTextareaPropsSchema,
   ChoiceSubmitButton: choiceSubmitButtonPropsSchema,
@@ -208,6 +235,7 @@ export const choiceSpecSchema = z
   })
 
 export type JsonRendererChoiceSpec = z.infer<typeof choiceSpecSchema>
+export type JsonRendererChoiceRenderSpec = JsonRendererChoiceSpec
 
 // ---------------------------------------------------------------------------
 // Full payload schema
@@ -237,6 +265,85 @@ export function parseJsonRendererChoicePayload(
   payload: unknown
 ): JsonRendererChoicePayload {
   return choicePayloadSchema.parse(payload)
+}
+
+export function parseChoiceSpecForRender(
+  spec: unknown
+): {
+  success: true
+  spec: JsonRendererChoiceRenderSpec
+  contractVersion: "v2" | "legacy-render"
+} | {
+  success: false
+  error: z.ZodError
+} {
+  const strictResult = choiceSpecSchema.safeParse(spec)
+  if (strictResult.success) {
+    return {
+      success: true,
+      spec: strictResult.data,
+      contractVersion: "v2",
+    }
+  }
+
+  const renderSpecSchema = z
+    .object({
+      root: z.string().min(1),
+      elements: z.record(z.string(), jsonRendererElementSchema),
+    })
+    .superRefine((candidate, ctx) => {
+      const rootElement = candidate.elements[candidate.root]
+      if (!rootElement) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["root"],
+          message: "Root must reference an existing element.",
+        })
+      }
+
+      for (const [elementId, element] of Object.entries(candidate.elements)) {
+        const propsSchema =
+          renderComponentPropsSchemaMap[
+            element.type as keyof typeof renderComponentPropsSchemaMap
+          ]
+        if (propsSchema) {
+          const propsResult = propsSchema.safeParse(element.props)
+          if (!propsResult.success) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["elements", elementId, "props"],
+              message: propsResult.error.issues
+                .map((issue) => issue.message)
+                .join("; "),
+            })
+          }
+        }
+
+        for (const childId of element.children) {
+          if (!candidate.elements[childId]) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["elements", elementId, "children"],
+              message: `Child '${childId}' not found in spec elements.`,
+            })
+          }
+        }
+      }
+    })
+
+  const renderResult = renderSpecSchema.safeParse(spec)
+  if (!renderResult.success) {
+    return {
+      success: false,
+      error: renderResult.error,
+    }
+  }
+
+  return {
+    success: true,
+    spec: renderResult.data as JsonRendererChoiceRenderSpec,
+    contractVersion: "legacy-render",
+  }
 }
 
 // ---------------------------------------------------------------------------

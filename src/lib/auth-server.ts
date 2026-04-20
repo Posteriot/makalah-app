@@ -90,12 +90,20 @@ type BetterAuthCookieValidation =
   | { status: "authenticated"; token: string };
 
 const CONVEX_TOKEN_TIMEOUT_MS = 5_000;
+const CONVEX_TOKEN_MAX_ATTEMPTS = 2;
+const CONVEX_TOKEN_RETRY_DELAY_MS = 300;
 
-async function validateBetterAuthCookies(
-  betterAuthCookies: string | null
-): Promise<BetterAuthCookieValidation> {
-  if (!betterAuthCookies) return { status: "missing" };
+type TokenEndpointAttempt =
+  | { kind: "response"; response: Response }
+  | { kind: "network_error"; error: unknown };
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchConvexTokenEndpoint(
+  betterAuthCookies: string,
+): Promise<TokenEndpointAttempt> {
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_CONVEX_SITE_URL}/api/auth/convex/token`, {
       headers: {
@@ -103,17 +111,57 @@ async function validateBetterAuthCookies(
       },
       signal: AbortSignal.timeout(CONVEX_TOKEN_TIMEOUT_MS),
     });
+    return { kind: "response", response };
+  } catch (error) {
+    return { kind: "network_error", error };
+  }
+}
 
-    // 5xx = server/infra issue (cold start, overload) — treat same as network error
-    // so transient Convex downtime doesn't invalidate the user's session.
-    if (response.status >= 500) return { status: "network_error" };
+async function validateBetterAuthCookies(
+  betterAuthCookies: string | null
+): Promise<BetterAuthCookieValidation> {
+  if (!betterAuthCookies) return { status: "missing" };
+
+  for (let attempt = 1; attempt <= CONVEX_TOKEN_MAX_ATTEMPTS; attempt += 1) {
+    const result = await fetchConvexTokenEndpoint(betterAuthCookies);
+
+    if (result.kind === "network_error") {
+      if (attempt < CONVEX_TOKEN_MAX_ATTEMPTS) {
+        console.warn("[auth-server] Convex token fetch network error, retrying", {
+          attempt,
+          maxAttempts: CONVEX_TOKEN_MAX_ATTEMPTS,
+        });
+        await delay(CONVEX_TOKEN_RETRY_DELAY_MS);
+        continue;
+      }
+      return { status: "network_error" };
+    }
+
+    const { response } = result;
+
+    // 5xx = server/infra issue (cold start, overload) — retry once, then treat
+    // same as network error so transient Convex downtime doesn't invalidate the session.
+    if (response.status >= 500) {
+      if (attempt < CONVEX_TOKEN_MAX_ATTEMPTS) {
+        console.warn("[auth-server] Convex token endpoint returned 5xx, retrying", {
+          attempt,
+          maxAttempts: CONVEX_TOKEN_MAX_ATTEMPTS,
+          status: response.status,
+        });
+        await delay(CONVEX_TOKEN_RETRY_DELAY_MS);
+        continue;
+      }
+      return { status: "network_error" };
+    }
+
     if (!response.ok) return { status: "invalid" };
+
     const data = await response.json();
     if (typeof data?.token === "string" && data.token.length > 0) {
       return { status: "authenticated", token: data.token };
     }
     return { status: "invalid" };
-  } catch {
-    return { status: "network_error" };
   }
+
+  return { status: "network_error" };
 }

@@ -82,7 +82,9 @@ export const listByConversation = queryGeneric({
       .order("desc")
       .collect()
 
-    const ownedArtifacts = artifacts.filter((artifact) => artifact.userId === userId)
+    const ownedArtifacts = artifacts.filter(
+      (artifact) => artifact.userId === userId && !artifact.invalidatedAt
+    )
 
     // Filter by type if specified
     if (type) {
@@ -164,7 +166,7 @@ export const listLatestByConversationIds = queryGeneric({
           .collect()
 
         return getLatestArtifactsForConversation(
-          artifacts.filter((artifact) => artifact.userId === userId)
+          artifacts.filter((artifact) => artifact.userId === userId && !artifact.invalidatedAt)
         )
       })
     )

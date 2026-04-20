@@ -1,7 +1,7 @@
 "use client"
 
 import { Check, StarSolid } from "iconoir-react"
-import { useStateValue, type BaseComponentProps } from "@json-render/react"
+import { useStateValue, useStateStore, type BaseComponentProps } from "@json-render/react"
 import { cn } from "@/lib/utils"
 
 interface ChoiceOptionButtonProps {
@@ -14,9 +14,9 @@ interface ChoiceOptionButtonProps {
 
 export function ChoiceOptionButton({
   props,
-  emit,
 }: BaseComponentProps<ChoiceOptionButtonProps>) {
-  const selectedOptionId = useStateValue<string>("/selection/selectedOptionId")
+  const selectedOptionId = useStateValue<string | null>("/selection/selectedOptionId")
+  const store = useStateStore()
   const isSelected = selectedOptionId === props.optionId
   // Detect recommendation from prop OR from pre-selection (model may set either)
   const isRecommended = props.recommended === true || props.selected === true
@@ -26,7 +26,12 @@ export function ChoiceOptionButton({
     <button
       type="button"
       disabled={disabled}
-      onClick={() => emit("press")}
+      onClick={() => {
+        // Toggle directly via state store — works for both old specs (setState action)
+        // and new specs (toggleOption action). Bypasses emit("press") to guarantee
+        // toggle behavior regardless of what action the spec declares.
+        store.set("/selection/selectedOptionId", isSelected ? null : props.optionId)
+      }}
       className={cn(
         "w-full rounded-action border bg-[var(--chat-background)] px-3 py-3 text-left transition-colors",
         "focus-ring disabled:cursor-not-allowed disabled:opacity-60",

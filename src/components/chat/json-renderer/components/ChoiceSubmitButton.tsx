@@ -1,7 +1,7 @@
 "use client"
 
 import { Send } from "iconoir-react"
-import type { BaseComponentProps } from "@json-render/react"
+import { useStateValue, type BaseComponentProps } from "@json-render/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -14,7 +14,8 @@ export function ChoiceSubmitButton({
   props,
   emit,
 }: BaseComponentProps<ChoiceSubmitButtonProps>) {
-  const disabled = props.disabled === true
+  const selectedOptionId = useStateValue<string | null>("/selection/selectedOptionId")
+  const disabled = props.disabled === true || !selectedOptionId
 
   return (
     <div className="flex items-center justify-end">

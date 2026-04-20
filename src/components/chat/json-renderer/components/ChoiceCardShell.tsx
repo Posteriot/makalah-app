@@ -1,9 +1,11 @@
 "use client"
 
 import type { BaseComponentProps } from "@json-render/react"
+import type { WorkflowAction } from "@/lib/json-render/choice-payload"
 
 interface ChoiceCardShellProps {
   title: string
+  workflowAction?: WorkflowAction
   decisionMode?: "exploration" | "commit"
 }
 

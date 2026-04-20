@@ -1,7 +1,7 @@
 "use client"
 
 import { UIMessage } from "ai"
-import { EditPencil, Xmark, Send, CheckCircle, Copy, Check } from "iconoir-react"
+import { EditPencil, Xmark, Send, CheckCircle, Copy, Check, Undo } from "iconoir-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
 import { SourcesIndicator } from "./SourcesIndicator"
@@ -18,14 +18,24 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+    DialogClose,
+} from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { isImageType } from "@/lib/types/attached-file"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { extractLegacySourcesFromText } from "@/lib/citations/legacy-source-extractor"
 import { splitInternalThought } from "@/lib/ai/internal-thought-separator"
+import { buildApprovedStageMessageFromLabel } from "@/lib/paper/approval-copy"
 import { JsonRendererChoiceBlock } from "./json-renderer/JsonRendererChoiceBlock"
 import {
-    choiceSpecSchema,
+    parseChoiceSpecForRender,
     type JsonRendererChoiceRenderPayload,
     type JsonRendererChoiceSpec,
 } from "@/lib/json-render/choice-payload"
@@ -177,6 +187,13 @@ interface MessageBubbleProps {
         selectedOptionId: string
         customText?: string
     }) => void | Promise<void>
+    onCancelChoice?: (messageId: string, messageIndex: number) => void
+    onCancelApproval?: (messageId: string, messageIndex: number) => void
+    isStreaming?: boolean
+    /** IDs of messages eligible for choice cancel (computed in ChatWindow) */
+    cancelableChoiceMessageIds?: Set<string>
+    /** ID of the single message eligible for approval cancel (computed in ChatWindow) */
+    cancelableApprovalMessageId?: string | null
 }
 
 export function MessageBubble({
@@ -196,15 +213,31 @@ export function MessageBubble({
     onOpenSources,
     isChoiceSubmitted,
     onChoiceSubmit,
+    onCancelChoice,
+    onCancelApproval,
+    isStreaming,
+    cancelableChoiceMessageIds,
+    cancelableApprovalMessageId,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
     const [isCopied, setIsCopied] = useState(false)
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+    const [showApprovalCancelConfirm, setShowApprovalCancelConfirm] = useState(false)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const editAreaRef = useRef<HTMLDivElement>(null)
 
     const isUser = message.role === 'user'
     const isAssistant = message.role === 'assistant'
+    const resolveApprovedBubbleText = (action: Extract<NonNullable<AutoUserAction>, { kind: "approved" }>) => {
+        const normalizedFollowupText = action.followupText.trim()
+        const isLegacyGenericFollowup = normalizedFollowupText === "" || normalizedFollowupText === "Lanjut ke tahap berikutnya."
+        if (!isLegacyGenericFollowup) {
+            return normalizedFollowupText
+        }
+
+        return buildApprovedStageMessageFromLabel(action.stageLabel) || `Tahap ${action.stageLabel} disetujui.`
+    }
 
     const parseAutoUserAction = (rawContent: string): AutoUserAction => {
         const approvedMatch = rawContent.match(/^\[Approved:\s*(.+?)\]\s*([\s\S]*)$/)
@@ -263,7 +296,8 @@ export function MessageBubble({
         })
     }, [message.role, allMessages, messageIndex, isPaperMode, currentStageStartIndex, stageData])
 
-    // Derive task summary for UnifiedProcessCard — use per-message stage, not global currentStage
+    // Derive task summary for UnifiedProcessCard — use per-message plan snapshot when available,
+    // falling back to global stageData._plan for messages without snapshot (backward compat).
     const taskSummary = useMemo(() => {
         if (!isPaperMode || !stageData || !currentStage || currentStage === "completed") return null
 
@@ -273,8 +307,30 @@ export function MessageBubble({
             ? getMessageStage(messageCreatedAt, stageData)
             : currentStage  // Streaming message (no createdAt yet) → use current stage
 
-        const result = deriveTaskList(messageStage as PaperStageId, stageData)
-        return result
+        // Path 1: Message has its own plan snapshot — use it (overlay onto stageData)
+        const msgPlanSnapshot = allMessages[messageIndex]?.planSnapshot
+        if (msgPlanSnapshot) {
+            const overlayStageData = {
+                ...stageData,
+                [messageStage]: {
+                    ...(stageData[messageStage] ?? {}),
+                    _plan: msgPlanSnapshot,
+                },
+            }
+            return deriveTaskList(messageStage as PaperStageId, overlayStageData)
+        }
+
+        // Path 2: No planSnapshot on this message AND no _plan in stageData for its stage.
+        // This means there's genuinely no plan data from ANY source.
+        // Don't render hardcoded-fallback tasks — wait for real data to arrive
+        // via reactive query (updatePlan → _plan) or message re-persist (planSnapshot).
+        const hasNoPlan = !(stageData[messageStage] as Record<string, unknown> | undefined)?._plan
+        if (hasNoPlan) {
+            return null
+        }
+
+        // Path 3: Stage has _plan in stageData (from a previous turn) — use it
+        return deriveTaskList(messageStage as PaperStageId, stageData)
     }, [isPaperMode, stageData, currentStage, allMessages, messageIndex])
 
 
@@ -566,20 +622,32 @@ export function MessageBubble({
         return null
     }
 
-    const extractChoiceSpec = (uiMessage: UIMessage): JsonRendererChoiceSpec | null => {
+    // Pure choice-spec extraction: walks message.parts, applies any patches,
+    // validates the merged spec, and returns a rich result. NO console output —
+    // logging is handled below via a signature-deduped useEffect so streaming
+    // chunks no longer flood the console with the same line per render.
+    type ChoiceSpecExtraction = {
+        spec: JsonRendererChoiceSpec | null
+        hasSpecParts: boolean
+        parseSuccess: boolean
+        elementTypes: string
+        parseErrors: string[]
+        contractVersion?: string
+    }
+    const extractChoiceSpecResult = (uiMessage: UIMessage): ChoiceSpecExtraction => {
         let spec: Spec | null = null
+        let hasSpecParts = false
         for (const part of uiMessage.parts ?? []) {
             if (!part || typeof part !== "object") continue
             const dataPart = part as unknown as { type?: string; data?: unknown }
             if (dataPart.type !== SPEC_DATA_PART_TYPE) continue
+            hasSpecParts = true
             const data = dataPart.data as { type?: string; spec?: Spec; patch?: unknown } | null
             if (!data || typeof data !== "object") continue
             if (data.type === "flat" && data.spec) {
                 spec = data.spec
             } else if (data.type === "patch" && data.patch) {
-                // Initialize empty spec on first patch — pipeYamlRender only emits patches during streaming
                 if (!spec) spec = {} as Spec
-                // pipeYamlRender emits single patch per chunk (not array)
                 const patches = Array.isArray(data.patch) ? data.patch : [data.patch]
                 for (const p of patches) {
                     try { spec = applySpecPatch(spec, p as JsonPatch) } catch { /* skip invalid patch */ }
@@ -588,12 +656,7 @@ export function MessageBubble({
         }
 
         if (!spec) {
-            // Check: does this message have parts at all? And do any look like spec parts?
-            const partTypes = (uiMessage.parts ?? []).map(p => (p as {type?:string})?.type).filter(Boolean)
-            if (partTypes.length > 0) {
-                console.log("[F1-F6-TEST] extractChoiceSpec: no spec found", { messageId: uiMessage.id, partTypes: partTypes.join(",") })
-            }
-            return null
+            return { spec: null, hasSpecParts, parseSuccess: false, elementTypes: "", parseErrors: [] }
         }
 
         const rawElements = (spec as unknown as Record<string, unknown>).elements
@@ -608,61 +671,126 @@ export function MessageBubble({
                 return `${id}:${elementType ?? "?"}`
             })
             .join(", ")
-        const parsedSpec = choiceSpecSchema.safeParse(spec)
+        const parsedSpec = parseChoiceSpecForRender(spec)
         if (!parsedSpec.success) {
-            console.warn("[F1-F6-TEST] ChoiceSpec validation FAILED", { errors: parsedSpec.error.issues.map(i => `${i.path.join(".")}: ${i.message}`), elementTypes })
-        } else {
-            console.log("[F1-F6-TEST] extractChoiceSpec OK", { messageId: uiMessage.id, elementTypes })
+            return {
+                spec: null,
+                hasSpecParts: true,
+                parseSuccess: false,
+                elementTypes,
+                parseErrors: parsedSpec.error.issues.map(i => `${i.path.join(".")}: ${i.message}`),
+            }
         }
-        return parsedSpec.success ? (spec as JsonRendererChoiceSpec) : null
+        return {
+            spec: parsedSpec.spec,
+            hasSpecParts: true,
+            parseSuccess: true,
+            elementTypes,
+            parseErrors: [],
+            contractVersion: parsedSpec.contractVersion,
+        }
     }
 
     const searchStatus = extractSearchStatus(message)
     const citedText = extractCitedText(message)
-    const choiceSpec = extractChoiceSpec(message)
-    const choiceBlockPayload = useMemo<JsonRendererChoiceRenderPayload | null>(() => {
-        if (!choiceSpec) return null
+    // Memoize extraction so we re-parse only when message.parts changes,
+    // not on every unrelated re-render. Avoids O(n²) work over streaming chunks.
+    const choiceSpecResult = useMemo<ChoiceSpecExtraction>(
+        () => extractChoiceSpecResult(message),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [message.parts]
+    )
+    const choiceSpec = choiceSpecResult.spec
 
-        // Safety net: if model generated ChoiceOptionButtons but no ChoiceSubmitButton, inject one
+    // Signature-deduped logging for choice-spec extraction. Fires once per
+    // distinct outcome rather than per render. Replaces former in-render
+    // console.log/warn at the bottom of extractChoiceSpec.
+    const lastChoiceSpecLogSig = useRef<string | null>(null)
+    // Track streaming state via ref so the useEffect dependency array
+    // size stays constant (React requires stable array length across
+    // renders — changing from [2] to [3] items crashes the hook chain).
+    const isStreamingRef = useRef(persistProcessIndicators)
+    isStreamingRef.current = persistProcessIndicators
+    useEffect(() => {
+        const sig = `${choiceSpecResult.hasSpecParts}|${choiceSpecResult.parseSuccess}|${choiceSpecResult.elementTypes}|${choiceSpecResult.contractVersion ?? ""}|err=${choiceSpecResult.parseErrors.join(";")}`
+        if (lastChoiceSpecLogSig.current === sig) return
+        lastChoiceSpecLogSig.current = sig
+        if (!choiceSpecResult.spec) {
+            if (choiceSpecResult.hasSpecParts && choiceSpecResult.parseErrors.length > 0) {
+                // Only warn when streaming is complete — partial specs
+                // during active streaming are structurally expected to
+                // fail Zod validation and produce false-positive noise.
+                // Read from ref to avoid changing the dependency array size.
+                if (!isStreamingRef.current) {
+                    console.warn("[F1-F6-TEST] ChoiceSpec validation FAILED", {
+                        errors: choiceSpecResult.parseErrors,
+                        elementTypes: choiceSpecResult.elementTypes,
+                    })
+                }
+            } else if (choiceSpecResult.hasSpecParts) {
+                console.log("[F1-F6-TEST] extractChoiceSpec: no spec found", { messageId: message.id })
+            }
+            return
+        }
+        console.log("[F1-F6-TEST] extractChoiceSpec OK", {
+            messageId: message.id,
+            elementTypes: choiceSpecResult.elementTypes,
+            contractVersion: choiceSpecResult.contractVersion,
+        })
+    }, [choiceSpecResult, message.id])
+    // Normalization decision is captured alongside payload so the side-effect
+    // (console.warn) can be deduped per state-change via useEffect below.
+    type ChoiceNormalizationDecision =
+        | "none"
+        | "ok"
+        | "submit-empty-label-fixed"
+        | "submit-injected-missing"
+        | "submit-injected-orphaned"
+    const choiceBlockComputed = useMemo<{
+        payload: JsonRendererChoiceRenderPayload | null
+        decision: ChoiceNormalizationDecision
+    }>(() => {
+        if (!choiceSpec) return { payload: null, decision: "none" }
+
+        // Safety net: ensure ChoiceSubmitButton exists AND is reachable in root.children
         const elements = choiceSpec.elements ?? {}
         const choiceElements = Object.values(elements).filter(
             (el) => !!el && typeof el === "object"
         ) as Array<{ type?: string; props?: Record<string, unknown>; children?: string[] }>
         const hasOptionButtons = choiceElements.some((el) => el.type === "ChoiceOptionButton")
-        const hasSubmitButton = choiceElements.some((el) => el.type === "ChoiceSubmitButton")
+        const submitEntry = Object.entries(elements).find(
+            ([, el]) => !!el && typeof el === "object" && (el as { type?: string }).type === "ChoiceSubmitButton"
+        )
+        const rootElement = elements[choiceSpec.root] as { children?: string[] } | undefined
+        const rootChildren = Array.isArray(rootElement?.children) ? rootElement.children : []
+        // Element exists AND is listed in root.children (not orphaned)
+        const hasReachableSubmitButton = !!submitEntry && rootChildren.includes(submitEntry[0])
 
         let normalizedSpec = choiceSpec
+        let decision: ChoiceNormalizationDecision = "ok"
 
-        // Safety net 2: if ChoiceSubmitButton exists but has empty/missing label, fix it
-        if (hasSubmitButton) {
-            const submitEntry = Object.entries(elements).find(
-                ([, el]) => !!el && typeof el === "object" && (el as { type?: string }).type === "ChoiceSubmitButton"
-            )
-            if (submitEntry) {
-                const [submitKey, submitEl] = submitEntry
-                const submitProps = (submitEl as { props?: Record<string, unknown> }).props ?? {}
-                if (!submitProps.label || (typeof submitProps.label === "string" && submitProps.label.trim().length === 0)) {
-                    normalizedSpec = {
-                        ...choiceSpec,
-                        elements: {
-                            ...elements,
-                            [submitKey]: {
-                                ...submitEl,
-                                props: { ...submitProps, label: "Lanjutkan" },
-                            },
+        // Safety net 2: if ChoiceSubmitButton exists and reachable but has empty/missing label, fix it
+        if (hasReachableSubmitButton && submitEntry) {
+            const [submitKey, submitEl] = submitEntry
+            const submitProps = (submitEl as { props?: Record<string, unknown> }).props ?? {}
+            if (!submitProps.label || (typeof submitProps.label === "string" && submitProps.label.trim().length === 0)) {
+                normalizedSpec = {
+                    ...choiceSpec,
+                    elements: {
+                        ...elements,
+                        [submitKey]: {
+                            ...submitEl,
+                            props: { ...submitProps, label: "Lanjutkan" },
                         },
-                    } as JsonRendererChoiceSpec
-                    console.warn("[F1-F6-TEST] ChoiceSubmitButton had empty label — set to 'Lanjutkan'")
-                }
+                    },
+                } as JsonRendererChoiceSpec
+                decision = "submit-empty-label-fixed"
             }
         }
 
-        if (hasOptionButtons && !hasSubmitButton) {
+        if (hasOptionButtons && !hasReachableSubmitButton) {
             const submitId = "injected-submit-btn"
-            const rootElement = elements[choiceSpec.root]
-            const rootChildren = Array.isArray((rootElement as { children?: string[] })?.children)
-                ? [...(rootElement as { children: string[] }).children, submitId]
-                : [submitId]
+            const updatedRootChildren = [...rootChildren, submitId]
 
             normalizedSpec = {
                 ...choiceSpec,
@@ -670,7 +798,7 @@ export function MessageBubble({
                     ...elements,
                     [choiceSpec.root]: {
                         ...rootElement,
-                        children: rootChildren,
+                        children: updatedRootChildren,
                     },
                     [submitId]: {
                         type: "ChoiceSubmitButton",
@@ -688,23 +816,62 @@ export function MessageBubble({
                     },
                 },
             } as JsonRendererChoiceSpec
-            console.warn("[F1-F6-TEST] ChoiceSubmitButton missing from model YAML — injected fallback")
+            const wasOrphan = !!submitEntry && !rootChildren.includes(submitEntry[0])
+            decision = wasOrphan ? "submit-injected-orphaned" : "submit-injected-missing"
         }
 
         const specWithState = normalizedSpec as JsonRendererChoiceSpec & {
             state?: JsonRendererChoiceRenderPayload["initialState"]
         }
 
+        // Derive initial selectedOptionId from spec state, or fall back to
+        // scanning elements for a recommended/pre-selected option. This
+        // handles old DB specs that lack a `state` field but have
+        // `props.selected: true` on the recommended option.
+        let derivedSelectedId: string | null = null
+        if (!specWithState.state) {
+            for (const el of Object.values(normalizedSpec.elements)) {
+                if (
+                    el.type === "ChoiceOptionButton" &&
+                    (el.props as { selected?: boolean; recommended?: boolean }).selected === true
+                ) {
+                    derivedSelectedId = (el.props as { optionId: string }).optionId
+                    break
+                }
+            }
+        }
+
         return {
-            spec: normalizedSpec,
-            initialState: specWithState.state ?? {
-                selection: {
-                    selectedOptionId: null,
-                    customText: "",
+            payload: {
+                spec: normalizedSpec,
+                initialState: specWithState.state ?? {
+                    selection: {
+                        selectedOptionId: derivedSelectedId,
+                        customText: "",
+                    },
                 },
             },
+            decision,
         }
     }, [choiceSpec])
+    const choiceBlockPayload = choiceBlockComputed.payload
+
+    // Signature-deduped logging for choice-spec normalization decisions.
+    // Replaces former in-useMemo console.warn calls so streaming spec patches
+    // do not log the same decision repeatedly.
+    const lastChoiceNormalizationLogSig = useRef<ChoiceNormalizationDecision | null>(null)
+    useEffect(() => {
+        const decision = choiceBlockComputed.decision
+        if (lastChoiceNormalizationLogSig.current === decision) return
+        lastChoiceNormalizationLogSig.current = decision
+        if (decision === "submit-empty-label-fixed") {
+            console.warn("[F1-F6-TEST] ChoiceSubmitButton had empty label — set to 'Lanjutkan'")
+        } else if (decision === "submit-injected-orphaned") {
+            console.warn("[F1-F6-TEST] ChoiceSubmitButton orphaned in spec — injected fallback")
+        } else if (decision === "submit-injected-missing") {
+            console.warn("[F1-F6-TEST] ChoiceSubmitButton missing from model YAML — injected fallback")
+        }
+    }, [choiceBlockComputed.decision])
 
     const startEditing = () => {
         setIsEditing(true)
@@ -878,6 +1045,25 @@ export function MessageBubble({
     const showUnifiedCard = isAssistant && (
         taskSummary !== null || shouldShowProcessIndicators
     )
+
+    // Observability: log UnifiedProcessCard render state for E2E audit (last
+    // message only to avoid noise). Logging is signature-deduped via useEffect
+    // so streaming chunks no longer emit the same progress line per render.
+    const isLastAssistantMessage = isAssistant && allMessages && messageIndex === allMessages.length - 1
+    const unifiedCardFirstShown = useRef(false)
+    const lastUnifiedLogSig = useRef<string | null>(null)
+    useEffect(() => {
+        if (!(showUnifiedCard && taskSummary && isLastAssistantMessage)) return
+        const source = taskSummary.tasks[0]?.field?.startsWith("plan-") ? "model-driven" : "hardcoded-fallback"
+        const sig = `${taskSummary.stageId}|${source}|${taskSummary.completed}/${taskSummary.total}|${taskSummary.tasks.map(t => `${t.field}:${t.status}`).join(",")}`
+        if (lastUnifiedLogSig.current === sig) return
+        if (!unifiedCardFirstShown.current) {
+            unifiedCardFirstShown.current = true
+            console.info(`[UNIFIED-PROCESS-UI] FIRST-RENDER stage=${taskSummary.stageId} source=${source} progress=${taskSummary.completed}/${taskSummary.total} t=${Date.now()}`)
+        }
+        lastUnifiedLogSig.current = sig
+        console.info(`[UNIFIED-PROCESS-UI] stage=${taskSummary.stageId} source=${source} progress=${taskSummary.completed}/${taskSummary.total} tasks=[${taskSummary.tasks.map(t => `${t.field}:${t.status}`).join(",")}] t=${Date.now()}`)
+    }, [showUnifiedCard, taskSummary, isLastAssistantMessage])
     // Task 4.1: Extract sources (try annotations first, then fallback to property if we extend type)
     const sourcesFromAnnotation = (message as {
         annotations?: { type?: string; sources?: { url: string; title: string; publishedAt?: number | null }[] }[]
@@ -922,9 +1108,14 @@ export function MessageBubble({
     const internalThoughtContent = streamedInternalThought?.trim()
         ? streamedInternalThought.trim()
         : fallbackSplitContent.internalThoughtContent
-    const publicDisplayText = streamedInternalThought?.trim()
+    const publicDisplayTextRaw = streamedInternalThought?.trim()
         ? (fallbackSplitContent.publicContent || rawDisplayText)
         : (fallbackSplitContent.publicContent || rawDisplayText)
+    // Strip unfenced plan-spec YAML that leaked through streaming (model didn't use code fences)
+    const publicDisplayText = publicDisplayTextRaw
+        ?.replace(/```plan-spec[\s\S]*?```/g, "")
+        .replace(/(?:^|\n)stage:\s*\w+\s*\nsummary:\s*.+\ntasks:\s*\n(?:\s*-\s*label:\s*.+\n\s*status:\s*(?:complete|in-progress|pending)\s*\n?)+/g, "")
+        .replace(/\n{3,}/g, "\n\n").trim()
     const normalizedLegacyCitedText = (() => {
         if (!isAssistant) return null
         if (sources.length === 0) return null
@@ -1011,9 +1202,166 @@ export function MessageBubble({
                 const copiedBtnStyle: React.CSSProperties = { color: "var(--chat-success)" }
                 const actionBtnClass = "p-1.5 rounded-action transition-colors hover:bg-[color:var(--chat-accent)]"
                 const actionIconClass = "h-4 w-4"
+
+                // Cancel Decision: Batalkan button for choice synthetic messages
+                // autoUserAction is derived from message.parts above (line ~459)
+                const autoAction = autoUserAction
+                if (autoAction?.kind === "choice" && onCancelChoice && cancelableChoiceMessageIds?.has(message.id)) {
+                    const cancelAllowed = !isStreaming
+                    return (
+                    <>
+                    <div className="flex flex-col items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">
+                        {cancelAllowed ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        onClick={() => setShowCancelConfirm(true)}
+                                        className={actionBtnClass}
+                                        style={{ color: "var(--chat-muted-foreground)" }}
+                                        aria-label="Batalkan pilihan"
+                                    >
+                                        <Undo className={actionIconClass} strokeWidth={2} />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Batalkan</TooltipContent>
+                            </Tooltip>
+                        ) : null}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={handleCopyUserMessage}
+                                    className={actionBtnClass}
+                                    style={isCopied ? copiedBtnStyle : actionBtnStyle}
+                                    aria-label="Copy message"
+                                >
+                                    {isCopied ? <Check className={actionIconClass} strokeWidth={2} /> : <Copy className={actionIconClass} strokeWidth={2} />}
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">{isCopied ? "Copied" : "Copy"}</TooltipContent>
+                        </Tooltip>
+                    </div>
+                    <Dialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+                        <DialogContent
+                            data-chat-scope=""
+                            showCloseButton={false}
+                            className="bg-[var(--chat-card)] border-[color:var(--chat-border)] rounded-lg max-w-md"
+                        >
+                            <DialogHeader>
+                                <DialogTitle className="text-sm font-semibold text-[var(--chat-foreground)]">
+                                    Batalkan Pilihan?
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-[var(--chat-muted-foreground)]">
+                                    Semua respons dan keputusan setelah pilihan ini akan dihapus. Tindakan ini tidak dapat dikembalikan.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter className="flex gap-2 sm:justify-center">
+                                <DialogClose
+                                    className={cn(
+                                        "gap-2 h-9 px-4 rounded-action inline-flex items-center justify-center",
+                                        "chat-validation-approve-button"
+                                    )}
+                                >
+                                    Kembali
+                                </DialogClose>
+                                <button
+                                    onClick={() => { setShowCancelConfirm(false); onCancelChoice(message.id, messageIndex) }}
+                                    className={cn(
+                                        "gap-2 h-9 px-4 rounded-action inline-flex items-center justify-center text-sm font-medium",
+                                        "border border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]",
+                                        "bg-[var(--chat-card)] hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
+                                    )}
+                                >
+                                    Batalkan Pilihan
+                                </button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                    </>
+                    )
+                }
+
+                // Cancel Decision: Batalkan button for approved synthetic messages
+                if (autoAction?.kind === "approved" && onCancelApproval && message.id === cancelableApprovalMessageId) {
+                    const cancelAllowed = !isStreaming
+                    return (
+                    <>
+                    <div className="flex flex-col items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">
+                        {cancelAllowed ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        onClick={() => setShowApprovalCancelConfirm(true)}
+                                        className={actionBtnClass}
+                                        style={{ color: "var(--chat-muted-foreground)" }}
+                                        aria-label="Batalkan persetujuan"
+                                    >
+                                        <Undo className={actionIconClass} strokeWidth={2} />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Batalkan</TooltipContent>
+                            </Tooltip>
+                        ) : null}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={handleCopyUserMessage}
+                                    className={actionBtnClass}
+                                    style={isCopied ? copiedBtnStyle : actionBtnStyle}
+                                    aria-label="Copy message"
+                                >
+                                    {isCopied ? <Check className={actionIconClass} strokeWidth={2} /> : <Copy className={actionIconClass} strokeWidth={2} />}
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">{isCopied ? "Copied" : "Copy"}</TooltipContent>
+                        </Tooltip>
+                    </div>
+                    <Dialog open={showApprovalCancelConfirm} onOpenChange={setShowApprovalCancelConfirm}>
+                        <DialogContent
+                            data-chat-scope=""
+                            showCloseButton={false}
+                            className="bg-[var(--chat-card)] border-[color:var(--chat-border)] rounded-lg max-w-md"
+                        >
+                            <DialogHeader>
+                                <DialogTitle className="text-sm font-semibold text-[var(--chat-foreground)]">
+                                    Batalkan Persetujuan?
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-[var(--chat-muted-foreground)]">
+                                    Stage akan kembali ke validasi. Semua progres di stage berikutnya akan hilang. Tindakan ini tidak dapat dikembalikan.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter className="flex gap-2 sm:justify-center">
+                                <DialogClose
+                                    className={cn(
+                                        "gap-2 h-9 px-4 rounded-action inline-flex items-center justify-center",
+                                        "chat-validation-approve-button"
+                                    )}
+                                >
+                                    Kembali
+                                </DialogClose>
+                                <button
+                                    onClick={() => { setShowApprovalCancelConfirm(false); onCancelApproval(message.id, messageIndex) }}
+                                    className={cn(
+                                        "gap-2 h-9 px-4 rounded-action inline-flex items-center justify-center text-sm font-medium",
+                                        "border border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]",
+                                        "bg-[var(--chat-card)] hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
+                                    )}
+                                >
+                                    Batalkan Persetujuan
+                                </button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                    </>
+                    )
+                }
+
+                // Phase 3: choice + approved synthetics never show edit icon
+                // (Batalkan is the only undo mechanism; revision keeps edit per V1 scope)
+                const hideEditForSynthetic = autoAction?.kind === "choice" || autoAction?.kind === "approved"
+
                 return (
                 <div className="flex flex-col items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">
-                    {onEdit && (
+                    {onEdit && !hideEditForSynthetic && (
                         editPermission.allowed ? (
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -1205,17 +1553,11 @@ export function MessageBubble({
                                 <div className="flex items-center gap-2">
                                     <CheckCircle className="h-4 w-4 text-[var(--chat-muted-foreground)]" />
                                     <span className="text-[11px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-foreground)]">
-                                        Tahap disetujui
+                                        Tahap tervalidasi
                                     </span>
                                 </div>
-                                <div className="mt-1 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
-                                    Lifecycle artifak: terkunci
-                                </div>
-                                <div className="mt-1.5 text-sm font-semibold text-[var(--chat-foreground)]">
-                                    {autoUserAction.stageLabel}
-                                </div>
-                                <div className="mt-0.5 text-xs font-mono text-[var(--chat-foreground)]">
-                                    {autoUserAction.followupText || "Lanjut ke tahap berikutnya."}
+                                <div className="mt-1.5 text-xs font-mono leading-relaxed text-[var(--chat-foreground)]">
+                                    {resolveApprovedBubbleText(autoUserAction)}
                                 </div>
                             </div>
                         ) : autoUserAction.kind === "choice" ? (
@@ -1333,9 +1675,11 @@ export function MessageBubble({
                     )}
 
                     {/* Assistant follow-up blocks: artifact output -> sources -> choice card -> quick actions */}
-                    {isAssistant && !isEditing && (hasArtifactSignals || hasSources || hasQuickActions || choiceSpec) && (
+                    {/* Artifact signals gated on !persistProcessIndicators so the card */}
+                    {/* only renders after text has finished streaming (reveal sequencing). */}
+                    {isAssistant && !isEditing && ((hasArtifactSignals && !persistProcessIndicators) || hasSources || hasQuickActions || choiceSpec) && (
                         <div className="mt-3 space-y-3">
-                            {hasArtifactSignals && (
+                            {hasArtifactSignals && !persistProcessIndicators && (
                                 <section className="space-y-2 pt-2" aria-label="Hasil artifak">
                                     {artifactSignals.map((artifact) => (
                                         onArtifactSelect ? (

@@ -16,15 +16,15 @@ describe("attachment baseline smoke guards", () => {
   })
 
   it("chat route still resolves request fileIds into effective context branch", () => {
-    const route = read("src/app/api/chat/route.ts")
+    // Phase 3 extraction: attachment resolution now in entry/ and context/ modules
+    const entryAttachments = read("src/lib/chat-harness/entry/resolve-attachments.ts")
+    const fileContext = read("src/lib/chat-harness/context/assemble-file-context.ts")
 
-    expect(route).toContain("fileIds: requestFileIds")
-    expect(route).toContain("const attachmentResolution = resolveEffectiveFileIds({")
-    expect(route).toContain("const effectiveFileIds = attachmentResolution.effectiveFileIds")
-    expect(route).toContain("if (effectiveFileIds.length > 0)")
-    expect(route).toContain("const runtimeEnv = resolveAttachmentRuntimeEnv({")
-    expect(route).toContain("docFileCount")
-    expect(route).toContain("imageFileCount")
+    expect(entryAttachments).toContain("resolveEffectiveFileIds")
+    expect(entryAttachments).toContain("effectiveFileIds")
+    expect(fileContext).toContain("docFileCount")
+    expect(fileContext).toContain("imageFileCount")
+    expect(fileContext).toContain("resolveAttachmentRuntimeEnv")
   })
 
   it("chat history mapping still exposes file_ids annotation for chip rendering", () => {

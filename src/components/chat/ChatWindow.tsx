@@ -29,10 +29,11 @@ import { TemplateGrid, type Template } from "./messages/TemplateGrid"
 import { QuotaWarningBanner } from "./QuotaWarningBanner"
 import { MobileEditDeleteSheet } from "./mobile/MobileEditDeleteSheet"
 import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
-import type { PaperStageId } from "../../../convex/paperSessions/constants"
+import { STAGE_ORDER, type PaperStageId } from "../../../convex/paperSessions/constants"
 import { buildChoiceInteractionEvent, buildChoiceSyntheticText } from "@/lib/chat/choice-submit"
-import type { JsonRendererChoiceRenderPayload } from "@/lib/json-render/choice-payload"
+import type { JsonRendererChoiceRenderPayload, WorkflowAction } from "@/lib/json-render/choice-payload"
 import { SPEC_DATA_PART_TYPE } from "@json-render/core"
+import { buildApprovedStageMessage } from "@/lib/paper/approval-copy"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import {
   buildChatQuotaOfferFromError,
@@ -45,7 +46,6 @@ import {
   shouldShowTechnicalReportTrigger,
 } from "@/lib/technical-report/chatSnapshot"
 import { resolveTechnicalReportSearchStatus } from "@/lib/technical-report/searchStatus"
-import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import * as Sentry from "@sentry/nextjs"
 
 /** Minimal artifact shape from Convex query (only fields we need for signal reconstruction) */
@@ -134,36 +134,6 @@ export function resolveArtifactSourceFocusTarget(
   }
 
   return null
-}
-
-function extractMessageTextForIntent(uiMessage: UIMessage): string {
-  const partsText = uiMessage.parts
-    ?.filter((part): part is Extract<UIMessage["parts"][number], { type: "text" }> => part.type === "text")
-    .map((part) => part.text)
-    .join("")
-    .trim()
-
-  if (partsText && partsText.length > 0) return partsText
-  return ""
-}
-
-export function shouldPreferUnifiedPaperLoadingUi(params: {
-  isPaperMode: boolean
-  hasPendingAssistantGeneration: boolean
-  messages: UIMessage[]
-}): boolean {
-  if (params.isPaperMode || !params.hasPendingAssistantGeneration) return false
-
-  const latestUserMessage = [...params.messages]
-    .reverse()
-    .find((message) => message.role === "user")
-
-  if (!latestUserMessage) return false
-
-  const latestUserText = extractMessageTextForIntent(latestUserMessage)
-  if (!latestUserText) return false
-
-  return hasPaperWritingIntent(latestUserText)
 }
 
 function setPendingStarterPrompt(conversationId: string, prompt: string) {
@@ -554,6 +524,37 @@ function PendingAssistantLaneIndicator() {
   )
 }
 
+export function shouldAutoOpenSettledArtifactFallback(params: {
+  chatStatus: ProcessVisualStatus
+  optimisticPendingValidation: boolean
+  stageStatus?: string
+}): boolean {
+  // Block during active turn states — fallback must not race with streaming.
+  // Allow on terminal states where the artifact may already be persisted:
+  //   - "ready": normal completion
+  //   - "error": turn failed after artifact was persisted (recovery path)
+  // Block "stopped": user manually cancelled — don't auto-open partial work.
+  if (params.chatStatus !== "ready" && params.chatStatus !== "error") return false
+  return params.optimisticPendingValidation || params.stageStatus === "pending_validation"
+}
+
+/**
+ * Determines whether the validation panel is eligible to render.
+ * Encodes the reveal sequencing invariant: validation panel can only
+ * appear when the stream is done AND artifact reveal has completed
+ * (or no artifact was created) AND the stage is pending validation.
+ */
+export function isValidationPanelEligible(params: {
+  chatStatus: string
+  artifactRevealDone: boolean
+  stageStatus?: string
+  optimisticPendingValidation: boolean
+}): boolean {
+  if (params.chatStatus === "streaming") return false
+  if (!params.artifactRevealDone) return false
+  return params.optimisticPendingValidation || params.stageStatus === "pending_validation"
+}
+
 export function ChatWindow({
   conversationId,
   onMobileMenuClick,
@@ -591,10 +592,24 @@ export function ChatWindow({
   const [pendingRewindTarget, setPendingRewindTarget] = useState<PaperStageId | null>(null)
   const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
-  const [submittedChoiceKeys, setSubmittedChoiceKeys] = useState<Set<string>>(new Set())
+  // Cancel Decision: two-set approach (design doc 5.5.1)
+  // persistedChoiceKeys — full-derived from historyMessages
+  // optimisticPendingKeys — bridges submit→persist gap, cleared on cancel or persistence confirm
+  const [persistedChoiceKeys, setPersistedChoiceKeys] = useState<Set<string>>(new Set())
+  const [optimisticPendingKeys, setOptimisticPendingKeys] = useState<Set<string>>(new Set())
+  // Derived combined set — replaces the old single submittedChoiceKeys state
+  const submittedChoiceKeys = useMemo(() =>
+      new Set([...persistedChoiceKeys, ...optimisticPendingKeys]),
+      [persistedChoiceKeys, optimisticPendingKeys]
+  )
   // Optimistic bridge: show approval panel immediately when onFinish detects
   // submitStageForValidation in message, without waiting for Convex subscription
   const [optimisticPendingValidation, setOptimisticPendingValidation] = useState(false)
+  // State-driven reveal sequencing: gates validation panel until artifact
+  // reveal completes. Default true (no artifact to wait for). Set to false
+  // in onFinish when an artifact was created, set back to true after the
+  // artifact panel has been opened.
+  const [artifactRevealDone, setArtifactRevealDone] = useState(true)
   const [chatViewportNode, setChatViewportNode] = useState<HTMLDivElement | null>(null)
   const [chatViewportWidth, setChatViewportWidth] = useState(0)
   type ActiveSheet = "proses" | "sources" | null
@@ -618,6 +633,23 @@ export function ChatWindow({
   const pendingRequestStartedAtRef = useRef<number | null>(null)
   const staleStreamingTimeoutRef = useRef<number | null>(null)
   const sourceFocusTimeoutRef = useRef<number | null>(null)
+  const artifactRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Fallback auto-open (E2E iteration 9): track turn start + last opened
+  // artifact so a CHAIN-COMPLETION that creates an artifact without
+  // emitting a successful tool-output part (e.g. createArtifact refValidation
+  // failed server-side but fallback persisted the artifact anyway) can still
+  // trigger the artifact panel via Convex reactivity in extractCreatedArtifacts.
+  const lastTurnStartRef = useRef<number>(0)
+  const lastAutoOpenedArtifactIdRef = useRef<Id<"artifacts"> | null>(null)
+  // Tracks assistant message IDs whose choice was cancelled. Prevents
+  // the full-derive persistedChoiceKeys effect from re-adding the key
+  // before editAndTruncate syncs to the Convex subscription.
+  const cancelledChoiceMessageIdsRef = useRef<Set<string>>(new Set())
+  // Guard: block phantom approve click after cancel-approval re-mounts the validation panel.
+  // Set true in handleCancelApproval, cleared after two animation frames (React commit + paint).
+  const cancellingApprovalRef = useRef(false)
+  // Dedup [CHOICE-GATE] log: only log when result changes per messageId
+  const choiceGateLastResultRef = useRef<Map<string, boolean>>(new Map())
   const previousStatusRef = useRef<string>("ready")
   const stoppedManuallyRef = useRef(false)
   const starterPromptLastAttemptAtRef = useRef(new Map<string, number>())
@@ -640,7 +672,36 @@ export function ChatWindow({
     ? (conversationId as Id<"conversations">)
     : null
 
-  const { isAuthenticated } = useConvexAuth()
+  const { isAuthenticated, isLoading: isConvexAuthLoading } = useConvexAuth()
+
+  // Recovery: if Convex auth stays stuck in loading state for too long after
+  // server restart (corrupted hydration, stale WebSocket, etc.), force a page
+  // reload so auth can re-initialize from scratch.
+  // Circuit breaker: sessionStorage counter caps at 2 reloads to prevent
+  // infinite loop when auth is genuinely unreachable (outage, bad token).
+  useEffect(() => {
+    if (!isConvexAuthLoading || !safeConversationId) return
+    const RELOAD_KEY = "convex_auth_reload_count"
+    const timer = setTimeout(() => {
+      const count = parseInt(sessionStorage.getItem(RELOAD_KEY) ?? "0", 10)
+      if (count >= 2) {
+        console.error("[CHAT-VIEW] Convex auth stuck after 2 reload attempts — stopping recovery")
+        sessionStorage.removeItem(RELOAD_KEY)
+        return
+      }
+      console.warn("[CHAT-VIEW] Convex auth stuck loading for 8s — forcing page reload for recovery")
+      sessionStorage.setItem(RELOAD_KEY, String(count + 1))
+      window.location.reload()
+    }, 8_000)
+    return () => clearTimeout(timer)
+  }, [isConvexAuthLoading, safeConversationId])
+
+  // Clear reload counter when auth succeeds — reset circuit breaker for next incident
+  useEffect(() => {
+    if (isAuthenticated) {
+      sessionStorage.removeItem("convex_auth_reload_count")
+    }
+  }, [isAuthenticated])
 
   const {
     session: paperSession,
@@ -654,7 +715,18 @@ export function ChatWindow({
     markStageAsDirty,
     rewindToStage,
     getStageStartIndex,
-  } = usePaperSession(safeConversationId ?? undefined)
+    // Phase 8 — paused harness run surface (null when no paused run)
+    pausedHarnessRun,
+    resolveAndResume,
+  } = usePaperSession(safeConversationId ?? undefined, userId ?? undefined)
+
+  const prevStageRef = useRef(paperSession?.currentStage)
+  const currentPaperStage = paperSession?.currentStage as PaperStageId | undefined
+  const approvedStageMessage = currentPaperStage
+    ? buildApprovedStageMessage(currentPaperStage)
+    : stageLabel
+      ? `Tahap ${stageLabel} disetujui.`
+      : "Tahap disetujui."
 
   // Clear optimistic flag once Convex subscription confirms pending_validation
   useEffect(() => {
@@ -714,9 +786,9 @@ export function ChatWindow({
     isAuthSettled &&
     (safeConversationId === null || conversation === null)
 
-  // 1. Fetch history from Convex
+  // 1. Fetch history from Convex — gate on isAuthenticated like all other queries
   const { messages: historyMessages, isLoading: isHistoryLoading } = useMessages(
-    safeConversationId ? safeConversationId : null
+    safeConversationId && isAuthenticated ? safeConversationId : null
   )
 
   const activeAttachmentContext = useQuery(
@@ -803,6 +875,8 @@ export function ChatWindow({
     return historyMessages.map((msg) => ({
       createdAt: msg.createdAt ?? 0,
       role: msg.role,
+      // Per-message plan snapshot for UnifiedProcessCard (historical plan state)
+      ...(msg.planSnapshot ? { planSnapshot: msg.planSnapshot } : {}),
     }))
   }, [historyMessages])
 
@@ -880,6 +954,9 @@ export function ChatWindow({
 
   // 2. Initialize useChat with AI SDK v5/v6 API
   const editAndTruncate = useMutation(api.messages.editAndTruncateConversation)
+  const resetStageDataForEditResendMutation = useMutation(api.paperSessions.resetStageDataForEditResend)
+  const cancelChoiceDecision = useMutation(api.paperSessions.cancelChoiceDecision)
+  const unapproveStage = useMutation(api.paperSessions.unapproveStage)
 
   // Refs to always read latest attachment state at request time (bypasses useChat stale transport bug)
   const attachedFilesRef = useRef(attachedFiles)
@@ -887,7 +964,13 @@ export function ChatWindow({
   const imageDataUrlsRef = useRef(imageDataUrls)
   imageDataUrlsRef.current = imageDataUrls
 
-  // Create transport with lazy body function — evaluated fresh at each request
+  // Create transport with lazy body function — evaluated fresh at each request.
+  // Phase 8 Task 8.4: emit `x-harness-resume: <runId>` header when a paused
+  // harness run is bound to this conversation. The orchestrator reads this
+  // header in accept-chat-request.ts to skip runLane creation and reuse the
+  // persisted lane. The header is only set when `pausedHarnessRun` resolves
+  // to a non-null row — normal turns (no paused run) send no extra header.
+  const pausedHarnessRunId = pausedHarnessRun?._id ?? null
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -895,8 +978,15 @@ export function ChatWindow({
         body: () => ({
           conversationId: safeConversationId,
         }),
+        headers: () => {
+          const headers: Record<string, string> = {}
+          if (pausedHarnessRunId) {
+            headers["x-harness-resume"] = pausedHarnessRunId
+          }
+          return headers
+        },
       }),
-    [safeConversationId]
+    [safeConversationId, pausedHarnessRunId]
   )
 
   type CreatedArtifact = { artifactId: Id<"artifacts">; title?: string }
@@ -968,14 +1058,79 @@ export function ChatWindow({
     transport,
     onFinish: ({ message }) => {
       const createdArtifacts = extractCreatedArtifacts(message)
-      if (createdArtifacts.length > 0 && onArtifactSelect) {
-        // Auto-open artifact panel dengan artifact terbaru yang dibuat
-        onArtifactSelect(createdArtifacts[createdArtifacts.length - 1].artifactId)
+      const hasSubmit = isPaperMode && hasSubmitForValidation(message)
+
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[UI-REVEAL-ORDER] response_settled", {
+          stage: stageLabel, ts: Date.now(), hasArtifact: createdArtifacts.length > 0, hasSubmit,
+        })
       }
-      // Optimistic: bridge Convex subscription latency so approval panel
-      // appears in the same render cycle as artifact panel opening
-      if (isPaperMode && hasSubmitForValidation(message)) {
-        setOptimisticPendingValidation(true)
+
+      if (createdArtifacts.length > 0 && onArtifactSelect) {
+        const targetArtifactId = createdArtifacts[createdArtifacts.length - 1].artifactId
+
+        // Guard: if the Convex-reactive fallback already claimed this artifact
+        if (lastAutoOpenedArtifactIdRef.current === targetArtifactId) {
+          if (process.env.NODE_ENV !== "production") {
+            console.info("[ARTIFACT-REVEAL] onFinish — skipped (already claimed by fallback)", {
+              ts: Date.now(), artifactId: targetArtifactId,
+            })
+          }
+          // Fallback already handled reveal — validation panel is eligible
+          if (hasSubmit) {
+            setOptimisticPendingValidation(true)
+            if (process.env.NODE_ENV !== "production") {
+              console.info("[UI-REVEAL-ORDER] validation_panel_eligible", {
+                stage: stageLabel, ts: Date.now(), path: "fallback-claimed",
+              })
+            }
+          }
+          return
+        }
+
+        // Block validation panel until artifact reveal completes
+        setArtifactRevealDone(false)
+        lastAutoOpenedArtifactIdRef.current = targetArtifactId
+
+        if (process.env.NODE_ENV !== "production") {
+          console.info("[ARTIFACT-REVEAL] onFinish — deferring panel open", {
+            ts: Date.now(), artifactId: targetArtifactId, artifactCount: createdArtifacts.length,
+          })
+        }
+
+        // Delayed reveal: 350ms ensures user perceives text before artifact
+        // panel opens (double rAF was ~32ms — technically correct but
+        // imperceptible when text is short). State gate (artifactRevealDone)
+        // is the sequencing foundation; delay is visual polish on top.
+        artifactRevealTimerRef.current = setTimeout(() => {
+          artifactRevealTimerRef.current = null
+          onArtifactSelect(targetArtifactId)
+          setArtifactRevealDone(true)
+          if (process.env.NODE_ENV !== "production") {
+            console.info("[UI-REVEAL-ORDER] artifact_revealed", {
+              stage: stageLabel, artifactId: targetArtifactId, ts: Date.now(),
+            })
+          }
+          // Validation panel eligible AFTER artifact is revealed
+          if (hasSubmit) {
+            setOptimisticPendingValidation(true)
+            if (process.env.NODE_ENV !== "production") {
+              console.info("[UI-REVEAL-ORDER] validation_panel_eligible", {
+                stage: stageLabel, ts: Date.now(),
+              })
+            }
+          }
+        }, 350)
+      } else {
+        // No artifact — validation panel eligible immediately
+        if (hasSubmit) {
+          setOptimisticPendingValidation(true)
+          if (process.env.NODE_ENV !== "production") {
+            console.info("[UI-REVEAL-ORDER] validation_panel_eligible", {
+              stage: stageLabel, ts: Date.now(), noArtifact: true,
+            })
+          }
+        }
       }
     },
     onError: (err) => {
@@ -992,12 +1147,83 @@ export function ChatWindow({
     }
   })
 
-  // Clear optimistic flag when new streaming starts (user approved/revised)
+  // Clear optimistic flags when new streaming starts (user approved/revised)
   useEffect(() => {
-    if (optimisticPendingValidation && status === "streaming") {
-      setOptimisticPendingValidation(false)
+    if (status === "streaming") {
+      if (optimisticPendingValidation) setOptimisticPendingValidation(false)
+      // Reset reveal gate to default (no artifact pending) for the new turn.
+      // true = no artifact to wait for; onFinish will set false if needed.
+      setArtifactRevealDone(true)
     }
   }, [status, optimisticPendingValidation])
+
+  // Reset fallback auto-open tracking when conversation changes so state
+  // from a previous conversation never leaks into the current one.
+  useEffect(() => {
+    lastTurnStartRef.current = 0
+    lastAutoOpenedArtifactIdRef.current = null
+    cancelledChoiceMessageIdsRef.current = new Set()
+  }, [safeConversationId])
+
+  // Fallback auto-open (E2E iteration 9): when the happy-path tool-output
+  // reveal fails (e.g. createArtifact rejected by refValidation so the
+  // server's CHAIN-COMPLETION path persists the artifact without emitting
+  // a successful tool-output part), the onFinish `extractCreatedArtifacts`
+  // path produces zero entries and the panel stays closed. This effect
+  // watches Convex's reactive `conversationArtifacts` list and fires the
+  // same double-rAF → onArtifactSelect fallback.
+  useEffect(() => {
+    if (!onArtifactSelect) return
+    if (
+      !shouldAutoOpenSettledArtifactFallback({
+        chatStatus: status,
+        optimisticPendingValidation,
+        stageStatus,
+      })
+    ) {
+      return
+    }
+    if (!conversationArtifacts || conversationArtifacts.length === 0) return
+    if (lastTurnStartRef.current === 0) return
+
+    // listByConversation orders desc → newest first
+    const latest = conversationArtifacts[0]
+    if (!latest) return
+
+    // Use _creationTime (Convex-native) to compare against the turn-start
+    // stamp since it is always present.
+    const createdAt = latest._creationTime
+    if (typeof createdAt !== "number") return
+    if (createdAt <= lastTurnStartRef.current) return
+    if (lastAutoOpenedArtifactIdRef.current === latest._id) return
+
+    const targetArtifactId = latest._id
+    // Mark eagerly so a concurrent happy-path reveal (review finding #2)
+    // cannot also trigger; `useArtifactTabs.openTab` is idempotent but we
+    // avoid duplicated [ARTIFACT-REVEAL] logs and double rAF chains.
+    lastAutoOpenedArtifactIdRef.current = targetArtifactId
+    setArtifactRevealDone(false)
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[ARTIFACT-REVEAL][fallback] Convex-reactive auto-open", {
+        ts: Date.now(),
+        artifactId: targetArtifactId,
+        turnStartedAt: lastTurnStartRef.current,
+        createdAt,
+        stageStatus,
+      })
+    }
+
+    artifactRevealTimerRef.current = setTimeout(() => {
+      artifactRevealTimerRef.current = null
+      onArtifactSelect(targetArtifactId)
+      setArtifactRevealDone(true)
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[UI-REVEAL-ORDER] artifact_revealed (fallback)", {
+          stage: stageLabel, artifactId: targetArtifactId, ts: Date.now(),
+        })
+      }
+    }, 350)
+  }, [conversationArtifacts, optimisticPendingValidation, stageStatus, onArtifactSelect, status])
 
   const isQuotaRejectedError = useMemo(() => isQuotaExceededChatError(error), [error])
   const quotaRejectedOffer = useMemo(
@@ -1181,6 +1407,9 @@ export function ChatWindow({
       body.inheritAttachmentContext = true
     }
 
+    // Stamp turn start so the Convex-backed fallback auto-open effect
+    // can distinguish newly-created artifacts from pre-existing ones.
+    lastTurnStartRef.current = Date.now()
     if (imageFileParts.length > 0) {
       sendMessage({ text, files: imageFileParts }, { body })
     } else {
@@ -1238,20 +1467,21 @@ export function ChatWindow({
     customText?: string
   }) => {
     const submissionKey = `${params.sourceMessageId}::${params.choicePartId}`
-    setSubmittedChoiceKeys((prev) => new Set([...prev, submissionKey]))
+    setOptimisticPendingKeys((prev) => new Set([...prev, submissionKey]))
 
     // V3 YAML: payload is { spec } — extract label + decisionMode from spec elements, stage from session
-    const specAny = params.payload as unknown as { spec?: { elements?: Record<string, { type?: string; props?: { label?: string; optionId?: string; decisionMode?: string } }> } }
+    const specAny = params.payload as unknown as { spec?: { elements?: Record<string, { type?: string; props?: { label?: string; optionId?: string; decisionMode?: string; workflowAction?: string } }> } }
     const elements = specAny?.spec?.elements ?? {}
     const matchedElement = Object.values(elements).find(
       (el) => el?.props?.optionId === params.selectedOptionId
     )
     const selectedLabel = matchedElement?.props?.label ?? params.selectedOptionId
 
-    // Extract decisionMode from ChoiceCardShell props
+    // Extract decisionMode and workflowAction from ChoiceCardShell props
     const cardShell = Object.values(elements).find(el => el?.type === "ChoiceCardShell")
     const decisionMode = cardShell?.props?.decisionMode as "exploration" | "commit" | undefined
-    console.log("[F1-F6-TEST] ChoiceSubmit", { submissionKey, selectedOptionId: params.selectedOptionId, selectedLabel, decisionMode })
+    const workflowAction = cardShell?.props?.workflowAction as WorkflowAction | undefined
+    console.log("[F1-F6-TEST] ChoiceSubmit", { submissionKey, selectedOptionId: params.selectedOptionId, selectedLabel, decisionMode, workflowAction })
 
     // Use current paper stage from session (spec doesn't carry stage info)
     const currentStage = (paperSession?.currentStage ?? "gagasan") as PaperStageId
@@ -1264,6 +1494,7 @@ export function ChatWindow({
       kind: "single-select",
       selectedOptionId: params.selectedOptionId,
       customText: params.customText,
+      workflowAction,
       decisionMode: decisionMode === "exploration" || decisionMode === "commit" ? decisionMode : undefined,
     })
 
@@ -1274,6 +1505,8 @@ export function ChatWindow({
       customText: params.customText,
     })
 
+    // Stamp turn start so fallback auto-open can detect post-turn artifacts
+    lastTurnStartRef.current = Date.now()
     sendMessage({ text: syntheticText }, { body: { interactionEvent: event } })
   }, [conversationId, paperSession, sendMessage])
 
@@ -1533,44 +1766,172 @@ export function ChatWindow({
     })
   }, [historyMessages, setMessages])
 
-  // Rehydrate submitted choice keys from history — mark choices that already have a follow-up user message
+  // 3b. Incremental choice-spec rehydration — when a persisted assistant message
+  // gains jsonRendererChoice AFTER the one-shot history sync (e.g. search path
+  // persists fallback spec in onFinish), merge the spec into the live useChat
+  // message so the choice card appears without a page refresh.
+  useEffect(() => {
+    if (!historyMessages || historyMessages.length === 0) return
+    if (syncedConversationRef.current !== conversationId) return
+
+    // Build a map of persisted choice specs keyed by both _id and uiMessageId
+    const persistedChoiceByKey = new Map<string, string>()
+    for (const hMsg of historyMessages) {
+      if (hMsg.role !== "assistant") continue
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rawChoice = (hMsg as any).jsonRendererChoice as string | undefined
+      if (!rawChoice || typeof rawChoice !== "string") continue
+      persistedChoiceByKey.set(String(hMsg._id), rawChoice)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const uiId = (hMsg as any).uiMessageId as string | undefined
+      if (uiId) persistedChoiceByKey.set(uiId, rawChoice)
+    }
+
+    if (persistedChoiceByKey.size === 0) return
+
+    setMessages((prev) => {
+      let changed = false
+      const next = prev.map((message) => {
+        if (message.role !== "assistant") return message
+        const rawChoice = persistedChoiceByKey.get(message.id)
+        if (!rawChoice) return message
+
+        // Check if this message already has a SPEC_DATA_PART_TYPE part
+        const hasSpecPart = message.parts?.some(
+          (p: { type?: string }) => p.type === SPEC_DATA_PART_TYPE
+        )
+        if (hasSpecPart) return message
+
+        // Merge the persisted spec into parts
+        try {
+          const spec = JSON.parse(rawChoice)
+          changed = true
+          return {
+            ...message,
+            parts: [
+              ...(message.parts ?? []),
+              { type: SPEC_DATA_PART_TYPE, data: { type: "flat", spec } },
+            ],
+          }
+        } catch {
+          return message
+        }
+      })
+      return changed ? next : prev
+    })
+  }, [historyMessages, conversationId, setMessages])
+
+  // Rehydrate submitted choice keys from history — full-derive persisted set
+  // Adds BOTH _id and uiMessageId key variants so checks work with either identifier
   useEffect(() => {
     if (!historyMessages || historyMessages.length === 0) return
     const keys = new Set<string>()
     for (let i = 0; i < historyMessages.length; i++) {
       const msg = historyMessages[i]
       if (msg.role === "user" && typeof msg.content === "string" && msg.content.startsWith("[Choice:")) {
-        // Walk backwards to find the assistant message with the choice card
         for (let j = i - 1; j >= 0; j--) {
           const prev = historyMessages[j]
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           if (prev.role === "assistant" && (prev as any).jsonRendererChoice) {
+            // _id variant (used after history hydration where message.id = _id)
             keys.add(`${prev._id}::${prev._id}-choice-spec`)
+            // uiMessageId variant (used during live session where message.id = AI SDK id)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const uiId = (prev as any).uiMessageId as string | undefined
+            if (uiId && uiId !== String(prev._id)) {
+              keys.add(`${uiId}::${uiId}-choice-spec`)
+            }
             break
           }
         }
       }
     }
-    if (keys.size > 0) {
-      setSubmittedChoiceKeys((prev) => new Set([...prev, ...keys]))
-      console.log("[F1-F6-TEST] ChoiceRehydrate", { rehydratedCount: keys.size, keys: [...keys] })
+    // Full-derive: replace entire persisted set
+    setPersistedChoiceKeys(keys)
+    // Migrate confirmed keys from optimistic to persisted
+    setOptimisticPendingKeys((prev) => {
+      const next = new Set(prev)
+      for (const key of prev) {
+        if (keys.has(key)) next.delete(key)
+      }
+      return next.size === prev.size ? prev : next
+    })
+    // Clear cancelled entries whose [Choice:] messages are now gone from history
+    // (editAndTruncate synced). Cancelled IDs that are still in `keys` are stale
+    // duplicates — the full-derive already re-added them; keep the cancel override.
+    if (cancelledChoiceMessageIdsRef.current.size > 0) {
+      const stillCancelled = new Set<string>()
+      for (const cid of cancelledChoiceMessageIdsRef.current) {
+        // If the key for this message ID is STILL being derived from history,
+        // keep it in the cancelled set (editAndTruncate hasn't synced yet)
+        if (keys.has(`${cid}::${cid}-choice-spec`)) {
+          stillCancelled.add(cid)
+        }
+      }
+      cancelledChoiceMessageIdsRef.current = stillCancelled
     }
   }, [historyMessages])
+
+  // Cancel Decision: derive which choice messages are currently cancelable.
+  // ALL [Choice:] synthetics across ALL stages are eligible — no boundary stops.
+  // Cancel must work on any confirmed card (ref: feedback_cancel_all_turns.md).
+  const cancelableChoiceMessageIds = useMemo(() => {
+    const ids = new Set<string>()
+    if (!paperSession || paperSession.currentStage === "completed") return ids
+    // Scan ALL messages — no break on [Approved:] or [Revisi untuk]
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i]
+      if (msg.role !== "user") continue
+      const textPart = msg.parts?.find((p) => p.type === "text") as { text?: string } | undefined
+      const text = textPart?.text ?? ""
+      if (text.startsWith("[Choice:")) ids.add(msg.id)
+    }
+    return ids
+  }, [messages, paperSession])
+
+  // Cancel Decision: derive which approved message (if any) is currently cancelable.
+  // Only the latest [Approved:] is eligible, and only when session state allows unapproval.
+  // Gate: allowed in all states except "revision" (user actively revising).
+  const cancelableApprovalMessageId = useMemo(() => {
+    if (!paperSession) return null
+    // Allow cancel in any post-approval state except "revision" (user already
+    // chose to revise the current stage, so going back makes no sense).
+    // Key states: "drafting" (model streaming), "pending_validation" (model done,
+    // validation panel visible), "approved" (mid-transition or completed).
+    const status = paperSession.stageStatus as string
+    if (status === "revision") return null
+    // Find the latest [Approved:] — by construction this is the one for the current previous stage
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i]
+      if (msg.role !== "user") continue
+      const textPart = msg.parts?.find((p) => p.type === "text") as { text?: string } | undefined
+      const text = textPart?.text ?? ""
+      if (text.startsWith("[Approved:")) return msg.id
+    }
+    return null
+  }, [messages, paperSession])
+
+  // Rollback detection: observability log when currentStage goes backward.
+  // Messages are PRESERVED (v2 design) — stale choice cards from old stages
+  // are handled server-side by stage mismatch auto-correct (choice-request.ts:133).
+  useEffect(() => {
+    if (!paperSession?.currentStage || !prevStageRef.current) {
+      prevStageRef.current = paperSession?.currentStage
+      return
+    }
+    const prevIdx = STAGE_ORDER.indexOf(prevStageRef.current as PaperStageId)
+    const currIdx = STAGE_ORDER.indexOf(paperSession.currentStage as PaperStageId)
+    if (currIdx < prevIdx && currIdx >= 0) {
+      console.info(`[ROLLBACK][client] stage went backward: ${prevStageRef.current} → ${paperSession.currentStage}`)
+    }
+    prevStageRef.current = paperSession?.currentStage
+  }, [paperSession?.currentStage])
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
 
   const hasPendingAssistantGeneration = isGenerating || isAwaitingAssistantStart
-  const prefersUnifiedPaperLoadingUi = useMemo(
-    () =>
-      shouldPreferUnifiedPaperLoadingUi({
-        isPaperMode,
-        hasPendingAssistantGeneration,
-        messages,
-      }),
-    [hasPendingAssistantGeneration, isPaperMode, messages]
-  )
-  const effectivePaperUiMode = isPaperMode || prefersUnifiedPaperLoadingUi
+  const effectivePaperUiMode = isPaperMode
   const hasStandalonePendingIndicator =
     hasPendingAssistantGeneration &&
     !effectivePaperUiMode &&
@@ -1723,6 +2084,14 @@ export function ChatWindow({
     // It gets reset when status transitions to "submitted" (message sent).
   }, [status])
 
+  // Reset skeleton flag when conversation loads and messages arrive —
+  // prevents skeleton from persisting if auto-send never fires.
+  useEffect(() => {
+    if (!isConversationLoading && messages.length > 0 && isAwaitingAssistantStart) {
+      setIsAwaitingAssistantStart(false)
+    }
+  }, [isConversationLoading, messages.length, isAwaitingAssistantStart])
+
   useEffect(() => {
     const prevStatus = previousStatusRef.current
     const hadGeneratingStatus = prevStatus === "submitted" || prevStatus === "streaming"
@@ -1842,6 +2211,7 @@ export function ChatWindow({
   useEffect(() => {
     return () => {
       if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current)
+      if (artifactRevealTimerRef.current !== null) clearTimeout(artifactRevealTimerRef.current)
     }
   }, [])
 
@@ -1974,6 +2344,10 @@ export function ChatWindow({
     }
     setIsAwaitingAssistantStart(true)
     pendingScrollToBottomRef.current = true
+    // Stamp turn start so the fallback auto-open effect (review finding
+    // #3) can distinguish artifacts created DURING this regenerated
+    // turn from any persisted before.
+    lastTurnStartRef.current = Date.now()
     regenerate()
   }
 
@@ -2061,6 +2435,27 @@ export function ChatWindow({
       // 2. Mark stage as dirty in paper mode
       if (isPaperMode) {
         markStageAsDirty()
+      }
+
+      // Reset stageData on edit/resend when stage is incomplete (no artifact yet).
+      // Fires for ANY edit/resend mid-stage, not just choice card confirmations.
+      // This is intentional: edit/resend = "restart this stage from scratch".
+      if (isPaperMode && paperSession && userId) {
+          const currentStageData = stageData?.[paperSession.currentStage as string];
+          if (currentStageData && !currentStageData.artifactId) {
+              try {
+                  const resetResult = await resetStageDataForEditResendMutation({
+                      sessionId: paperSession._id,
+                      userId,
+                  });
+                  if (resetResult.reset) {
+                      console.info(`[PAPER][edit-resend-reset] Client: stage=${resetResult.stage} cleared=${resetResult.clearedFields?.length ?? 0} fields`);
+                  }
+              } catch (err) {
+                  console.warn("[PAPER][edit-resend-reset] Failed:", err);
+                  // Non-blocking — proceed with edit/resend even if reset fails
+              }
+          }
       }
 
       // 3. Truncate local messages to BEFORE the edited message
@@ -2157,13 +2552,33 @@ export function ChatWindow({
 
   const handleApprove = async () => {
     if (!userId) return
+    // Guard: block phantom approve that fires when validation panel re-mounts after cancel-approval
+    if (cancellingApprovalRef.current) {
+      console.warn("[handleApprove] blocked — cancel-approval cooldown active")
+      return
+    }
     // [F1-DEBUG] Trace who/what triggered this approval — check browser console
     console.trace("[F1-DEBUG] handleApprove TRIGGERED — who called this?")
     console.log("[F1-DEBUG] handleApprove context:", { stageLabel, stageStatus: paperSession?.stageStatus, userId })
     try {
+      // Phase 8 Task 8.4: if a harness run is paused awaiting this approval,
+      // resolve the decision + resume the run BEFORE the paper-domain
+      // transition. This is ADDITIVE (not a replacement) — approveStage still
+      // fires to advance the paper workflow. The `decision` discriminator in
+      // `response` tells the backend which answer the user gave (approve).
+      const resumeResult = await resolveAndResume("resolved", {
+        decision: "approve",
+        stage: stageLabel,
+      })
+      if (resumeResult) {
+        console.info(
+          `[HARNESS][ui] resumed paused run runId=${resumeResult.resumedRunId} on approve`
+        )
+      }
+
       await approveStage(userId)
-      // Auto-send message agar AI aware dan bisa lanjutkan ke tahap berikutnya
-      sendMessageWithPendingIndicator(`[Approved: ${stageLabel}] Lanjut ke tahap berikutnya.`)
+      // Auto-send message agar AI aware dan bisa lanjut dengan konteks stage yang faktual.
+      sendMessageWithPendingIndicator(`[Approved: ${stageLabel}] ${approvedStageMessage}`)
     } catch (error) {
       Sentry.captureException(error, { tags: { subsystem: "paper.approve" } })
       console.error("Failed to approve stage:", error)
@@ -2174,6 +2589,21 @@ export function ChatWindow({
   const handleRevise = async (feedback: string) => {
     if (!userId) return
     try {
+      // Phase 8 Task 8.4: mirror of handleApprove — resolve the pending
+      // decision + resume the paused harness run before the paper-domain
+      // mutation. `resolution` stays "resolved" (the user answered); the
+      // answer itself is carried in `response.decision = "revise"`.
+      const resumeResult = await resolveAndResume("resolved", {
+        decision: "revise",
+        stage: stageLabel,
+        feedback,
+      })
+      if (resumeResult) {
+        console.info(
+          `[HARNESS][ui] resumed paused run runId=${resumeResult.resumedRunId} on revise`
+        )
+      }
+
       await requestRevision(userId, feedback, "panel")
       // Bug fix 6.6.1: Send feedback as user message so AI can see it
       sendMessageWithPendingIndicator(`[Revisi untuk ${stageLabel}]\n\n${feedback}`)
@@ -2184,6 +2614,129 @@ export function ChatWindow({
       toast.error("Gagal mengirim feedback revisi.")
     }
   }
+
+  const handleCancelChoice = useCallback(async (uiMessageId: string, syntheticMessageIndex: number) => {
+    if (!userId || !paperSession?._id || !conversationId) return
+    try {
+      // Detect cross-stage cancel: check if any [Approved:] message exists
+      // AFTER the cancelled choice's index. If so, we need to revert approvals first.
+      const approvalsAfter = messages.slice(syntheticMessageIndex + 1).filter(
+        (m) => m.role === "user" && m.parts?.some(
+          (p) => p.type === "text" && (p as { text?: string }).text?.startsWith("[Approved:")
+        )
+      )
+      const isFromPastStage = approvalsAfter.length > 0
+
+      if (isFromPastStage) {
+        // Cross-stage cancel: revert each approval (most recent first) to roll back
+        // currentStage to the stage where this choice lives
+        for (let j = 0; j < approvalsAfter.length; j++) {
+          await unapproveStage({ sessionId: paperSession._id, userId })
+        }
+      }
+
+      // 1. Revert Convex state (now targets the correct stage after rollback)
+      await cancelChoiceDecision({ sessionId: paperSession._id, userId })
+
+      // 2. Map UIMessage.id → Convex message._id for truncation
+      const convexMsg = historyMessages?.find(
+        (m) => m.uiMessageId === uiMessageId || String(m._id) === uiMessageId
+      )
+      if (convexMsg) {
+        await editAndTruncate({
+          messageId: convexMsg._id as Id<"messages">,
+          content: "", // Required arg, not used
+          conversationId: conversationId as Id<"conversations">,
+        })
+      }
+
+      // 3. Truncate local messages (UIMessage state)
+      setMessages((prev) => prev.slice(0, syntheticMessageIndex))
+
+      // 4. Remove ALL equivalent key variants from both choice key sets
+      if (historyMessages) {
+        const syntheticIdx = historyMessages.findIndex(
+          (m) => m.uiMessageId === uiMessageId || String(m._id) === uiMessageId
+        )
+        if (syntheticIdx > 0) {
+          for (let j = syntheticIdx - 1; j >= 0; j--) {
+            const prev = historyMessages[j]
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (prev.role === "assistant" && (prev as any).jsonRendererChoice) {
+              // Remove _id variant
+              const idKey = `${prev._id}::${prev._id}-choice-spec`
+              // Remove uiMessageId variant (live session uses this)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const uiId = (prev as any).uiMessageId as string | undefined
+              const uiKey = uiId && uiId !== String(prev._id) ? `${uiId}::${uiId}-choice-spec` : null
+              setPersistedChoiceKeys((p) => {
+                const n = new Set(p); n.delete(idKey); if (uiKey) n.delete(uiKey); return n
+              })
+              setOptimisticPendingKeys((p) => {
+                const n = new Set(p); n.delete(idKey); if (uiKey) n.delete(uiKey); return n
+              })
+              // Mark assistant message as cancelled so the full-derive
+              // effect doesn't re-add the key before editAndTruncate syncs
+              cancelledChoiceMessageIdsRef.current.add(String(prev._id))
+              if (uiId) cancelledChoiceMessageIdsRef.current.add(uiId)
+              break
+            }
+          }
+        }
+      }
+
+      // 5. Clear optimistic pending validation if it was set
+      setOptimisticPendingValidation(false)
+
+      console.info(`[CANCEL-DECISION] choice cancelled, card re-activated${isFromPastStage ? ` (cross-stage rollback, ${approvalsAfter.length} approval(s) reverted)` : ""}`)
+    } catch (error) {
+      Sentry.captureException(error, { tags: { subsystem: "paper.cancel-choice" } })
+      console.error("Failed to cancel choice:", error)
+      toast.error("Gagal membatalkan pilihan.")
+    }
+  }, [userId, paperSession?._id, conversationId, messages, historyMessages, cancelChoiceDecision, unapproveStage, editAndTruncate, setMessages])
+
+  const handleCancelApproval = useCallback(async (uiMessageId: string, syntheticMessageIndex: number) => {
+    if (!userId || !paperSession?._id || !conversationId) return
+    // Block phantom approve clicks during the cancel→re-mount cycle
+    cancellingApprovalRef.current = true
+    try {
+      // 1. Revert Convex state
+      await unapproveStage({ sessionId: paperSession._id, userId })
+
+      // 2. Map UIMessage.id → Convex message._id for truncation
+      const convexMsg = historyMessages?.find(
+        (m) => m.uiMessageId === uiMessageId || String(m._id) === uiMessageId
+      )
+      if (convexMsg) {
+        await editAndTruncate({
+          messageId: convexMsg._id as Id<"messages">,
+          content: "",
+          conversationId: conversationId as Id<"conversations">,
+        })
+      }
+
+      // 3. Truncate local messages (UIMessage state)
+      setMessages((prev) => prev.slice(0, syntheticMessageIndex))
+
+      // 4. Validation panel auto-reappears via Convex reactivity
+      // (stageStatus = "pending_validation" triggers panel render)
+
+      console.info("[CANCEL-DECISION] approval cancelled, validation panel re-shown")
+    } catch (error) {
+      Sentry.captureException(error, { tags: { subsystem: "paper.cancel-approval" } })
+      console.error("Failed to cancel approval:", error)
+      toast.error("Gagal membatalkan persetujuan.")
+    } finally {
+      // Clear after two animation frames: React commit + browser paint.
+      // This ensures the validation panel has fully mounted before approve is re-enabled.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          cancellingApprovalRef.current = false
+        })
+      })
+    }
+  }, [userId, paperSession?._id, conversationId, historyMessages, unapproveStage, editAndTruncate, setMessages])
 
   // Handler for template selection
   const handleTemplateSelect = (template: Template) => {
@@ -2506,15 +3059,26 @@ export function ChatWindow({
                 <Skeleton className="h-24 w-[70%] rounded-action" />
               </div>
             </div>
+          ) : messages.length === 0 && conversationId ? (
+            // Existing conversation but messages not yet loaded — show skeleton, not TemplateGrid
+            <div className="space-y-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }} ref={() => {
+              if (process.env.NODE_ENV !== "production") {
+                console.info("[CHAT-VIEW] conversation-skeleton — messages not loaded yet, blocking TemplateGrid", { conversationId })
+              }
+            }}>
+              <div className="flex justify-start">
+                <Skeleton className="h-12 w-[60%] rounded-action" />
+              </div>
+              <div className="flex justify-end">
+                <Skeleton className="h-12 w-[60%] rounded-action" />
+              </div>
+              <div className="flex justify-start">
+                <Skeleton className="h-24 w-[70%] rounded-action" />
+              </div>
+            </div>
           ) : messages.length === 0 ? (
-            // Empty state with horizontal boundary in sync with ChatInput
+            // True empty state — no conversation, show TemplateGrid
             <div className="flex flex-col items-center justify-center h-full" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
-              {(() => {
-                if (process.env.NODE_ENV !== "production" && conversationId) {
-                  console.warn("[CHAT-VIEW] TemplateGrid shown IN CONVERSATION VIEW — this is the bug", { conversationId, isAwaitingAssistantStart })
-                }
-                return null
-              })()}
               <TemplateGrid
                 onTemplateSelect={handleTemplateSelect}
                 onSidebarLinkClick={handleSidebarLinkClick}
@@ -2595,8 +3159,26 @@ export function ChatWindow({
                         fileNameMap={fileNameMap}
                         fileMetaMap={fileMetaMap}
                         onOpenSources={handleOpenSources}
-                        isChoiceSubmitted={submittedChoiceKeys.has(`${message.id}::${message.id}-choice-spec`)}
+                        isChoiceSubmitted={(() => {
+                          const key = `${message.id}::${message.id}-choice-spec`
+                          const inKeys = submittedChoiceKeys.has(key)
+                          const cancelled = cancelledChoiceMessageIdsRef.current.has(message.id)
+                          const result = inKeys && !cancelled
+                          if (process.env.NODE_ENV !== "production" && inKeys) {
+                            const prev = choiceGateLastResultRef.current.get(message.id)
+                            if (prev !== result) {
+                              choiceGateLastResultRef.current.set(message.id, result)
+                              console.info(`[CHOICE-GATE] msgId=${message.id} inKeys=${inKeys} cancelled=${cancelled} result=${result} cancelledSet=[${[...cancelledChoiceMessageIdsRef.current].join(",")}]`)
+                            }
+                          }
+                          return result
+                        })()}
                         onChoiceSubmit={handleChoiceSubmit}
+                        onCancelChoice={handleCancelChoice}
+                        onCancelApproval={handleCancelApproval}
+                        isStreaming={status === "streaming"}
+                        cancelableChoiceMessageIds={cancelableChoiceMessageIds}
+                        cancelableApprovalMessageId={cancelableApprovalMessageId}
                       />
                     </div>
                   </div>
@@ -2616,9 +3198,10 @@ export function ChatWindow({
                 Footer: () => (
                   <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                     {/* Paper Validation Panel - footer area before input */}
-                    {(isPaperMode && (stageStatus === "pending_validation" || optimisticPendingValidation) && userId && status !== 'streaming') && (
+                    {(isPaperMode && userId && isValidationPanelEligible({ chatStatus: status, artifactRevealDone, stageStatus, optimisticPendingValidation })) && (
                       <PaperValidationPanel
                         stageLabel={stageLabel}
+                        approveSuccessMessage={approvedStageMessage}
                         onApprove={handleApprove}
                         onRevise={handleRevise}
                         isLoading={isLoading}

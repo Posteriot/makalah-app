@@ -66,4 +66,5 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### AGENT ROLE ASSIGNMENT
 - **Claude Code (this agent):** Brainstormer, planner, task creator, and executor for all implementation work on this branch.
-- **Codex (OpenAI):** Audit and code review. Claude Code must not self-review — all review and audit tasks are delegated to Codex.
+- **Codex (OpenAI):** Audit and code review. Also if needed: Brainstormer, planner, task creator. Claude Code must not self-review — all review and audit tasks are delegated to Codex.
+

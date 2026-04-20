@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 interface PaperValidationPanelProps {
     stageLabel: string;
+    approveSuccessMessage?: string;
     onApprove: () => Promise<void>;
     onRevise: (feedback: string) => Promise<void>;
     isLoading?: boolean;
@@ -18,6 +19,7 @@ interface PaperValidationPanelProps {
 
 export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
     stageLabel,
+    approveSuccessMessage,
     onApprove,
     onRevise,
     isLoading = false,
@@ -33,7 +35,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
         setIsSubmitting(true);
         try {
             await onApprove();
-            toast.success(`Tahap "${stageLabel}" disetujui. Lanjut ke tahap berikutnya.`);
+            toast.success(approveSuccessMessage || `Tahap ${stageLabel} disetujui.`);
         } catch {
             toast.error("Gagal menyetujui tahap ini. Silakan coba lagi.");
         } finally {

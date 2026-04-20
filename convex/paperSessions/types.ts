@@ -12,8 +12,8 @@ const WebSearchReferenceShape = {
 };
 
 const SitasiAPAShape = {
-    inTextCitation: v.string(),
-    fullReference: v.string(),
+    inTextCitation: v.optional(v.string()),
+    fullReference: v.optional(v.string()),
     url: v.optional(v.string()),
 };
 
@@ -25,15 +25,22 @@ const legacyRingkasanFields = {
     ringkasanDetail: v.optional(v.string()),
 };
 
+// Harness plan system: model-driven task tracking stored per stage.
+// _plan is written by updatePlan mutation (harness-level, not model tool).
+const planField = {
+    _plan: v.optional(v.any()),
+};
+
 // Validators for each stage (used in schema and mutations)
 export const GagasanData = v.object({
     ...legacyRingkasanFields,
+    ...planField,
     ideKasar: v.optional(v.string()), // Optional: may not exist during initial revision
     analisis: v.optional(v.string()),
     angle: v.optional(v.string()),
     novelty: v.optional(v.string()),
     referensiAwal: v.optional(v.array(v.object({
-        title: v.string(),
+        title: v.optional(v.string()),
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),
@@ -47,12 +54,13 @@ export const GagasanData = v.object({
 
 export const TopikData = v.object({
     ...legacyRingkasanFields,
+    ...planField,
     definitif: v.optional(v.string()), // Optional: may not exist during initial revision
     angleSpesifik: v.optional(v.string()),
     argumentasiKebaruan: v.optional(v.string()),
     researchGap: v.optional(v.string()), // Gap spesifik yang akan diisi
     referensiPendukung: v.optional(v.array(v.object({
-        title: v.string(),
+        title: v.optional(v.string()),
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),
@@ -67,6 +75,7 @@ export const TopikData = v.object({
 // Phase 2: Core Stages
 export const AbstrakData = v.object({
     ...legacyRingkasanFields,
+    ...planField,
     ringkasanPenelitian: v.optional(v.string()),
     keywords: v.optional(v.array(v.string())),
     wordCount: v.optional(v.number()),
@@ -78,6 +87,7 @@ export const AbstrakData = v.object({
 
 export const PendahuluanData = v.object({
     ...legacyRingkasanFields,
+    ...planField,
     latarBelakang: v.optional(v.string()),
     rumusanMasalah: v.optional(v.string()),
     researchGapAnalysis: v.optional(v.string()),
@@ -93,18 +103,19 @@ export const PendahuluanData = v.object({
 
 export const TinjauanLiteraturData = v.object({
     ...legacyRingkasanFields,
+    ...planField,
     kerangkaTeoretis: v.optional(v.string()),
     reviewLiteratur: v.optional(v.string()),
     gapAnalysis: v.optional(v.string()),
     justifikasiPenelitian: v.optional(v.string()), // Mengapa penelitian ini diperlukan
     referensi: v.optional(v.array(v.object({
-        title: v.string(),
+        title: v.optional(v.string()),
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),
         publishedAt: v.optional(v.number()), // Timestamp from web search source metadata
-        inTextCitation: v.string(),
-        isFromPhase1: v.boolean(),
+        inTextCitation: v.optional(v.string()),
+        isFromPhase1: v.optional(v.boolean()),
     }))),
     webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
@@ -114,16 +125,13 @@ export const TinjauanLiteraturData = v.object({
 
 export const MetodologiData = v.object({
     ...legacyRingkasanFields,
+    ...planField,
     desainPenelitian: v.optional(v.string()),
     metodePerolehanData: v.optional(v.string()),
     teknikAnalisis: v.optional(v.string()),
     etikaPenelitian: v.optional(v.string()),
     alatInstrumen: v.optional(v.string()), // Alat atau instrumen penelitian
-    pendekatanPenelitian: v.optional(v.union(
-        v.literal("kualitatif"),
-        v.literal("kuantitatif"),
-        v.literal("mixed")
-    )),
+    pendekatanPenelitian: v.optional(v.string()),
     webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
@@ -133,12 +141,9 @@ export const MetodologiData = v.object({
 // Phase 3: Results & Analysis
 export const HasilData = v.object({
     ...legacyRingkasanFields,
+    ...planField,
     temuanUtama: v.optional(v.union(v.array(v.string()), v.string())),
-    metodePenyajian: v.optional(v.union(
-        v.literal("narrative"),
-        v.literal("tabular"),
-        v.literal("mixed")
-    )),
+    metodePenyajian: v.optional(v.string()),
     dataPoints: v.optional(v.array(v.object({
         label: v.optional(v.string()),
         value: v.optional(v.union(v.number(), v.string())),
@@ -153,6 +158,7 @@ export const HasilData = v.object({
 
 export const DiskusiData = v.object({
     ...legacyRingkasanFields,
+    ...planField,
     interpretasiTemuan: v.optional(v.string()),
     perbandinganLiteratur: v.optional(v.string()),
     implikasiTeoretis: v.optional(v.string()),
@@ -171,6 +177,7 @@ export const DiskusiData = v.object({
 
 export const KesimpulanData = v.object({
     ...legacyRingkasanFields,
+    ...planField,
     ringkasanHasil: v.optional(v.string()),
     jawabanRumusanMasalah: v.optional(v.union(v.array(v.string()), v.string())),
     implikasiPraktis: v.optional(v.string()), // Implikasi praktis dari temuan
@@ -186,6 +193,7 @@ export const KesimpulanData = v.object({
 // Phase 5: Refinement
 export const PembaruanAbstrakData = v.object({
     ...legacyRingkasanFields,
+    ...planField,
     ringkasanPenelitianBaru: v.optional(v.string()),
     perubahanUtama: v.optional(v.union(v.array(v.string()), v.string())),
     keywordsBaru: v.optional(v.union(v.array(v.string()), v.string())),
@@ -202,9 +210,10 @@ export const PembaruanAbstrakData = v.object({
 // Compiles all references from previous stages into APA 7th format
 export const DaftarPustakaData = v.object({
     ...legacyRingkasanFields,
+    ...planField,
     // Array of reference entries - compiled from all previous stages
     entries: v.optional(v.array(v.object({
-        title: v.string(), // Required - identifier for dedup
+        title: v.optional(v.string()), // identifier for dedup
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),
@@ -228,17 +237,12 @@ export const DaftarPustakaData = v.object({
 // Supporting materials organized with auto-labeling
 export const LampiranData = v.object({
     ...legacyRingkasanFields,
+    ...planField,
     // Array of appendix items with sequential labeling
     items: v.optional(v.array(v.object({
-        label: v.string(), // Required - "A", "B", "C" (auto-generated sequential)
+        label: v.optional(v.string()), // "A", "B", "C" (auto-generated sequential)
         judul: v.optional(v.string()),
-        tipe: v.optional(v.union(
-            v.literal("table"),
-            v.literal("figure"),
-            v.literal("instrument"),
-            v.literal("rawData"),
-            v.literal("other")
-        )),
+        tipe: v.optional(v.string()),
         konten: v.optional(v.string()),
         // Reference linking ke main text sections (format: ["metodologi.alatInstrumen", "hasil.temuan1"])
         referencedInSections: v.optional(v.array(v.string())),
@@ -255,9 +259,10 @@ export const LampiranData = v.object({
 // Generate 5 title options with keyword coverage analysis
 export const JudulData = v.object({
     ...legacyRingkasanFields,
+    ...planField,
     // Array of 5 title options
     opsiJudul: v.optional(v.array(v.object({
-        judul: v.string(), // Required - the title text
+        judul: v.optional(v.string()), // the title text
         keywordsCovered: v.optional(v.array(v.string())),
         coverageScore: v.optional(v.number()), // 0-100
     }))),
@@ -273,18 +278,15 @@ export const JudulData = v.object({
 // Hierarchical structure using flat array with parentId
 export const OutlineData = v.object({
     ...legacyRingkasanFields,
+    ...planField,
     // Flat array of outline sections with parentId for hierarchy
     sections: v.optional(v.array(v.object({
-        id: v.string(), // Required - format: "pendahuluan", "hasil", "hasil.temuan1"
+        id: v.optional(v.string()), // format: "pendahuluan", "hasil", "hasil.temuan1"
         judul: v.optional(v.string()),
         level: v.optional(v.number()), // 1 = bab, 2 = sub-bab, 3 = poin
         parentId: v.optional(v.union(v.string(), v.null())), // null untuk root, "hasil" untuk "hasil.temuan1"
         estimatedWordCount: v.optional(v.number()),
-        status: v.optional(v.union(
-            v.literal("complete"),
-            v.literal("partial"),
-            v.literal("empty")
-        )),
+        status: v.optional(v.string()),
     }))),
     totalWordCount: v.optional(v.number()), // Estimated total word count
     completenessScore: v.optional(v.number()), // Percentage of sections completed (0-100)

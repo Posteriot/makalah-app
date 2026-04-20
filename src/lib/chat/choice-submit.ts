@@ -1,4 +1,5 @@
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
+import type { WorkflowAction } from "../json-render/choice-payload"
 
 export interface ChoiceInteractionEvent {
   type: "paper.choice.submit"
@@ -10,6 +11,7 @@ export interface ChoiceInteractionEvent {
   kind: "single-select"
   selectedOptionIds: string[]
   customText?: string
+  workflowAction?: WorkflowAction
   decisionMode?: "exploration" | "commit"
   submittedAt: number
 }
@@ -22,6 +24,7 @@ export function buildChoiceInteractionEvent(params: {
   kind: "single-select"
   selectedOptionId: string
   customText?: string
+  workflowAction?: WorkflowAction
   decisionMode?: "exploration" | "commit"
 }): ChoiceInteractionEvent {
   return {
@@ -36,6 +39,7 @@ export function buildChoiceInteractionEvent(params: {
     ...(params.customText?.trim()
       ? { customText: params.customText.trim() }
       : {}),
+    ...(params.workflowAction ? { workflowAction: params.workflowAction } : {}),
     ...(params.decisionMode ? { decisionMode: params.decisionMode } : {}),
     submittedAt: Date.now(),
   }

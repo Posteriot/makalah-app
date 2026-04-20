@@ -89,6 +89,8 @@ export function TopBar({
 
         {/* Right: Controls */}
         <div className="flex items-center gap-2 pt-1">
+
+
           {/* Theme Toggle */}
           {!isLoading && user && (
             <button

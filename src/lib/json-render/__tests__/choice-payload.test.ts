@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
   parseJsonRendererChoicePayload,
+  parseChoiceSpecForRender,
   cloneSpecWithReadOnlyState,
   type JsonRendererChoicePayload,
 } from "../choice-payload"
@@ -20,7 +21,7 @@ function makeValidPayload(): JsonRendererChoicePayload {
       elements: {
         shell: {
           type: "ChoiceCardShell",
-          props: { title: "Arah Gagasan Penelitian" },
+          props: { title: "Arah Gagasan Penelitian", workflowAction: "continue_discussion" },
           children: ["opt-a", "opt-b", "submit"],
         },
         "opt-a": {
@@ -114,6 +115,55 @@ describe("parseJsonRendererChoicePayload", () => {
     const payload = makeValidPayload()
     payload.spec.root = "nonexistent"
     expect(() => parseJsonRendererChoicePayload(payload)).toThrow()
+  })
+})
+
+describe("parseJsonRendererChoicePayload — workflowAction contract", () => {
+  it("accepts payload with workflowAction in ChoiceCardShell props", () => {
+    const payload = makeValidPayload()
+    ;(payload.spec.elements["shell"].props as Record<string, unknown>).workflowAction = "finalize_stage"
+    const result = parseJsonRendererChoicePayload(payload)
+    expect((result.spec.elements["shell"].props as Record<string, unknown>).workflowAction).toBe("finalize_stage")
+  })
+
+  it("rejects payload without workflowAction in ChoiceCardShell props (emit contract stays strict)", () => {
+    const payload = makeValidPayload()
+    delete (payload.spec.elements["shell"].props as Record<string, unknown>).workflowAction
+    expect(() => parseJsonRendererChoicePayload(payload)).toThrow()
+  })
+
+  it("accepts legacy render spec without workflowAction when decisionMode exists", () => {
+    const payload = makeValidPayload()
+    delete (payload.spec.elements["shell"].props as Record<string, unknown>).workflowAction
+    ;(payload.spec.elements["shell"].props as Record<string, unknown>).decisionMode = "exploration"
+
+    const result = parseChoiceSpecForRender(payload.spec)
+    expect(result.success).toBe(true)
+    if (!result.success) {
+      throw new Error("expected legacy render spec to parse")
+    }
+    expect(result.spec.elements.shell.props).toMatchObject({
+      title: "Arah Gagasan Penelitian",
+      decisionMode: "exploration",
+    })
+    expect((result.spec.elements.shell.props as Record<string, unknown>).workflowAction).toBeUndefined()
+    expect(result.contractVersion).toBe("legacy-render")
+  })
+
+  it("accepts legacy render spec without workflowAction and without decisionMode via conservative shim", () => {
+    const payload = makeValidPayload()
+    delete (payload.spec.elements["shell"].props as Record<string, unknown>).workflowAction
+
+    const result = parseChoiceSpecForRender(payload.spec)
+    expect(result.success).toBe(true)
+    if (!result.success) {
+      throw new Error("expected conservative legacy render shim to parse")
+    }
+    expect(result.spec.elements.shell.props).toMatchObject({
+      title: "Arah Gagasan Penelitian",
+    })
+    expect((result.spec.elements.shell.props as Record<string, unknown>).workflowAction).toBeUndefined()
+    expect(result.contractVersion).toBe("legacy-render")
   })
 })
 

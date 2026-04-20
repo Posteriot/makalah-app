@@ -30,7 +30,7 @@ export function QuickActions({ content }: QuickActionsProps) {
     }
 
     return (
-        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[color:var(--chat-border)]">
+        <div className="mt-2 flex items-center gap-2 pt-2">
             <Tooltip>
                 <TooltipTrigger asChild>
                     <button

@@ -8,6 +8,10 @@ const REDIRECT_TIMEOUT_MS = 3000
 const REDIRECT_CONCURRENCY = 10
 const MAX_CITATIONS = 20
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
 export function isVertexProxyUrl(url: string): boolean {
   try {
     const hostname = new URL(url).hostname
@@ -100,15 +104,41 @@ export const googleGroundingRetriever: SearchRetriever = {
         ),
       ])
 
+      const metadataRecord = isRecord(metadata) ? metadata : null
+      const googleMetadata = metadataRecord && isRecord(metadataRecord.google) ? metadataRecord.google : null
+      const groundingMetadata = googleMetadata && isRecord(googleMetadata.groundingMetadata)
+        ? googleMetadata.groundingMetadata
+        : metadataRecord
+      const groundingRecord = isRecord(groundingMetadata) ? groundingMetadata : null
+      const groundingChunks = Array.isArray(groundingRecord?.groundingChunks) ? groundingRecord.groundingChunks.length : 0
+      const groundingSupports = Array.isArray(groundingRecord?.groundingSupports) ? groundingRecord.groundingSupports.length : 0
+      const sdkSourcesCount = Array.isArray(sources) ? sources.length : 0
+
+      console.info("[google-grounding][extract-debug] metadata snapshot", {
+        sdkSourcesCount,
+        providerKeys: metadataRecord ? Object.keys(metadataRecord) : [],
+        googleKeys: googleMetadata ? Object.keys(googleMetadata) : [],
+        hasGroundingMetadata: Boolean(googleMetadata && "groundingMetadata" in googleMetadata),
+        groundingChunks,
+        groundingSupports,
+      })
+
       // Use Google Grounding normalizer — extracts citedText from
       // groundingSupports[].segment.text via direct Google API.
       let raw: NormalizedCitation[] = normalizeGoogleGrounding(metadata)
       if (raw.length === 0) {
         // Fallback: if providerMetadata has no grounding data, try AI SDK result.sources
         const sourcesArr = Array.isArray(sources) ? sources : []
+        console.info("[google-grounding][fallback-sources-list]", {
+          providerMetadataNormalizedCount: raw.length,
+          sdkSourcesCount: sourcesArr.length,
+        })
         if (sourcesArr.length > 0) {
           raw = normalizeSourcesList(sources)
         }
+        console.info("[google-grounding][fallback-sources-list-result]", {
+          normalizedCount: raw.length,
+        })
       }
 
       // Dedup by proxy URL and cap. Proxy URLs are returned as-is —
@@ -117,6 +147,12 @@ export const googleGroundingRetriever: SearchRetriever = {
       // of blocking HEAD requests from Phase 1.
       const deduped = deduplicateByUrl(raw)
       const capped = deduped.slice(0, MAX_CITATIONS)
+
+      console.info("[google-grounding][extract-debug] citation pipeline", {
+        rawCount: raw.length,
+        dedupedCount: deduped.length,
+        cappedCount: capped.length,
+      })
 
       return capped
     } catch {

@@ -34,13 +34,6 @@ import {
 } from "@/lib/paper/task-derivation"
 
 // ============================================================================
-// CONSTANTS
-// ============================================================================
-
-/** Maximum number of stages back that user can rewind */
-const MAX_REWIND_STAGES = 2
-
-// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -62,7 +55,6 @@ interface StageDataEntry {
 /**
  * Check if a stage is a valid rewind target
  * - Must be completed (has validatedAt)
- * - Must be within MAX_REWIND_STAGES of current stage
  * - Must be before current stage (not current or future)
  */
 function isValidRewindTarget(
@@ -71,29 +63,17 @@ function isValidRewindTarget(
   currentIndex: number,
   stageData?: Record<string, StageDataEntry>
 ): { canRewind: boolean; reason?: string } {
-  // Not a completed stage
   if (stageIndex >= currentIndex) {
     return { canRewind: false }
   }
 
-  // No stageData provided
   if (!stageData) {
     return { canRewind: false }
   }
 
-  // Stage was never validated
   const stageEntry = stageData[stageId]
   if (!stageEntry?.validatedAt) {
     return { canRewind: false, reason: "Stage ini belum pernah divalidasi" }
-  }
-
-  // Beyond max rewind limit
-  const stagesBack = currentIndex - stageIndex
-  if (stagesBack > MAX_REWIND_STAGES) {
-    return {
-      canRewind: false,
-      reason: `Hanya bisa rewind max ${MAX_REWIND_STAGES} tahap ke belakang`,
-    }
   }
 
   return { canRewind: true }
@@ -110,6 +90,7 @@ function TaskListItem({ task }: { task: TaskItem }) {
         className={cn(
           "w-1.5 h-1.5 rounded-full shrink-0",
           task.status === "complete" && "bg-[oklch(0.777_0.152_181.912)]",
+          task.status === "in-progress" && "bg-[oklch(0.777_0.152_181.912)] animate-pulse",
           task.status === "pending" && "bg-[var(--chat-muted-foreground)] opacity-40"
         )}
       />
@@ -117,6 +98,7 @@ function TaskListItem({ task }: { task: TaskItem }) {
         className={cn(
           "text-[11px] font-sans",
           task.status === "complete" && "text-[var(--chat-muted-foreground)]",
+          task.status === "in-progress" && "text-[var(--chat-foreground)]",
           task.status === "pending" && "text-[var(--chat-muted-foreground)] opacity-60"
         )}
       >
@@ -282,6 +264,8 @@ interface PhaseSectionProps {
   onStageClick: (stageId: PaperStageId, stageIndex: number) => void
   /** Whether this is the last phase group (affects last-stage line rendering) */
   isLastPhase: boolean
+  /** Latest assistant message's planSnapshot — overlay onto stageData for mirror behavior */
+  latestPlanSnapshot?: unknown
 }
 
 function PhaseSection({
@@ -292,6 +276,7 @@ function PhaseSection({
   stageData,
   onStageClick,
   isLastPhase,
+  latestPlanSnapshot,
 }: PhaseSectionProps) {
   const getMilestoneState = (stageId: PaperStageId): MilestoneState => {
     const stageIndex = STAGE_ORDER.indexOf(stageId)
@@ -315,14 +300,32 @@ function PhaseSection({
   const completedCount = phaseStates.filter((s) => s === "completed").length
   const totalCount = stages.length
 
-  // Derive sub-tasks for the active stage
+  // Derive sub-tasks for the active stage.
+  // Mirror the latest message's planSnapshot when available so sidebar matches
+  // the inline UnifiedProcessCard. Falls back to global stageData._plan during
+  // streaming, legacy messages without snapshots, or when the snapshot belongs
+  // to a different stage (e.g., after rewind).
   const activeStageId = hasCurrentStage
     ? stages[phaseStates.indexOf("current")]
     : undefined
   const subTaskSummary = useMemo(() => {
     if (!activeStageId || !stageData) return null
-    return deriveTaskList(activeStageId, stageData as Record<string, unknown>)
-  }, [activeStageId, stageData])
+    const sd = stageData as Record<string, Record<string, unknown>>
+    // Only overlay if snapshot's stage matches current active stage.
+    // PlanSpec has a `stage` field — use it to prevent cross-stage contamination on rewind.
+    const snap = latestPlanSnapshot as { stage?: string; tasks?: unknown[] } | undefined
+    if (snap?.stage && snap.stage === activeStageId) {
+      const overlayStageData = {
+        ...sd,
+        [activeStageId]: { ...(sd[activeStageId] ?? {}), _plan: latestPlanSnapshot },
+      }
+      console.info(`[SIDEBAR-MIRROR] stage=${activeStageId} source=message-snapshot tasks=${snap.tasks?.length ?? "?"}`)
+      return deriveTaskList(activeStageId, overlayStageData)
+    }
+    const globalPlan = sd[activeStageId]?._plan as { tasks?: unknown[] } | undefined
+    console.info(`[SIDEBAR-MIRROR] stage=${activeStageId} source=${snap ? "stage-mismatch-fallback" : "global-stageData"} tasks=${globalPlan?.tasks?.length ?? "?"}`)
+    return deriveTaskList(activeStageId, sd)
+  }, [activeStageId, stageData, latestPlanSnapshot])
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -396,7 +399,7 @@ function PhaseSection({
  * - Auto-expand logic: current phase expanded, completed phases expanded, future phases collapsed
  *
  * Preserves all SidebarProgress features:
- * - Rewind support (max 2 stages back) with confirmation dialog
+ * - Rewind support (any validated stage) with confirmation dialog
  * - Progress header with title and percentage bar
  * - Loading, empty, and no-conversation states
  */
@@ -407,15 +410,21 @@ export function SidebarQueueProgress({ conversationId }: SidebarQueueProgressPro
   // Get paper session for current conversation
   const {
     session,
-    isPaperMode,
     currentStage,
     stageData,
     rewindToStage,
     isLoading,
+    sessionState,
   } = usePaperSession(conversationId as Id<"conversations"> | undefined)
 
   const conversation = useQuery(
     api.conversations.getConversation,
+    conversationId ? { conversationId: conversationId as Id<"conversations"> } : "skip"
+  )
+
+  // Latest assistant message's planSnapshot — sidebar mirrors inline UnifiedProcessCard
+  const latestPlanSnapshot = useQuery(
+    api.messages.getLatestPlanSnapshot,
     conversationId ? { conversationId: conversationId as Id<"conversations"> } : "skip"
   )
 
@@ -504,14 +513,12 @@ export function SidebarQueueProgress({ conversationId }: SidebarQueueProgressPro
     )
   }
 
-  // Empty state - no paper session in this conversation
-  if (!isPaperMode || !session) {
+  // Session not yet available
+  if (!session) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center text-[var(--chat-muted-foreground)] opacity-50">
-        <GitBranch className="h-8 w-8 mb-2" />
-        <span className="text-sm font-mono font-medium mb-1">Tidak ada paper aktif</span>
-        <span className="text-xs font-mono">
-          Percakapan ini bukan sesi penulisan paper
+      <div className="flex items-center justify-center p-8">
+        <span className="text-xs text-[var(--chat-muted-foreground)]">
+          {sessionState === "loading" ? "Memuat..." : "Kirim pesan untuk memulai sesi paper."}
         </span>
       </div>
     )
@@ -563,6 +570,7 @@ export function SidebarQueueProgress({ conversationId }: SidebarQueueProgressPro
               stageData={stageData as Record<string, StageDataEntry> | undefined}
               onStageClick={handleStageClick}
               isLastPhase={phaseIdx === PHASE_GROUPS.length - 1}
+              latestPlanSnapshot={latestPlanSnapshot ?? undefined}
             />
           ))}
         </div>

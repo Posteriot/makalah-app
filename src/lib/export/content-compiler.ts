@@ -42,7 +42,7 @@ export interface CompiledPaperContent {
     referensi: Referensi[] | null
   } | null
   metodologi: {
-    pendekatanPenelitian: "kualitatif" | "kuantitatif" | "mixed" | null
+    pendekatanPenelitian: string | null
     desainPenelitian: string | null
     metodePerolehanData: string | null
     teknikAnalisis: string | null
@@ -51,7 +51,7 @@ export interface CompiledPaperContent {
   } | null
   hasil: {
     temuanUtama: string[] | string | null
-    metodePenyajian: "narrative" | "tabular" | "mixed" | null
+    metodePenyajian: string | null
     dataPoints: DataPoint[] | null
   } | null
   diskusi: {

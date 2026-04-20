@@ -177,6 +177,10 @@ export default defineSchema({
     jsonRendererRecommendation: v.optional(v.string()),
     // UI message ID for history rehydration
     uiMessageId: v.optional(v.string()),
+    // Per-message plan snapshot: captures _plan state at the time this message was generated.
+    // Allows UnifiedProcessCard to show historical plan progress per message instead of
+    // retroactively reflecting the latest plan state.
+    planSnapshot: v.optional(v.any()),
   })
     .index("by_conversation", ["conversationId", "createdAt"])
     .index("by_conversation_role", ["conversationId", "role", "createdAt"]),
@@ -539,12 +543,13 @@ export default defineSchema({
       gagasan: v.optional(v.object({
         ringkasan: v.optional(v.string()),
         ringkasanDetail: v.optional(v.string()), // Legacy detail summary (kept for compatibility)
+        _plan: v.optional(v.any()), // Harness plan system: model-driven task tracking
         ideKasar: v.optional(v.string()), // Optional: may not exist during initial revision
         analisis: v.optional(v.string()),
         angle: v.optional(v.string()),
         novelty: v.optional(v.string()),
         referensiAwal: v.optional(v.array(v.object({
-          title: v.string(),
+          title: v.optional(v.string()),
           authors: v.optional(v.string()),
           year: v.optional(v.number()),
           url: v.optional(v.string()),
@@ -562,12 +567,13 @@ export default defineSchema({
       topik: v.optional(v.object({
         ringkasan: v.optional(v.string()),
         ringkasanDetail: v.optional(v.string()),
+        _plan: v.optional(v.any()),
         definitif: v.optional(v.string()), // Optional: may not exist during initial revision
         angleSpesifik: v.optional(v.string()),
         argumentasiKebaruan: v.optional(v.string()),
         researchGap: v.optional(v.string()), // Gap spesifik yang akan diisi
         referensiPendukung: v.optional(v.array(v.object({
-          title: v.string(),
+          title: v.optional(v.string()),
           authors: v.optional(v.string()),
           year: v.optional(v.number()),
           url: v.optional(v.string()),
@@ -590,6 +596,7 @@ export default defineSchema({
       abstrak: v.optional(v.object({
         ringkasan: v.optional(v.string()),
         ringkasanDetail: v.optional(v.string()),
+        _plan: v.optional(v.any()),
         ringkasanPenelitian: v.optional(v.string()),
         keywords: v.optional(v.array(v.string())),
         wordCount: v.optional(v.number()),
@@ -605,6 +612,7 @@ export default defineSchema({
       pendahuluan: v.optional(v.object({
         ringkasan: v.optional(v.string()),
         ringkasanDetail: v.optional(v.string()),
+        _plan: v.optional(v.any()),
         latarBelakang: v.optional(v.string()),
         rumusanMasalah: v.optional(v.string()),
         researchGapAnalysis: v.optional(v.string()),
@@ -612,8 +620,8 @@ export default defineSchema({
         signifikansiPenelitian: v.optional(v.string()), // Mengapa penelitian ini penting
         hipotesis: v.optional(v.string()), // Hipotesis atau pertanyaan penelitian
         sitasiAPA: v.optional(v.array(v.object({
-          inTextCitation: v.string(),
-          fullReference: v.string(),
+          inTextCitation: v.optional(v.string()),
+          fullReference: v.optional(v.string()),
           url: v.optional(v.string()),
         }))),
         webSearchReferences: v.optional(v.array(v.object({
@@ -628,18 +636,19 @@ export default defineSchema({
       tinjauan_literatur: v.optional(v.object({
         ringkasan: v.optional(v.string()),
         ringkasanDetail: v.optional(v.string()),
+        _plan: v.optional(v.any()),
         kerangkaTeoretis: v.optional(v.string()),
         reviewLiteratur: v.optional(v.string()),
         gapAnalysis: v.optional(v.string()),
         justifikasiPenelitian: v.optional(v.string()), // Mengapa penelitian ini diperlukan
         referensi: v.optional(v.array(v.object({
-          title: v.string(),
+          title: v.optional(v.string()),
           authors: v.optional(v.string()),
           year: v.optional(v.number()),
           url: v.optional(v.string()),
           publishedAt: v.optional(v.number()), // Timestamp from web search source metadata
-          inTextCitation: v.string(),
-          isFromPhase1: v.boolean(),
+          inTextCitation: v.optional(v.string()),
+          isFromPhase1: v.optional(v.boolean()),
         }))),
         webSearchReferences: v.optional(v.array(v.object({
           url: v.string(),
@@ -653,16 +662,13 @@ export default defineSchema({
       metodologi: v.optional(v.object({
         ringkasan: v.optional(v.string()),
         ringkasanDetail: v.optional(v.string()),
+        _plan: v.optional(v.any()),
         desainPenelitian: v.optional(v.string()),
         metodePerolehanData: v.optional(v.string()),
         teknikAnalisis: v.optional(v.string()),
         etikaPenelitian: v.optional(v.string()),
         alatInstrumen: v.optional(v.string()), // Alat atau instrumen penelitian
-        pendekatanPenelitian: v.optional(v.union(
-          v.literal("kualitatif"),
-          v.literal("kuantitatif"),
-          v.literal("mixed")
-        )),
+        pendekatanPenelitian: v.optional(v.string()),
         webSearchReferences: v.optional(v.array(v.object({
           url: v.string(),
           title: v.string(),
@@ -733,6 +739,9 @@ export default defineSchema({
     creditRemaining: v.optional(v.number()), // Sisa kredit session (computed)
     isSoftBlocked: v.optional(v.boolean()), // True jika kredit habis
     softBlockedAt: v.optional(v.number()), // Timestamp saat soft-blocked
+
+    // Cancel Decision: monotonic epoch counter for race prevention (design doc 5.5.4)
+    decisionEpoch: v.optional(v.number()),
 
     // Timestamps
     createdAt: v.number(),
@@ -1470,4 +1479,194 @@ export default defineSchema({
   })
     .index("by_templateType", ["templateType"])
     .index("by_active", ["isActive", "templateType"]),
+
+  // ============================================================
+  // Agent Harness V1 — Phase 6 persistence tables
+  // ------------------------------------------------------------
+  // Research doc: .references/agent-harness/research/
+  //   2026-04-15-makalahapp-harness-v1-event-model-and-data-contracts.md
+  //
+  // Contracts:
+  //   RunState       → harnessRuns        (lines 809-831)
+  //   (no direct)    → harnessRunSteps    (derived from step event payloads)
+  //   EventEnvelope  → harnessEvents      (lines 128-142)
+  //   PolicyState    → harnessRuns.policyState sub-object (lines 871-878)
+  //
+  // Invariant: paperSessions / artifacts / conversations / messages
+  // remain authoritative for domain truth. These tables mirror runtime
+  // facts as a reconstructible event stream — never override domain state.
+  // ============================================================
+
+  harnessRuns: defineTable({
+    conversationId: v.id("conversations"),
+    paperSessionId: v.optional(v.id("paperSessions")), // nullable; links when paper flow starts
+    userId: v.id("users"),
+    ownerToken: v.string(), // atomic ownership anchor for resume + duplicate-start prevention
+    status: v.union(
+      v.literal("running"),
+      v.literal("paused"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("aborted"),
+    ),
+    // Workflow domain progression — mirrors paperSessions.currentStage when linked; "intake" default.
+    workflowStage: v.string(),
+    // Workflow lifecycle status — separate from run status per research doc note (workflow can complete
+    // while run is still running, and vice versa).
+    workflowStatus: v.union(
+      v.literal("running"),
+      v.literal("paused"),
+      v.literal("failed"),
+      v.literal("completed"),
+      v.literal("aborted"),
+    ),
+    stepNumber: v.number(), // monotonic per-run counter; incremented atomically via incrementStepNumber mutation
+    currentStepId: v.optional(v.id("harnessRunSteps")),
+    pendingDecisionId: v.optional(v.string()), // authoritative block marker for user pause (Phase 8)
+    policyState: v.optional(
+      v.object({
+        approvalMode: v.union(
+          v.literal("default"),
+          v.literal("required_for_high_impact"),
+        ),
+        currentBoundary: v.union(
+          v.literal("read_only"),
+          v.literal("bounded_mutation"),
+          v.literal("blocked"),
+        ),
+        pendingApprovalDecisionId: v.optional(v.string()),
+        lastPolicyReason: v.optional(v.string()),
+        updatedAt: v.number(),
+      }),
+    ),
+    failureClass: v.optional(
+      v.union(
+        v.literal("entry_failure"),
+        v.literal("state_failure"),
+        v.literal("tool_failure"),
+        v.literal("verification_failure"),
+        v.literal("guard_failure"),
+        v.literal("unexpected_failure"),
+      ),
+    ),
+    failureReason: v.optional(v.string()),
+    startedAt: v.number(),
+    updatedAt: v.number(),
+    pausedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_conversation", ["conversationId", "startedAt"])
+    .index("by_paperSession", ["paperSessionId"])
+    .index("by_ownerToken", ["ownerToken"])
+    .index("by_user_updated", ["userId", "updatedAt"]),
+
+  harnessRunSteps: defineTable({
+    runId: v.id("harnessRuns"),
+    stepIndex: v.number(), // monotonic per-run; matches stepNumber at creation time
+    status: v.union(
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
+    executorResultSummary: v.optional(
+      v.object({
+        finishReason: v.string(),
+        inputTokens: v.optional(v.number()),
+        outputTokens: v.optional(v.number()),
+        totalTokens: v.optional(v.number()),
+      }),
+    ),
+    // Flattened snapshot of StepVerificationResult (omits `leakageDetails` body and
+    // `streamContentOverride` string to cap row size; retains booleans for replay).
+    verificationSummary: v.optional(
+      v.object({
+        canContinue: v.boolean(),
+        mustPause: v.boolean(),
+        pauseReason: v.optional(v.string()),
+        canComplete: v.boolean(),
+        completionBlockers: v.array(v.string()),
+        leakageDetected: v.boolean(),
+        artifactChainComplete: v.boolean(),
+        planComplete: v.boolean(),
+        streamContentOverridden: v.boolean(),
+      }),
+    ),
+    toolCalls: v.array(
+      v.object({
+        toolName: v.string(),
+        toolCallId: v.optional(v.string()),
+        resultStatus: v.optional(v.string()),
+      }),
+    ),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_run", ["runId"])
+    .index("by_run_step", ["runId", "stepIndex"]),
+
+  harnessEvents: defineTable({
+    eventId: v.string(), // stable dedupable identifier; generated by mutation if omitted
+    eventType: v.string(), // canonical name from research doc; validated at adapter layer
+    schemaVersion: v.number(), // starts at 1; incremented when payload contract evolves
+    occurredAt: v.number(), // ms epoch (converts from ISO at API boundaries if needed)
+    userId: v.id("users"),
+    sessionId: v.string(), // request-scoped session identifier (threaded from RunLane)
+    chatId: v.id("conversations"),
+    runId: v.optional(v.id("harnessRuns")), // absent for pre-run entry events
+    stepId: v.optional(v.id("harnessRunSteps")),
+    correlationId: v.optional(v.string()), // groups events for one user action
+    causationEventId: v.optional(v.string()), // causal chain pointer
+    payload: v.any(), // event-specific; validated by TypeScript at adapter layer
+  })
+    .index("by_run_time", ["runId", "occurredAt"])
+    .index("by_correlation", ["correlationId"])
+    .index("by_eventType_time", ["eventType", "occurredAt"])
+    .index("by_chat_time", ["chatId", "occurredAt"]),
+
+  // ============================================================
+  // Agent Harness V1 — Phase 8 pause/resume table
+  // ------------------------------------------------------------
+  // Matches the research doc `DecisionState` contract (lines 838-862).
+  // Runtime facts only — `paperSessions` remains authoritative for
+  // domain approval (approveStage / requestRevision). This table tracks
+  // harness-level user decisions that block a run until resolved.
+  // ============================================================
+
+  harnessDecisions: defineTable({
+    decisionId: v.string(), // stable UUID; generated by mutation if omitted
+    runId: v.id("harnessRuns"),
+    type: v.union(
+      v.literal("clarification"),
+      v.literal("approval"),
+      v.literal("selection"),
+    ),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("resolved"),
+      v.literal("declined"),
+      v.literal("invalidated"),
+    ),
+    blocking: v.boolean(), // if true, run waits on this decision
+    workflowStage: v.string(), // stage at which decision was requested
+    prompt: v.object({
+      title: v.optional(v.string()),
+      question: v.string(),
+      options: v.optional(
+        v.array(
+          v.object({
+            label: v.string(),
+            description: v.optional(v.string()),
+            recommended: v.optional(v.boolean()),
+          }),
+        ),
+      ),
+      allowsFreeform: v.optional(v.boolean()),
+    }),
+    response: v.optional(v.any()), // user's answer; shape depends on type
+    requestedAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index("by_run", ["runId"])
+    .index("by_run_status", ["runId", "status"])
+    .index("by_decisionId", ["decisionId"]),
 })

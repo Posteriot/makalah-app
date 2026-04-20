@@ -1,0 +1,7 @@
+  - [x] 2026-04-15-open-agents-component-deep-dive.md
+  - [ ] 2026-04-15-makalahapp-harness-v1-v2-priority-matrix.md
+  - [ ] 2026-04-15-makalahapp-harness-v1-blueprint.md
+  - [ ] 2026-04-15-makalahapp-harness-v1-component-contracts.md
+  - [ ] 2026-04-15-makalahapp-harness-v1-state-machine.md
+  - [ ] 2026-04-15-makalahapp-harness-v1-event-model-and-data-contracts.md
+  - [ ] 2026-04-15-makalahapp-repo-implementation-mapping.md

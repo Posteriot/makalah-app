@@ -33,6 +33,7 @@ const buildExactAvailability = (document: ExactSourceDocument | null) => ({
  * Mutable tracker set from tool execute functions, read at stream finish for observability.
  */
 export type PaperToolTracker = {
+    createArtifactClaimed: boolean
     sawUpdateStageData: boolean
     sawCreateArtifactSuccess: boolean
     sawUpdateArtifactSuccess: boolean
@@ -40,9 +41,11 @@ export type PaperToolTracker = {
     sawSubmitValidationSuccess: boolean
     sawSubmitValidationArtifactMissing: boolean
     sawRequestRevision: boolean
+    sawRollbackToStage: boolean
 }
 
 export const createPaperToolTracker = (): PaperToolTracker => ({
+    createArtifactClaimed: false,
     sawUpdateStageData: false,
     sawCreateArtifactSuccess: false,
     sawUpdateArtifactSuccess: false,
@@ -50,6 +53,7 @@ export const createPaperToolTracker = (): PaperToolTracker => ({
     sawSubmitValidationSuccess: false,
     sawSubmitValidationArtifactMissing: false,
     sawRequestRevision: false,
+    sawRollbackToStage: false,
 })
 
 /**
@@ -65,42 +69,6 @@ export const createPaperTools = (context: {
 }) => {
     const convexOptions = context.convexToken ? { token: context.convexToken } : undefined
     return {
-        startPaperSession: tool({
-            description: `Initialize a new paper writing session for this conversation.
-
-You MUST call this tool IMMEDIATELY when the user indicates intent to write a paper/makalah/skripsi.
-
-Rules for filling initialIdea:
-- If user mentions a specific topic → use that topic
-- If user only says "start writing a paper" without a topic → leave this parameter empty
-- Do NOT wait for the user to provide a topic first, call this tool IMMEDIATELY`,
-            inputSchema: z.object({
-                initialIdea: z.string().optional().describe(
-                    "Raw idea, initial title, or topic. Optional — if user has not mentioned a topic, leave empty."
-                ),
-            }),
-            execute: async ({ initialIdea }) => {
-                try {
-                    const sessionId = await retryMutation(
-                        () => fetchMutation(api.paperSessions.create, {
-                            userId: context.userId,
-                            conversationId: context.conversationId,
-                            initialIdea: initialIdea || undefined,
-                        }, convexOptions),
-                        "paperSessions.create"
-                    );
-                    return {
-                        success: true,
-                        sessionId,
-                        message: "Paper writing session started successfully. AI is now in 'Paper Writing Mode'. Follow the instructions for stage 'gagasan'.",
-                    };
-                } catch (error) {
-                    console.error("Error in startPaperSession tool:", error);
-                    return { success: false, error: "Failed to start paper session in database." };
-                }
-            },
-        }),
-
         getCurrentPaperState: tool({
             description: "Retrieve the latest status of the paper writing session (active stage, draft data, validation status). Useful for synchronization after a pause.",
             inputSchema: z.object({}),
@@ -187,6 +155,23 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                         }
                     }
 
+                    // Guard: strip harness-internal fields (e.g. _plan) — model must not
+                    // write these directly; they're managed by harness mutations.
+                    for (const k of Object.keys(data)) {
+                        if (k.startsWith("_")) delete data[k]
+                    }
+
+                    // Guard: reject empty data — enforcer sometimes forces updateStageData
+                    // before model provides content, causing empty writes + OCC cascade.
+                    const dataKeys = Object.keys(data).filter(k => data[k] !== undefined && data[k] !== null)
+                    if (dataKeys.length === 0) {
+                        console.warn("[updateStageData] Rejected: empty data object (keys=[])")
+                        return {
+                            success: false,
+                            error: "No data provided. Include at least one field to save.",
+                        }
+                    }
+
                     // Normalize keywords: model sometimes sends comma-separated string
                     // instead of array, causing Convex schema validation error.
                     if (data && typeof data.keywords === "string") {
@@ -257,7 +242,7 @@ IMPORTANT for outline: Use 'judul' (NOT 'title'), 'estimatedWordCount' as a numb
                         message: `Successfully saved progress for stage ${stage}.`,
                         nextAction: hasArtifact
                             ? "Data saved. Artifact already exists — call updateArtifact if content changed, then call submitStageForValidation()."
-                            : "⚠️ MANDATORY: call createArtifact() RIGHT NOW in this same response, then call submitStageForValidation(). Do NOT generate text, do NOT stop — call the tools IMMEDIATELY.",
+                            : "⚠️ MANDATORY: call createArtifact() next, then call submitStageForValidation(). Do NOT stop until both tools are called.",
                     };
                 } catch (error) {
                     console.error("Error in updateStageData tool:", error);
@@ -450,12 +435,27 @@ The tool will:
                         };
                     }
 
-                    await retryMutation(
+                    const submitResult = await retryMutation(
                         () => fetchMutation(api.paperSessions.submitForValidation, {
                             sessionId: session._id,
                         }, convexOptions),
                         "paperSessions.submitForValidation"
-                    );
+                    ) as { success: boolean; error?: string; missingFields?: string[] };
+
+                    // Validation gate may return soft failure (required fields missing)
+                    if (submitResult && submitResult.success === false) {
+                        const missingFields = submitResult.missingFields ?? []
+                        console.warn("[F1-F6-TEST] submitStageForValidation GATE BLOCKED", { stage: session.currentStage, missingFields })
+                        return {
+                            success: false,
+                            errorCode: "MISSING_REQUIRED_FIELDS",
+                            retryable: true,
+                            missingFields,
+                            error: submitResult.error ?? `Missing required fields: ${missingFields.join(", ")}`,
+                            nextAction: `Call updateStageData with the missing fields (${missingFields.join(", ")}), then retry submitStageForValidation.`,
+                        };
+                    }
+
                     if (context.toolTracker) context.toolTracker.sawSubmitValidationSuccess = true
                     console.log("[F1-F6-TEST] submitStageForValidation", { stage: session.currentStage, status: "pending_validation" })
                     return {
@@ -535,6 +535,69 @@ The tool will:
                         success: false,
                         error: `requestRevision failed: ${error instanceof Error ? error.message : String(error)}`,
                     };
+                }
+            },
+        }),
+
+        resetToStage: tool({
+            description: `Reset the paper session back to a target stage. The target stage and all stages after it are reset: artifacts invalidated, stage data cleared (search references preserved). Conversation messages are preserved as context.
+
+Use when the user wants to go back, redo, or change a previous stage. Any stage is valid including gagasan.
+
+This tool executes immediately — no confirmation card needed. Messages are preserved and artifacts are soft-deleted (recoverable).`,
+
+            inputSchema: z.object({
+                targetStage: z.string().describe("The stage ID to reset to (e.g., 'gagasan', 'topik', 'pendahuluan')"),
+            }),
+
+            execute: async ({ targetStage }) => {
+                try {
+                    // 1. Get fresh session
+                    const session = await retryQuery(
+                        () => fetchQuery(api.paperSessions.getByConversation, {
+                            conversationId: context.conversationId,
+                        }, convexOptions),
+                        "paperSessions.getByConversation"
+                    )
+                    if (!session) return { success: false, error: "Paper session not found" }
+
+                    // 2. Call rewindToStage IF target is a PREVIOUS stage.
+                    // Skip if already at target (just clear stageData via cancelChoiceDecision).
+                    const alreadyAtTarget = session.currentStage === targetStage
+                    if (!alreadyAtTarget) {
+                        await retryMutation(
+                            () => fetchMutation(api.paperSessions.rewindToStage, {
+                                sessionId: session._id,
+                                userId: context.userId,
+                                targetStage,
+                            }, convexOptions),
+                            "paperSessions.rewindToStage"
+                        )
+                    }
+
+                    // 3. Call cancelChoiceDecision to clear stageData
+                    // Handles: clear stageData (preserve webSearchReferences + nativeRefField),
+                    // invalidate remaining artifact refs, increment epoch
+                    try {
+                        await retryMutation(
+                            () => fetchMutation(api.paperSessions.cancelChoiceDecision, {
+                                sessionId: session._id,
+                                userId: context.userId,
+                            }, convexOptions),
+                            "paperSessions.cancelChoiceDecision"
+                        )
+                    } catch (cancelErr) {
+                        console.warn(`[RESET-TO-STAGE] cancelChoiceDecision non-fatal: ${cancelErr instanceof Error ? cancelErr.message : cancelErr}`)
+                    }
+
+                    // 4. Mark in tracker
+                    if (context.toolTracker) context.toolTracker.sawRollbackToStage = true
+
+                    console.info(`[RESET-TO-STAGE] ${session.currentStage} → ${targetStage}`)
+                    return { success: true, resetTo: targetStage, previousStage: session.currentStage }
+                } catch (error) {
+                    console.error("[RESET-TO-STAGE] failed:", error)
+                    return { success: false, error: error instanceof Error ? error.message : "Reset failed" }
                 }
             },
         }),

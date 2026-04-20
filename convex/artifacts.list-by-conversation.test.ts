@@ -191,6 +191,39 @@ describe("artifacts.listByConversation", () => {
 
     expect(result).toEqual([])
   })
+
+  it("excludes invalidated artifacts from results", async () => {
+    const { db } = createMockDb()
+
+    await db.insert("artifacts", {
+      conversationId: "conversation_1",
+      userId: "user_1",
+      title: "Valid Artifact",
+      type: "section",
+      version: 1,
+    })
+
+    await db.insert("artifacts", {
+      conversationId: "conversation_1",
+      userId: "user_1",
+      title: "Invalidated Artifact",
+      type: "section",
+      version: 1,
+      invalidatedAt: 1776583000000,
+    })
+
+    const result = await callQuery(
+      listByConversation as never,
+      db,
+      {
+        conversationId: "conversation_1" as never,
+        userId: "user_1" as never,
+      }
+    ) as Array<Record<string, unknown>>
+
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({ title: "Valid Artifact" })
+  })
 })
 
 describe("artifacts.get", () => {
