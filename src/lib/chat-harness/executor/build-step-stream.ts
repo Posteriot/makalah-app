@@ -9,6 +9,7 @@ import type { PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
 import type { ReasoningLiveDataPart } from "@/lib/ai/curated-trace"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
+import { pipeThinkTagStrip } from "@/lib/ai/harness/pipe-think-tag-strip"
 import { pipeUITextCoalesce } from "@/lib/ai/harness/create-readable-text-transform"
 import { pipeYamlRender } from "@json-render/yaml"
 import { PLAN_DATA_PART_TYPE } from "@/lib/ai/harness/plan-spec"
@@ -668,12 +669,17 @@ export function buildStepStream(params: {
                 makeChunkCountTap("afterToUIMessageStream"),
             ) as typeof uiStream
 
+            // pipeThinkTagStrip BEFORE pipePlanCapture: intercept <think> tags
+            // from model text output and re-emit as reasoning-delta so think
+            // content never reaches plan capture or yaml render.
+            const thinkStrippedStream = pipeThinkTagStrip(afterUIStream) as typeof afterUIStream
+
             // pipePlanCapture BEFORE pipeYamlRender: plan-spec stripping works
             // with AI SDK's textDelta format. pipeYamlRender then transforms
             // the clean text into @json-render format for the client.
             const planTransformedStream = enablePlanCapture
-                ? pipePlanCapture(afterUIStream) as typeof afterUIStream
-                : afterUIStream
+                ? pipePlanCapture(thinkStrippedStream) as typeof thinkStrippedStream
+                : thinkStrippedStream
 
             const afterPlanCapture = planTransformedStream.pipeThrough(
                 makeChunkCountTap("afterPipePlanCapture"),

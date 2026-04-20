@@ -35,6 +35,7 @@ import { pipeYamlRender } from "@json-render/yaml"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
 import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
+import { pipeThinkTagStrip } from "@/lib/ai/harness/pipe-think-tag-strip"
 import { pipeUITextCoalesce } from "@/lib/ai/harness/create-readable-text-transform"
 import { PLAN_DATA_PART_TYPE, type PlanSpec, planSpecSchema, UNFENCED_PLAN_REGEX } from "@/lib/ai/harness/plan-spec"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
@@ -1221,9 +1222,12 @@ export async function executeWebSearch(
           generateMessageId: () => messageId,
           sendReasoning: config.isTransparentReasoning,
         })
+        // pipeThinkTagStrip BEFORE pipePlanCapture: intercept <think> tags
+        // so think content never reaches plan capture or yaml render.
+        const thinkStrippedStream = pipeThinkTagStrip(uiStream) as typeof uiStream
         // pipePlanCapture BEFORE pipeYamlRender: plan-spec stripping works
         // with AI SDK's textDelta format, then pipeYamlRender transforms to @json-render format.
-        const planStream = pipePlanCapture(uiStream) as typeof uiStream
+        const planStream = pipePlanCapture(thinkStrippedStream) as typeof thinkStrippedStream
         const yamlStream = config.isDraftingStage ? pipeYamlRender(planStream) : planStream
         // Post-yaml UI coalescer (iteration 5, restored + tuned iteration
         // 9 rerun): re-coalesce per-char text-deltas from pipeYamlRender to
