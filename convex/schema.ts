@@ -563,6 +563,7 @@ export default defineSchema({
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
+        titleStrippedOnApproval: v.optional(v.boolean()),
       })),
       topik: v.optional(v.object({
         ringkasan: v.optional(v.string()),
@@ -587,6 +588,7 @@ export default defineSchema({
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
+        titleStrippedOnApproval: v.optional(v.boolean()),
       })),
 
       // Phase 2: Outline Stage
@@ -608,6 +610,7 @@ export default defineSchema({
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
+        titleStrippedOnApproval: v.optional(v.boolean()),
       })),
       pendahuluan: v.optional(v.object({
         ringkasan: v.optional(v.string()),
@@ -632,6 +635,7 @@ export default defineSchema({
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
+        titleStrippedOnApproval: v.optional(v.boolean()),
       })),
       tinjauan_literatur: v.optional(v.object({
         ringkasan: v.optional(v.string()),
@@ -658,6 +662,7 @@ export default defineSchema({
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
+        titleStrippedOnApproval: v.optional(v.boolean()),
       })),
       metodologi: v.optional(v.object({
         ringkasan: v.optional(v.string()),
@@ -677,6 +682,7 @@ export default defineSchema({
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
+        titleStrippedOnApproval: v.optional(v.boolean()),
       })),
 
       // Phase 4: Results & Analysis
