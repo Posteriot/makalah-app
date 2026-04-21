@@ -364,4 +364,160 @@ describe("pipeThinkTagStrip", () => {
     expect(allText(output)).toBe("CD")
     expect(allReasoning(output)).toBe("AB")
   })
+
+  // ── 17. Envelope: reasoning-start/reasoning-end emitted ──
+
+  describe("reasoning envelope", () => {
+    function reasoningStarts(output: unknown[]): Chunk[] {
+      return output.filter((c) => (c as Chunk).type === "reasoning-start") as Chunk[]
+    }
+
+    function reasoningEnds(output: unknown[]): Chunk[] {
+      return output.filter((c) => (c as Chunk).type === "reasoning-end") as Chunk[]
+    }
+
+    it("emits reasoning-start before first reasoning-delta and reasoning-end after last", async () => {
+      const input = streamFromChunks([
+        textStart(),
+        textDelta("Before <think>internal</think> After"),
+        textEnd(),
+      ])
+
+      const output = await collect(pipeThinkTagStrip(input))
+      const types = output.map((c) => (c as Chunk).type)
+
+      // Must have exactly 1 reasoning-start and 1 reasoning-end
+      expect(reasoningStarts(output)).toHaveLength(1)
+      expect(reasoningEnds(output)).toHaveLength(1)
+
+      // Ordering: reasoning-start < reasoning-delta < reasoning-end
+      const startIdx = types.indexOf("reasoning-start")
+      const firstDeltaIdx = types.indexOf("reasoning-delta")
+      const lastDeltaIdx = types.lastIndexOf("reasoning-delta")
+      const endIdx = types.indexOf("reasoning-end")
+
+      expect(startIdx).toBeLessThan(firstDeltaIdx)
+      expect(lastDeltaIdx).toBeLessThan(endIdx)
+    })
+
+    it("uses unique ID distinct from text block ID", async () => {
+      const input = streamFromChunks([
+        textStart("txt-1"),
+        textDelta("A <think>hidden</think> B", "txt-1"),
+        textEnd("txt-1"),
+      ])
+
+      const output = await collect(pipeThinkTagStrip(input))
+
+      const start = reasoningStarts(output)[0]
+      const deltas = reasoningDeltas(output)
+      const end = reasoningEnds(output)[0]
+
+      // ID must NOT be the text block ID
+      expect(start.id).not.toBe("txt-1")
+      // All three share same ID
+      expect(start.id).toBe(end.id)
+      for (const d of deltas) {
+        expect(d.id).toBe(start.id)
+      }
+      // ID must be non-empty
+      expect(start.id!.length).toBeGreaterThan(0)
+    })
+
+    it("multiple think blocks produce separate envelope pairs with unique IDs", async () => {
+      const input = streamFromChunks([
+        textStart(),
+        textDelta("A <think>first</think> B <think>second</think> C"),
+        textEnd(),
+      ])
+
+      const output = await collect(pipeThinkTagStrip(input))
+
+      expect(reasoningStarts(output)).toHaveLength(2)
+      expect(reasoningEnds(output)).toHaveLength(2)
+
+      // Each pair has a different ID
+      const startIds = reasoningStarts(output).map((c) => c.id)
+      expect(startIds[0]).not.toBe(startIds[1])
+
+      // Each start matches its corresponding end
+      const endIds = reasoningEnds(output).map((c) => c.id)
+      expect(startIds[0]).toBe(endIds[0])
+      expect(startIds[1]).toBe(endIds[1])
+    })
+
+    it("emits reasoning-end when stream ends inside think block", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+      const input = streamFromChunks([
+        textStart(),
+        textDelta("Before <think>unclosed"),
+      ])
+
+      const output = await collect(pipeThinkTagStrip(input))
+
+      expect(reasoningStarts(output)).toHaveLength(1)
+      expect(reasoningEnds(output)).toHaveLength(1)
+
+      // reasoning-end is after all reasoning-delta
+      const types = output.map((c) => (c as Chunk).type)
+      const lastDelta = types.lastIndexOf("reasoning-delta")
+      const endIdx = types.lastIndexOf("reasoning-end")
+      expect(lastDelta).toBeLessThan(endIdx)
+
+      warnSpy.mockRestore()
+    })
+
+    it("empty think block emits reasoning-start and reasoning-end with no delta", async () => {
+      const input = streamFromChunks([
+        textStart(),
+        textDelta("A <think></think> B"),
+        textEnd(),
+      ])
+
+      const output = await collect(pipeThinkTagStrip(input))
+
+      expect(reasoningStarts(output)).toHaveLength(1)
+      expect(reasoningEnds(output)).toHaveLength(1)
+      expect(reasoningDeltas(output)).toHaveLength(0)
+      expect(allText(output)).toBe("A  B")
+    })
+
+    it("envelope ordering correct when tag resolved via resolveTagBuffer", async () => {
+      const input = streamFromChunks([
+        textStart(),
+        textDelta("hello <thi"),
+        textDelta("nk>reason</think> world"),
+        textEnd(),
+      ])
+
+      const output = await collect(pipeThinkTagStrip(input))
+      const types = output.map((c) => (c as Chunk).type)
+
+      // Verify full sequence: text → start → delta → end → text
+      const startIdx = types.indexOf("reasoning-start")
+      const endIdx = types.indexOf("reasoning-end")
+      const firstReasoningDelta = types.indexOf("reasoning-delta")
+
+      expect(startIdx).toBeLessThan(firstReasoningDelta)
+      expect(firstReasoningDelta).toBeLessThan(endIdx)
+
+      // Text before and after intact
+      expect(allText(output)).toBe("hello  world")
+      expect(allReasoning(output)).toBe("reason")
+    })
+
+    it("no envelope emitted when there are no think tags", async () => {
+      const input = streamFromChunks([
+        textStart(),
+        textDelta("plain text without think"),
+        textEnd(),
+      ])
+
+      const output = await collect(pipeThinkTagStrip(input))
+
+      expect(reasoningStarts(output)).toHaveLength(0)
+      expect(reasoningEnds(output)).toHaveLength(0)
+    })
+  })
 })
