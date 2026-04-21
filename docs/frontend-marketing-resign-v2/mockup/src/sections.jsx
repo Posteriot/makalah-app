@@ -1,14 +1,22 @@
 /* Benefits, Feature splits, Demo, Pricing, FAQ, Footer */
 
 const BENEFITS = [
-  { id: "sparring", num: "01", title: "Sparring partner, bukan ghostwriter",
-    desc: "Mitra brainstorming, mengolah ide sampai paper jadi. Kamu tetap pegang kendali, AI jadi mitra periset dan penulis." },
-  { id: "chat", num: "02", title: "Ngobrol wajar layaknya diskusi ",
-    desc: "Tanpa prompt ritual. Tanpa 'act as professor'. Ungkapkan saja maksudmu — AI nyambung, lanjut, dan bikin pertanyaan balik." },
-  { id: "bahasa", num: "03", title: "Bahasa manusiawi, tone akademik",
-    desc: "Konversi kalimat kaku robotik jadi prosa mengalir tanpa mengorbankan presisi. Paragrafnya punya ritme." },
-  { id: "workflow", num: "04", title: "14 tahap research loop",
-    desc: "Pagar ketat di tiap tahap penyusunan — dari scoping sampai ekspor. Tidak ngalor-ngidul, tanpa  keluar konteks." }
+  {
+    id: "sparring", num: "01", title: "Sparring partner, bukan ghostwriter",
+    desc: "Mitra brainstorming, mengolah ide sampai paper jadi. Kamu tetap pegang kendali, AI jadi mitra periset dan penulis."
+  },
+  {
+    id: "chat", num: "02", title: "Ngobrol wajar layaknya diskusi ",
+    desc: "Tanpa prompt ritual. Tanpa 'act as professor'. Ungkapkan saja maksudmu — AI nyambung, lanjut, dan bikin pertanyaan balik."
+  },
+  {
+    id: "bahasa", num: "03", title: "Bahasa manusiawi, tone akademik",
+    desc: "Konversi kalimat kaku robotik jadi prosa mengalir tanpa mengorbankan presisi. Paragrafnya punya ritme."
+  },
+  {
+    id: "workflow", num: "04", title: "14 tahap research loop",
+    desc: "Pagar ketat di tiap tahap penyusunan — dari scoping sampai ekspor. Tidak ngalor-ngidul, tanpa  keluar konteks."
+  }
 ];
 
 const Benefits = () => {
@@ -22,10 +30,10 @@ const Benefits = () => {
               <div className="sec-eyebrow">
                 <span className="l">/ kenapa Makalah AI?</span>
               </div>
-              <h2 className="sec-title">Kerja bersama AI.<br/><em>Bukan dibuatkan AI.</em></h2>
+              <h2 className="sec-title">Kerja bersama AI.<br /><em>Bukan dibuatkan AI.</em></h2>
             </div>
             <p className="sec-desc">
-              Empat prinsip yang bikin paper kamu tetap punya <b style={{color:"var(--ink)"}}>akuntabilitas</b> — melalui kolaborasi dengan AI.
+              Empat prinsip yang bikin paper kamu tetap punya <b style={{ color: "var(--ink)" }}>akuntabilitas</b> — melalui kolaborasi dengan AI.
             </p>
           </div>
         </Reveal>
@@ -38,7 +46,7 @@ const Benefits = () => {
                 className={`b-tab${active === b.id ? " active" : ""}`}
                 onClick={() => setActive(b.id)}
               >
-                <span className="num" style={{fontFamily: '"Geist Mono"', fontSize: '12px', fontWeight: 400, padding: '6px 12px 6px 8px'}}>{b.num}</span>
+                <span className="num" style={{ fontFamily: '"Geist Mono"', fontSize: '12px', fontWeight: 400, padding: '6px 12px 6px 8px' }}>{b.num}</span>
                 <div>
                   <h4>{b.title}</h4>
                   <p>{b.desc}</p>
@@ -146,7 +154,7 @@ const WorkflowViz = () => (
     <div className="wf-diag">
       {Array.from({ length: 14 }, (_, i) => {
         const cls = i < 6 ? "done" : i === 6 ? "active" : "";
-        return <div key={i} className={`wf-step ${cls}`}>{String(i+1).padStart(2,"0")}</div>;
+        return <div key={i} className={`wf-step ${cls}`}>{String(i + 1).padStart(2, "0")}</div>;
       })}
     </div>
     <div className="wf-detail">
@@ -208,7 +216,7 @@ const RefrasaFeature = () => (
     <div className="feature-text">
       <Reveal delay={2}>
         <span className="eyebrow">/ REFRASA</span>
-        <h3>Bahasa robotik<br/>→ prosa akademik<br/>yang manusiawi.</h3>
+        <h3>Bahasa robotik<br />→ prosa akademik<br />yang manusiawi.</h3>
         <p>
           Sekali klik, paragraf-paragraf kaku ala AI berubah menjadi ritme penuturan manusiawi — kalimat bervariasi,
           transisi mulus, tanpa mengubah substansi.
@@ -244,7 +252,7 @@ const Demo = () => {
               <div className="sec-eyebrow">
                 <span className="l">/ live preview</span>
               </div>
-              <h2 className="sec-title">Coba langsung.<br/><em>Daftar dulu.</em></h2>
+              <h2 className="sec-title">Coba langsung.<br /><em>Daftar dulu.</em></h2>
             </div>
             <p className="sec-desc">
               Ketik topik — lihat cara Makalah AI mengeksplorasi ide, menyusun abstrak + pendahuluan, lengkap dengan sitasi real. Progress penyusunan bisa dipantau melalui activity bar, pratinjau paper jadi pun bisa dilihat lewat fitur Naskah.
@@ -255,7 +263,7 @@ const Demo = () => {
         <Reveal delay={2}>
           <div className="demo">
             <div className="demo-head">
-              <h3>Mulai dari satu kalimat.<br/>Dapet outline + 6 sitasi dalam 12 detik.</h3>
+              <h3>Mulai dari satu kalimat.<br />Dapet outline + 6 sitasi dalam 12 detik.</h3>
               <span className="mono-label" style={{ marginTop: 6 }}>⏱ avg. 12.4s · 6 sumber</span>
             </div>
             <div className="demo-input-row">
@@ -328,7 +336,7 @@ const Pricing = () => (
             <div className="sec-eyebrow">
               <span className="l">/ pemakaian &amp; harga</span>
             </div>
-            <h2 className="sec-title">Seperti bayar asisten,<br/><em>dengan harga terjangkau</em></h2>
+            <h2 className="sec-title">Seperti bayar asisten,<br /><em>dengan harga terjangkau</em></h2>
           </div>
           <p className="sec-desc">
             Model kredit transparan. Tersedia kredit gratis — cukup untuk menjajal kemampuan Makalah Ai. Upgrade kalau tertarik untuk lanjut.
@@ -404,18 +412,30 @@ const Pricing = () => (
 
 /* ---------- FAQ ---------- */
 const FAQS = [
-  { q: "Apa beda Makalah AI dibanding  aplikasi  chatbot lain?",
-    a: "Makalah AI punya workflow yang terjaga ketat, jadi tanpa prompt rumit atau aturan diskusi yang aneh-aneh, konteks penulisan tetap terjaga dari awal sampai akhir. Metode diskusinya juga dibantu dengan choice card — setiap opsi tinggal dipilih, tidak perlu menyusun instruksi panjang. Dan di setiap iterasi selalu ada rekomendasi langkah, tindakan, atau pendapat, sehingga pengguna tidak pernah berhenti di tengah jalan tanpa tahu harus ngapain." },
-  { q: "Paper buatan Makalah AI bakal kedetect AI detector?",
-    a: "Output setelah tahap Refrasa lolos dari Turnitin AI, GPTZero, dan Originality.ai di 94% test kami. Tapi jujur — kami dorong lo aktif di tiap handover biar hasilnya emang punya lo, bukan cuma lolos detector." },
-  { q: "Selain paper akademik, apakah Makalah AI juga bisa menghasilkan skripsi/tesis/disertasi?",
-    a: "Tidak. Makalah AI hanya untuk menyusun paper akademik, maksimal sekitar 25 halaman. Untuk skripsi, tesis, maupun disertasi, cakupan dan kedalaman argumennya di luar scope tool ini — jadi sebaiknya tetap disusun secara mandiri bersama pembimbing." },
-  { q: "Sumber sitasinya real atau halusinasi seperti chatbot kebanyakan?",
-    a: "Real. Makalah AI menggunakan search orchestrator yang menjalankan pencarian web, fetch konten, filtering & ranking berbasis kualitas, verifikasi sumber, hingga retrieval-augmented generation. Referensi yang tervalidasi disimpan ter-index di database internal — sehingga setiap sitasi dapat ditelusuri balik ke sumber aslinya, bukan dikarang seperti chatbot pada umumnya." },
-  { q: "Apa maksud \"Kredit\" di Makalah AI, dan bagaimana hitungannya?",
-    a: "\"Kredit\" adalah satuan pemakaian Makalah AI — semacam saldo yang terpakai setiap kali AI bekerja untukmu: membaca instruksi, menelaah konteks, melakukan reasoning, hingga menuliskan jawaban. Hitungannya berbasis token (unit terkecil yang diproses model AI), bukan per-pesan atau per-paragraf, supaya pemakaian ringan dan berat dibedakan secara adil. Sebagai patokan: 1 kredit ≈ 1.000 token, kurang-lebih setara 600–800 kata bahasa Indonesia. Contohnya, 10 kredit ≈ 6.000–8.000 kata, 100 kredit ≈ 60.000–80.000 kata, dan 300 kredit ≈ 180.000–240.000 kata. Sisa kredit dan estimasi pemakaian selalu terlihat di console." },
-  { q: "Apakah dataku, baik percakapan maupun yang tertera di paper, aman?",
-    a: "Aman. Seluruh percakapan, draft, referensi, dan file yang kamu unggah tersimpan terikat ke akunmu dan bersifat privat secara default — tidak pernah dipakai untuk melatih model, tidak dibagikan ke pihak lain, dan tidak dapat diakses oleh pengguna lain. Data dienkripsi baik saat transit (TLS) maupun saat tersimpan (at-rest), dengan akses dibatasi lewat autentikasi akun. Kendali sepenuhnya ada di tanganmu: kamu bisa mengekspor, menghapus per-item, atau menghapus permanen seluruh riwayat kapan saja — dan begitu dihapus, data benar-benar hilang dari sistem, bukan sekadar disembunyikan." }
+  {
+    q: "Apa beda Makalah AI dibanding  aplikasi  chatbot lain?",
+    a: "Makalah AI punya workflow yang terjaga ketat, jadi tanpa prompt rumit atau aturan diskusi yang aneh-aneh, konteks penulisan tetap terjaga dari awal sampai akhir. Metode diskusinya juga dibantu dengan choice card — setiap opsi tinggal dipilih, tidak perlu menyusun instruksi panjang. Dan di setiap iterasi selalu ada rekomendasi langkah, tindakan, atau pendapat, sehingga pengguna tidak pernah berhenti di tengah jalan tanpa tahu harus ngapain."
+  },
+  {
+    q: "Paper buatan Makalah AI bakal kedetect AI detector?",
+    a: "Output setelah tahap Refrasa lolos dari Turnitin AI, GPTZero, dan Originality.ai di 94% test kami. Tapi jujur — kami dorong lo aktif di tiap handover biar hasilnya emang punya lo, bukan cuma lolos detector."
+  },
+  {
+    q: "Selain paper akademik, apakah Makalah AI juga bisa menghasilkan skripsi/tesis/disertasi?",
+    a: "Tidak. Makalah AI hanya untuk menyusun paper akademik, maksimal sekitar 25 halaman. Untuk skripsi, tesis, maupun disertasi, cakupan dan kedalaman argumennya di luar scope tool ini — jadi sebaiknya tetap disusun secara mandiri bersama pembimbing."
+  },
+  {
+    q: "Sumber sitasinya real atau halusinasi seperti chatbot kebanyakan?",
+    a: "Real. Makalah AI menggunakan search orchestrator yang menjalankan pencarian web, fetch konten, filtering & ranking berbasis kualitas, verifikasi sumber, hingga retrieval-augmented generation. Referensi yang tervalidasi disimpan ter-index di database internal — sehingga setiap sitasi dapat ditelusuri balik ke sumber aslinya, bukan dikarang seperti chatbot pada umumnya."
+  },
+  {
+    q: "Apa maksud \"Kredit\" di Makalah AI, dan bagaimana hitungannya?",
+    a: "\"Kredit\" adalah satuan pemakaian Makalah AI — semacam saldo yang terpakai setiap kali AI bekerja untukmu: membaca instruksi, menelaah konteks, melakukan reasoning, hingga menuliskan jawaban. Hitungannya berbasis token (unit terkecil yang diproses model AI), bukan per-pesan atau per-paragraf, supaya pemakaian ringan dan berat dibedakan secara adil. Sebagai patokan: 1 kredit ≈ 1.000 token, kurang-lebih setara 600–800 kata bahasa Indonesia. Contohnya, 10 kredit ≈ 6.000–8.000 kata, 100 kredit ≈ 60.000–80.000 kata, dan 300 kredit ≈ 180.000–240.000 kata. Sisa kredit dan estimasi pemakaian selalu terlihat di console."
+  },
+  {
+    q: "Apakah dataku, baik percakapan maupun yang tertera di paper, aman?",
+    a: "Aman. Seluruh percakapan, draft, referensi, dan file yang kamu unggah tersimpan terikat ke akunmu dan bersifat privat secara default — tidak pernah dipakai untuk melatih model, tidak dibagikan ke pihak lain, dan tidak dapat diakses oleh pengguna lain. Data dienkripsi baik saat transit (TLS) maupun saat tersimpan (at-rest), dengan akses dibatasi lewat autentikasi akun. Kendali sepenuhnya ada di tanganmu: kamu bisa mengekspor, menghapus per-item, atau menghapus permanen seluruh riwayat kapan saja — dan begitu dihapus, data benar-benar hilang dari sistem, bukan sekadar disembunyikan."
+  }
 ];
 
 const FAQ = () => {
@@ -429,7 +449,7 @@ const FAQ = () => {
               <div className="sec-eyebrow">
                 <span className="l">/ pertanyaan wajar</span>
               </div>
-              <h2 className="sec-title">Sebelum<br/>Kamu tanya.</h2>
+              <h2 className="sec-title">Sebelum<br />Kamu tanya.</h2>
               <p className="sec-desc" style={{ marginTop: 16 }}>
                 Enam pertanyaan yang paling sering kami terima. Masih bingung? → <a href="#" style={{ color: "var(--accent)" }}>dukungan@makalah.ai</a>
               </p>
@@ -459,33 +479,33 @@ const Footer = () => (
   <footer className="footer">
     <div className="container">
       <div className="footer-top">
-        <div className="footer-brand">
-          <a href="#" className="brand">
-            <div className="brand-mark"><Logo /></div>
-            <Wordmark />
-          </a>
-        </div>
         <div className="footer-col">
           <h5>Produk</h5>
+          <a href="#chat">Chat</a>
           <a href="#fitur">Fitur</a>
           <a href="#harga">Harga</a>
-          <a href="#">Roadmap</a>
-          <a href="#">Changelog</a>
+          <a href="#roadmap">Roadmap</a>
+          <a href="#changelog">Changelog</a>
         </div>
         <div className="footer-col">
           <h5>Sumber daya</h5>
-          <a href="#">Dokumentasi</a>
-          <a href="#">Blog riset</a>
-          <a href="#">Kerja Sama</a>
-          <a href="#">Status</a>
+          <a href="#dokumentasi">Dokumentasi</a>
+          <a href="#blog">Blog</a>
+          <a href="#status">Status</a>
+          <a href="#laporan">Lapor Masalah</a>
         </div>
         <div className="footer-col">
           <h5>Perusahaan</h5>
-          <a href="#">Tentang</a>
-          <a href="#">Karier</a>
-          <a href="#">Kontak</a>
-          <a href="#">Privasi</a>
-          <a href="#">Ketentuan</a>
+          <a href="#tentang">Tentang</a>
+          <a href="#kerjasama">Kerja Sama</a>
+          <a href="#karier">Karier</a>
+          <a href="#kontak">Kontak</a>
+        </div>
+        <div className="footer-col">
+          <h5>Legal</h5>
+          <a href="#security">Security</a>
+          <a href="#terms">Terms</a>
+          <a href="#privacy">Privacy</a>
         </div>
       </div>
     </div>

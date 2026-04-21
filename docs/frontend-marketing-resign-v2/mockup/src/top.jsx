@@ -16,11 +16,12 @@ const Navbar = () => {
             <Wordmark />
           </a>
           <div className="nav-links">
+            <a href="#chat">Chat</a>
             <a href="#fitur">Fitur</a>
-            <a href="#demo">Demo</a>
             <a href="#harga">Harga</a>
-            <a href="#dokumen">Dokumen</a>
+            <a href="#dokumentasi">Dokumentasi</a>
             <a href="#faq">FAQ</a>
+            <a href="#tentang">Tentang</a>
           </div>
         </div>
         <div className="nav-right">
@@ -41,9 +42,9 @@ const Hero = () => (
             <span className="hero-badge" style={{ fontFamily: "Geist", fontSize: "12px", fontWeight: 400 }}><span className="tag-dot"><span className="pulse" /></span> Kamu Pawang, AI Tukang</span>
           </div>
           <h1 className="hero-title">
-            Nulis paper<br/>
-            tanpa <em>deadline-panic.</em><br/>
-                        <span style={{ whiteSpace: "nowrap" }}><span className="underline-accent">Obrolin aja!</span><span className="blink" /></span>
+            Nulis paper<br />
+            tanpa <em>deadline-panic.</em><br />
+            <span style={{ whiteSpace: "nowrap" }}><span className="underline-accent">Obrolin aja!</span><span className="blink" /></span>
           </h1>
           <p className="hero-sub">
             Bukan mesin prompt,  melainkan sparring partner, dari brainstorm ide hingga paper utuh—lengkap tinjauan
@@ -56,11 +57,11 @@ const Hero = () => (
         <Reveal delay={2}>
           <aside className="hero-meta">
             <div className="hero-meta-block">
-              <b>PROTOKOL</b><br/>
+              <b>PROTOKOL</b><br />
               14 tahap penyusunan paper dengan human-in-the-loop di tiap peralihan tahap.
             </div>
             <div className="hero-meta-block">
-              <b>VERIFIKASI</b><br/>
+              <b>VERIFIKASI</b><br />
               Cross-checked terhadap ribuan paper di internet
             </div>
           </aside>
@@ -75,7 +76,7 @@ const Hero = () => (
 const HeroConsole = () => (
   <div className="console">
     <div className="console-bar">
-      <div className="dots"><span/><span/><span/></div>
+      <div className="dots"><span /><span /><span /></div>
       <div className="path">
         <span>makalah.ai</span>
         <span className="slash">/</span>
@@ -128,7 +129,7 @@ const HeroConsole = () => (
           </div>
         </div>
         <div className="typing">
-          <span className="dots"><span/><span/><span/></span>
+          <span className="dots"><span /><span /><span /></span>
           sedang menyusun outline paragraf — 4 sitasi aktif
         </div>
       </div>
@@ -213,7 +214,7 @@ const Manifesto = () => (
         <div className="manifesto">
           <div className="eyebrow">Prinsip Kerja</div>
           <h2 style={{ marginTop: 20 }}>
-            <span style={{ whiteSpace: "nowrap" }}>AI elaborasi &amp; menyusun kata,</span><br/>
+            <span style={{ whiteSpace: "nowrap" }}>AI elaborasi &amp; menyusun kata,</span><br />
             <em><span style={{ whiteSpace: "nowrap" }}><span className="underline-accent">Kamu pegang kendali gagasan.</span><span className="blink" /></span></em>
           </h2>
           <p>
