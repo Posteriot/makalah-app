@@ -29,6 +29,7 @@ export function stripMarkdown(text: string): string {
     .replace(/^[-*+]\s+/gm, "")
     .replace(/^\d+\.\s+/gm, "")
     .replace(/^>\s+/gm, "")
+    .replace(/\*+/g, "")
     .replace(/\n{2,}/g, " ")
     .replace(/\n/g, " ")
     .trim()
