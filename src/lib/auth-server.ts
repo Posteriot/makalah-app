@@ -7,6 +7,84 @@ import { cookies } from "next/headers";
 type RouteHandler = (req: Request) => Promise<Response>;
 let _authHandler: { GET: RouteHandler; POST: RouteHandler } | null = null;
 
+function getNestedErrorValues(error: unknown): unknown[] {
+  if (!error || typeof error !== "object") return [];
+
+  const values: unknown[] = [];
+  const maybeError = error as {
+    cause?: unknown;
+    errors?: unknown[];
+    code?: unknown;
+  };
+
+  if (maybeError.cause) values.push(maybeError.cause);
+  if (Array.isArray(maybeError.errors)) values.push(...maybeError.errors);
+  if (typeof maybeError.code === "string") values.push(maybeError.code);
+
+  return values;
+}
+
+export function isAuthProxyNetworkError(error: unknown): boolean {
+  const queue = [error];
+  const seen = new Set<unknown>();
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (seen.has(current)) continue;
+    seen.add(current);
+
+    if (current instanceof DOMException) {
+      if (current.name === "AbortError" || current.name === "TimeoutError") {
+        return true;
+      }
+    }
+
+    const message = current instanceof Error ? current.message : String(current);
+    const lower = message.toLowerCase();
+    if (
+      lower.includes("fetch failed") ||
+      lower.includes("etimedout") ||
+      lower.includes("econnreset") ||
+      lower.includes("econnrefused") ||
+      lower.includes("network error") ||
+      lower.includes("timed out")
+    ) {
+      return true;
+    }
+
+    queue.push(...getNestedErrorValues(current));
+  }
+
+  return false;
+}
+
+export async function runAuthProxyWithBoundary(
+  routeHandler: RouteHandler,
+  req: Request
+): Promise<Response> {
+  try {
+    return await routeHandler(req);
+  } catch (error) {
+    if (!isAuthProxyNetworkError(error)) {
+      throw error;
+    }
+
+    console.warn("[auth-server] Auth proxy network error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return Response.json(
+      { error: "auth_service_unavailable" },
+      {
+        status: 503,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
+    );
+  }
+}
+
 function getAuthHandler() {
   if (!_authHandler) {
     const { handler: h } = convexBetterAuthNextJs({
@@ -20,8 +98,8 @@ function getAuthHandler() {
 
 // Proxy object so `export const { GET, POST } = handler` works in route.ts
 export const handler = {
-  GET: (req: Request) => getAuthHandler().GET(req),
-  POST: (req: Request) => getAuthHandler().POST(req),
+  GET: (req: Request) => runAuthProxyWithBoundary(getAuthHandler().GET, req),
+  POST: (req: Request) => runAuthProxyWithBoundary(getAuthHandler().POST, req),
 };
 
 export function decodeBetterAuthCookieValue(

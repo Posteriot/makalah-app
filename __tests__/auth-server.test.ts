@@ -6,6 +6,8 @@ vi.mock("next/headers", () => ({
 
 import {
   getTokenFromBetterAuthCookies,
+  isAuthProxyNetworkError,
+  runAuthProxyWithBoundary,
 } from "@/lib/auth-server"
 
 describe("auth-server session validation", () => {
@@ -93,5 +95,50 @@ describe("auth-server session validation", () => {
     await expect(
       getTokenFromBetterAuthCookies("session=abc"),
     ).resolves.toBe("convex-token")
+  })
+
+  it("classifies nested ETIMEDOUT fetch failures from the auth proxy", () => {
+    const error = new TypeError("fetch failed", {
+      cause: new AggregateError(
+        [Object.assign(new Error("connect timeout"), { code: "ETIMEDOUT" })],
+      ),
+    })
+
+    expect(isAuthProxyNetworkError(error)).toBe(true)
+  })
+
+  it("converts auth proxy network failures to a controlled 503 response", async () => {
+    const routeHandler = vi.fn(async () => {
+      throw new TypeError("fetch failed", {
+        cause: new AggregateError(
+          [Object.assign(new Error("connect timeout"), { code: "ETIMEDOUT" })],
+        ),
+      })
+    })
+
+    const response = await runAuthProxyWithBoundary(
+      routeHandler,
+      new Request("https://makalah.test/api/auth/get-session"),
+    )
+
+    await expect(response.json()).resolves.toEqual({
+      error: "auth_service_unavailable",
+    })
+    expect(response.status).toBe(503)
+    expect(response.headers.get("cache-control")).toBe("no-store")
+  })
+
+  it("does not hide non-network auth proxy failures", async () => {
+    const error = new Error("unexpected auth route bug")
+    const routeHandler = vi.fn(async () => {
+      throw error
+    })
+
+    await expect(
+      runAuthProxyWithBoundary(
+        routeHandler,
+        new Request("https://makalah.test/api/auth/get-session"),
+      ),
+    ).rejects.toBe(error)
   })
 })
