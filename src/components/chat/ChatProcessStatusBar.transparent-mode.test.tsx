@@ -50,7 +50,7 @@ describe("ChatProcessStatusBar transparent mode", () => {
     expect(screen.getByText("48%")).toBeInTheDocument()
   })
 
-  it("reveals reasoning headline sentence by sentence during streaming (typewriter)", () => {
+  it("shows last (most recent) sentence during streaming", () => {
     const { container } = render(
       <ChatProcessStatusBar
         visible
@@ -62,18 +62,10 @@ describe("ChatProcessStatusBar transparent mode", () => {
       />
     )
 
-    // Before any interval ticks, the inner truncate span should not exist yet
-    expect(container.querySelector(".truncate .truncate")).not.toBeInTheDocument()
-
-    // After one tick (~120ms), first sentence appears
-    act(() => { vi.advanceTimersByTime(120) })
+    // Last sentence shown — the most recent thought
     const textEl = container.querySelector(".truncate .truncate")
     expect(textEl).toBeInTheDocument()
-    expect(textEl!.textContent).toBe("Analyzing the topic.")
-
-    // After second tick, second sentence appends
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(container.querySelector(".truncate .truncate")!.textContent).toBe("Analyzing the topic. Now reviewing the outline.")
+    expect(textEl!.textContent).toBe("Now reviewing the outline.")
   })
 
   it("tetap menampilkan raw thought dan masih menyediakan drill-down timeline saat transparent", () => {
@@ -118,21 +110,6 @@ describe("ChatProcessStatusBar transparent mode", () => {
           (props as { open?: boolean }).open === true
       )
     ).toBe(true)
-  })
-
-  it("respects visible=false even while streaming", () => {
-    const { container } = render(
-      <ChatProcessStatusBar
-        visible={false}
-        status="streaming"
-        progress={88}
-        elapsedSeconds={9.2}
-        reasoningHeadline={null}
-        reasoningSteps={[]}
-      />
-    )
-
-    expect(container.querySelector("[role='status']")).not.toBeInTheDocument()
   })
 
   it("tetap mempertahankan drill-down timeline pada mode curated", () => {
