@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 
@@ -12,6 +12,13 @@ vi.mock("./ReasoningActivityPanel", () => ({
 }))
 
 describe("ChatProcessStatusBar transparent mode", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it("menahan headline transparent saat status masih streaming agar tidak jatuh ke dots-only", () => {
     render(
       <ChatProcessStatusBar
@@ -33,10 +40,41 @@ describe("ChatProcessStatusBar transparent mode", () => {
       />
     )
 
+    // Advance fake timers to drain all 9 words through typewriter queue
+    act(() => { vi.advanceTimersByTime(80 * 9 + 10) })
+
     expect(
       screen.getByText("Sedang membandingkan dua jalur penalaran yang paling kuat.")
     ).toBeInTheDocument()
     expect(screen.getByText("48%")).toBeInTheDocument()
+  })
+
+  it("reveals reasoning headline word by word during streaming (typewriter)", () => {
+    const { container } = render(
+      <ChatProcessStatusBar
+        visible
+        status="streaming"
+        progress={30}
+        elapsedSeconds={3.5}
+        reasoningHeadline="Analyzing the Chosen Topic"
+        reasoningSteps={[]}
+      />
+    )
+
+    // Before any interval ticks, the inner truncate span should not exist yet
+    // because displayText is "" (falsy), so the conditional render skips it
+    // Use nested selector to distinguish from outer container which also has .truncate
+    expect(container.querySelector(".truncate .truncate")).not.toBeInTheDocument()
+
+    // After one tick, first word appears — span now exists
+    act(() => { vi.advanceTimersByTime(80) })
+    const textEl = container.querySelector(".truncate .truncate")
+    expect(textEl).toBeInTheDocument()
+    expect(textEl!.textContent).toBe("Analyzing")
+
+    // After all 4 words drain, full text appears
+    act(() => { vi.advanceTimersByTime(80 * 3 + 10) })
+    expect(container.querySelector(".truncate .truncate")!.textContent).toBe("Analyzing the Chosen Topic")
   })
 
   it("tetap menampilkan raw thought dan masih menyediakan drill-down timeline saat transparent", () => {

@@ -5,6 +5,7 @@ import { useMemo, useState } from "react"
 import { cn } from "@/lib/utils"
 import { ReasoningActivityPanel } from "./ReasoningActivityPanel"
 import { type ReasoningTraceStep } from "./ReasoningTracePanel"
+import { useTypewriterText } from "./useTypewriterText"
 
 type ChatProcessStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
 
@@ -95,6 +96,8 @@ export function ChatProcessStatusBar({
     return null
   }, [reasoningHeadline, reasoningSteps])
 
+  const displayText = useTypewriterText(narrativeHeadline, isProcessing)
+
   const shouldShow = isProcessing || Boolean(narrativeHeadline) || (visible && reasoningSteps.length > 0) || isPanelOpenValue
   if (!shouldShow) return null
 
@@ -107,7 +110,7 @@ export function ChatProcessStatusBar({
       <div className="pb-2" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
         {isProcessing ? (
           /* ── Processing mode: headline naratif + progress bar ── */
-          <div role="status" aria-live="polite" aria-label={narrativeHeadline ?? undefined}>
+          <div role="status" aria-live="polite" aria-label={displayText || undefined}>
             <button
               type="button"
               onClick={openPanel}
@@ -121,7 +124,7 @@ export function ChatProcessStatusBar({
                 className="flex min-w-0 items-baseline gap-1 truncate font-mono text-[11px] leading-snug text-[var(--chat-foreground)]"
                 style={{ opacity: 0.92 }}
               >
-                {narrativeHeadline && <span className="truncate">{narrativeHeadline}</span>}
+                {displayText && <span className="truncate">{displayText}</span>}
                 <ThinkingDots />
               </span>
               <span
