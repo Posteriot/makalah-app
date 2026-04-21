@@ -63,6 +63,7 @@ export function useTypewriterText(
   const displayedSentencesRef = useRef<string[]>([])
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const prevIsActiveRef = useRef(isActive)
+  const lastSnapshotRef = useRef("")
 
   // Diff new cumulative snapshot → enqueue new sentences
   useEffect(() => {
@@ -80,6 +81,7 @@ export function useTypewriterText(
       queueRef.current = []
       displayedSentencesRef.current = []
       enqueuedCountRef.current = 0
+      lastSnapshotRef.current = ""
       dispatch({ type: "markInactive" })
       return
     }
@@ -88,6 +90,7 @@ export function useTypewriterText(
       queueRef.current = []
       displayedSentencesRef.current = splitSentences(text)
       enqueuedCountRef.current = displayedSentencesRef.current.length
+      lastSnapshotRef.current = text
       dispatch({ type: "markInactive" })
       return
     }
@@ -100,6 +103,24 @@ export function useTypewriterText(
       dispatch({ type: "startActive" })
       queueRef.current = [...newSentences]
       enqueuedCountRef.current = newSentences.length
+      lastSnapshotRef.current = text
+      return
+    }
+
+    if (text === lastSnapshotRef.current) return
+    lastSnapshotRef.current = text
+
+    if (newSentences.length === enqueuedCountRef.current) {
+      const displayedCount = displayedSentencesRef.current.length
+      const nextDisplayed = newSentences.slice(0, displayedCount)
+      const nextQueued = newSentences.slice(displayedCount)
+
+      displayedSentencesRef.current = nextDisplayed
+      queueRef.current = nextQueued
+
+      if (displayedCount > 0) {
+        dispatch({ type: "replace", text: nextDisplayed.join(" ") })
+      }
       return
     }
 

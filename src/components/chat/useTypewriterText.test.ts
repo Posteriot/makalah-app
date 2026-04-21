@@ -87,7 +87,7 @@ describe("useTypewriterText", () => {
     expect(result.current).toBe("First sentence. I am now thinking about")
   })
 
-  it("ignores sentence count decrease from sanitizer", () => {
+  it("resyncs displayed text when sanitizer rewrites snapshot in place", () => {
     const { result, rerender } = renderHook(
       ({ text }) => useTypewriterText(text, true),
       { initialProps: { text: "Hello. World. Foo." as string | null } }
@@ -97,21 +97,16 @@ describe("useTypewriterText", () => {
     act(() => { vi.advanceTimersByTime(120 * 3) })
     expect(result.current).toBe("Hello. World. Foo.")
 
-    // Sanitizer merges sentences: "Hello. World." → "Hello World."
-    // Sentence count drops 3 → 2. Should NOT reset.
+    // Sanitizer rewrites the same cumulative snapshot in place.
     rerender({ text: "Hello World. Foo. Bar." })
 
-    // No new sentences enqueued (3 > enqueuedCount 3? no, 3 === 3)
-    // Actually: splitSentences("Hello World. Foo. Bar.") = ["Hello World.", "Foo.", "Bar."] = 3
-    // 3 === enqueuedCount(3) → nothing enqueued
     act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("Hello. World. Foo.")
+    expect(result.current).toBe("Hello World. Foo. Bar.")
 
     // Now add genuinely new sentence
     rerender({ text: "Hello World. Foo. Bar. New sentence." })
-    // 4 > 3 → enqueue ["New sentence."]
     act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("Hello. World. Foo. New sentence.")
+    expect(result.current).toBe("Hello World. Foo. Bar. New sentence.")
   })
 
   it("pauses naturally when queue is empty", () => {
@@ -173,13 +168,19 @@ describe("useTypewriterText", () => {
     // Transient empty during streaming — should NOT clear
     rerender({ text: "" })
     expect(result.current).toBe("First sentence.")
+  })
 
-    // New text arrives — resumes typewriter
-    rerender({ text: "Second sentence." })
-    // enqueuedCount was 1, new sentence count is 1, equal → nothing new
-    // But this is a different text (just same count). Since we only track count,
-    // no new sentence enqueued. That's acceptable — the next snapshot with
-    // more sentences will enqueue properly.
+  it("updates displayed text when snapshot changes but sentence count stays the same", () => {
+    const { result, rerender } = renderHook(
+      ({ text }) => useTypewriterText(text, true),
+      { initialProps: { text: "First sentence." as string | null } }
+    )
+
+    act(() => { vi.advanceTimersByTime(120) })
+    expect(result.current).toBe("First sentence.")
+
+    rerender({ text: "Updated sentence." })
+    expect(result.current).toBe("Updated sentence.")
   })
 
   it("resets when deactivated then new text arrives on reactivation", () => {
