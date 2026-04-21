@@ -544,3 +544,39 @@ describe("pipeThinkTagStrip", () => {
     })
   })
 })
+
+describe("pipeThinkTagStrip → pipeUITextCoalesce integration", () => {
+  it("text coalescing is not disrupted by think block mid-stream", async () => {
+    // Simulate word-by-word streaming with a think block in the middle
+    const input = streamFromChunks([
+      textStart("t1"),
+      textDelta("Tinjauan ", "t1"),
+      textDelta("Literatur\n", "t1"),
+      textDelta("<think>\nReflecting on structure\n</think>\n", "t1"),
+      textDelta("Hasil ", "t1"),
+      textDelta("penelitian", "t1"),
+      textEnd("t1"),
+    ])
+
+    const output = await collect(pipeThinkTagStrip(input))
+
+    // Text is intact (no mid-word cuts)
+    expect(allText(output)).toBe("Tinjauan Literatur\n\nHasil penelitian")
+
+    // Reasoning captured
+    expect(allReasoning(output)).toBe("\nReflecting on structure\n")
+
+    // Envelope present
+    const types = output.map((c) => (c as Chunk).type)
+    expect(types.filter((t) => t === "reasoning-start")).toHaveLength(1)
+    expect(types.filter((t) => t === "reasoning-end")).toHaveLength(1)
+
+    // No text-delta appears between reasoning-start and reasoning-end
+    const startIdx = types.indexOf("reasoning-start")
+    const endIdx = types.indexOf("reasoning-end")
+    const textInBetween = output
+      .slice(startIdx, endIdx + 1)
+      .filter((c) => (c as Chunk).type === "text-delta")
+    expect(textInBetween).toHaveLength(0)
+  })
+})
