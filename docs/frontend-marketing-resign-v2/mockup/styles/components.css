@@ -1112,8 +1112,10 @@
 }
 .footer-top {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 40px;
+  grid-template-columns: repeat(4, max-content);
+  justify-content: center;
+  column-gap: 8vw;
+  row-gap: 40px;
   margin-bottom: 64px;
 }
 .footer-brand .brand { margin-bottom: 20px; }
@@ -1153,15 +1155,21 @@
   pointer-events: none;
 }
 .footer-bottom {
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; justify-content: space-between; align-items: flex-start;
   padding-top: 24px;
   border-top: 1px solid var(--line);
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--ink-4);
 }
-.footer-bottom .meta { display: flex; gap: 20px; align-items: center; }
-.footer-bottom .meta .dot { width: 4px; height: 4px; background: var(--ink-4); border-radius: 50%; }
+.footer-bottom .fb-left, .footer-bottom .fb-right {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.footer-bottom .fb-right {
+  text-align: right;
+}
 
 /* ---------- Tweaks panel ---------- */
 .tweaks {

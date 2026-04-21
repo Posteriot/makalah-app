@@ -516,13 +516,13 @@ const Footer = () => (
 
     <div className="container">
       <div className="footer-bottom">
-        <span>© 2026 Makalah AI — Produk PT The Management Asia.</span>
-        <div className="meta">
-          <span>Made in Jakarta</span>
-          <span className="dot" />
+        <div className="fb-left">
+          <span>© 2026 Makalah AI.</span>
+          <span>Produk PT The Management Asia.</span>
+        </div>
+        <div className="fb-right">
+          <span>Made in Jakarta.</span>
           <span>v2.1.3</span>
-          <span className="dot" />
-          <span>all systems nominal</span>
         </div>
       </div>
     </div>
