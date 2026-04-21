@@ -45,7 +45,7 @@ describe("useTypewriterText", () => {
     expect(result.current).toBe("Hello world")
   })
 
-  it("diffs cumulative snapshots to extract only new words", () => {
+  it("diffs cumulative snapshots by word count to extract new words", () => {
     const { result, rerender } = renderHook(
       ({ text }) => useTypewriterText(text, true),
       { initialProps: { text: "Analyzing" as string | null } }
@@ -67,6 +67,30 @@ describe("useTypewriterText", () => {
 
     act(() => { vi.advanceTimersByTime(80) })
     expect(result.current).toBe("Analyzing the Chosen Topic")
+  })
+
+  it("survives sanitizer modifying earlier text between snapshots", () => {
+    const { result, rerender } = renderHook(
+      ({ text }) => useTypewriterText(text, true),
+      { initialProps: { text: "Hello world." as string | null } }
+    )
+
+    // Drain both words
+    act(() => { vi.advanceTimersByTime(80 * 2) })
+    expect(result.current).toBe("Hello world.")
+
+    // Sanitizer modifies punctuation in earlier text but adds new words
+    // Word count goes from 2 to 5 — enqueue 3 new words (positions 2,3,4)
+    rerender({ text: "Hello world I am thinking" })
+
+    act(() => { vi.advanceTimersByTime(80) })
+    expect(result.current).toBe("Hello world. I")
+
+    act(() => { vi.advanceTimersByTime(80) })
+    expect(result.current).toBe("Hello world. I am")
+
+    act(() => { vi.advanceTimersByTime(80) })
+    expect(result.current).toBe("Hello world. I am thinking")
   })
 
   it("pauses naturally when queue is empty", () => {
@@ -95,6 +119,29 @@ describe("useTypewriterText", () => {
     // Deactivate — should snap to full text
     rerender({ text: "Hello world foo bar", active: false })
     expect(result.current).toBe("Hello world foo bar")
+  })
+
+  it("starts typewriter fresh when isActive transitions from false to true", () => {
+    const { result, rerender } = renderHook(
+      ({ text, active }) => useTypewriterText(text, active),
+      { initialProps: { text: "Previous turn reasoning text here", active: false as boolean } }
+    )
+
+    // Inactive — snaps to full text
+    expect(result.current).toBe("Previous turn reasoning text here")
+
+    // isActive flips to true (processUi catches up)
+    // Should reset and start typewriter from scratch
+    rerender({ text: "Previous turn reasoning text here", active: true })
+
+    // After reset, displayed text starts empty and words appear one by one
+    expect(result.current).toBe("")
+
+    act(() => { vi.advanceTimersByTime(80) })
+    expect(result.current).toBe("Previous")
+
+    act(() => { vi.advanceTimersByTime(80) })
+    expect(result.current).toBe("Previous turn")
   })
 
   it("resets when input changes to a completely different string", () => {

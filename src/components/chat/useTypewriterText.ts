@@ -8,19 +8,25 @@ export function useTypewriterText(
 ): string {
   const [displayedText, setDisplayedText] = useState("")
   const queueRef = useRef<string[]>([])
-  const prevSnapshotRef = useRef("")
+  const enqueuedCountRef = useRef(0)
   const displayedWordsRef = useRef<string[]>([])
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const prevIsActiveRef = useRef(isActive)
 
   // Diff new cumulative snapshot → enqueue new words
   useEffect(() => {
     const text = cumulativeText ?? ""
 
+    // Detect isActive transition: false → true → reset so typewriter starts fresh.
+    // This handles the case where processUi.status lags behind activeReasoningState
+    // causing the hook to snap-to-full while inactive, then never recovering.
+    const wasInactive = !prevIsActiveRef.current && isActive
+    prevIsActiveRef.current = isActive
+
     if (!text) {
-      // Reset on empty/null
       queueRef.current = []
       displayedWordsRef.current = []
-      prevSnapshotRef.current = ""
+      enqueuedCountRef.current = 0
       setDisplayedText("")
       return
     }
@@ -29,30 +35,39 @@ export function useTypewriterText(
       // Snap to full text when not active
       queueRef.current = []
       displayedWordsRef.current = text.split(/\s+/).filter(Boolean)
-      prevSnapshotRef.current = text
+      enqueuedCountRef.current = displayedWordsRef.current.length
       setDisplayedText(text)
       return
     }
 
-    const prevWords = prevSnapshotRef.current ? prevSnapshotRef.current.split(/\s+/).filter(Boolean) : []
     const newWords = text.split(/\s+/).filter(Boolean)
 
-    // Check if this is a continuation (new text starts with prev text)
-    const isContinuation = prevWords.length > 0 &&
-      newWords.slice(0, prevWords.length).join(" ") === prevWords.join(" ")
+    if (wasInactive) {
+      // Fresh start after activation — typewriter from scratch
+      displayedWordsRef.current = []
+      enqueuedCountRef.current = 0
+      setDisplayedText("")
+      queueRef.current = [...newWords]
+      enqueuedCountRef.current = newWords.length
+      return
+    }
 
-    if (isContinuation) {
-      // Only enqueue the truly new words
-      const freshWords = newWords.slice(prevWords.length)
+    // Use word count tracking instead of prefix comparison.
+    // sanitizeReasoningSnapshot can modify earlier text between snapshots
+    // (punctuation, markdown stripping), which breaks prefix-based diffing.
+    // Word count is stable: cumulative text only grows in word count.
+    if (newWords.length > enqueuedCountRef.current) {
+      const freshWords = newWords.slice(enqueuedCountRef.current)
       queueRef.current.push(...freshWords)
-    } else {
-      // Completely new text — reset and enqueue all
+      enqueuedCountRef.current = newWords.length
+    } else if (newWords.length < enqueuedCountRef.current) {
+      // Genuinely shorter text (e.g., reset between turns) — restart
       displayedWordsRef.current = []
       setDisplayedText("")
       queueRef.current = [...newWords]
+      enqueuedCountRef.current = newWords.length
     }
-
-    prevSnapshotRef.current = text
+    // If equal, nothing new to enqueue
   }, [cumulativeText, isActive])
 
   // Interval loop: dequeue one word at a time
