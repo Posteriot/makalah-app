@@ -655,6 +655,20 @@
 }
 .feature-visual > * { position: relative; z-index: 1; }
 
+.feature-showcase {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 48px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .feature-showcase {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
+
 /* Workflow diagram */
 .wf-diag {
   display: grid;
@@ -907,6 +921,13 @@
   line-height: 1.05;
   color: var(--ink);
   margin-bottom: 32px;
+}
+
+@media (max-width: 640px) {
+  .manifesto h2 {
+    font-size: clamp(20px, 6.5vw, 32px);
+    line-height: 1.1;
+  }
 }
 .manifesto h2 em {
   font-style: normal;

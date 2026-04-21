@@ -163,27 +163,38 @@ const WorkflowViz = () => (
 
 /* ---------- Feature splits ---------- */
 const WorkflowFeature = () => (
-  <section className="feature" id="workflow">
-    <div className="feature-text">
+  <section id="workflow" className="section-frame">
+    <div className="container">
       <Reveal>
-        <span className="eyebrow">/ WORKFLOW</span>
-        <h3>Pagar ketat<br/>di tiap tahap<br/>penyusunan.</h3>
-        <p>
-          14 tahap terstruktur dari menggodok gagasan, penentuan topik sampai kesimpulan final. Tiap peralihan tahap dan keputusan butuh konfirmasi kamu — maka konteks terjaga, argumen tidak mengambang.
-        </p>
-        <ul className="feature-bullets">
-          <li><span className="tok">01→04</span>Scoping: topik, pertanyaan riset, keyword map, kerangka teori.</li>
-          <li><span className="tok">05→07</span>Research: pencarian literatur, shortlist, tinjauan berkluster.</li>
-          <li><span className="tok">08→11</span>Analisis: metodologi, temuan, diskusi, simpulan.</li>
-          <li><span className="tok">12→14</span>Polish: refrasa manusiawi &amp; ekspor multi-format.</li>
-        </ul>
+        <div className="sec-head">
+          <div>
+            <div className="sec-eyebrow">
+              <span className="l">/ WORKFLOW</span>
+            </div>
+            <h2 className="sec-title">Pagar ketat<br /><em>di tiap tahap<br />penyusunan.</em></h2>
+          </div>
+          <p className="sec-desc">
+            14 tahap terstruktur dari menggodok gagasan, penentuan topik sampai kesimpulan final. Tiap peralihan tahap dan keputusan butuh konfirmasi kamu — maka konteks terjaga, argumen tidak mengambang.
+          </p>
+        </div>
       </Reveal>
-    </div>
-    <Reveal delay={2}>
-      <div className="feature-visual">
-        <WorkflowViz />
+
+      <div className="feature-showcase">
+        <Reveal delay={2}>
+          <ul className="feature-bullets">
+            <li><span className="tok">01→04</span>Scoping: topik, pertanyaan riset, keyword map, kerangka teori.</li>
+            <li><span className="tok">05→07</span>Research: pencarian literatur, shortlist, tinjauan berkluster.</li>
+            <li><span className="tok">08→11</span>Analisis: metodologi, temuan, diskusi, simpulan.</li>
+            <li><span className="tok">12→14</span>Polish: refrasa manusiawi &amp; ekspor multi-format.</li>
+          </ul>
+        </Reveal>
+        <Reveal delay={3}>
+          <div className="feature-visual">
+            <WorkflowViz />
+          </div>
+        </Reveal>
       </div>
-    </Reveal>
+    </div>
   </section>
 );
 

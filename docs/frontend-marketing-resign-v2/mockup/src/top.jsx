@@ -213,7 +213,7 @@ const Manifesto = () => (
         <div className="manifesto">
           <div className="eyebrow">Prinsip Kerja</div>
           <h2 style={{ marginTop: 20 }}>
-            AI elaborasi &amp; menyusun kata,<br/>
+            <span style={{ whiteSpace: "nowrap" }}>AI elaborasi &amp; menyusun kata,</span><br/>
             <em><span style={{ whiteSpace: "nowrap" }}><span className="underline-accent">Kamu pegang kendali gagasan.</span><span className="blink" /></span></em>
           </h2>
           <p>
