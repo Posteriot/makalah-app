@@ -1,7 +1,7 @@
 "use client"
 
 import { NavArrowRight } from "iconoir-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import { cn } from "@/lib/utils"
 import { ReasoningActivityPanel } from "./ReasoningActivityPanel"
 import { type ReasoningTraceStep } from "./ReasoningTracePanel"
@@ -54,13 +54,6 @@ export function ChatProcessStatusBar({
   const isProcessing = status === "submitted" || status === "streaming"
   const isError = status === "error"
 
-  const prevIsProcessingRef = useRef(isProcessing)
-  const isTransitioning = prevIsProcessingRef.current !== isProcessing
-
-  useEffect(() => {
-    prevIsProcessingRef.current = isProcessing
-  }, [isProcessing])
-
   // Live: elapsedSeconds from processStartedAtRef timer.
   // Rehydrate: persistedDurationSeconds from _creationTime diff (elapsedSeconds is 0 after reload).
   const durationSeconds = persistedDurationSeconds ?? (
@@ -105,7 +98,13 @@ export function ChatProcessStatusBar({
 
   const displayText = useTypewriterText(narrativeHeadline, isProcessing)
 
-  const shouldShow = isProcessing || Boolean(narrativeHeadline) || (visible && reasoningSteps.length > 0) || isPanelOpenValue
+  const shouldShow = isPanelOpenValue || (
+    visible && (
+      isProcessing ||
+      Boolean(narrativeHeadline) ||
+      reasoningSteps.length > 0
+    )
+  )
   if (!shouldShow) return null
 
   const hasSteps = reasoningSteps.length > 0
@@ -117,8 +116,7 @@ export function ChatProcessStatusBar({
       <div className="pb-2" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
         {isProcessing ? (
           /* ── Processing mode: headline naratif + progress bar ── */
-          <div role="status" aria-live="polite" aria-label={displayText || undefined}
-            className={isTransitioning ? "chat-status-processing-enter" : undefined}>
+          <div role="status" aria-live="polite" aria-label={displayText || undefined}>
             <button
               type="button"
               onClick={openPanel}
@@ -158,8 +156,7 @@ export function ChatProcessStatusBar({
           </div>
         ) : (
           /* ── Completed mode: collapsed=duration only, expanded=full reasoning ── */
-          <div role="status" aria-live="polite"
-            className={isTransitioning ? "chat-status-completed-enter" : undefined}>
+          <div role="status" aria-live="polite">
             <button
               type="button"
               onClick={() => {
