@@ -2096,6 +2096,11 @@ export function ChatWindow({
   }, [])
 
   useEffect(() => {
+    // Guard: do NOT fire while AI SDK is still streaming —
+    // data-reasoning-duration SSE arrives BEFORE the finish chunk,
+    // and premature firing causes the bar to unmount briefly (flicker).
+    if (status === "submitted" || status === "streaming") return
+
     const persistedDurationSeconds = activeReasoningState.persistedDurationSeconds
     if (typeof persistedDurationSeconds !== "number" || !Number.isFinite(persistedDurationSeconds)) return
 
@@ -2120,7 +2125,7 @@ export function ChatWindow({
         elapsedSeconds,
       }
     })
-  }, [activeReasoningState.persistedDurationSeconds, clearProcessTimers])
+  }, [activeReasoningState.persistedDurationSeconds, clearProcessTimers, status])
 
   useEffect(() => {
     if (status === "submitted" || status === "streaming") {

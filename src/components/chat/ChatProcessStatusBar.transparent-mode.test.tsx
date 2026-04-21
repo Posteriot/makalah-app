@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 
@@ -12,6 +12,13 @@ vi.mock("./ReasoningActivityPanel", () => ({
 }))
 
 describe("ChatProcessStatusBar transparent mode", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it("menahan headline transparent saat status masih streaming agar tidak jatuh ke dots-only", () => {
     render(
       <ChatProcessStatusBar
@@ -33,10 +40,40 @@ describe("ChatProcessStatusBar transparent mode", () => {
       />
     )
 
+    // Advance fake timers to drain sentences through typewriter queue
+    // Sentence interval is 120ms; this headline is 1 sentence
+    act(() => { vi.advanceTimersByTime(120 * 2) })
+
     expect(
       screen.getByText("Sedang membandingkan dua jalur penalaran yang paling kuat.")
     ).toBeInTheDocument()
     expect(screen.getByText("48%")).toBeInTheDocument()
+  })
+
+  it("reveals reasoning headline sentence by sentence during streaming (typewriter)", () => {
+    const { container } = render(
+      <ChatProcessStatusBar
+        visible
+        status="streaming"
+        progress={30}
+        elapsedSeconds={3.5}
+        reasoningHeadline="Analyzing the topic. Now reviewing the outline."
+        reasoningSteps={[]}
+      />
+    )
+
+    // Before any interval ticks, the inner truncate span should not exist yet
+    expect(container.querySelector(".truncate .truncate")).not.toBeInTheDocument()
+
+    // After one tick (~120ms), first sentence appears
+    act(() => { vi.advanceTimersByTime(120) })
+    const textEl = container.querySelector(".truncate .truncate")
+    expect(textEl).toBeInTheDocument()
+    expect(textEl!.textContent).toBe("Analyzing the topic.")
+
+    // After second tick, second sentence appends
+    act(() => { vi.advanceTimersByTime(120) })
+    expect(container.querySelector(".truncate .truncate")!.textContent).toBe("Analyzing the topic. Now reviewing the outline.")
   })
 
   it("tetap menampilkan raw thought dan masih menyediakan drill-down timeline saat transparent", () => {
@@ -81,6 +118,22 @@ describe("ChatProcessStatusBar transparent mode", () => {
           (props as { open?: boolean }).open === true
       )
     ).toBe(true)
+  })
+
+  it("stays mounted during streaming even when headline is transiently null", () => {
+    const { container } = render(
+      <ChatProcessStatusBar
+        visible={false}
+        status="streaming"
+        progress={88}
+        elapsedSeconds={9.2}
+        reasoningHeadline={null}
+        reasoningSteps={[]}
+      />
+    )
+
+    // Bar should still be in the DOM because status is "streaming"
+    expect(container.querySelector("[role='status']")).toBeInTheDocument()
   })
 
   it("tetap mempertahankan drill-down timeline pada mode curated", () => {

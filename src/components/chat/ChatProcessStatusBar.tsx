@@ -1,10 +1,11 @@
 "use client"
 
 import { NavArrowRight } from "iconoir-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import { ReasoningActivityPanel } from "./ReasoningActivityPanel"
 import { type ReasoningTraceStep } from "./ReasoningTracePanel"
+import { useTypewriterText } from "./useTypewriterText"
 
 type ChatProcessStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
 
@@ -53,6 +54,13 @@ export function ChatProcessStatusBar({
   const isProcessing = status === "submitted" || status === "streaming"
   const isError = status === "error"
 
+  const prevIsProcessingRef = useRef(isProcessing)
+  const isTransitioning = prevIsProcessingRef.current !== isProcessing
+
+  useEffect(() => {
+    prevIsProcessingRef.current = isProcessing
+  }, [isProcessing])
+
   // Live: elapsedSeconds from processStartedAtRef timer.
   // Rehydrate: persistedDurationSeconds from _creationTime diff (elapsedSeconds is 0 after reload).
   const durationSeconds = persistedDurationSeconds ?? (
@@ -95,7 +103,9 @@ export function ChatProcessStatusBar({
     return null
   }, [reasoningHeadline, reasoningSteps])
 
-  const shouldShow = Boolean(narrativeHeadline) || (visible && reasoningSteps.length > 0) || isPanelOpenValue
+  const displayText = useTypewriterText(narrativeHeadline, isProcessing)
+
+  const shouldShow = isProcessing || Boolean(narrativeHeadline) || (visible && reasoningSteps.length > 0) || isPanelOpenValue
   if (!shouldShow) return null
 
   const hasSteps = reasoningSteps.length > 0
@@ -107,7 +117,8 @@ export function ChatProcessStatusBar({
       <div className="pb-2" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
         {isProcessing ? (
           /* ── Processing mode: headline naratif + progress bar ── */
-          <div role="status" aria-live="polite" aria-label={narrativeHeadline ?? undefined}>
+          <div role="status" aria-live="polite" aria-label={displayText || undefined}
+            className={isTransitioning ? "chat-status-processing-enter" : undefined}>
             <button
               type="button"
               onClick={openPanel}
@@ -121,7 +132,7 @@ export function ChatProcessStatusBar({
                 className="flex min-w-0 items-baseline gap-1 truncate font-mono text-[11px] leading-snug text-[var(--chat-foreground)]"
                 style={{ opacity: 0.92 }}
               >
-                {narrativeHeadline && <span className="truncate">{narrativeHeadline}</span>}
+                {displayText && <span className="truncate">{displayText}</span>}
                 <ThinkingDots />
               </span>
               <span
@@ -147,7 +158,8 @@ export function ChatProcessStatusBar({
           </div>
         ) : (
           /* ── Completed mode: collapsed=duration only, expanded=full reasoning ── */
-          <div role="status" aria-live="polite">
+          <div role="status" aria-live="polite"
+            className={isTransitioning ? "chat-status-completed-enter" : undefined}>
             <button
               type="button"
               onClick={() => {
