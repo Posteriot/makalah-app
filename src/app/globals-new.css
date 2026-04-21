@@ -1423,6 +1423,27 @@
   pointer-events: none;
 }
 
+/* Processing → Completed crossfade transition */
+[data-chat-scope] .chat-status-processing-enter {
+  animation: chat-status-fade-in 300ms ease forwards;
+}
+
+[data-chat-scope] .chat-status-completed-enter {
+  animation: chat-status-fade-in 300ms ease forwards;
+}
+
+@keyframes chat-status-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-chat-scope] .chat-status-processing-enter,
+  [data-chat-scope] .chat-status-completed-enter {
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-chat-scope] .animate-chat-thought-breathe,
   [data-chat-scope] .animate-chat-thought-dot,

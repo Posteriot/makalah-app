@@ -1,7 +1,7 @@
 "use client"
 
 import { NavArrowRight } from "iconoir-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import { ReasoningActivityPanel } from "./ReasoningActivityPanel"
 import { type ReasoningTraceStep } from "./ReasoningTracePanel"
@@ -53,6 +53,13 @@ export function ChatProcessStatusBar({
   const safeProgress = Math.max(0, Math.min(100, Math.round(progress)))
   const isProcessing = status === "submitted" || status === "streaming"
   const isError = status === "error"
+
+  const prevIsProcessingRef = useRef(isProcessing)
+  const isTransitioning = prevIsProcessingRef.current !== isProcessing
+
+  useEffect(() => {
+    prevIsProcessingRef.current = isProcessing
+  }, [isProcessing])
 
   // Live: elapsedSeconds from processStartedAtRef timer.
   // Rehydrate: persistedDurationSeconds from _creationTime diff (elapsedSeconds is 0 after reload).
@@ -110,7 +117,8 @@ export function ChatProcessStatusBar({
       <div className="pb-2" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
         {isProcessing ? (
           /* ── Processing mode: headline naratif + progress bar ── */
-          <div role="status" aria-live="polite" aria-label={displayText || undefined}>
+          <div role="status" aria-live="polite" aria-label={displayText || undefined}
+            className={isTransitioning ? "chat-status-processing-enter" : undefined}>
             <button
               type="button"
               onClick={openPanel}
@@ -150,7 +158,8 @@ export function ChatProcessStatusBar({
           </div>
         ) : (
           /* ── Completed mode: collapsed=duration only, expanded=full reasoning ── */
-          <div role="status" aria-live="polite">
+          <div role="status" aria-live="polite"
+            className={isTransitioning ? "chat-status-completed-enter" : undefined}>
             <button
               type="button"
               onClick={() => {
