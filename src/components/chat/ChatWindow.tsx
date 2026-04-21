@@ -2013,16 +2013,6 @@ export function ChatWindow({
       const traceMode = extractReasoningTraceMode(assistant, steps, liveThought)
       const headline = liveThought || extractReasoningHeadline(assistant, steps)
 
-      if (process.env.NODE_ENV !== "production") {
-        const dataPartTypes = (assistant.parts ?? [])
-          .filter((p): p is { type: string } => !!p && typeof p === "object" && "type" in p)
-          .map((p) => p.type)
-        const reasoningParts = dataPartTypes.filter((t) => t.startsWith("data-reasoning"))
-        if (reasoningParts.length > 0 || liveThought || steps.length > 0) {
-          console.log(`[REASONING-DIAG] parts=${dataPartTypes.length} reasoningParts=[${reasoningParts.join(",")}] liveThought=${!!liveThought} steps=${steps.length} headline=${!!headline}`)
-        }
-      }
-
       if (steps.length > 0 || headline) {
         const persistedDurationSeconds = extractReasoningDurationSeconds(assistant)
         return {
