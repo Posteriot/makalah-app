@@ -35,6 +35,11 @@ export function useTypewriterText(
     prevIsActiveRef.current = isActive
 
     if (!text) {
+      // During active streaming, empty text is transient (gap between
+      // reasoning snapshots or reset part before new data arrives).
+      // Keep showing last displayed text to avoid empty-bar flicker.
+      if (isActive) return
+
       queueRef.current = []
       displayedSentencesRef.current = []
       enqueuedCountRef.current = 0
