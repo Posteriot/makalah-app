@@ -83,6 +83,22 @@ describe("ChatProcessStatusBar transparent mode", () => {
     ).toBe(true)
   })
 
+  it("stays mounted during streaming even when headline is transiently null", () => {
+    const { container } = render(
+      <ChatProcessStatusBar
+        visible={false}
+        status="streaming"
+        progress={88}
+        elapsedSeconds={9.2}
+        reasoningHeadline={null}
+        reasoningSteps={[]}
+      />
+    )
+
+    // Bar should still be in the DOM because status is "streaming"
+    expect(container.querySelector("[role='status']")).toBeInTheDocument()
+  })
+
   it("tetap mempertahankan drill-down timeline pada mode curated", () => {
     render(
       <ChatProcessStatusBar
