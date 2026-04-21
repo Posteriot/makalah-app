@@ -74,86 +74,8 @@ const Hero = () => (
 );
 
 const HeroConsole = () => (
-  <div className="console">
-    <div className="console-bar">
-      <div className="dots"><span /><span /><span /></div>
-      <div className="path">
-        <span>makalah.ai</span>
-        <span className="slash">/</span>
-        <b>project-047</b>
-        <span className="slash">/</span>
-        <span>stage-07-tinjauan-literatur</span>
-      </div>
-      <div className="right">
-        <span className="k">autosaved · 14:32</span>
-        <span className="k">⌘K</span>
-      </div>
-    </div>
-    <div className="console-body">
-      <aside className="console-rail">
-        <h5>Project</h5>
-        <div className="stage-item done"><span className="idx">✓</span>Topik &amp; scope</div>
-        <div className="stage-item done"><span className="idx">✓</span>Research question</div>
-        <div className="stage-item done"><span className="idx">✓</span>Keyword map</div>
-        <div className="stage-item done"><span className="idx">✓</span>Kerangka teori</div>
-        <div className="stage-item done"><span className="idx">✓</span>Pencarian literatur</div>
-        <div className="stage-item done"><span className="idx">✓</span>Shortlist sumber</div>
-        <div className="stage-item active"><span className="idx">07</span>Tinjauan literatur</div>
-        <h5>Upcoming</h5>
-        <div className="stage-item pending"><span className="idx">08</span>Metodologi</div>
-        <div className="stage-item pending"><span className="idx">09</span>Analisis</div>
-        <div className="stage-item pending"><span className="idx">10</span>Diskusi</div>
-        <div className="stage-item pending"><span className="idx">11</span>Simpulan</div>
-        <div className="stage-item pending"><span className="idx">12</span>Refrasa &amp; edit</div>
-        <div className="stage-item pending"><span className="idx">13</span>Export</div>
-      </aside>
-
-      <div className="console-main">
-        <div className="chat-turn you">
-          <div className="avatar">N</div>
-          <div className="body">
-            Aku mau bahas soal <span className="hl">adopsi AI di UMKM Indonesia pasca-pandemi</span>.
-            Fokus di sektor kuliner yang pakai POS cloud. Aku udah punya 12 jurnal, tapi bingung bikin
-            tinjauannya ga jadi ringkasan satu-per-satu.
-          </div>
-        </div>
-        <div className="chat-turn ai">
-          <div className="avatar">M</div>
-          <div className="body">
-            Oke. Kalau 12 itu dikelompokkan berdasarkan <b>sudut pandang</b>, bukan per jurnal, bakal jauh
-            lebih ngalir. Dari shortlist lo aku lihat 3 klaster: (a) <span className="hl">technology acceptance</span> —
-            Davis 1989 <span className="cite">[3]</span>, Venkatesh 2003 <span className="cite">[7]</span>;
-            (b) <span className="hl">friksi kas kecil</span> — Prasetyo 2021 <span className="cite">[11]</span>;
-            (c) <span className="hl">UX mobile-first</span> — Setiawan &amp; Rahardja 2023 <span className="cite">[4]</span>.
-            Mau kita mulai dari klaster mana?
-          </div>
-        </div>
-        <div className="typing">
-          <span className="dots"><span /><span /><span /></span>
-          sedang menyusun outline paragraf — 4 sitasi aktif
-        </div>
-      </div>
-
-      <aside className="console-inspect">
-        <h6>Context inspector</h6>
-        <div className="inspect-row"><span>stage</span><b>07 / 14</b></div>
-        <div className="inspect-row"><span>tokens</span><span className="tok">2,847 / 8k</span></div>
-        <div className="inspect-row"><span>sources</span><b>12 verified</b></div>
-        <div className="inspect-row"><span>DOI resolved</span><b>12 / 12</b></div>
-        <div className="inspect-row"><span>style</span><b>APA 7</b></div>
-
-        <div className="cite-card">
-          <b>Davis, F. D. (1989)</b>
-          Perceived Usefulness, Perceived Ease of Use, and User Acceptance of Information Technology.
-          <div className="meta">MIS Quarterly · DOI:10.2307/249008 · ★ pinned</div>
-        </div>
-        <div className="cite-card">
-          <b>Setiawan &amp; Rahardja (2023)</b>
-          Mobile-first POS usability among Indonesian UMKM.
-          <div className="meta">JUTI · Q2 · cited 34×</div>
-        </div>
-      </aside>
-    </div>
+  <div className="hero-illustration" style={{ marginTop: '56px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+    <img src="assets/ilustrasi-hero.png" alt="Ilustrasi Console Makalah AI" style={{ maxWidth: '100%', height: 'auto', display: 'block', borderRadius: '12px' }} />
   </div>
 );
 

@@ -65,109 +65,25 @@ const Benefits = () => {
 };
 
 const BenefitFrame = ({ active }) => {
+  const imgViz = (
+    <div style={{ width: "100%", height: "100%", display: "flex", justifyContent: "center" }}>
+      <img src="assets/ilustrasi-section-kenapa.png?bypass-cache=1" alt="Ilustrasi Kenapa Makalah AI" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+    </div>
+  );
+
   const FRAMES = {
-    sparring: <SparringViz />,
-    chat: <ChatViz />,
-    bahasa: <BahasaViz />,
-    workflow: <WorkflowViz />
+    sparring: imgViz,
+    chat: imgViz,
+    bahasa: imgViz,
+    workflow: imgViz
   };
+
   return Object.entries(FRAMES).map(([id, el]) => (
     <div key={id} className={`b-frame${active === id ? " active" : ""}`}>{el}</div>
   ));
 };
 
-const SparringViz = () => (
-  <div style={{ width: "100%", maxWidth: 480 }}>
-    <div style={{
-      border: "1px solid var(--line-2)", borderRadius: 12, overflow: "hidden",
-      background: "var(--bg-2)", boxShadow: "0 30px 60px rgba(0,0,0,0.4)"
-    }}>
-      <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--line)", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-3)" }}>
-        sparring · stage 04 / kerangka teori
-      </div>
-      <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", gap: 10 }}>
-          <div style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--bg)", border: "1px solid var(--line-2)", flexShrink: 0, display: "grid", placeItems: "center", fontSize: 10, fontFamily: "var(--font-mono)" }}>N</div>
-          <div style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.55 }}>
-            Aku pengen pakai TAM tapi rasanya terlalu umum buat konteks UMKM.
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <div style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "var(--accent-ink)", flexShrink: 0, display: "grid", placeItems: "center", fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>M</div>
-          <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.55 }}>
-            Setuju. Extend pakai <span style={{ background: "var(--accent-soft)", color: "var(--ink)", padding: "1px 4px" }}>UTAUT2</span> — dia sudah memasukkan
-            <i> facilitating conditions</i> yang relevan buat warung kecil. Atau mau aku cariin model lokal?
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-          <span style={{ padding: "4px 10px", border: "1px solid var(--line-hot)", borderRadius: 100, fontSize: 11, color: "var(--accent)", background: "var(--accent-soft)", fontFamily: "var(--font-mono)" }}>→ pakai UTAUT2</span>
-          <span style={{ padding: "4px 10px", border: "1px solid var(--line-2)", borderRadius: 100, fontSize: 11, color: "var(--ink-3)", fontFamily: "var(--font-mono)" }}>cariin alt</span>
-          <span style={{ padding: "4px 10px", border: "1px solid var(--line-2)", borderRadius: 100, fontSize: 11, color: "var(--ink-3)", fontFamily: "var(--font-mono)" }}>skip</span>
-        </div>
-      </div>
-    </div>
-  </div>
-);
 
-const ChatViz = () => (
-  <div style={{ width: "100%", maxWidth: 500, display: "flex", flexDirection: "column", gap: 10 }}>
-    {[
-      { who: "N", text: "jujur aja aku gatau mau nulis apa buat bab 2" },
-      { who: "M", text: "Hehe santai. Dari 3 sumber yang kamu drop, common thread-nya soal user trust. Mau kita mulai dari situ?" },
-      { who: "N", text: "trust-nya lebih ke data privacy apa ke UI yg kelihatan 'beneran'?" },
-      { who: "M", text: "Dua-duanya muncul. Tapi di konteks UMKM Indo, privacy belum jadi concern utama — UI legitimacy lebih dominan. Mau kita split jadi dua sub-bagian?" }
-    ].map((m, i) => (
-      <div key={i} style={{ display: "flex", gap: 10, justifyContent: m.who === "N" ? "flex-end" : "flex-start" }}>
-        {m.who === "M" && <div style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "var(--accent-ink)", display: "grid", placeItems: "center", fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700, flexShrink: 0 }}>M</div>}
-        <div style={{
-          padding: "10px 14px", borderRadius: 12,
-          fontSize: 13, lineHeight: 1.55, maxWidth: "78%",
-          background: m.who === "N" ? "var(--bg-2)" : "var(--bg-panel)",
-          border: "1px solid var(--line)",
-          color: m.who === "N" ? "var(--ink)" : "var(--ink-2)"
-        }}>{m.text}</div>
-      </div>
-    ))}
-  </div>
-);
-
-const BahasaViz = () => (
-  <div style={{ width: "100%", maxWidth: 520, display: "grid", gap: 10 }}>
-    <div className="diff-block">
-      <div className="diff-head"><span>input robotik</span><span className="tag before">SEBELUM</span></div>
-      <div className="diff-body"><span className="strike">Berdasarkan hal tersebut di atas, dapat disimpulkan bahwa faktor-faktor yang mempengaruhi adopsi teknologi di kalangan UMKM adalah sangat beragam dan kompleks.</span></div>
-    </div>
-    <div className="diff-block" style={{ borderColor: "var(--line-hot)" }}>
-      <div className="diff-head"><span>output manusiawi</span><span className="tag after">SETELAH · APA 7</span></div>
-      <div className="diff-body"><span className="ins">Adopsi teknologi di kalangan UMKM dipengaruhi banyak faktor yang saling berkelindan — dari kapasitas digital pemilik usaha hingga ekosistem pembayaran yang tersedia.</span></div>
-    </div>
-    <div className="refrasa-meta">
-      <div className="cell"><div className="lbl">Kata</div><div className="val">31 → 22</div></div>
-      <div className="cell"><div className="lbl">Readability</div><div className="val acc">+34%</div></div>
-      <div className="cell"><div className="lbl">Substansi</div><div className="val">100%</div></div>
-    </div>
-  </div>
-);
-
-const WorkflowViz = () => (
-  <div style={{ width: "100%", maxWidth: 540 }}>
-    <div className="wf-diag">
-      {Array.from({ length: 14 }, (_, i) => {
-        const cls = i < 6 ? "done" : i === 6 ? "active" : "";
-        return <div key={i} className={`wf-step ${cls}`}>{String(i + 1).padStart(2, "0")}</div>;
-      })}
-    </div>
-    <div className="wf-detail">
-      <div className="wf-detail-head"><b>Stage 07 — Tinjauan literatur</b><span className="tag">IN PROGRESS</span></div>
-      <div className="wf-detail-body">
-        <div className="wf-row"><span className="lbl">sources verified</span><span className="val ok">12 / 12</span></div>
-        <div className="wf-row"><span className="lbl">outline paragraf</span><span className="val">4 klaster</span></div>
-        <div className="wf-row"><span className="lbl">sitasi aktif</span><span className="val acc">9</span></div>
-        <div className="wf-row"><span className="lbl">handover next</span><span className="val">Metodologi →</span></div>
-      </div>
-    </div>
-  </div>
-);
 
 /* ---------- Feature splits ---------- */
 const WorkflowFeature = () => (
@@ -179,7 +95,7 @@ const WorkflowFeature = () => (
             <div className="sec-eyebrow">
               <span className="l">/ WORKFLOW</span>
             </div>
-            <h2 className="sec-title">Pagar ketat<br /><em>di tiap tahap<br />penyusunan.</em></h2>
+            <h2 className="sec-title">Pagar ketat<br /><em>di tiap tahap</em></h2>
           </div>
           <p className="sec-desc">
             14 tahap terstruktur dari menggodok gagasan, penentuan topik sampai kesimpulan final. Tiap peralihan tahap dan keputusan butuh konfirmasi kamu — maka konteks terjaga, argumen tidak mengambang.
@@ -197,8 +113,8 @@ const WorkflowFeature = () => (
           </ul>
         </Reveal>
         <Reveal delay={3}>
-          <div className="feature-visual">
-            <WorkflowViz />
+          <div className="feature-visual" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <img src="assets/ilustrasi-workflow.png?bypass-cache=1" alt="Ilustrasi Workflow Makalah AI" style={{ maxWidth: '100%', height: 'auto', display: 'block', borderRadius: '12px' }} />
           </div>
         </Reveal>
       </div>
@@ -207,42 +123,43 @@ const WorkflowFeature = () => (
 );
 
 const RefrasaFeature = () => (
-  <section className="feature reverse" id="refrasa">
-    <Reveal>
-      <div className="feature-visual">
-        <BahasaViz />
-      </div>
-    </Reveal>
-    <div className="feature-text">
-      <Reveal delay={2}>
-        <span className="eyebrow">/ REFRASA</span>
-        <h3>Bahasa robotik<br />→ prosa akademik<br />yang manusiawi.</h3>
-        <p>
-          Sekali klik, paragraf-paragraf kaku ala AI berubah menjadi ritme penuturan manusiawi — kalimat bervariasi,
-          transisi mulus, tanpa mengubah substansi.
-        </p>
-        <ul className="feature-bullets">
-          <li><span className="tok">TONE</span>Akademik · Laporan.</li>
-          <li><span className="tok">DIKSI</span>Menggunakan sinonim kontekstual, bukan thesaurus buta.</li>
-          <li><span className="tok">RITME</span>Variasi panjang kalimat, transisi antar-paragraf natural.</li>
-          <li><span className="tok">LOCK</span>Istilah teknis &amp; kutipan dikunci, tidak diubah.</li>
-        </ul>
+  <section id="refrasa" className="section-frame">
+    <div className="container">
+      <Reveal>
+        <div className="sec-head">
+          <div>
+            <div className="sec-eyebrow">
+              <span className="l">/ REFRASA</span>
+            </div>
+            <h2 className="sec-title">Bahasa robotik<br /><em>→ prosa akademik manusiawi.</em></h2>
+          </div>
+          <p className="sec-desc">
+            Sekali klik, paragraf-paragraf kaku ala AI berubah menjadi ritme penuturan manusiawi — kalimat bervariasi, transisi mulus, tanpa mengubah substansi.
+          </p>
+        </div>
       </Reveal>
+
+      <div className="feature-showcase">
+        <Reveal delay={2}>
+          <ul className="feature-bullets">
+            <li><span className="tok">TONE</span>Akademik · Laporan.</li>
+            <li><span className="tok">DIKSI</span>Menggunakan sinonim kontekstual, bukan thesaurus buta.</li>
+            <li><span className="tok">RITME</span>Variasi panjang kalimat, transisi antar-paragraf natural.</li>
+            <li><span className="tok">LOCK</span>Istilah teknis &amp; kutipan dikunci, tidak diubah.</li>
+          </ul>
+        </Reveal>
+        <Reveal delay={3}>
+          <div className="feature-visual" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <img src="assets/ilustrasi-section-refrasa.png?bypass-cache=1" alt="Ilustrasi Refrasa Makalah AI" style={{ maxWidth: '100%', height: 'auto', display: 'block', borderRadius: '12px' }} />
+          </div>
+        </Reveal>
+      </div>
     </div>
   </section>
 );
 
 /* ---------- Demo ---------- */
-const DEMO_TOPICS = [
-  "Dampak TikTok Shop terhadap UMKM lokal",
-  "Adopsi AI generatif di pendidikan tinggi Indonesia",
-  "Feminisme digital di ruang komentar Twitter",
-  "Efektivitas MBKM pada kesiapan kerja lulusan"
-];
-
 const Demo = () => {
-  const [topic, setTopic] = React.useState(DEMO_TOPICS[0]);
-  const [style, setStyle] = React.useState("APA 7");
   return (
     <section id="demo" className="section-frame">
       <div className="container">
@@ -261,64 +178,8 @@ const Demo = () => {
         </Reveal>
 
         <Reveal delay={2}>
-          <div className="demo">
-            <div className="demo-head">
-              <h3>Mulai dari satu kalimat.<br />Dapet outline + 6 sitasi dalam 12 detik.</h3>
-              <span className="mono-label" style={{ marginTop: 6 }}>⏱ avg. 12.4s · 6 sumber</span>
-            </div>
-            <div className="demo-input-row">
-              <span className="prefix">topik {">"}</span>
-              <input value={topic} onChange={(e) => setTopic(e.target.value)} />
-              <span className="mono-label">{style}</span>
-              <a href="#" className="btn btn-primary" style={{ padding: "8px 14px" }}>Generate <Arrow /></a>
-            </div>
-            <div className="demo-chips">
-              {DEMO_TOPICS.map(t => (
-                <button key={t} className={`demo-chip${t === topic ? " active" : ""}`} onClick={() => setTopic(t)}>
-                  {t}
-                </button>
-              ))}
-              <span style={{ flex: 1 }} />
-              {["APA 7", "Chicago", "IEEE", "Harvard"].map(s => (
-                <button key={s} className={`demo-chip${s === style ? " active" : ""}`} onClick={() => setStyle(s)}>{s}</button>
-              ))}
-            </div>
-
-            <div className="demo-output">
-              <div className="demo-paper">
-                <h4>{topic}</h4>
-                <div className="section-lbl">abstrak · draft auto-generated</div>
-                <p>
-                  Studi ini mengeksplorasi bagaimana {topic.toLowerCase()} membentuk perilaku digital konsumen
-                  muda urban di Indonesia. Dengan pendekatan kualitatif-deskriptif dan pengambilan data melalui
-                  wawancara semi-terstruktur terhadap 24 informan (Creswell, 2018)<span className="cite">¹</span>,
-                  penelitian menemukan tiga pola adaptasi utama<span className="cite">²</span>.
-                </p>
-                <div className="section-lbl">tinjauan literatur · klaster 1 dari 3</div>
-                <p>
-                  Kerangka <i>technology acceptance model</i> (Davis, 1989)<span className="cite">³</span>
-                  tetap relevan, namun perlu diperluas dengan variabel <i>facilitating conditions</i>
-                  (Venkatesh et al., 2003)<span className="cite">⁴</span> untuk menangkap konteks
-                  infrastruktur digital UMKM<span className="cite">⁵</span>.<span className="typing-line" />
-                </p>
-              </div>
-              <aside className="demo-side">
-                <h6>Sumber ({topic.length % 3 === 0 ? 6 : 5})</h6>
-                {[
-                  { n: "¹", t: "Creswell, J. W.", y: "2018", meta: "Research Design · Sage", cited: "42k" },
-                  { n: "²", t: "Prasetyo, R.", y: "2023", meta: "JIAI · Q2", cited: "87" },
-                  { n: "³", t: "Davis, F. D.", y: "1989", meta: "MIS Quarterly", cited: "78k" },
-                  { n: "⁴", t: "Venkatesh et al.", y: "2003", meta: "MIS Quarterly", cited: "54k" },
-                  { n: "⁵", t: "Setiawan & R.", y: "2023", meta: "JUTI · Q2", cited: "34" }
-                ].map(r => (
-                  <div key={r.n} className="ref">
-                    <b>{r.n} {r.t} ({r.y})</b>
-                    {r.meta}
-                    <div className="meta"><span className="acc">DOI ✓</span><span>cited {r.cited}×</span></div>
-                  </div>
-                ))}
-              </aside>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <img src="assets/ilustrasi-live-preview.png?bypass-cache=1" alt="Ilustrasi Live Preview Makalah AI" style={{ maxWidth: '100%', height: 'auto', display: 'block', borderRadius: '12px' }} />
           </div>
         </Reveal>
       </div>
