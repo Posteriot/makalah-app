@@ -54,13 +54,22 @@ function SessionCookieSync() {
           // Build cookie string in same format as crossDomainClient's getCookie():
           // "; __Secure-better-auth.session_token=xxx; ..."
           let cookieStr = ""
+          let latestExpiry: Date | null = null
           for (const [name, cookie] of Object.entries(parsed)) {
             if (!cookie?.value) continue
             if (cookie.expires && new Date(cookie.expires) < new Date()) continue
             cookieStr += `; ${name}=${cookie.value}`
+            // Track the latest expiry so ba_session persists as long as
+            // the underlying BetterAuth session tokens (survives browser restart)
+            if (cookie.expires) {
+              const exp = new Date(cookie.expires)
+              if (isNaN(exp.getTime())) continue
+              if (!latestExpiry || exp > latestExpiry) latestExpiry = exp
+            }
           }
           if (cookieStr) {
-            document.cookie = `ba_session=${encodeURIComponent(cookieStr)}; path=/; SameSite=Lax`
+            const expiry = latestExpiry ? `; expires=${latestExpiry.toUTCString()}` : ""
+            document.cookie = `ba_session=${encodeURIComponent(cookieStr)}; path=/; SameSite=Lax${expiry}`
           } else {
             clearSessionCookie()
           }
