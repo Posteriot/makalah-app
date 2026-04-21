@@ -98,7 +98,13 @@ export function ChatProcessStatusBar({
 
   const displayText = useTypewriterText(narrativeHeadline, isProcessing)
 
-  const shouldShow = isProcessing || Boolean(narrativeHeadline) || (visible && reasoningSteps.length > 0) || isPanelOpenValue
+  const shouldShow = isPanelOpenValue || (
+    visible && (
+      isProcessing ||
+      Boolean(narrativeHeadline) ||
+      reasoningSteps.length > 0
+    )
+  )
   if (!shouldShow) return null
 
   const hasSteps = reasoningSteps.length > 0
