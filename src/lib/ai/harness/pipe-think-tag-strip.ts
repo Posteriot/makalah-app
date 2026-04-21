@@ -284,6 +284,9 @@ export function pipeThinkTagStrip(
           // Flush state before text-end (preserve protocol ordering)
           if (chunk.type === "text-end") {
             flushTagBuffer(controller)
+            if (state === "inside") {
+              emitReasoningEnd(controller)
+            }
             controller.enqueue(value)
             continue
           }

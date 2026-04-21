@@ -507,6 +507,29 @@ describe("pipeThinkTagStrip", () => {
       expect(allReasoning(output)).toBe("reason")
     })
 
+    it("emits reasoning-end before text-end when think block spans to text-end boundary", async () => {
+      const input = streamFromChunks([
+        textStart(),
+        textDelta("<think>reasoning"),
+        textEnd(),
+      ])
+
+      const output = await collect(pipeThinkTagStrip(input))
+      const types = output.map((c) => (c as Chunk).type)
+
+      // Must have envelope
+      expect(reasoningStarts(output)).toHaveLength(1)
+      expect(reasoningEnds(output)).toHaveLength(1)
+
+      // reasoning-end must come BEFORE text-end
+      const reasoningEndIdx = types.lastIndexOf("reasoning-end")
+      const textEndIdx = types.indexOf("text-end")
+      expect(reasoningEndIdx).toBeLessThan(textEndIdx)
+
+      // reasoning content intact
+      expect(allReasoning(output)).toBe("reasoning")
+    })
+
     it("no envelope emitted when there are no think tags", async () => {
       const input = streamFromChunks([
         textStart(),
