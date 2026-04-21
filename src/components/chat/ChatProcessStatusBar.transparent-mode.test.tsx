@@ -40,8 +40,9 @@ describe("ChatProcessStatusBar transparent mode", () => {
       />
     )
 
-    // Advance fake timers to drain all 9 words through typewriter queue
-    act(() => { vi.advanceTimersByTime(80 * 9 + 10) })
+    // Advance fake timers to drain sentences through typewriter queue
+    // Sentence interval is 120ms; this headline is 1 sentence
+    act(() => { vi.advanceTimersByTime(120 * 2) })
 
     expect(
       screen.getByText("Sedang membandingkan dua jalur penalaran yang paling kuat.")
@@ -49,32 +50,30 @@ describe("ChatProcessStatusBar transparent mode", () => {
     expect(screen.getByText("48%")).toBeInTheDocument()
   })
 
-  it("reveals reasoning headline word by word during streaming (typewriter)", () => {
+  it("reveals reasoning headline sentence by sentence during streaming (typewriter)", () => {
     const { container } = render(
       <ChatProcessStatusBar
         visible
         status="streaming"
         progress={30}
         elapsedSeconds={3.5}
-        reasoningHeadline="Analyzing the Chosen Topic"
+        reasoningHeadline="Analyzing the topic. Now reviewing the outline."
         reasoningSteps={[]}
       />
     )
 
     // Before any interval ticks, the inner truncate span should not exist yet
-    // because displayText is "" (falsy), so the conditional render skips it
-    // Use nested selector to distinguish from outer container which also has .truncate
     expect(container.querySelector(".truncate .truncate")).not.toBeInTheDocument()
 
-    // After one tick, first word appears — span now exists
-    act(() => { vi.advanceTimersByTime(80) })
+    // After one tick (~120ms), first sentence appears
+    act(() => { vi.advanceTimersByTime(120) })
     const textEl = container.querySelector(".truncate .truncate")
     expect(textEl).toBeInTheDocument()
-    expect(textEl!.textContent).toBe("Analyzing")
+    expect(textEl!.textContent).toBe("Analyzing the topic.")
 
-    // After all 4 words drain, full text appears
-    act(() => { vi.advanceTimersByTime(80 * 3 + 10) })
-    expect(container.querySelector(".truncate .truncate")!.textContent).toBe("Analyzing the Chosen Topic")
+    // After second tick, second sentence appends
+    act(() => { vi.advanceTimersByTime(120) })
+    expect(container.querySelector(".truncate .truncate")!.textContent).toBe("Analyzing the topic. Now reviewing the outline.")
   })
 
   it("tetap menampilkan raw thought dan masih menyediakan drill-down timeline saat transparent", () => {
