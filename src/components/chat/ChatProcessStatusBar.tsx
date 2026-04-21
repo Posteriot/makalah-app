@@ -102,12 +102,7 @@ export function ChatProcessStatusBar({
     console.log(`[STATUSBAR-DIAG] visible=${visible} isProcessing=${isProcessing} narrativeHeadline=${JSON.stringify(narrativeHeadline?.slice(0, 60))} displayText=${JSON.stringify(displayText?.slice(0, 60))} steps=${reasoningSteps.length}`)
   }
 
-  const shouldShow = Boolean(narrativeHeadline) || isPanelOpenValue || (
-    visible && (
-      isProcessing ||
-      reasoningSteps.length > 0
-    )
-  )
+  const shouldShow = isProcessing || Boolean(narrativeHeadline) || (visible && reasoningSteps.length > 0) || isPanelOpenValue
   if (!shouldShow) return null
 
   const hasSteps = reasoningSteps.length > 0
