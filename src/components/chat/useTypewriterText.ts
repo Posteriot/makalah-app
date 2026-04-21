@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useReducer, useRef } from "react"
 
 const SENTENCE_INTERVAL_MS = 120
 
@@ -16,11 +16,48 @@ function splitSentences(text: string): string[] {
   return parts.map((s) => s.trim()).filter(Boolean)
 }
 
+type TypewriterState = {
+  displayedText: string
+  isActiveSnapshot: boolean
+}
+
+type TypewriterAction =
+  | { type: "markInactive" }
+  | { type: "startActive" }
+  | { type: "replace"; text: string }
+
+function typewriterReducer(
+  state: TypewriterState,
+  action: TypewriterAction
+): TypewriterState {
+  switch (action.type) {
+    case "markInactive":
+      return state.isActiveSnapshot
+        ? { ...state, isActiveSnapshot: false }
+        : state
+    case "startActive":
+      return state.displayedText === "" && state.isActiveSnapshot
+        ? state
+        : { displayedText: "", isActiveSnapshot: true }
+    case "replace":
+      return state.displayedText === action.text && state.isActiveSnapshot
+        ? state
+        : { displayedText: action.text, isActiveSnapshot: true }
+  }
+}
+
 export function useTypewriterText(
   cumulativeText: string | null | undefined,
   isActive: boolean
 ): string {
-  const [displayedText, setDisplayedText] = useState("")
+  const [state, dispatch] = useReducer(
+    typewriterReducer,
+    isActive,
+    (initialIsActive): TypewriterState => ({
+      displayedText: "",
+      isActiveSnapshot: initialIsActive,
+    })
+  )
   const queueRef = useRef<string[]>([])
   const enqueuedCountRef = useRef(0)
   const displayedSentencesRef = useRef<string[]>([])
@@ -43,7 +80,7 @@ export function useTypewriterText(
       queueRef.current = []
       displayedSentencesRef.current = []
       enqueuedCountRef.current = 0
-      setDisplayedText("")
+      dispatch({ type: "markInactive" })
       return
     }
 
@@ -51,7 +88,7 @@ export function useTypewriterText(
       queueRef.current = []
       displayedSentencesRef.current = splitSentences(text)
       enqueuedCountRef.current = displayedSentencesRef.current.length
-      setDisplayedText(text)
+      dispatch({ type: "markInactive" })
       return
     }
 
@@ -60,7 +97,7 @@ export function useTypewriterText(
     if (wasInactive) {
       displayedSentencesRef.current = []
       enqueuedCountRef.current = 0
-      setDisplayedText("")
+      dispatch({ type: "startActive" })
       queueRef.current = [...newSentences]
       enqueuedCountRef.current = newSentences.length
       return
@@ -90,7 +127,7 @@ export function useTypewriterText(
       if (queueRef.current.length === 0) return
 
       displayedSentencesRef.current.push(queueRef.current.shift()!)
-      setDisplayedText(displayedSentencesRef.current.join(" "))
+      dispatch({ type: "replace", text: displayedSentencesRef.current.join(" ") })
     }, SENTENCE_INTERVAL_MS)
 
     return () => {
@@ -101,5 +138,7 @@ export function useTypewriterText(
     }
   }, [isActive])
 
-  return displayedText
+  if (!isActive) return cumulativeText ?? ""
+  if (!state.isActiveSnapshot) return ""
+  return state.displayedText
 }
