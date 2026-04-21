@@ -98,10 +98,13 @@ export function ChatProcessStatusBar({
 
   const displayText = useTypewriterText(narrativeHeadline, isProcessing)
 
-  const shouldShow = isPanelOpenValue || (
+  if (process.env.NODE_ENV !== "production" && (narrativeHeadline || displayText || isProcessing)) {
+    console.log(`[STATUSBAR-DIAG] visible=${visible} isProcessing=${isProcessing} narrativeHeadline=${JSON.stringify(narrativeHeadline?.slice(0, 60))} displayText=${JSON.stringify(displayText?.slice(0, 60))} steps=${reasoningSteps.length}`)
+  }
+
+  const shouldShow = Boolean(narrativeHeadline) || isPanelOpenValue || (
     visible && (
       isProcessing ||
-      Boolean(narrativeHeadline) ||
       reasoningSteps.length > 0
     )
   )
