@@ -1,16 +1,8 @@
-import { act, renderHook } from "@testing-library/react"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { renderHook } from "@testing-library/react"
+import { describe, expect, it } from "vitest"
 import { useTypewriterText } from "./useTypewriterText"
 
 describe("useTypewriterText", () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
   it("returns empty string when input is null", () => {
     const { result } = renderHook(() => useTypewriterText(null, true))
     expect(result.current).toBe("")
@@ -21,198 +13,103 @@ describe("useTypewriterText", () => {
     expect(result.current).toBe("")
   })
 
-  it("returns full text immediately when isActive is false", () => {
+  it("returns last sentence when isActive is false", () => {
     const { result } = renderHook(() =>
-      useTypewriterText("Hello world. I am thinking.", false)
+      useTypewriterText("First thought. Second thought. Current.", false)
     )
-    expect(result.current).toBe("Hello world. I am thinking.")
+    expect(result.current).toBe("Current.")
   })
 
-  it("reveals sentences one at a time when active", () => {
+  it("shows last sentence during active streaming", () => {
     const { result } = renderHook(() =>
-      useTypewriterText("First sentence. Second sentence. Third.", true)
+      useTypewriterText("Analyzing the topic. Now reviewing.", true)
     )
-
-    // Initially empty — sentences are queued
-    expect(result.current).toBe("")
-
-    // After one tick (~120ms), first sentence appears
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("First sentence.")
-
-    // After another tick, second sentence appends
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("First sentence. Second sentence.")
-
-    // Third tick
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("First sentence. Second sentence. Third.")
+    expect(result.current).toBe("Now reviewing.")
   })
 
-  it("diffs cumulative snapshots by sentence count", () => {
+  it("updates trailing fragment as it grows", () => {
     const { result, rerender } = renderHook(
       ({ text }) => useTypewriterText(text, true),
-      { initialProps: { text: "Analyzing." as string | null } }
+      { initialProps: { text: "Analyzing" as string | null } }
     )
+    expect(result.current).toBe("Analyzing")
 
-    // Drain first sentence
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("Analyzing.")
+    rerender({ text: "Analyzing the topic" })
+    expect(result.current).toBe("Analyzing the topic")
 
-    // New cumulative snapshot with more sentences
-    rerender({ text: "Analyzing. Now I see the topic. Moving forward." })
-
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("Analyzing. Now I see the topic.")
-
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("Analyzing. Now I see the topic. Moving forward.")
+    rerender({ text: "Analyzing the topic and reviewing" })
+    expect(result.current).toBe("Analyzing the topic and reviewing")
   })
 
-  it("holds incomplete sentence until period arrives", () => {
+  it("switches to new sentence when period arrives", () => {
     const { result, rerender } = renderHook(
       ({ text }) => useTypewriterText(text, true),
-      { initialProps: { text: "First sentence." as string | null } }
+      { initialProps: { text: "Analyzing the topic" as string | null } }
     )
+    expect(result.current).toBe("Analyzing the topic")
 
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("First sentence.")
+    // Period completes the sentence, new fragment starts
+    rerender({ text: "Analyzing the topic. Now I see" })
+    expect(result.current).toBe("Now I see")
 
-    // Incomplete sentence arrives (no period yet)
-    rerender({ text: "First sentence. I am now thinking about" })
-
-    // 2 sentences split: ["First sentence.", "I am now thinking about"]
-    // "I am now thinking about" is the incomplete part — still gets enqueued
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("First sentence. I am now thinking about")
+    rerender({ text: "Analyzing the topic. Now I see the pattern" })
+    expect(result.current).toBe("Now I see the pattern")
   })
 
-  it("resyncs displayed text when sanitizer rewrites snapshot in place", () => {
-    const { result, rerender } = renderHook(
-      ({ text }) => useTypewriterText(text, true),
-      { initialProps: { text: "Hello. World. Foo." as string | null } }
-    )
-
-    // Drain all 3 sentences
-    act(() => { vi.advanceTimersByTime(120 * 3) })
-    expect(result.current).toBe("Hello. World. Foo.")
-
-    // Sanitizer rewrites the same cumulative snapshot in place.
-    rerender({ text: "Hello World. Foo. Bar." })
-
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("Hello World. Foo. Bar.")
-
-    // Now add genuinely new sentence
-    rerender({ text: "Hello World. Foo. Bar. New sentence." })
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("Hello World. Foo. Bar. New sentence.")
-  })
-
-  it("pauses naturally when queue is empty", () => {
-    const { result } = renderHook(() =>
-      useTypewriterText("Hello.", true)
-    )
-
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("Hello.")
-
-    // Extra ticks do nothing
-    act(() => { vi.advanceTimersByTime(360) })
-    expect(result.current).toBe("Hello.")
-  })
-
-  it("snaps to full text when isActive flips to false", () => {
+  it("snaps to full last sentence when isActive flips to false", () => {
     const { result, rerender } = renderHook(
       ({ text, active }) => useTypewriterText(text, active),
       { initialProps: { text: "First. Second. Third.", active: true } }
     )
+    expect(result.current).toBe("Third.")
 
-    // Only drain one sentence
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("First.")
-
-    // Deactivate — snap to full text
     rerender({ text: "First. Second. Third.", active: false })
-    expect(result.current).toBe("First. Second. Third.")
+    expect(result.current).toBe("Third.")
   })
 
-  it("starts typewriter fresh when isActive transitions from false to true", () => {
-    const { result, rerender } = renderHook(
-      ({ text, active }) => useTypewriterText(text, active),
-      { initialProps: { text: "Previous reasoning. Full text here.", active: false as boolean } }
-    )
-
-    expect(result.current).toBe("Previous reasoning. Full text here.")
-
-    // Activate — reset and typewrite from scratch
-    rerender({ text: "Previous reasoning. Full text here.", active: true })
-    expect(result.current).toBe("")
-
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("Previous reasoning.")
-
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("Previous reasoning. Full text here.")
-  })
-
-  it("keeps last text when input transiently empties during active streaming", () => {
+  it("keeps last text when input transiently empties during streaming", () => {
     const { result, rerender } = renderHook(
       ({ text }) => useTypewriterText(text, true),
-      { initialProps: { text: "First sentence." as string | null } }
+      { initialProps: { text: "Current thought." as string | null } }
     )
+    expect(result.current).toBe("Current thought.")
 
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("First sentence.")
-
-    // Transient empty during streaming — should NOT clear
     rerender({ text: "" })
-    expect(result.current).toBe("First sentence.")
+    expect(result.current).toBe("Current thought.")
   })
 
-  it("updates displayed text when snapshot changes but sentence count stays the same", () => {
+  it("shows new text after empty gap during streaming", () => {
     const { result, rerender } = renderHook(
       ({ text }) => useTypewriterText(text, true),
-      { initialProps: { text: "First sentence." as string | null } }
+      { initialProps: { text: "Old reasoning." as string | null } }
     )
+    expect(result.current).toBe("Old reasoning.")
 
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("First sentence.")
+    rerender({ text: "" })
+    expect(result.current).toBe("Old reasoning.")
 
-    rerender({ text: "Updated sentence." })
-    expect(result.current).toBe("Updated sentence.")
+    rerender({ text: "New reasoning starts" })
+    expect(result.current).toBe("New reasoning starts")
   })
 
-  it("resets when deactivated then new text arrives on reactivation", () => {
+  it("resets when deactivated then reactivated with new text", () => {
     const { result, rerender } = renderHook(
       ({ text, active }) => useTypewriterText(text, active),
       { initialProps: { text: "First turn." as string | null, active: true as boolean } }
     )
-
-    act(() => { vi.advanceTimersByTime(120) })
     expect(result.current).toBe("First turn.")
 
-    // Deactivate (turn ends) — clears state
     rerender({ text: "", active: false })
     expect(result.current).toBe("")
 
-    // New turn starts
-    rerender({ text: "Second turn. New reasoning.", active: true })
-
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("Second turn.")
-
-    act(() => { vi.advanceTimersByTime(120) })
-    expect(result.current).toBe("Second turn. New reasoning.")
+    rerender({ text: "Second turn. New thought.", active: true })
+    expect(result.current).toBe("New thought.")
   })
 
-  it("handles text without periods as single sentence", () => {
+  it("handles text without periods as single fragment", () => {
     const { result } = renderHook(() =>
       useTypewriterText("Analyzing the user input now", true)
     )
-
-    // No period → single sentence → appears in one tick
-    act(() => { vi.advanceTimersByTime(120) })
     expect(result.current).toBe("Analyzing the user input now")
   })
 })
