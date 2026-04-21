@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 
 const WORD_INTERVAL_MS = 80
+const CATCH_UP_THRESHOLD = 8
 
 export function useTypewriterText(
   cumulativeText: string | null | undefined,
@@ -18,8 +19,6 @@ export function useTypewriterText(
     const text = cumulativeText ?? ""
 
     // Detect isActive transition: false → true → reset so typewriter starts fresh.
-    // This handles the case where processUi.status lags behind activeReasoningState
-    // causing the hook to snap-to-full while inactive, then never recovering.
     const wasInactive = !prevIsActiveRef.current && isActive
     prevIsActiveRef.current = isActive
 
@@ -52,25 +51,18 @@ export function useTypewriterText(
       return
     }
 
-    // Use word count tracking instead of prefix comparison.
-    // sanitizeReasoningSnapshot can modify earlier text between snapshots
-    // (punctuation, markdown stripping), which breaks prefix-based diffing.
-    // Word count is stable: cumulative text only grows in word count.
+    // Only enqueue when word count grows. Ignore decreases — sanitizer can
+    // merge/split tokens between snapshots (e.g., "world . foo" → "world.foo"),
+    // which reduces word count without meaning the text was reset.
+    // Genuine resets are handled by the empty-text branch and wasInactive branch.
     if (newWords.length > enqueuedCountRef.current) {
       const freshWords = newWords.slice(enqueuedCountRef.current)
       queueRef.current.push(...freshWords)
       enqueuedCountRef.current = newWords.length
-    } else if (newWords.length < enqueuedCountRef.current) {
-      // Genuinely shorter text (e.g., reset between turns) — restart
-      displayedWordsRef.current = []
-      setDisplayedText("")
-      queueRef.current = [...newWords]
-      enqueuedCountRef.current = newWords.length
     }
-    // If equal, nothing new to enqueue
   }, [cumulativeText, isActive])
 
-  // Interval loop: dequeue one word at a time
+  // Interval loop: dequeue words with adaptive catch-up speed
   useEffect(() => {
     if (!isActive) {
       if (intervalRef.current) {
@@ -83,8 +75,17 @@ export function useTypewriterText(
     intervalRef.current = setInterval(() => {
       if (queueRef.current.length === 0) return
 
-      const word = queueRef.current.shift()!
-      displayedWordsRef.current.push(word)
+      // Adaptive speed: when queue grows beyond threshold, dequeue multiple
+      // words per tick so the displayed text catches up to the server.
+      // Server produces ~60 words/sec, single-word drain is 12.5 words/sec.
+      // Without catch-up, queue grows unbounded and typewriter lags far behind.
+      const wordsPerTick = queueRef.current.length > CATCH_UP_THRESHOLD
+        ? Math.ceil(queueRef.current.length / 4)
+        : 1
+
+      for (let i = 0; i < wordsPerTick && queueRef.current.length > 0; i++) {
+        displayedWordsRef.current.push(queueRef.current.shift()!)
+      }
       setDisplayedText(displayedWordsRef.current.join(" "))
     }, WORD_INTERVAL_MS)
 

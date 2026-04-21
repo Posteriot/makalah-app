@@ -93,6 +93,67 @@ describe("useTypewriterText", () => {
     expect(result.current).toBe("Hello world. I am thinking")
   })
 
+  it("ignores word count decrease from sanitizer without resetting", () => {
+    const { result, rerender } = renderHook(
+      ({ text }) => useTypewriterText(text, true),
+      { initialProps: { text: "Hello world . foo bar" as string | null } }
+    )
+
+    // Drain all 5 words
+    act(() => { vi.advanceTimersByTime(80 * 5) })
+    expect(result.current).toBe("Hello world . foo bar")
+
+    // Sanitizer merges tokens: "world . foo" → "world.foo", word count drops 5→4
+    // Should NOT reset — just ignore the decrease
+    rerender({ text: "Hello world.foo bar baz" })
+
+    // Only "baz" should be enqueued (position 4, since enqueuedCount was 5 but
+    // newWords.length is now 4 which is < 5, so nothing is enqueued)
+    // Actually with the fix, decreases are ignored, so displayedWords stays at 5
+    // and when word count grows past 5 again, new words get enqueued
+    act(() => { vi.advanceTimersByTime(80) })
+    // No new words enqueued since 4 < 5
+    expect(result.current).toBe("Hello world . foo bar")
+
+    // Now word count grows past the previous high-water mark
+    rerender({ text: "Hello world.foo bar baz qux extra" })
+    // newWords.length = 5, enqueuedCount = 5, equal → nothing enqueued
+    // newWords.length = 6 when "extra" is added
+    rerender({ text: "Hello world.foo bar baz qux extra more" })
+    // newWords.length = 7 > enqueuedCount(5) → enqueue ["extra", "more"]
+    act(() => { vi.advanceTimersByTime(80) })
+    expect(result.current).toBe("Hello world . foo bar extra")
+  })
+
+  it("catches up with adaptive speed when queue grows large", () => {
+    // Build a 20-word string to exceed CATCH_UP_THRESHOLD (8)
+    const words = Array.from({ length: 20 }, (_, i) => `word${i}`)
+    const { result } = renderHook(() =>
+      useTypewriterText(words.join(" "), true)
+    )
+
+    // Queue has 20 words, threshold is 8
+    // First tick: wordsPerTick = ceil(20/4) = 5
+    act(() => { vi.advanceTimersByTime(80) })
+    expect(result.current).toBe(words.slice(0, 5).join(" "))
+
+    // Second tick: queue has 15, wordsPerTick = ceil(15/4) = 4
+    act(() => { vi.advanceTimersByTime(80) })
+    expect(result.current).toBe(words.slice(0, 9).join(" "))
+
+    // Third tick: queue has 11, wordsPerTick = ceil(11/4) = 3
+    act(() => { vi.advanceTimersByTime(80) })
+    expect(result.current).toBe(words.slice(0, 12).join(" "))
+
+    // Fourth tick: queue has 8 (= threshold, not >), wordsPerTick = 1
+    act(() => { vi.advanceTimersByTime(80) })
+    expect(result.current).toBe(words.slice(0, 13).join(" "))
+
+    // Fifth tick: queue has 7 (≤ 8), wordsPerTick = 1
+    act(() => { vi.advanceTimersByTime(80) })
+    expect(result.current).toBe(words.slice(0, 14).join(" "))
+  })
+
   it("pauses naturally when queue is empty", () => {
     const { result } = renderHook(() =>
       useTypewriterText("Hello", true)
