@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from "react"
 const SENTENCE_INTERVAL_MS = 120
 
 /**
- * Split text into sentences by "." delimiter.
- * Each sentence includes its trailing period. Remaining text without
- * a period is treated as an incomplete sentence (not yet emitted).
+ * Split text into chunks by "." delimiter.
+ * Each completed sentence includes its trailing period. Trailing text
+ * without a period is included as-is (emitted immediately as a fragment).
  *
  * "Hello world. I am thinking. Now" → ["Hello world.", "I am thinking.", "Now"]
  */

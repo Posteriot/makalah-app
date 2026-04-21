@@ -43,13 +43,13 @@ describe("extractReasoningDurationSeconds", () => {
   })
 })
 
-describe("persistedDurationSeconds effect guard", () => {
-  it("should not apply persisted duration while still streaming", () => {
-    // This documents the invariant: persisted duration must not
-    // override live state while AI SDK status is "streaming".
-    // The actual guard is in the useEffect at ChatWindow.tsx:2098.
-    // Here we verify the resolve function still works correctly
-    // so the guard is the only change needed.
+describe("resolveProcessElapsedSeconds helper", () => {
+  it("returns persisted duration when available, live elapsed otherwise", () => {
+    // The streaming guard itself lives in the useEffect at ChatWindow.tsx:2102:
+    //   if (status === "submitted" || status === "streaming") return
+    // That guard is not unit-testable without rendering ChatWindow.
+    // This test verifies the helper function behaves correctly so
+    // the guard is the only protection needed against premature firing.
     const live = 8.5
     const persisted = 12.3
     expect(resolveProcessElapsedSeconds(live, persisted)).toBe(persisted)
