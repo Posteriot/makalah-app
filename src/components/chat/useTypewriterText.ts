@@ -26,7 +26,6 @@ export function useTypewriterText(
   isActive: boolean
 ): string {
   const [displayedText, setDisplayedText] = useState("")
-  const sentenceCountRef = useRef(0)
   const prevIsActiveRef = useRef(isActive)
 
   useEffect(() => {
@@ -36,18 +35,13 @@ export function useTypewriterText(
     prevIsActiveRef.current = isActive
 
     if (!text) {
-      if (isActive) {
-        sentenceCountRef.current = 0
-        return
-      }
-      sentenceCountRef.current = 0
+      if (isActive) return
       setDisplayedText("")
       return
     }
 
     if (!isActive) {
       const sentences = splitSentences(text)
-      sentenceCountRef.current = sentences.length
       setDisplayedText(sentences.length > 0 ? sentences[sentences.length - 1] : text)
       return
     }
@@ -55,16 +49,8 @@ export function useTypewriterText(
     const sentences = splitSentences(text)
     if (sentences.length === 0) return
 
-    if (wasInactive) {
-      sentenceCountRef.current = sentences.length
-    }
-
     // Always show the last sentence — it's the most recent thought.
-    // When sentence count grows (new period arrived), the display
-    // naturally switches to the new sentence.
-    const lastSentence = sentences[sentences.length - 1]
-    sentenceCountRef.current = sentences.length
-    setDisplayedText(lastSentence)
+    setDisplayedText(sentences[sentences.length - 1])
   }, [cumulativeText, isActive])
 
   return displayedText
