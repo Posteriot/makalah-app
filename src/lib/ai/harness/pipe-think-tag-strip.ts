@@ -35,6 +35,9 @@ export function pipeThinkTagStrip(
   // Counters for anomaly detection
   let totalTextChars = 0
   let thinkChars = 0
+  // Unique ID per reasoning block (distinct from text block ID)
+  let reasoningBlockCount = 0
+  let activeReasoningId = ""
 
   function emitText(
     controller: ReadableStreamDefaultController,
@@ -51,7 +54,7 @@ export function pipeThinkTagStrip(
   ) {
     if (text.length > 0) {
       thinkChars += text.length
-      controller.enqueue({ type: "reasoning-delta", id: currentTextId, delta: text })
+      controller.enqueue({ type: "reasoning-delta", id: activeReasoningId, delta: text })
     }
   }
 
@@ -63,6 +66,18 @@ export function pipeThinkTagStrip(
         emitReasoning(controller, tagBuffer)
       }
       tagBuffer = ""
+    }
+  }
+
+  function emitReasoningStart(controller: ReadableStreamDefaultController) {
+    activeReasoningId = `think-${++reasoningBlockCount}`
+    controller.enqueue({ type: "reasoning-start", id: activeReasoningId })
+  }
+
+  function emitReasoningEnd(controller: ReadableStreamDefaultController) {
+    if (activeReasoningId) {
+      controller.enqueue({ type: "reasoning-end", id: activeReasoningId })
+      activeReasoningId = ""
     }
   }
 
@@ -100,6 +115,7 @@ export function pipeThinkTagStrip(
           if (remaining.startsWith(OPEN_TAG)) {
             // Full <think> found — switch to inside
             state = "inside"
+            emitReasoningStart(controller)
             pos = openIdx + OPEN_TAG.length
             continue
           } else {
@@ -143,6 +159,7 @@ export function pipeThinkTagStrip(
           if (remaining.startsWith(CLOSE_TAG)) {
             // Full </think> found — switch to outside
             state = "outside"
+            emitReasoningEnd(controller)
             pos = closeIdx + CLOSE_TAG.length
             continue
           } else {
@@ -184,6 +201,7 @@ export function pipeThinkTagStrip(
         if (combined.startsWith(OPEN_TAG)) {
           // Confirmed <think> — switch state, process remainder
           state = "inside"
+          emitReasoningStart(controller)
           processText(controller, combined.slice(OPEN_TAG.length))
         } else {
           // Not <think> — flush combined as text
@@ -202,6 +220,7 @@ export function pipeThinkTagStrip(
         if (combined.startsWith(CLOSE_TAG)) {
           // Confirmed </think> — switch state, process remainder
           state = "outside"
+          emitReasoningEnd(controller)
           processText(controller, combined.slice(CLOSE_TAG.length))
         } else {
           // Not </think> — flush combined as reasoning
@@ -229,6 +248,7 @@ export function pipeThinkTagStrip(
             flushTagBuffer(controller)
 
             if (state === "inside") {
+              emitReasoningEnd(controller)
               console.warn(
                 `[THINK-STRIP] stream ended inside <think> block — ` +
                 `flushed ${thinkChars} chars to reasoning`,
