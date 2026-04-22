@@ -194,12 +194,12 @@ export function ReasoningPanel({
     <>
       <Collapsible open={isOpen} onOpenChange={handleOpenChange} className="reasoning-panel">
         {/* Trigger row: flex container with trigger + Detail button as siblings (no nested buttons) */}
-        <div className="flex w-full items-center gap-2 py-1.5">
+        <div className="flex w-full items-center gap-2 py-1.5 overflow-hidden">
           <CollapsibleTrigger asChild>
             <button
               type="button"
               className={cn(
-                "flex flex-1 min-w-0 items-center gap-2 text-left",
+                "flex flex-1 min-w-0 items-center gap-2 text-left overflow-hidden",
                 "transition-colors hover:bg-[var(--chat-accent)] rounded-action"
               )}
             >
@@ -210,14 +210,14 @@ export function ReasoningPanel({
                 }
               </span>
 
-              <span className="flex-1 min-w-0 text-xs font-mono text-[var(--chat-muted-foreground)]">
+              <span className="flex-1 min-w-0 overflow-hidden text-xs font-mono text-[var(--chat-muted-foreground)]">
                 {isReasoning ? (
                   <span className="flex items-center gap-1">
                     Thinking
                     <ThinkingShimmer />
                   </span>
                 ) : (
-                  <span className="truncate">
+                  <span className="block truncate">
                     {showDuration && (
                       <span className="opacity-60">{formatDuration(durationSeconds!)} — </span>
                     )}
