@@ -587,7 +587,7 @@
 .b-tabs { display: flex; flex-direction: column; gap: 2px; }
 .b-tab {
   display: grid;
-  grid-template-columns: 32px 1fr auto;
+  grid-template-columns: 1fr auto;
   gap: 14px;
   padding: 18px;
   border: 1px solid transparent;
@@ -604,13 +604,6 @@
   border-color: var(--line-2);
   box-shadow: var(--shadow-1);
 }
-.b-tab .num {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--ink-4);
-  padding-top: 2px;
-}
-.b-tab.active .num { color: var(--accent); }
 .b-tab h4 {
   font-family: var(--font-display);
   font-size: 17px;
@@ -1327,6 +1320,44 @@
     transform: translateY(0);
     max-height: 440px;
     pointer-events: auto;
+  }
+  .benefits-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .b-showcase {
+    order: 1;
+    aspect-ratio: 1 / 0.74;
+    border-radius: var(--r-lg);
+  }
+  .b-tabs {
+    order: 2;
+    flex-direction: row;
+    gap: 10px;
+    margin: 0 -20px;
+    padding: 0 20px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .b-tabs::-webkit-scrollbar { display: none; }
+  .b-tab {
+    flex: 0 0 min(78vw, 320px);
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    min-height: 172px;
+    padding: 18px;
+    scroll-snap-align: start;
+  }
+  .b-tab .chev {
+    align-self: start;
+    transform: rotate(-90deg);
+  }
+  .b-tab.active .chev {
+    transform: rotate(-90deg) translateX(2px);
   }
   .stats { grid-template-columns: 1fr 1fr; }
   .stat:nth-child(2) { border-right: 0; }

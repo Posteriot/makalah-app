@@ -46,7 +46,6 @@ const Benefits = () => {
                 className={`b-tab${active === b.id ? " active" : ""}`}
                 onClick={() => setActive(b.id)}
               >
-                <span className="num" style={{ fontFamily: '"Geist Mono"', fontSize: '12px', fontWeight: 400, padding: '6px 12px 6px 8px' }}>{b.num}</span>
                 <div>
                   <h4>{b.title}</h4>
                   <p>{b.desc}</p>
