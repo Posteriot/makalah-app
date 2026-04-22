@@ -115,6 +115,13 @@ export function ReasoningPanel({
   const hasSteps = reasoningSteps.length > 0
   const canOpenActivityPanel = hasSteps
 
+  // --- Observability: mount ---
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") {
+      console.info(`[REASONING-PANEL] mount | hasText=${Boolean(reasoningText)} isReasoning=${isReasoning}`)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // --- Auto-open / auto-close: single effect tracking transitions ---
   const prevIsReasoningRef = useRef(isReasoning)
   useEffect(() => {
@@ -124,17 +131,27 @@ export function ReasoningPanel({
     // Transition: false → true (reasoning just started)
     if (isReasoning && !wasReasoning) {
       isUserScrolledUpRef.current = false
-      if (!hasUserClosedRef.current) {
+      const willOpen = !hasUserClosedRef.current
+      if (willOpen) {
         setIsOpen(true)
       }
       hasUserClosedRef.current = false
+      if (process.env.NODE_ENV !== "production") {
+        console.info(`[REASONING-PANEL] auto-open | transition=false→true open=${willOpen}`)
+      }
       return
     }
 
     // Transition: true → false (reasoning just ended)
     if (!isReasoning && wasReasoning && isOpen && narrativeHeadline) {
+      if (process.env.NODE_ENV !== "production") {
+        console.info(`[REASONING-PANEL] auto-close scheduled | transition=true→false delay=${AUTO_CLOSE_DELAY}ms`)
+      }
       const timer = setTimeout(() => {
         setIsOpen(false)
+        if (process.env.NODE_ENV !== "production") {
+          console.info(`[REASONING-PANEL] auto-close fired | open=false`)
+        }
       }, AUTO_CLOSE_DELAY)
       return () => clearTimeout(timer)
     }
@@ -162,6 +179,9 @@ export function ReasoningPanel({
       hasUserClosedRef.current = true
     } else {
       hasUserClosedRef.current = false
+    }
+    if (process.env.NODE_ENV !== "production") {
+      console.info(`[REASONING-PANEL] user-toggle | open=${open}`)
     }
   }, [])
 

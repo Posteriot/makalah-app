@@ -19,6 +19,10 @@ export function ChatProcessStatusBar({
 
   if (!isProcessing) return null
 
+  if (process.env.NODE_ENV !== "production") {
+    console.info(`[PROGRESS-BAR] render | status=${status} progress=${safeProgress}%`)
+  }
+
   return (
     <div className="pb-2" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
       <div role="status" aria-live="polite">
