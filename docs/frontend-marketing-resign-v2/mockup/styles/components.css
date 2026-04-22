@@ -75,7 +75,7 @@
   border: 1px solid var(--line-2);
   border-radius: var(--r-lg);
   background:
-    radial-gradient(ellipse 320px 140px at 100% 0%, var(--brand-green-soft) 0%, transparent 70%),
+    radial-gradient(ellipse 320px 140px at 100% 0%, var(--sky-soft) 0%, transparent 70%),
     rgba(15, 16, 18, 0.94);
   box-shadow: var(--shadow-2);
   backdrop-filter: blur(18px) saturate(1.2);

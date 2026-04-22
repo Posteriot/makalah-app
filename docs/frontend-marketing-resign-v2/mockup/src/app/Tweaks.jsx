@@ -1,4 +1,4 @@
-/* Tweaks panel + App root */
+/* Tweaks panel */
 
 const BRAND_COLORS = {
   brandGreen:  { c: "oklch(0.7152 0.1549 128.78)", s: "oklch(0.7152 0.1549 128.78 / 0.16)", g: "oklch(0.7152 0.1549 128.78 / 0.38)", ink: "oklch(0.1536 0.0027 248.00)" },
@@ -106,25 +106,4 @@ const Tweaks = ({ defaults }) => {
   );
 };
 
-/* ---------- App ---------- */
-const App = () => (
-  <>
-    <div className="grid-bg" />
-    <div className="grain-bg" />
-    <Navbar />
-    <main>
-      <Hero />
-      <Benefits />
-      <WorkflowFeature />
-      <RefrasaFeature />
-      <Manifesto />
-      <Demo />
-      <Pricing />
-      <FAQ />
-    </main>
-    <Footer />
-    <Tweaks defaults={window.__TWEAKS_DEFAULTS || TWEAK_DEFAULTS} />
-  </>
-);
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+Object.assign(window, { Tweaks, TWEAK_DEFAULTS, applyTweaks });
