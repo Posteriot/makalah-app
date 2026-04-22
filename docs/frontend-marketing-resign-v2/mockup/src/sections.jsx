@@ -377,11 +377,11 @@ const Footer = () => (
     <div className="container">
       <div className="footer-bottom">
         <div className="fb-left">
-          <span>© 2026 Makalah AI.</span>
-          <span>Produk PT The Management Asia.</span>
+          <span>© 2026 Makalah AI</span>
+          <span>Produk PT The Management Asia</span>
         </div>
         <div className="fb-right">
-          <span>Made in Jakarta.</span>
+          <span>Made in Jakarta</span>
           <span>v0.8</span>
         </div>
       </div>
