@@ -2031,6 +2031,13 @@ export function ChatWindow({
     }
   }, [messages])
 
+  const lastAssistantIndex = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") return i
+    }
+    return -1
+  }, [messages])
+
   const technicalReportChatStatus = status === "error" && !isQuotaRejectedError ? "error" : status
   const technicalReportSearchStatus = useMemo(
     () => resolveTechnicalReportSearchStatus(messages),
@@ -3361,6 +3368,42 @@ export function ChatWindow({
                         isStreaming={status === "streaming"}
                         cancelableChoiceMessageIds={cancelableChoiceMessageIds}
                         cancelableApprovalMessageIds={cancelableApprovalMessageIds}
+                        // Reasoning props — scoped to last assistant message only
+                        reasoningHeadline={
+                          index === lastAssistantIndex
+                            ? activeReasoningState.headline
+                            : null
+                        }
+                        isModelReasoning={
+                          index === lastAssistantIndex &&
+                          (status === "submitted" || status === "streaming") &&
+                          Boolean(activeReasoningState.headline)
+                        }
+                        reasoningDurationSeconds={
+                          index === lastAssistantIndex
+                            ? activeReasoningState.persistedDurationSeconds
+                            : undefined
+                        }
+                        reasoningSteps={
+                          index === lastAssistantIndex
+                            ? activeReasoningState.steps
+                            : undefined
+                        }
+                        reasoningTraceMode={
+                          index === lastAssistantIndex
+                            ? activeReasoningState.traceMode
+                            : undefined
+                        }
+                        isReasoningPanelOpen={
+                          index === lastAssistantIndex
+                            ? activeSheet === "proses"
+                            : undefined
+                        }
+                        onReasoningPanelOpenChange={
+                          index === lastAssistantIndex
+                            ? (open: boolean) => handleSheetChange(open ? "proses" : null)
+                            : undefined
+                        }
                       />
                     </div>
                   </div>
