@@ -3368,11 +3368,13 @@ export function ChatWindow({
                         isStreaming={status === "streaming"}
                         cancelableChoiceMessageIds={cancelableChoiceMessageIds}
                         cancelableApprovalMessageIds={cancelableApprovalMessageIds}
-                        // Reasoning props — scoped to last assistant message only
+                        // Reasoning props — live data for streaming message, persisted for historical
                         reasoningHeadline={
                           index === lastAssistantIndex
                             ? activeReasoningState.headline
-                            : null
+                            : message.role === "assistant"
+                              ? extractReasoningHeadline(displayMessage, extractReasoningTraceSteps(displayMessage))
+                              : null
                         }
                         isModelReasoning={
                           index === lastAssistantIndex &&
@@ -3381,12 +3383,16 @@ export function ChatWindow({
                         reasoningDurationSeconds={
                           index === lastAssistantIndex
                             ? activeReasoningState.persistedDurationSeconds
-                            : undefined
+                            : message.role === "assistant"
+                              ? extractReasoningDurationSeconds(displayMessage)
+                              : undefined
                         }
                         reasoningSteps={
                           index === lastAssistantIndex
                             ? activeReasoningState.steps
-                            : undefined
+                            : message.role === "assistant"
+                              ? extractReasoningTraceSteps(displayMessage)
+                              : undefined
                         }
                         isReasoningPanelOpen={
                           index === lastAssistantIndex
