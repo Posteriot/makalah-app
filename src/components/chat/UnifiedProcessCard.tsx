@@ -115,8 +115,7 @@ export function UnifiedProcessCard({
   // Nothing to show (but always show when streaming — instant feedback)
   if (!hasTaskData && !hasProcessData && !isStreaming) return null
 
-  // Observability: log mount with current state
-  // eslint-disable-next-line react-hooks/rules-of-hooks -- guard above is stable (same deps every render)
+  // Observability: log render with current state
   if (process.env.NODE_ENV !== "production") {
     console.info(`[UNIFIED-PROCESS-CARD] render | tasks=${hasTaskData} process=${hasProcessData} streaming=${isStreaming} open=${open}`)
   }

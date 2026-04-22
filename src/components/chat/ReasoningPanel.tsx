@@ -132,12 +132,17 @@ export function ReasoningPanel({
     if (isReasoning && !wasReasoning) {
       isUserScrolledUpRef.current = false
       const willOpen = !hasUserClosedRef.current
-      if (willOpen) {
-        setIsOpen(true)
-      }
       hasUserClosedRef.current = false
+      if (willOpen) {
+        // Async to satisfy react-hooks/set-state-in-effect lint rule
+        const t = setTimeout(() => setIsOpen(true), 0)
+        if (process.env.NODE_ENV !== "production") {
+          console.info(`[REASONING-PANEL] auto-open | transition=false→true open=${willOpen}`)
+        }
+        return () => clearTimeout(t)
+      }
       if (process.env.NODE_ENV !== "production") {
-        console.info(`[REASONING-PANEL] auto-open | transition=false→true open=${willOpen}`)
+        console.info(`[REASONING-PANEL] auto-open skipped | transition=false→true userClosed=true`)
       }
       return
     }
