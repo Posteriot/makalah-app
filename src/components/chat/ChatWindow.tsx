@@ -2031,6 +2031,13 @@ export function ChatWindow({
     }
   }, [messages])
 
+  const lastAssistantIndex = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") return i
+    }
+    return -1
+  }, [messages])
+
   const technicalReportChatStatus = status === "error" && !isQuotaRejectedError ? "error" : status
   const technicalReportSearchStatus = useMemo(
     () => resolveTechnicalReportSearchStatus(messages),
@@ -3361,6 +3368,42 @@ export function ChatWindow({
                         isStreaming={status === "streaming"}
                         cancelableChoiceMessageIds={cancelableChoiceMessageIds}
                         cancelableApprovalMessageIds={cancelableApprovalMessageIds}
+                        // Reasoning props — live data for streaming message, persisted for historical
+                        reasoningHeadline={
+                          index === lastAssistantIndex
+                            ? activeReasoningState.headline
+                            : message.role === "assistant"
+                              ? extractReasoningHeadline(displayMessage, extractReasoningTraceSteps(displayMessage))
+                              : null
+                        }
+                        isModelReasoning={
+                          index === lastAssistantIndex &&
+                          (status === "submitted" || status === "streaming")
+                        }
+                        reasoningDurationSeconds={
+                          index === lastAssistantIndex
+                            ? activeReasoningState.persistedDurationSeconds
+                            : message.role === "assistant"
+                              ? extractReasoningDurationSeconds(displayMessage)
+                              : undefined
+                        }
+                        reasoningSteps={
+                          index === lastAssistantIndex
+                            ? activeReasoningState.steps
+                            : message.role === "assistant"
+                              ? extractReasoningTraceSteps(displayMessage)
+                              : undefined
+                        }
+                        isReasoningPanelOpen={
+                          index === lastAssistantIndex
+                            ? activeSheet === "proses"
+                            : undefined
+                        }
+                        onReasoningPanelOpenChange={
+                          index === lastAssistantIndex
+                            ? (open: boolean) => handleSheetChange(open ? "proses" : null)
+                            : undefined
+                        }
                       />
                     </div>
                   </div>
@@ -3465,16 +3508,8 @@ export function ChatWindow({
         </div>
 
         <ChatProcessStatusBar
-          visible={processUi.visible && !effectivePaperUiMode}
           status={processUi.status}
           progress={processUi.progress}
-          elapsedSeconds={processUi.elapsedSeconds}
-          persistedDurationSeconds={activeReasoningState.persistedDurationSeconds}
-          reasoningSteps={activeReasoningState.steps}
-          reasoningHeadline={activeReasoningState.headline}
-          reasoningTraceMode={activeReasoningState.traceMode}
-          isPanelOpen={activeSheet === "proses"}
-          onPanelOpenChange={(open) => handleSheetChange(open ? "proses" : null)}
         />
         <SourcesPanel
           open={activeSheet === "sources"}

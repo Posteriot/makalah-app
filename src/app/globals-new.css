@@ -1444,6 +1444,21 @@
   }
 }
 
+/* Reasoning panel collapsible transition — scoped to avoid UnifiedProcessCard regression */
+[data-chat-scope] .reasoning-panel [data-slot="collapsible-content"] {
+  overflow: hidden;
+  transition: height 200ms ease-out, opacity 200ms ease-out;
+}
+
+[data-chat-scope] .reasoning-panel [data-slot="collapsible-content"][data-state="closed"] {
+  height: 0;
+  opacity: 0;
+}
+
+[data-chat-scope] .reasoning-panel [data-slot="collapsible-content"][data-state="open"] {
+  opacity: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-chat-scope] .animate-chat-thought-breathe,
   [data-chat-scope] .animate-chat-thought-dot,
@@ -1467,6 +1482,10 @@
   .animate-ellipsis::after {
     animation: none;
     content: "...";
+  }
+
+  [data-chat-scope] .reasoning-panel [data-slot="collapsible-content"] {
+    transition: none;
   }
 }
 

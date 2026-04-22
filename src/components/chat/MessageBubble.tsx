@@ -33,6 +33,8 @@ import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-
 import { extractLegacySourcesFromText } from "@/lib/citations/legacy-source-extractor"
 import { splitInternalThought } from "@/lib/ai/internal-thought-separator"
 import { buildApprovedStageMessageFromLabel } from "@/lib/paper/approval-copy"
+import { ReasoningPanel } from "./ReasoningPanel"
+import { type ReasoningTraceStep } from "./ReasoningTracePanel"
 import { JsonRendererChoiceBlock } from "./json-renderer/JsonRendererChoiceBlock"
 import {
     parseChoiceSpecForRender,
@@ -194,6 +196,19 @@ interface MessageBubbleProps {
     cancelableChoiceMessageIds?: Set<string>
     /** IDs of messages eligible for approval cancel (computed in ChatWindow) */
     cancelableApprovalMessageIds?: Set<string>
+    // Reasoning panel props (scoped: only last message during streaming gets live data)
+    /** Cumulative reasoning headline text */
+    reasoningHeadline?: string | null
+    /** True when model is actively reasoning */
+    isModelReasoning?: boolean
+    /** Reasoning duration in seconds */
+    reasoningDurationSeconds?: number
+    /** Reasoning trace steps */
+    reasoningSteps?: ReasoningTraceStep[]
+    /** ReasoningActivityPanel open state (controlled by ChatWindow activeSheet) */
+    isReasoningPanelOpen?: boolean
+    /** ReasoningActivityPanel open change handler */
+    onReasoningPanelOpenChange?: (open: boolean) => void
 }
 
 export function MessageBubble({
@@ -218,6 +233,12 @@ export function MessageBubble({
     isStreaming,
     cancelableChoiceMessageIds,
     cancelableApprovalMessageIds,
+    reasoningHeadline,
+    isModelReasoning = false,
+    reasoningDurationSeconds,
+    reasoningSteps,
+    isReasoningPanelOpen,
+    onReasoningPanelOpenChange,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
@@ -1501,6 +1522,20 @@ export function MessageBubble({
                             </div>
                         )
                     })()}
+
+                    {/* Reasoning Panel — above UnifiedProcessCard, above message content */}
+                    {(reasoningHeadline || isModelReasoning) && isAssistant && (
+                        <div className="mb-2">
+                            <ReasoningPanel
+                                reasoningText={reasoningHeadline}
+                                isReasoning={isModelReasoning}
+                                durationSeconds={reasoningDurationSeconds}
+                                reasoningSteps={reasoningSteps}
+                                isPanelOpen={isReasoningPanelOpen}
+                                onPanelOpenChange={onReasoningPanelOpenChange}
+                            />
+                        </div>
+                    )}
 
                     {showUnifiedCard && (
                         <div className="mb-4">
