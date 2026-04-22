@@ -20,30 +20,29 @@
   /* Lines */
   --line: rgba(255, 255, 255, 0.06);
   --line-2: rgba(255, 255, 255, 0.10);
-  --line-hot: rgba(212, 255, 86, 0.30);
 
-  /* Accent: electric lime (primary), violet (data viz secondary), sky */
-  --accent: #D4FF56;
-  --accent-soft: rgba(212, 255, 86, 0.14);
-  --accent-glow: rgba(212, 255, 86, 0.40);
-  --accent-ink: #0B0C0D;
-
-  --violet: #B19CFF;
-  --violet-soft: rgba(177, 156, 255, 0.14);
+  /* Brand colors from the Makalah logo */
+  --brand-green: #85B540;
+  --brand-green-soft: rgba(133, 181, 64, 0.16);
+  --brand-green-glow: rgba(133, 181, 64, 0.38);
+  --brand-green-line: rgba(133, 181, 64, 0.30);
+  --brand-green-ink: #0B0C0D;
 
   --sky: #7EE8FF;
+  --sky-soft: rgba(126, 232, 255, 0.14);
+  --sky-glow: rgba(126, 232, 255, 0.30);
+  --sky-line: rgba(126, 232, 255, 0.22);
 
   /* Status (academic) */
   --ok: #7FE7A6;
   --warn: #FFC46B;
 
-  /* Amber — warm secondary accent (verified/trust, completed, brand warmth) */
-  --amber: #F4B942;
-  --amber-deep: #E09B2D;
-  --amber-soft: rgba(244, 185, 66, 0.14);
-  --amber-glow: rgba(244, 185, 66, 0.30);
-  --amber-line: rgba(244, 185, 66, 0.22);
-  --amber-ink: #3d2a08;
+  --brand-orange: #F15523;
+  --brand-orange-deep: #B93A13;
+  --brand-orange-soft: rgba(241, 85, 35, 0.16);
+  --brand-orange-glow: rgba(241, 85, 35, 0.32);
+  --brand-orange-line: rgba(241, 85, 35, 0.26);
+  --brand-orange-ink: #FFF7F2;
 
   /* Radii / shadows */
   --r-xs: 4px;
@@ -54,7 +53,7 @@
 
   --shadow-1: 0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 2px rgba(0,0,0,0.4);
   --shadow-2: 0 20px 60px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.04) inset;
-  --shadow-hot: 0 0 0 1px rgba(212,255,86,0.20), 0 20px 60px rgba(212,255,86,0.10);
+  --shadow-hot: 0 0 0 1px rgba(133,181,64,0.22), 0 20px 60px rgba(133,181,64,0.12);
 
   /* Type */
   --font-display: "Geist", "General Sans", ui-sans-serif, -apple-system, system-ui, sans-serif;
@@ -86,7 +85,7 @@ a { color: inherit; text-decoration: none; }
 img, svg { display: block; max-width: 100%; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 
-::selection { background: var(--accent); color: var(--accent-ink); }
+::selection { background: var(--brand-green); color: var(--brand-green-ink); }
 
 /* Global grid backdrop (subtle engineering grid) */
 .grid-bg {
@@ -173,12 +172,12 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .btn .k { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); padding: 2px 6px; border: 1px solid var(--line-2); border-radius: 3px; }
 
 .btn-primary {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-color: var(--accent);
+  background: var(--brand-green);
+  color: var(--brand-green-ink);
+  border-color: var(--brand-green);
   font-weight: 600;
 }
-.btn-primary:hover { background: #E2FF7A; border-color: #E2FF7A; box-shadow: 0 10px 40px var(--accent-glow); }
+.btn-primary:hover { background: #9BCB55; border-color: #9BCB55; box-shadow: 0 10px 40px var(--brand-green-glow); }
 
 .btn-ghost { border-color: transparent; color: var(--ink-2); }
 .btn-ghost:hover { color: var(--ink); }
@@ -198,11 +197,11 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--brand-green);
 }
 .eyebrow::before {
-  content: ""; width: 6px; height: 6px; background: var(--accent);
-  box-shadow: 0 0 10px var(--accent-glow);
+  content: ""; width: 6px; height: 6px; background: var(--brand-green);
+  box-shadow: 0 0 10px var(--brand-green-glow);
 }
 /* Per-comment: remove the square + gap on the workflow/refrasa eyebrows,
    keep just the "/ TEXT" content. */

@@ -1,5 +1,5 @@
 # Makalah AI Design System Reference
-Dokumen ini disusun sebagai panduan desain (System Design Doc) bagi pengembangan halaman-halaman Makalah AI ke depannya. Warna di sini sudah dikonversi seluruhnya ke format **OKLCH** agar mendukung gamut lebar (Wide Gamut) dan siap diintegrasikan menggunakan Tailwind CSS v4+.
+Dokumen ini disusun sebagai panduan desain (System Design Doc) bagi pengembangan halaman-halaman Makalah AI ke depannya. Warna dasar gelap tetap didokumentasikan dalam format OKLCH, sementara warna brand utama dicatat dengan nilai logo sumber dan turunan `rgba()` agar asal brand-nya tidak ambigu.
 
 ## 1. Design Tokens (Primitif & Semantik)
 
@@ -24,18 +24,19 @@ Tingkat opasitas teks dari judul utama hingga teks meta.
 ### 1.3 Borders (Garis & Pemisah)
 - `--line` (`oklch(1 0 0 / 0.06)`): Border pemisah tipis sangat halus, batas section standar.
 - `--line-2` (`oklch(1 0 0 / 0.10)`): Border lebih kontras untuk membatasi UI control atau tombol (button / border-card).
-- `--line-hot` (`oklch(0.939 0.196 122.56 / 0.30)`): Border *active* yang terasosiasi dengan elemen sedang dihighlight/difokuskan.
+- `--brand-green-line` (`rgba(133, 181, 64, 0.30)`): Border *active* berbasis hijau logo.
 
 ### 1.4 Accents & Status (Brand Colors)
-**Warna Utama (Primary Accent): Electric Lime**
-- `--accent` (`oklch(0.939 0.196 122.56)`): CTA utama, status aktif, sorotan elemen terpenting. Dipasangkan dengan `--accent-ink (oklch(0.154 0.003 248.00))` untuk teks di dalamnya agar kontras.
-- Variasi aksen utama: `--accent-soft` (`oklch(0.939 0.196 122.56 / 0.14)`), `--accent-glow` (`oklch(0.939 0.196 122.56 / 0.40)`).
+**Warna Brand Utama: Brand Green**
+- `--brand-green` (`#85B540`): CTA utama, status aktif, dan sorotan elemen terpenting. Warna ini diturunkan langsung dari hijau logo Makalah. Dipasangkan dengan `--brand-green-ink (#0B0C0D)` untuk teks di dalamnya agar kontras.
+- Variasi brand green: `--brand-green-soft` (`rgba(133, 181, 64, 0.16)`), `--brand-green-glow` (`rgba(133, 181, 64, 0.38)`), `--brand-green-line` (`rgba(133, 181, 64, 0.30)`).
 
 **Warna Pendukung (Secondary Accents):**
 Aksen tematik yang digunakan untuk pembeda *tag* atau elemen dekorasi spesifik.
-- `--violet` (`oklch(0.750 0.141 292.42)`) & `--violet-soft` (`oklch(0.750 0.141 292.42 / 0.14)`)
-- `--sky` (`oklch(0.876 0.103 213.51)`)
-- `--amber` (`oklch(0.820 0.147 81.17)`) & `--amber-deep` (`oklch(0.740 0.143 73.63)`): Aksen peringatan hangat, review proses, dan kehangatan *brand*.
+- `--sky` (`oklch(0.876 0.103 213.51)`) & `--sky-soft` (`oklch(0.876 0.103 213.51 / 0.14)`)
+- `--brand-orange` (`#F15523`) & `--brand-orange-deep` (`#B93A13`): Aksen hangat dari orange logo untuk trust, verified, completed, pricing highlight, dan kehangatan brand.
+
+Aturan keterbacaan untuk orange dibuat keras: orange dipakai sebagai fill, border, glow, atau tint. Jangan pakai orange pekat sebagai teks di atas dark/hitam, jangan pakai teks orange di atas surface orange, dan jangan pakai teks gelap/hitam di atas fill orange. Elemen orange solid yang membawa teks memakai `--brand-orange-deep` sebagai fill dan `--brand-orange-ink` (`#FFF7F2`) sebagai teks; teks di atas surface dark/orange-soft memakai `--ink` atau `--ink-2`.
 
 **Status Fungsional:**
 - `--ok` (`oklch(0.848 0.134 154.85)`): Sukses, tanda cek, status jalan/hijau.

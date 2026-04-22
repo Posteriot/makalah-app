@@ -1,11 +1,10 @@
 /* Tweaks panel + App root */
 
-const ACCENTS = {
-  lime:    { c: "#D4FF56", s: "rgba(212,255,86,0.14)", g: "rgba(212,255,86,0.4)", ink: "#0B0C0D" },
-  amber:   { c: "#FFB547", s: "rgba(255,181,71,0.14)",  g: "rgba(255,181,71,0.4)",  ink: "#0B0C0D" },
-  violet:  { c: "#B19CFF", s: "rgba(177,156,255,0.14)", g: "rgba(177,156,255,0.4)", ink: "#0B0C0D" },
-  sky:     { c: "#7EE8FF", s: "rgba(126,232,255,0.14)", g: "rgba(126,232,255,0.4)", ink: "#0B0C0D" },
-  coral:   { c: "#FF8A6B", s: "rgba(255,138,107,0.14)", g: "rgba(255,138,107,0.4)", ink: "#0B0C0D" }
+const BRAND_COLORS = {
+  brandGreen:  { c: "#85B540", s: "rgba(133,181,64,0.16)", g: "rgba(133,181,64,0.38)", ink: "#0B0C0D" },
+  brandOrange: { c: "#F15523", s: "rgba(241,85,35,0.16)",   g: "rgba(241,85,35,0.32)",  ink: "#FFF7F2" },
+  sky:         { c: "#7EE8FF", s: "rgba(126,232,255,0.14)",  g: "rgba(126,232,255,0.30)", ink: "#0B0C0D" },
+  coral:       { c: "#FF8A6B", s: "rgba(255,138,107,0.14)",  g: "rgba(255,138,107,0.4)",  ink: "#0B0C0D" }
 };
 
 const DENSITIES = {
@@ -15,7 +14,7 @@ const DENSITIES = {
 };
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "accent": "lime",
+  "brandColor": "brandGreen",
   "density": "default",
   "grain": true,
   "grid": true
@@ -23,12 +22,12 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 
 const applyTweaks = (tw) => {
   const r = document.documentElement;
-  const a = ACCENTS[tw.accent] || ACCENTS.lime;
-  r.style.setProperty("--accent", a.c);
-  r.style.setProperty("--accent-soft", a.s);
-  r.style.setProperty("--accent-glow", a.g);
-  r.style.setProperty("--accent-ink", a.ink);
-  r.style.setProperty("--line-hot", a.s.replace("0.14", "0.30"));
+  const brandColor = BRAND_COLORS[tw.brandColor] || BRAND_COLORS.brandGreen;
+  r.style.setProperty("--brand-green", brandColor.c);
+  r.style.setProperty("--brand-green-soft", brandColor.s);
+  r.style.setProperty("--brand-green-glow", brandColor.g);
+  r.style.setProperty("--brand-green-ink", brandColor.ink);
+  r.style.setProperty("--brand-green-line", brandColor.s.replace(/0\.1[46]/, "0.30"));
 
   const d = DENSITIES[tw.density] || DENSITIES.default;
   document.querySelectorAll(".section-frame").forEach(el => {
@@ -68,13 +67,13 @@ const Tweaks = ({ defaults }) => {
     <div className={`tweaks${open ? " open" : ""}`}>
       <h6>Tweaks <span className="dot" /></h6>
       <div className="tw-row">
-        <label>Accent</label>
+        <label>Brand color</label>
         <div className="tw-swatches">
-          {Object.entries(ACCENTS).map(([k, v]) => (
+          {Object.entries(BRAND_COLORS).map(([k, v]) => (
             <div key={k}
-              className={`tw-sw${tw.accent === k ? " active" : ""}`}
+              className={`tw-sw${tw.brandColor === k ? " active" : ""}`}
               style={{ background: v.c }}
-              onClick={() => update({ accent: k })}
+              onClick={() => update({ brandColor: k })}
               title={k}
             />
           ))}

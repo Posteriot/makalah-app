@@ -263,7 +263,7 @@ const Pricing = () => (
 
       <Reveal delay={3}>
         <div style={{ textAlign: "center", marginTop: 32, fontFamily: "var(--font-sans)", fontSize: 12, color: "var(--ink-3)" }}>
-          Butuh plan kampus/lab? <a href="#" style={{ color: "var(--accent)" }}>Mari obrolkan →</a>
+          Butuh plan kampus/lab? <a href="#" style={{ color: "var(--brand-green)" }}>Mari obrolkan →</a>
         </div>
       </Reveal>
     </div>
@@ -311,7 +311,7 @@ const FAQ = () => {
               </div>
               <h2 className="sec-title">Sebelum<br />Kamu tanya.</h2>
               <p className="sec-desc" style={{ marginTop: 16 }}>
-                Enam pertanyaan yang paling sering kami terima. Masih bingung? → <a href="#" style={{ color: "var(--accent)" }}>dukungan@makalah.ai</a>
+                Enam pertanyaan yang paling sering kami terima. Masih bingung? → <a href="#" style={{ color: "var(--brand-green)" }}>dukungan@makalah.ai</a>
               </p>
             </div>
           </Reveal>
