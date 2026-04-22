@@ -166,12 +166,12 @@ const Demo = () => {
           <div className="sec-head">
             <div>
               <div className="sec-eyebrow">
-                <span className="l">/ live preview</span>
+                <span className="l">/ Uji Pratinjau</span>
               </div>
               <h2 className="sec-title">Coba langsung.<br /><em>Daftar dulu.</em></h2>
             </div>
             <p className="sec-desc">
-              Ketik topik — lihat cara Makalah AI mengeksplorasi ide, menyusun abstrak + pendahuluan, lengkap dengan sitasi real. Progress penyusunan bisa dipantau melalui activity bar, pratinjau paper jadi pun bisa dilihat lewat fitur Naskah.
+              Daftar sekarang. Sign up mudah menggunakan Google atau registrasi manusal. Masuki halaman chat. Lalu, ketik topik — lihat cara Makalah AI mengeksplorasi ide, menyusun abstrak + pendahuluan, lengkap dengan sitasi real. Progress penyusunan bisa dipantau melalui activity bar, pratinjau paper jadi pun bisa dilihat lewat fitur Naskah.
             </p>
           </div>
         </Reveal>

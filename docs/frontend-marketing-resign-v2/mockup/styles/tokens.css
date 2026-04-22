@@ -4,45 +4,45 @@
 
 :root, .theme-dark {
   /* Surfaces */
-  --bg: #0B0C0D;
-  --bg-1: #0F1012;
-  --bg-2: #141518;
-  --bg-elev: rgba(255, 255, 255, 0.03);
-  --bg-panel: rgba(20, 22, 25, 0.72);
+  --bg: oklch(0.1536 0.0027 248.00);
+  --bg-1: oklch(0.1728 0.0044 264.45);
+  --bg-2: oklch(0.1959 0.0062 271.09);
+  --bg-elev: oklch(1 0 0 / 0.03);
+  --bg-panel: oklch(0.1959 0.0062 271.09 / 0.72);
 
   /* Ink */
-  --ink: #F2F2EE;
-  --ink-2: #C7C7C0;
-  --ink-3: #8A8A83;
-  --ink-4: #5A5A55;
-  --ink-5: #3A3A36;
+  --ink: oklch(0.9600 0.0053 106.50);
+  --ink-2: oklch(0.8277 0.0096 106.61);
+  --ink-3: oklch(0.6313 0.0103 106.69);
+  --ink-4: oklch(0.4660 0.0079 106.70);
+  --ink-5: oklch(0.3471 0.0068 106.75);
 
   /* Lines */
-  --line: rgba(255, 255, 255, 0.06);
-  --line-2: rgba(255, 255, 255, 0.10);
+  --line: oklch(1 0 0 / 0.06);
+  --line-2: oklch(1 0 0 / 0.10);
 
   /* Brand colors from the Makalah logo */
-  --brand-green: #85B540;
-  --brand-green-soft: rgba(133, 181, 64, 0.16);
-  --brand-green-glow: rgba(133, 181, 64, 0.38);
-  --brand-green-line: rgba(133, 181, 64, 0.30);
-  --brand-green-ink: #0B0C0D;
+  --brand-green: oklch(0.7152 0.1549 128.78);
+  --brand-green-soft: oklch(0.7152 0.1549 128.78 / 0.16);
+  --brand-green-glow: oklch(0.7152 0.1549 128.78 / 0.38);
+  --brand-green-line: oklch(0.7152 0.1549 128.78 / 0.30);
+  --brand-green-ink: oklch(0.1536 0.0027 248.00);
 
-  --sky: #7EE8FF;
-  --sky-soft: rgba(126, 232, 255, 0.14);
-  --sky-glow: rgba(126, 232, 255, 0.30);
-  --sky-line: rgba(126, 232, 255, 0.22);
+  --sky: oklch(0.8756 0.1030 213.51);
+  --sky-soft: oklch(0.8756 0.1030 213.51 / 0.14);
+  --sky-glow: oklch(0.8756 0.1030 213.51 / 0.30);
+  --sky-line: oklch(0.8756 0.1030 213.51 / 0.22);
 
   /* Status (academic) */
-  --ok: #7FE7A6;
-  --warn: #FFC46B;
+  --ok: oklch(0.8480 0.1343 154.85);
+  --warn: oklch(0.8561 0.1260 75.97);
 
-  --brand-orange: #F15523;
-  --brand-orange-deep: #B93A13;
-  --brand-orange-soft: rgba(241, 85, 35, 0.16);
-  --brand-orange-glow: rgba(241, 85, 35, 0.32);
-  --brand-orange-line: rgba(241, 85, 35, 0.26);
-  --brand-orange-ink: #FFF7F2;
+  --brand-orange: oklch(0.6546 0.2006 36.90);
+  --brand-orange-deep: oklch(0.5304 0.1698 36.07);
+  --brand-orange-soft: oklch(0.6546 0.2006 36.90 / 0.16);
+  --brand-orange-glow: oklch(0.6546 0.2006 36.90 / 0.32);
+  --brand-orange-line: oklch(0.6546 0.2006 36.90 / 0.26);
+  --brand-orange-ink: oklch(0.9810 0.0109 54.50);
 
   /* Radii / shadows */
   --r-xs: 4px;
@@ -51,9 +51,9 @@
   --r-lg: 16px;
   --r-xl: 24px;
 
-  --shadow-1: 0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 2px rgba(0,0,0,0.4);
-  --shadow-2: 0 20px 60px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.04) inset;
-  --shadow-hot: 0 0 0 1px rgba(133,181,64,0.22), 0 20px 60px rgba(133,181,64,0.12);
+  --shadow-1: 0 1px 0 oklch(1 0 0 / 0.04) inset, 0 1px 2px oklch(0 0 0 / 0.40);
+  --shadow-2: 0 20px 60px oklch(0 0 0 / 0.45), 0 1px 0 oklch(1 0 0 / 0.04) inset;
+  --shadow-hot: 0 0 0 1px oklch(0.7152 0.1549 128.78 / 0.22), 0 20px 60px oklch(0.7152 0.1549 128.78 / 0.12);
 
   /* Type */
   --font-display: "Geist", "General Sans", ui-sans-serif, -apple-system, system-ui, sans-serif;
@@ -91,11 +91,11 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .grid-bg {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background-image:
-    linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
+    linear-gradient(to right, oklch(1 0 0 / 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(1 0 0 / 0.025) 1px, transparent 1px);
   background-size: 64px 64px, 64px 64px;
-  mask-image: radial-gradient(ellipse at 50% 20%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.1) 80%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse at 50% 20%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.1) 80%, transparent 100%);
+  mask-image: radial-gradient(ellipse at 50% 20%, oklch(0 0 0 / 1) 0%, oklch(0 0 0 / 0.60) 40%, oklch(0 0 0 / 0.10) 80%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 20%, oklch(0 0 0 / 1) 0%, oklch(0 0 0 / 0.60) 40%, oklch(0 0 0 / 0.10) 80%, transparent 100%);
 }
 
 .grain-bg {
@@ -168,7 +168,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   transition: all 0.2s var(--ease);
   white-space: nowrap;
 }
-.btn:hover { border-color: rgba(255,255,255,0.24); background: var(--bg-elev); }
+.btn:hover { border-color: oklch(1 0 0 / 0.24); background: var(--bg-elev); }
 .btn .k { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); padding: 2px 6px; border: 1px solid var(--line-2); border-radius: 3px; }
 
 .btn-primary {
@@ -177,7 +177,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   border-color: var(--brand-green);
   font-weight: 600;
 }
-.btn-primary:hover { background: #9BCB55; border-color: #9BCB55; box-shadow: 0 10px 40px var(--brand-green-glow); }
+.btn-primary:hover { background: oklch(0.7837 0.1563 128.15); border-color: oklch(0.7837 0.1563 128.15); box-shadow: 0 10px 40px var(--brand-green-glow); }
 
 .btn-ghost { border-color: transparent; color: var(--ink-2); }
 .btn-ghost:hover { color: var(--ink); }

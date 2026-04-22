@@ -1,10 +1,10 @@
 /* Tweaks panel + App root */
 
 const BRAND_COLORS = {
-  brandGreen:  { c: "#85B540", s: "rgba(133,181,64,0.16)", g: "rgba(133,181,64,0.38)", ink: "#0B0C0D" },
-  brandOrange: { c: "#F15523", s: "rgba(241,85,35,0.16)",   g: "rgba(241,85,35,0.32)",  ink: "#FFF7F2" },
-  sky:         { c: "#7EE8FF", s: "rgba(126,232,255,0.14)",  g: "rgba(126,232,255,0.30)", ink: "#0B0C0D" },
-  coral:       { c: "#FF8A6B", s: "rgba(255,138,107,0.14)",  g: "rgba(255,138,107,0.4)",  ink: "#0B0C0D" }
+  brandGreen:  { c: "oklch(0.7152 0.1549 128.78)", s: "oklch(0.7152 0.1549 128.78 / 0.16)", g: "oklch(0.7152 0.1549 128.78 / 0.38)", ink: "oklch(0.1536 0.0027 248.00)" },
+  brandOrange: { c: "oklch(0.6546 0.2006 36.90)", s: "oklch(0.6546 0.2006 36.90 / 0.16)", g: "oklch(0.6546 0.2006 36.90 / 0.32)", ink: "oklch(0.9810 0.0109 54.50)" },
+  sky:         { c: "oklch(0.8756 0.1030 213.51)", s: "oklch(0.8756 0.1030 213.51 / 0.14)", g: "oklch(0.8756 0.1030 213.51 / 0.30)", ink: "oklch(0.1536 0.0027 248.00)" },
+  coral:       { c: "oklch(0.7556 0.1491 35.80)", s: "oklch(0.7556 0.1491 35.80 / 0.14)", g: "oklch(0.7556 0.1491 35.80 / 0.40)", ink: "oklch(0.1536 0.0027 248.00)" }
 };
 
 const DENSITIES = {
@@ -27,7 +27,7 @@ const applyTweaks = (tw) => {
   r.style.setProperty("--brand-green-soft", brandColor.s);
   r.style.setProperty("--brand-green-glow", brandColor.g);
   r.style.setProperty("--brand-green-ink", brandColor.ink);
-  r.style.setProperty("--brand-green-line", brandColor.s.replace(/0\.1[46]/, "0.30"));
+  r.style.setProperty("--brand-green-line", brandColor.s.replace(/0\.(14|16)/, "0.30"));
 
   const d = DENSITIES[tw.density] || DENSITIES.default;
   document.querySelectorAll(".section-frame").forEach(el => {
