@@ -3508,16 +3508,8 @@ export function ChatWindow({
         </div>
 
         <ChatProcessStatusBar
-          visible={processUi.visible && !effectivePaperUiMode}
           status={processUi.status}
           progress={processUi.progress}
-          elapsedSeconds={processUi.elapsedSeconds}
-          persistedDurationSeconds={activeReasoningState.persistedDurationSeconds}
-          reasoningSteps={activeReasoningState.steps}
-          reasoningHeadline={activeReasoningState.headline}
-          reasoningTraceMode={activeReasoningState.traceMode}
-          isPanelOpen={activeSheet === "proses"}
-          onPanelOpenChange={(open) => handleSheetChange(open ? "proses" : null)}
         />
         <SourcesPanel
           open={activeSheet === "sources"}
