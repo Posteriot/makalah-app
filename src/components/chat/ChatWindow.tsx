@@ -3376,8 +3376,7 @@ export function ChatWindow({
                         }
                         isModelReasoning={
                           index === lastAssistantIndex &&
-                          (status === "submitted" || status === "streaming") &&
-                          Boolean(activeReasoningState.headline)
+                          (status === "submitted" || status === "streaming")
                         }
                         reasoningDurationSeconds={
                           index === lastAssistantIndex

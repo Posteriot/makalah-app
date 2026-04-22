@@ -102,7 +102,7 @@ export function ReasoningPanel({
   isPanelOpen,
   onPanelOpenChange,
 }: ReasoningPanelProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(isReasoning)
   const hasUserClosedRef = useRef(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const isUserScrolledUpRef = useRef(false)
