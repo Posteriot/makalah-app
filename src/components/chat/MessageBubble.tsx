@@ -205,8 +205,6 @@ interface MessageBubbleProps {
     reasoningDurationSeconds?: number
     /** Reasoning trace steps */
     reasoningSteps?: ReasoningTraceStep[]
-    /** Reasoning trace mode */
-    reasoningTraceMode?: "curated" | "transparent"
     /** ReasoningActivityPanel open state (controlled by ChatWindow activeSheet) */
     isReasoningPanelOpen?: boolean
     /** ReasoningActivityPanel open change handler */
@@ -239,7 +237,6 @@ export function MessageBubble({
     isModelReasoning = false,
     reasoningDurationSeconds,
     reasoningSteps,
-    reasoningTraceMode,
     isReasoningPanelOpen,
     onReasoningPanelOpenChange,
 }: MessageBubbleProps) {
@@ -1534,7 +1531,6 @@ export function MessageBubble({
                                 isReasoning={isModelReasoning}
                                 durationSeconds={reasoningDurationSeconds}
                                 reasoningSteps={reasoningSteps}
-                                reasoningTraceMode={reasoningTraceMode}
                                 isPanelOpen={isReasoningPanelOpen}
                                 onPanelOpenChange={onReasoningPanelOpenChange}
                             />

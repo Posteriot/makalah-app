@@ -3389,11 +3389,6 @@ export function ChatWindow({
                             ? activeReasoningState.steps
                             : undefined
                         }
-                        reasoningTraceMode={
-                          index === lastAssistantIndex
-                            ? activeReasoningState.traceMode
-                            : undefined
-                        }
                         isReasoningPanelOpen={
                           index === lastAssistantIndex
                             ? activeSheet === "proses"

@@ -36,8 +36,6 @@ interface ReasoningPanelProps {
   durationSeconds?: number
   /** Steps data for narrativeHeadline priority chain fallback. */
   reasoningSteps?: ReasoningTraceStep[]
-  /** Trace mode for ReasoningActivityPanel. */
-  reasoningTraceMode?: "curated" | "transparent"
   /**
    * ReasoningActivityPanel open state.
    * Externally controlled by ChatWindow's activeSheet === "proses".
@@ -101,7 +99,6 @@ export function ReasoningPanel({
   isReasoning,
   durationSeconds,
   reasoningSteps = [],
-  reasoningTraceMode: _reasoningTraceMode,
   isPanelOpen,
   onPanelOpenChange,
 }: ReasoningPanelProps) {
@@ -126,9 +123,11 @@ export function ReasoningPanel({
 
     // Transition: false → true (reasoning just started)
     if (isReasoning && !wasReasoning) {
-      hasUserClosedRef.current = false
       isUserScrolledUpRef.current = false
-      setIsOpen(true)
+      if (!hasUserClosedRef.current) {
+        setIsOpen(true)
+      }
+      hasUserClosedRef.current = false
       return
     }
 
