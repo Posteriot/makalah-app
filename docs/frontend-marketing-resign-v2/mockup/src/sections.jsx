@@ -262,8 +262,8 @@ const Pricing = () => (
       </Reveal>
 
       <Reveal delay={3}>
-        <div style={{ textAlign: "center", marginTop: 32, fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-3)" }}>
-          butuh plan kampus / lab? <a href="#" style={{ color: "var(--accent)" }}>ngobrol sama tim →</a>
+        <div style={{ textAlign: "center", marginTop: 32, fontFamily: "var(--font-sans)", fontSize: 12, color: "var(--ink-3)" }}>
+          Butuh plan kampus/lab? <a href="#" style={{ color: "var(--accent)" }}>Mari obrolkan →</a>
         </div>
       </Reveal>
     </div>
@@ -382,7 +382,7 @@ const Footer = () => (
         </div>
         <div className="fb-right">
           <span>Made in Jakarta.</span>
-          <span>v2.1.3</span>
+          <span>v0.8</span>
         </div>
       </div>
     </div>

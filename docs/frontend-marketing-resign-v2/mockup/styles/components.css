@@ -1359,6 +1359,23 @@
   .b-tab.active .chev {
     transform: rotate(-90deg) translateX(2px);
   }
+  .pricing-grid {
+    display: flex;
+    grid-template-columns: none;
+    gap: 14px;
+    margin: 0 -20px;
+    padding: 0 20px 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .pricing-grid::-webkit-scrollbar { display: none; }
+  .p-card {
+    flex: 0 0 min(86vw, 360px);
+    scroll-snap-align: start;
+  }
   .stats { grid-template-columns: 1fr 1fr; }
   .stat:nth-child(2) { border-right: 0; }
   .stat:nth-child(1), .stat:nth-child(2) { border-bottom: 1px solid var(--line); }
