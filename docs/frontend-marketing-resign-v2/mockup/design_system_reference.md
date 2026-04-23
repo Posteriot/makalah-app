@@ -70,5 +70,68 @@ Mengandalkan manipulasi z-axis minimalis lewat bayangan panjang:
 Animasi *reveal* atau *hover* tidak linier. Wajib memakai *easing* kustom berbasis CSS.
 - `--ease`: `cubic-bezier(0.16, 1, 0.3, 1)` — Transisi masuk yang responsif, menukik cepat di awal, memelan panjang ke akhir *(snappy arrival)*.
 
+## 4. Layout Families & Chrome
+
+Mockup Makalah AI tidak memakai satu gaya layout untuk semua halaman. Ada dua keluarga desain utama yang berjalan berdampingan: gaya marketing dan gaya shell. Keduanya tetap memakai token warna, tipografi, radius, dan motion yang sama, tetapi berbeda pada struktur halaman, header, footer, dan prioritas interaksi.
+
+### 4.1 Marketing Layout
+
+Gaya marketing digunakan untuk halaman yang menjelaskan produk, nilai, harga, narasi perusahaan, dan materi publik yang bersifat promosi atau edukasi ringan.
+
+Contoh halaman:
+- `#/`
+- `#/pricing`
+- `#/blog`
+- `#/about`
+- `#/features`
+- `#/faq`
+- `#/roadmap`
+- `#/changelog`
+- `#/status`
+- `#/partnership`
+
+Karakter layout:
+- Menggunakan global header marketing dengan logo, navigasi utama, CTA masuk, dan mobile menu.
+- Menggunakan global footer marketing berisi kelompok link produk, sumber daya, perusahaan, legal, dan wordmark besar.
+- Section disusun sebagai halaman editorial/landing page dengan ritme visual yang lebih ekspresif.
+- Cocok untuk hero besar, split section, pricing card, FAQ marketing, manifesto, CTA, dan modul visual yang lebih brand-forward.
+
+Pattern penting:
+- Gunakan pola 2 kolom untuk intro atau section marketing yang butuh hirarki jelas: kolom kiri sebagai blok naratif utama, kolom kanan sebagai blok pendamping.
+- Kolom kiri biasanya berisi eyebrow, headline, deskripsi utama, dan CTA bila relevan.
+- Kolom kanan dapat berupa supporting copy, ringkasan manfaat, daftar poin, FAQ aktif, preview UI, atau surface fungsional ringan.
+- Jika kolom kanan hanya supporting copy, posisinya boleh mengikuti akhir hirarki headline kiri agar pembacaan dimulai dari pesan utama.
+- Jika kolom kanan adalah surface fungsional utama, seperti accordion/FAQ atau preview interaktif, posisinya dapat mulai dari atas agar terasa sebagai area kerja utama.
+- Di mobile, pola 2 kolom ditumpuk secara natural: narasi utama tetap muncul lebih dulu, lalu supporting/functional content di bawahnya.
+- Pattern ini menjadi rujukan untuk halaman marketing seperti pricing dan page publik lain yang membutuhkan intro dua sisi, tetapi tidak wajib dipakai untuk layout operasional seperti dokumentasi, chat, atau halaman yang membutuhkan struktur sidebar/feed khusus.
+
+### 4.2 Shell Layout
+
+Gaya shell digunakan untuk halaman yang terasa seperti workspace atau area operasional. Layout ini tidak mengikuti struktur landing page, karena fokusnya adalah navigasi internal, pembacaan panjang, dan interaksi berulang.
+
+Contoh halaman:
+- `#/documentation`
+- halaman chat yang diproyeksikan memakai pola shell serupa
+
+Karakter layout:
+- Tidak wajib memakai global header marketing.
+- Tidak wajib memakai global footer marketing.
+- Header dapat menjadi bagian dari sidebar atau panel shell, bukan bar mandiri di atas halaman.
+- Sidebar dapat membawa logo + brand, pencarian, menu/submenu, dan auth UI.
+- Area konten kanan dapat memiliki footer khusus yang ringkas, misalnya informasi copyright, perusahaan, lokasi, dan versi.
+- Layout kiri-kanan harus terasa menyatu sebagai satu workspace, bukan dua card marketing terpisah.
+- Mobile shell memakai header ringkas sendiri: logo + brand di kiri, tombol hamburger/close di kanan, lalu panel navigasi shell saat dibuka.
+
+### 4.3 Konsekuensi Header & Footer
+
+Tidak semua halaman boleh diasumsikan memakai global header dan global footer. Pemilihan chrome harus mengikuti keluarga layout halaman.
+
+Aturan penerapan:
+- Halaman marketing memakai `GlobalHeaderMock` dan `FooterMock`.
+- Halaman shell boleh melewati `GlobalHeaderMock` dan `FooterMock` bila chrome global mengganggu fokus workspace.
+- Dokumentasi saat ini menjadi referensi awal untuk shell layout: logo + brand berada di sidebar pada desktop, sedangkan mobile memiliki header shell sendiri.
+- Footer shell tidak menggantikan footer marketing secara penuh. Footer shell hanya membawa informasi minimum yang relevan untuk konteks workspace.
+- Jika halaman baru memiliki kebutuhan membaca, menulis, chat, atau navigasi internal yang intens, pertimbangkan gaya shell terlebih dahulu sebelum memakai gaya marketing.
+
 ---
 *Catatan Penerapan: Saat mereplika atau mengembangkan page baru melalui Tailwind (khususnya v4+), silakan pindahkan token OKLCH ini ke dalam `theme.extend` atau langsung dipasangkan ke dalam CSS variables `:root` / `.dark`.*

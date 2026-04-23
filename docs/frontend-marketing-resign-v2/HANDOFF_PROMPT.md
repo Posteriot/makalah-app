@@ -1,4 +1,4 @@
-# Handoff Prompt: Multi-Page Marketing Mockup Implementation
+# Handoff Prompt: Continue Multi-Page Marketing Mockup Implementation
 
 You are working in this worktree:
 
@@ -8,35 +8,41 @@ You are working in this worktree:
 
 ## Goal
 
-Start a new implementation session for the multi-page static marketing mockup based on:
+Start a new implementation session to continue the multi-page static marketing mockup based on:
 
 ```text
 docs/frontend-marketing-resign-v2/mockup/pages-design-plan/IMPLEMENTATION_PLAN.md
 ```
 
-This is the next phase after the home mockup structure was already modularized. The task is to implement additional mockup pages one by one, while preserving the static React UMD + Babel runtime.
+The home mockup, hash routing foundation, pricing page, and documentation page have already been implemented. Continue with the remaining pages one by one, while preserving the static React UMD + Babel runtime.
 
 ## Current Git Context
 
 Recent commits:
 
 ```text
+814dcaea Add marketing mockup documentation page
+549fcd62 Add marketing mockup pricing page
+71a3e968 Add marketing mockup hash routing foundation
+7456ba2f Update marketing mockup implementation handoff
 48e1e9e6 Add marketing mockup pages implementation plan
-7e83ceb2 Refactor marketing home mockup structure
-b2873d2d Add marketing mockup adaptation handoff
 ```
 
-Current known worktree status before this handoff update:
+Current known completed checkpoints:
 
 ```text
- M docs/frontend-marketing-resign-v2/mockup/pages-design-plan/IMPLEMENTATION_PLAN.md
-?? docs/frontend-marketing-resign-v2/screesnhots/
+Home mockup structure
+Routing foundation
+PricingPage
+DocumentationPage
 ```
 
 Notes:
 
-- The `IMPLEMENTATION_PLAN.md` modification is intentional. It adds the per-page workflow and UI/content language rules.
-- Do not stage or commit `docs/frontend-marketing-resign-v2/screesnhots/` unless explicitly requested.
+- Continue from `BlogPage` as the next implementation unit.
+- `DocumentationPage` intentionally uses a shell layout instead of the marketing global chrome.
+- `design_system_reference.md` now documents the distinction between marketing layout and shell layout.
+- Do not stage or commit screenshot folders unless explicitly requested.
 
 ## Primary Planning Docs
 
@@ -49,6 +55,17 @@ docs/frontend-marketing-resign-v2/mockup/pages-design-plan/IMPLEMENTATION_PLAN.m
 ```
 
 The implementation plan is the operative document. The design doc and audit doc are source-of-truth guardrails.
+
+Also read:
+
+```text
+docs/frontend-marketing-resign-v2/mockup/design_system_reference.md
+```
+
+This file records the current design system direction, including the two layout families:
+
+- **Marketing layout** for public marketing pages.
+- **Shell layout** for documentation and the projected chat-style layout.
 
 ## Strict Scope
 
@@ -94,10 +111,13 @@ docs/frontend-marketing-resign-v2/mockup/MakalahAI.html
 Current runtime files:
 
 ```text
-docs/frontend-marketing-resign-v2/mockup/src/app/MarketingHomePage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/MockRouter.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/MarketingLayoutMock.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/Tweaks.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/render.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/MarketingHomePage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/PricingPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/DocumentationPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/components/layout/header/GlobalHeaderMock.jsx
 docs/frontend-marketing-resign-v2/mockup/src/components/layout/footer/FooterMock.jsx
 docs/frontend-marketing-resign-v2/mockup/src/components/marketing/benefits/BenefitsSectionWrapper.jsx
@@ -108,6 +128,7 @@ docs/frontend-marketing-resign-v2/mockup/src/components/marketing/features/Workf
 docs/frontend-marketing-resign-v2/mockup/src/components/marketing/hero/HeroSection.jsx
 docs/frontend-marketing-resign-v2/mockup/src/components/marketing/manifesto/ManifestoSection.jsx
 docs/frontend-marketing-resign-v2/mockup/src/components/marketing/pricing-teaser/PricingTeaser.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/shared/PagePrimitives.jsx
 docs/frontend-marketing-resign-v2/mockup/src/components/shared/Primitives.jsx
 docs/frontend-marketing-resign-v2/mockup/styles/tokens.css
 docs/frontend-marketing-resign-v2/mockup/styles/components.css
@@ -147,36 +168,31 @@ Mandatory workflow:
 
 Do not implement multiple pages in one large batch.
 
-Allowed first unit:
+Completed units:
 
 ```text
 Routing foundation
+PricingPage
+DocumentationPage
 ```
 
-Routing foundation may include:
+Next allowed unit:
 
-- `MockRouter.jsx`
-- moving `MarketingHomePage.jsx` to `src/app/pages/MarketingHomePage.jsx` inside the mockup folder only
-- `MarketingLayoutMock` children support
-- header/footer hash route links
-- `MakalahAI.html` script order updates
-- active route state needed by navigation
+```text
+BlogPage
+```
 
-Routing foundation must be verified and committed before starting individual page work.
+Recommended remaining page commit order:
 
-Recommended page commit order after routing foundation:
-
-1. `PricingPage`
-2. `DocumentationPage`
-3. `BlogPage`
-4. `AboutPage`
-5. `PolicyPage` for `privacy`, `security`, and `terms`
-6. `FeaturesPage`
-7. `FAQPage`
-8. `RoadmapPage`
-9. `ChangelogPage`
-10. `StatusPage`
-11. `PartnershipPage`
+1. `BlogPage`
+2. `AboutPage`
+3. `PolicyPage` for `privacy`, `security`, and `terms`
+4. `FeaturesPage`
+5. `FAQPage`
+6. `RoadmapPage`
+7. `ChangelogPage`
+8. `StatusPage`
+9. `PartnershipPage`
 
 ## Multiagents Orchestrator Workflow
 
@@ -319,12 +335,19 @@ Important distinction:
 ## Design Priorities
 
 1. Runtime safety.
-2. Global chrome: header, footer, layout, routing.
+2. Correct layout family: marketing chrome or shell chrome.
 3. Production-parity pages.
 4. Mockup-only pages.
 5. Visual polish.
 
-Do not over-design operational pages (`documentation`, `status`, `changelog`). They should be dense, scannable, and practical, not hero-heavy marketing pages.
+Design direction:
+
+- Marketing pages use the public marketing header/footer unless there is a clear reason not to.
+- Marketing pages may reuse the 2-column section pattern documented in `design_system_reference.md`: narrative content on the left, supporting or functional content on the right.
+- Shell pages do not have to use global marketing header/footer.
+- `DocumentationPage` is the current shell reference: sidebar-based navigation, docs-specific mobile header, and content-side footer.
+- Chat is projected to use a shell-like layout later.
+- Do not over-design operational pages (`documentation`, `status`, `changelog`). They should be dense, scannable, and practical, not hero-heavy marketing pages.
 
 ## Verification Commands
 
@@ -343,35 +366,39 @@ Run JSX parser check. If `@babel/parser` is not available, document the exact er
 node -e 'const fs=require("fs"); const parser=require("@babel/parser"); const files=process.argv.slice(1); for (const f of files) parser.parse(fs.readFileSync(f,"utf8"), {sourceType:"script", plugins:["jsx"]}); console.log(`parsed ${files.length} jsx files`);' $(find docs/frontend-marketing-resign-v2/mockup/src -name "*.jsx" | sort)
 ```
 
-## Acceptance For The First New Session
+## Acceptance For The Next New Session
 
-The next implementation session should start with the routing foundation only.
+The next implementation session should start with `BlogPage` only.
 
-Routing foundation acceptance:
+`BlogPage` acceptance:
 
-1. `MakalahAI.html#/` still renders home.
-2. Hash route registry exists and resolves known routes or a not-found fallback.
-3. `MarketingLayoutMock` renders routed children inside `<main>`.
-4. Header and footer links point to planned hash routes.
-5. Mobile menu still opens and closes.
-6. No production `src/` file is modified.
-7. Screenshot folder is not staged.
-8. `git diff --check` passes.
-9. JSX parser check passes or a parser limitation is documented.
-10. Stop for review before implementing `PricingPage`.
+1. `MakalahAI.html#/blog` renders a real `BlogPage`, not the placeholder route state.
+2. `BlogPage` uses the marketing layout family unless a specific shell requirement is introduced later.
+3. Blog layout should not copy pricing directly if a blog/feed structure is more appropriate.
+4. Header and footer marketing chrome continue to work on `#/`, `#/pricing`, and `#/blog`.
+5. `#/documentation` keeps its shell layout and must not regress back to the global marketing header/footer.
+6. Mobile menu still opens and closes on marketing pages.
+7. Documentation mobile shell menu still opens and closes.
+8. No production `src/` file is modified.
+9. Screenshot folders are not staged.
+10. `git diff --check` passes.
+11. JSX parser check passes or a parser limitation is documented.
+12. Stop for review before implementing `AboutPage`.
 
 ## Commit Guidance
 
 Commit after each checkpoint is verified and approved.
 
-Recommended first commit message:
+Recommended next commit message:
 
 ```text
-Add marketing mockup hash routing foundation
+Add marketing mockup blog page
 ```
 
 Do not include:
 
 ```text
 docs/frontend-marketing-resign-v2/screesnhots/
+docs/frontend-marketing-resign-v2/screenshots/
+docs/frontend-marketing-resign-v2/mockup/Screen Shot*.png
 ```
