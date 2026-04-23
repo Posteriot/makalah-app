@@ -4444,7 +4444,7 @@
 .footer-brand .brand { margin-bottom: 20px; }
 .footer-brand p { color: var(--ink-3); font-size: 14px; line-height: 1.6; max-width: 320px; }
 .footer-col h5 {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.14em;
@@ -4452,8 +4452,10 @@
   margin-bottom: 16px;
 }
 .footer-col a {
-  display: block; padding: 6px 0;
-  font-size: 14px; color: var(--ink-2);
+  display: block; padding: 2px 0;
+  font-family: var(--font-sans);
+  font-size: 11px; color: var(--ink-2);
+  line-height: 1.45;
   transition: color 0.2s;
 }
 .footer-col a:hover { color: var(--brand-green); }
@@ -4481,14 +4483,15 @@
   display: flex; justify-content: space-between; align-items: flex-start;
   padding-top: 24px;
   border-top: 1px solid var(--line);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 11px;
+  line-height: 1.45;
   color: var(--ink-4);
 }
 .footer-bottom .fb-left, .footer-bottom .fb-right {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
 }
 .footer-bottom .fb-right {
   text-align: right;
@@ -4765,7 +4768,9 @@
     scroll-snap-align: start;
   }
   .docs-page-shell {
-    min-height: auto;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
   }
   .docs-page-layout::before {
     display: none;
@@ -4804,7 +4809,15 @@
   }
   .docs-sidebar.open {
     display: block;
-    order: 1;
+    position: fixed;
+    top: 52px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    background: var(--bg);
+    border-right: 0;
+    overflow-y: auto;
   }
   .docs-sidebar-shell {
     padding: 16px 20px 18px;
@@ -4860,11 +4873,16 @@
   }
   .shell-page-footer {
     margin-top: 44px;
-    padding: 24px 20px 0;
+    padding: 20px;
     align-items: flex-start;
     gap: 12px;
     font-size: 11px;
     line-height: 1.4;
+    position: sticky;
+    bottom: 0;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+    z-index: 10;
   }
   .shell-page-footer > div:last-child {
     text-align: right;
@@ -4885,13 +4903,26 @@
     min-height: auto;
     height: auto;
   }
+  .support-page-shell {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
   .support-sidebar {
     display: none;
     height: auto;
   }
   .support-sidebar.open {
     display: block;
-    order: 1;
+    position: fixed;
+    top: 52px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    background: var(--bg);
+    border-right: 0;
+    overflow-y: auto;
   }
   .support-sidebar-shell {
     padding: 16px 20px 18px;

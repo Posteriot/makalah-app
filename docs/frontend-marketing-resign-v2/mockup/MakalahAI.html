@@ -11,6 +11,58 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.css" />
   <link rel="stylesheet" href="styles/tokens.css?v=13" />
   <link rel="stylesheet" href="styles/components.css?v=13" />
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+  <style type="text/css">
+    @theme {
+      /* Surfaces */
+      --color-bg: oklch(0.1536 0.0027 248.00);
+      --color-bg-1: oklch(0.1728 0.0044 264.45);
+      --color-bg-2: oklch(0.1959 0.0062 271.09);
+      --color-bg-elev: oklch(1 0 0 / 0.03);
+      --color-bg-panel: oklch(0.1959 0.0062 271.09 / 0.72);
+
+      /* Ink / Typography Colors */
+      --color-ink: oklch(0.9600 0.0053 106.50);
+      --color-ink-2: oklch(0.9000 0.0078 106.61);
+      --color-ink-3: oklch(0.8400 0.0070 106.69);
+      --color-ink-4: oklch(0.8000 0.0062 106.70);
+      --color-ink-5: oklch(0.7800 0.0058 106.75);
+
+      /* Lines / Borders */
+      --color-line: oklch(1 0 0 / 0.06);
+      --color-line-2: oklch(1 0 0 / 0.10);
+
+      /* Brand Colors */
+      --color-brand-green: oklch(0.7152 0.1549 128.78);
+      --color-brand-green-soft: oklch(0.7152 0.1549 128.78 / 0.16);
+      --color-brand-green-glow: oklch(0.7152 0.1549 128.78 / 0.38);
+      --color-brand-green-line: oklch(0.7152 0.1549 128.78 / 0.30);
+      
+      --color-brand-orange: oklch(0.6546 0.2006 36.90);
+      --color-brand-orange-soft: oklch(0.6546 0.2006 36.90 / 0.16);
+      --color-brand-orange-glow: oklch(0.6546 0.2006 36.90 / 0.32);
+      --color-brand-orange-line: oklch(0.6546 0.2006 36.90 / 0.26);
+
+      --color-sky: oklch(0.8756 0.1030 213.51);
+      --color-sky-soft: oklch(0.8756 0.1030 213.51 / 0.14);
+
+      /* Status Colors */
+      --color-ok: oklch(0.8480 0.1343 154.85);
+      --color-warn: oklch(0.8561 0.1260 75.97);
+
+      /* Border Radii mapping */
+      --radius-xs: 4px;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+
+      /* Typography Families */
+      --font-display: "Geist", "General Sans", ui-sans-serif, -apple-system, system-ui, sans-serif;
+      --font-sans: "Geist", "Inter", ui-sans-serif, -apple-system, system-ui, sans-serif;
+      --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+  </style>
 </head>
 <body>
   <div id="root"></div>

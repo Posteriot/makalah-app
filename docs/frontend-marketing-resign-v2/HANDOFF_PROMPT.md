@@ -14,6 +14,10 @@ Continue the static multi-page marketing mockup implementation under:
 docs/frontend-marketing-resign-v2/mockup/
 ```
 
+The next session should focus on:
+1. **Tailwind CSS v4 Migration**: Migrating all mockup pages and components from custom CSS (`components.css`) to Tailwind utility classes.
+2. **Code Refactoring (Atomic Design)**: Breaking down monolithic page files into modular, reusable components (following the pattern established in the Home page).
+
 The next session should continue from the current completed state, not restart earlier units.
 
 ## Current Git Context
@@ -21,6 +25,8 @@ The next session should continue from the current completed state, not restart e
 Recent relevant commits:
 
 ```text
+0984f6b6 Refine shell mockup documentation and support pages
+885a70d1 Add marketing mockup policy pages
 5dc2e4e1 Expand marketing mockup auth states
 76b331e5 Complete marketing mockup auth pages
 309e8b18 Add marketing mockup magic link page
@@ -46,8 +52,10 @@ DocumentationPage
 BlogPage
 BlogArticlePage
 AboutPage
+PolicyPage set
 FeaturesPage
 FAQPage
+ReportIssuePage
 Auth page set
 ```
 
@@ -62,6 +70,16 @@ Important completion notes:
 - `FeaturesPage` is live at `#/features` with the approved positioning direction: Makalah AI as an assistant for paper writing, not a generic chatbot.
 - `FeaturesPage` uses final illustration assets for all five feature sections and shares the accepted background treatment used across public marketing pages.
 - `FAQPage` is live at `#/faq` with grouped accordion content, revised hero/CTA structure, and mobile carousel behavior for the four primary category cards.
+- `PolicyPage` is live as a shared template for:
+  - `#/privacy`
+  - `#/security`
+  - `#/terms`
+- `ReportIssuePage` is live as a shell-layout support page with route-addressable review states:
+  - `#/report-issue`
+  - `#/report-issue/progress`
+  - `#/report-issue/terkirim`
+- `DocumentationPage` and `ReportIssuePage` now share a reusable shell footer component and shared shell-style footer rules.
+- Shell muted text now uses centralized reusable token aliases in `tokens.css`; future shell/public work should reuse that system rather than introduce page-level muted color overrides.
 - Main navigation no longer includes `Home`; the logo/brand is the return path to home.
 - Mockup favicon now points to `docs/frontend-marketing-resign-v2/mockup/assets/favicon.ico`.
 - The auth family is now completed as a dedicated auth-layout system with no `GlobalHeaderMock` and no `FooterMock` on auth routes.
@@ -154,6 +172,9 @@ Do not introduce:
 
 The mockup must remain static React UMD + Babel.
 
+- **Tailwind CSS v4** is already installed via CDN in `MakalahAI.html` and configured with the brand theme in the `<style type="text/css">` block. Use `@theme` variables like `text-brand-green`, `bg-bg-1`, etc.
+- **Component Pattern**: Follow the Home page structure. Move UI parts to `src/components/[category]/[component].jsx` and export them using `Object.assign(window, { ComponentName })`. Maintain global script registration in `MakalahAI.html`.
+
 ## Runtime Constraints
 
 The current mockup is previewed from:
@@ -182,8 +203,10 @@ docs/frontend-marketing-resign-v2/mockup/src/app/pages/DocumentationPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/BlogPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/BlogArticlePage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/AboutPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/PolicyPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/FeaturesPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/FAQPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/ReportIssuePage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/SignInPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/SignUpPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/Verify2FAPage.jsx
@@ -191,6 +214,7 @@ docs/frontend-marketing-resign-v2/mockup/src/app/pages/ForgotPasswordPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/MagicLinkPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/AuthEmailSentPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/ResetPasswordPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/shared/ShellPageFooter.jsx
 docs/frontend-marketing-resign-v2/mockup/styles/tokens.css
 docs/frontend-marketing-resign-v2/mockup/styles/components.css
 ```
@@ -205,6 +229,7 @@ Two layout families are already established:
 Rules already validated in this branch:
 
 - `DocumentationPage` intentionally uses shell layout and must not be refactored into the marketing global chrome.
+- `ReportIssuePage` intentionally uses shell layout and must not be refactored into the marketing global chrome.
 - `PricingPage`, `BlogPage`, `BlogArticlePage`, `AboutPage`, `FeaturesPage`, and `FAQPage` use the marketing family.
 - Non-documentation public pages should follow the newer marketing direction established by `PricingPage`, not blindly copy production `src/` layouts.
 
@@ -264,6 +289,9 @@ MakalahAI.html#/security
 MakalahAI.html#/terms
 MakalahAI.html#/features
 MakalahAI.html#/faq
+MakalahAI.html#/report-issue
+MakalahAI.html#/report-issue/progress
+MakalahAI.html#/report-issue/terkirim
 MakalahAI.html#/roadmap
 MakalahAI.html#/changelog
 MakalahAI.html#/status
@@ -299,24 +327,24 @@ Do not batch multiple new pages into one implementation checkpoint.
 The next recommended unit is:
 
 ```text
-Footer-triggered public page set
+Tailwind Migration & Refactoring: Home Page
 ```
 
 Reason:
 
-- The auth family is completed in this branch and should not be re-opened unless the user explicitly requests auth corrections.
-- The next unfinished public surfaces are the pages triggered from the existing footer that still point to placeholders or unfinished operational/public targets.
-- The next session should move to the unfinished footer-linked targets rather than inventing new auth work.
-- Priority should follow the unfinished footer/public sequence, starting with the legal/policy family and then the mockup-only operational pages.
+- Tailwind v4 is installed and theme-ready.
+- The Home page components (Hero, Benefits, etc.) need to be migrated to Tailwind utility classes.
+- Monolithic pages (DocumentationPage, ReportIssuePage, BlogPage) must be split into modular components in `src/components/` while being migrated.
+- Ensure all custom styling in `components.css` for the target page is translated to Tailwind utility classes or custom Tailwind theme variables.
 
 ## Recommended Remaining Commit Order
 
 ```text
-1. PolicyPage set for privacy / security / terms
-2. RoadmapPage
-3. ChangelogPage
-4. StatusPage
-5. PartnershipPage
+1. Home Page (Tailwind Migration + Modularization)
+2. Pricing Page (Tailwind Migration + Modularization)
+3. Documentation Page (Tailwind Migration + Modularization)
+4. Report Issue Page (Tailwind Migration + Modularization)
+5. Remaining Operational Pages (Changelog, Roadmap, etc.)
 ```
 
 ## Verification Expectations
@@ -339,6 +367,7 @@ If a unit changes routing or script loading, also verify:
 - Do not re-open already accepted redesign debates unless the user explicitly asks.
 - Do not revert `BlogPage`, `BlogArticlePage`, or `AboutPage` behavior that has already been approved.
 - Do not revert accepted `FeaturesPage` or `FAQPage` structure, copy direction, or mobile behavior unless the user explicitly requests corrections.
+- Do not re-open accepted `PolicyPage` or `ReportIssuePage` structure unless the user explicitly requests corrections.
 - Do not re-open the completed auth family unless the user explicitly asks for auth revisions.
 - Do not collapse the auth routes back into marketing global chrome; auth pages intentionally use dedicated auth chrome.
 - Do not stage or commit screenshot folders unless explicitly requested.
@@ -346,7 +375,7 @@ If a unit changes routing or script loading, also verify:
 
 ## Immediate Starting Point For The Next Session
 
-Start by confirming the current state from code, then move into the first unfinished footer-triggered public page unit.
+Start by confirming the current state from code, then move into **Home Page Tailwind Migration & Modularization** as the first step of the modernization phase.
 
 Expected first read targets for the next session:
 
@@ -356,8 +385,10 @@ docs/frontend-marketing-resign-v2/mockup/design_system_reference.md
 docs/frontend-marketing-resign-v2/mockup/src/app/MockRouter.jsx
 docs/frontend-marketing-resign-v2/mockup/src/components/layout/header/GlobalHeaderMock.jsx
 docs/frontend-marketing-resign-v2/mockup/src/components/layout/footer/FooterMock.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/shared/ShellPageFooter.jsx
 docs/frontend-marketing-resign-v2/mockup/MakalahAI.html
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/PricingPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/FAQPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/AboutPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/ReportIssuePage.jsx
 ```
