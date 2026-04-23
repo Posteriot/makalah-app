@@ -21,17 +21,15 @@ The next session should continue from the current completed state, not restart e
 Recent relevant commits:
 
 ```text
+5dc2e4e1 Expand marketing mockup auth states
+76b331e5 Complete marketing mockup auth pages
+309e8b18 Add marketing mockup magic link page
+629282b1 Add marketing mockup forgot password page
+aa3c68f7 Add marketing mockup sign-up page
+77409276 Add marketing mockup sign-in page
+87561c55 Refresh marketing mockup handoff status
 64ff0588 Add marketing mockup FAQ page
 930fa470 Refine marketing mockup navigation chrome
-33386e57 Polish marketing mockup feature visuals
-2ca6111c Add marketing mockup features page
-c6d1e356 Refresh marketing mockup handoff prompt
-58157e2c Complete blog mockup listing and article page
-6a6667a4 Refine about mockup layout and mobile accordions
-7056f7b0 Add marketing mockup about page
-814dcaea Add marketing mockup documentation page
-549fcd62 Add marketing mockup pricing page
-71a3e968 Add marketing mockup hash routing foundation
 ```
 
 Worktree status at handoff should be clean.
@@ -50,6 +48,7 @@ BlogArticlePage
 AboutPage
 FeaturesPage
 FAQPage
+Auth page set
 ```
 
 Important completion notes:
@@ -65,6 +64,54 @@ Important completion notes:
 - `FAQPage` is live at `#/faq` with grouped accordion content, revised hero/CTA structure, and mobile carousel behavior for the four primary category cards.
 - Main navigation no longer includes `Home`; the logo/brand is the return path to home.
 - Mockup favicon now points to `docs/frontend-marketing-resign-v2/mockup/assets/favicon.ico`.
+- The auth family is now completed as a dedicated auth-layout system with no `GlobalHeaderMock` and no `FooterMock` on auth routes.
+- Auth mockup routes now include direct route coverage for primary pages and important visible states:
+  - `#/sign-in`
+  - `#/sign-in/required`
+  - `#/sign-in/invalid-email`
+  - `#/sign-in/email-not-found`
+  - `#/sign-in/wrong-password`
+  - `#/sign-in/rate-limit`
+  - `#/sign-up`
+  - `#/sign-up/required`
+  - `#/sign-up/invalid-email`
+  - `#/sign-up/email-too-short`
+  - `#/sign-up/email-taken`
+  - `#/sign-up/password-too-short`
+  - `#/sign-up/success`
+  - `#/verify-2fa`
+  - `#/verify-2fa/required`
+  - `#/verify-2fa/incomplete`
+  - `#/verify-2fa/invalid`
+  - `#/verify-2fa/rate-limit`
+  - `#/forgot-password`
+  - `#/forgot-password/required`
+  - `#/forgot-password/invalid-email`
+  - `#/forgot-password/email-not-found`
+  - `#/forgot-password/send-failed`
+  - `#/forgot-password/email-sent`
+  - `#/magic-link`
+  - `#/magic-link/required`
+  - `#/magic-link/invalid-email`
+  - `#/magic-link/email-not-found`
+  - `#/magic-link/send-failed`
+  - `#/magic-link/email-sent`
+  - `#/magic-link/invalid`
+  - `#/magic-link/expired`
+  - `#/reset-password`
+  - `#/reset-password/required`
+  - `#/reset-password/password-too-short`
+  - `#/reset-password/mismatch`
+  - `#/reset-password/invalid`
+  - `#/reset-password/expired`
+  - `#/reset-password/save-failed`
+  - `#/reset-password/success`
+- Important auth behavior already accepted in this branch:
+  - auth pages are focused standalone surfaces, not marketing pages with global navigation chrome
+  - primary auth submit actions have loading states
+  - `#/verify-2fa` disables the code inputs while verification is in progress
+  - visible auth error/success states are route-addressable for mockup review
+  - mobile auth text alignment and helper spacing have been corrected across the auth family
 
 ## Primary Planning Docs
 
@@ -137,6 +184,13 @@ docs/frontend-marketing-resign-v2/mockup/src/app/pages/BlogArticlePage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/AboutPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/FeaturesPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/FAQPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/SignInPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/SignUpPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/Verify2FAPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/ForgotPasswordPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/MagicLinkPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/AuthEmailSentPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/ResetPasswordPage.jsx
 docs/frontend-marketing-resign-v2/mockup/styles/tokens.css
 docs/frontend-marketing-resign-v2/mockup/styles/components.css
 ```
@@ -160,6 +214,46 @@ Current hash routes:
 
 ```text
 MakalahAI.html#/
+MakalahAI.html#/sign-in
+MakalahAI.html#/sign-in/required
+MakalahAI.html#/sign-in/invalid-email
+MakalahAI.html#/sign-in/email-not-found
+MakalahAI.html#/sign-in/wrong-password
+MakalahAI.html#/sign-in/rate-limit
+MakalahAI.html#/sign-up
+MakalahAI.html#/sign-up/required
+MakalahAI.html#/sign-up/invalid-email
+MakalahAI.html#/sign-up/email-too-short
+MakalahAI.html#/sign-up/email-taken
+MakalahAI.html#/sign-up/password-too-short
+MakalahAI.html#/sign-up/success
+MakalahAI.html#/verify-2fa
+MakalahAI.html#/verify-2fa/required
+MakalahAI.html#/verify-2fa/incomplete
+MakalahAI.html#/verify-2fa/invalid
+MakalahAI.html#/verify-2fa/rate-limit
+MakalahAI.html#/forgot-password
+MakalahAI.html#/forgot-password/required
+MakalahAI.html#/forgot-password/invalid-email
+MakalahAI.html#/forgot-password/email-not-found
+MakalahAI.html#/forgot-password/send-failed
+MakalahAI.html#/forgot-password/email-sent
+MakalahAI.html#/magic-link
+MakalahAI.html#/magic-link/required
+MakalahAI.html#/magic-link/invalid-email
+MakalahAI.html#/magic-link/email-not-found
+MakalahAI.html#/magic-link/send-failed
+MakalahAI.html#/magic-link/email-sent
+MakalahAI.html#/magic-link/invalid
+MakalahAI.html#/magic-link/expired
+MakalahAI.html#/reset-password
+MakalahAI.html#/reset-password/required
+MakalahAI.html#/reset-password/password-too-short
+MakalahAI.html#/reset-password/mismatch
+MakalahAI.html#/reset-password/invalid
+MakalahAI.html#/reset-password/expired
+MakalahAI.html#/reset-password/save-failed
+MakalahAI.html#/reset-password/success
 MakalahAI.html#/pricing
 MakalahAI.html#/documentation
 MakalahAI.html#/blog
@@ -205,25 +299,24 @@ Do not batch multiple new pages into one implementation checkpoint.
 The next recommended unit is:
 
 ```text
-Auth page set
+Footer-triggered public page set
 ```
 
 Reason:
 
-- The user has explicitly redirected the next session target to all auth-related pages.
-- This is now the highest-priority unfinished product surface after the completed marketing identity pages.
-- The next session should first audit what auth-related mockup surfaces are needed, then implement them as a coherent auth family rather than mixing them with legal or operational pages.
-- If auth routes are not yet registered in `MockRouter.jsx`, extend the route registry during that unit instead of forcing auth into existing placeholder legal routes.
+- The auth family is completed in this branch and should not be re-opened unless the user explicitly requests auth corrections.
+- The next unfinished public surfaces are the pages triggered from the existing footer that still point to placeholders or unfinished operational/public targets.
+- The next session should move to the unfinished footer-linked targets rather than inventing new auth work.
+- Priority should follow the unfinished footer/public sequence, starting with the legal/policy family and then the mockup-only operational pages.
 
 ## Recommended Remaining Commit Order
 
 ```text
-1. Auth page set
-2. PolicyPage set for privacy / security / terms
-3. RoadmapPage
-4. ChangelogPage
-5. StatusPage
-6. PartnershipPage
+1. PolicyPage set for privacy / security / terms
+2. RoadmapPage
+3. ChangelogPage
+4. StatusPage
+5. PartnershipPage
 ```
 
 ## Verification Expectations
@@ -246,12 +339,14 @@ If a unit changes routing or script loading, also verify:
 - Do not re-open already accepted redesign debates unless the user explicitly asks.
 - Do not revert `BlogPage`, `BlogArticlePage`, or `AboutPage` behavior that has already been approved.
 - Do not revert accepted `FeaturesPage` or `FAQPage` structure, copy direction, or mobile behavior unless the user explicitly requests corrections.
+- Do not re-open the completed auth family unless the user explicitly asks for auth revisions.
+- Do not collapse the auth routes back into marketing global chrome; auth pages intentionally use dedicated auth chrome.
 - Do not stage or commit screenshot folders unless explicitly requested.
 - Do not assume the next unit is blog-related anymore; blog is already completed for this checkpoint.
 
 ## Immediate Starting Point For The Next Session
 
-Start by confirming the current state from code, then move into the auth-page design unit.
+Start by confirming the current state from code, then move into the first unfinished footer-triggered public page unit.
 
 Expected first read targets for the next session:
 
@@ -259,12 +354,10 @@ Expected first read targets for the next session:
 docs/frontend-marketing-resign-v2/mockup/pages-design-plan/IMPLEMENTATION_PLAN.md
 docs/frontend-marketing-resign-v2/mockup/design_system_reference.md
 docs/frontend-marketing-resign-v2/mockup/src/app/MockRouter.jsx
-docs/frontend-marketing-resign-v2/mockup/src/app/pages/PricingPage.jsx
-docs/frontend-marketing-resign-v2/mockup/src/app/pages/BlogPage.jsx
-docs/frontend-marketing-resign-v2/mockup/src/app/pages/BlogArticlePage.jsx
-docs/frontend-marketing-resign-v2/mockup/src/app/pages/FeaturesPage.jsx
-docs/frontend-marketing-resign-v2/mockup/src/app/pages/FAQPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/components/layout/header/GlobalHeaderMock.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/layout/footer/FooterMock.jsx
 docs/frontend-marketing-resign-v2/mockup/MakalahAI.html
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/PricingPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/FAQPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/AboutPage.jsx
 ```
