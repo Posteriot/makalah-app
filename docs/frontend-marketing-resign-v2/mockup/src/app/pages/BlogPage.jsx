@@ -73,21 +73,15 @@ const BlogCategoryThumb = ({ category, title }) => (
 const BlogFeaturedCard = ({ post }) => (
   <article className="blog-featured-card">
     <div className="blog-featured-copy">
-      <div className="eyebrow">Headline blog</div>
+      <div className="blog-featured-topline">
+        <span>/ {post.category.toUpperCase()} | {post.dateShort}</span>
+        <span>{post.readTime}</span>
+      </div>
       <a href="#/blog" className="blog-featured-link" aria-label={`Buka artikel ${post.title}`}>
         <h2>{post.title}</h2>
       </a>
       <p>{post.excerpt}</p>
-
-      <div className="blog-featured-meta">
-        <div>
-          <span>/ {post.category.toUpperCase()}</span>
-          <strong>{post.author}</strong>
-        </div>
-        <div>
-          <span>{post.dateLong}</span>
-          <strong>{post.readTime}</strong>
-        </div>
+      <div className="blog-featured-actions">
         <a href="#/blog" className="btn btn-primary">
           Baca <Arrow />
         </a>
