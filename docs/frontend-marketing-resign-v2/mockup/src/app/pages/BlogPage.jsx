@@ -98,13 +98,13 @@ const isBlogPostInTimeRange = (post, range) => {
 };
 
 const BlogCategoryThumb = ({ category, title }) => (
-  <div className={`blog-thumb blog-thumb-${category.toLowerCase()}`} aria-hidden="true">
+  <div className={`blog-spotlight-thumb blog-spotlight-thumb-${category.toLowerCase()}`} aria-hidden="true">
     <span>{category.toUpperCase()}</span>
-    <strong>{title.slice(0, 24).toUpperCase()}</strong>
+    <strong>{title.slice(0, 28).toUpperCase()}</strong>
   </div>
 );
 
-const BlogFiltersPanel = ({
+const BlogControlPanel = ({
   searchQuery,
   onSearchQueryChange,
   categoryFilter,
@@ -115,176 +115,142 @@ const BlogFiltersPanel = ({
   onSortFilterChange,
   categoryCounts
 }) => (
-  <div className="blog-filter-panel">
-    <div className="blog-filter-group">
-      <p>Cari Konten</p>
-      <label className="blog-search">
-        <i className="iconoir-search" aria-hidden="true" />
-        <input
-          type="search"
-          value={searchQuery}
-          placeholder="Cari..."
-          onChange={(event) => onSearchQueryChange(event.target.value)}
-        />
-      </label>
+  <div className="blog-control-panel">
+    <label className="blog-search-field">
+      <i className="iconoir-search" aria-hidden="true" />
+      <input
+        type="search"
+        value={searchQuery}
+        placeholder="Cari tulisan, topik, atau penulis..."
+        onChange={(event) => onSearchQueryChange(event.target.value)}
+      />
+    </label>
+
+    <div className="blog-chip-row">
+      {BLOG_CATEGORY_OPTIONS.map((option) => (
+        <button
+          key={option}
+          type="button"
+          className={categoryFilter === option ? "active" : ""}
+          onClick={() => onCategoryFilterChange(option)}
+        >
+          <span>{option}</span>
+          <b>{categoryCounts[option] || 0}</b>
+        </button>
+      ))}
     </div>
 
-    <div className="blog-filter-group">
-      <p>Kategori</p>
-      <div className="blog-filter-list">
-        {BLOG_CATEGORY_OPTIONS.map((option) => (
-          <button
-            key={option}
-            type="button"
-            className={categoryFilter === option ? "active" : ""}
-            onClick={() => onCategoryFilterChange(option)}
-          >
-            <span>{option}</span>
-            <span>{categoryCounts[option] || 0}</span>
-          </button>
-        ))}
+    <div className="blog-sort-row">
+      <div className="blog-mini-group">
+        <span>Waktu</span>
+        <div className="blog-mini-toggle">
+          {BLOG_TIME_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={timeRangeFilter === option.id ? "active" : ""}
+              onClick={() => onTimeRangeFilterChange(option.id)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
 
-    <div className="blog-filter-group">
-      <p>Waktu</p>
-      <div className="blog-filter-grid">
-        {BLOG_TIME_OPTIONS.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            className={timeRangeFilter === option.id ? "active" : ""}
-            onClick={() => onTimeRangeFilterChange(option.id)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-    </div>
-
-    <div className="blog-filter-group">
-      <p>Urutkan</p>
-      <div className="blog-filter-grid">
-        {BLOG_SORT_OPTIONS.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            className={sortFilter === option.id ? "active" : ""}
-            onClick={() => onSortFilterChange(option.id)}
-          >
-            {option.label}
-          </button>
-        ))}
+      <div className="blog-mini-group">
+        <span>Urutkan</span>
+        <div className="blog-mini-toggle">
+          {BLOG_SORT_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={sortFilter === option.id ? "active" : ""}
+              onClick={() => onSortFilterChange(option.id)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   </div>
 );
 
-const BlogHeadlineSection = ({ post }) => (
-  <article className="blog-headline-card">
-    <div className="blog-badge">Headline</div>
-    <div className="blog-headline-main">
-      <a href="#/blog" className="blog-headline-thumb" aria-label={`Buka artikel ${post.title}`}>
-        <BlogCategoryThumb category={post.category} title={post.title} />
+const BlogFeaturedCard = ({ post }) => (
+  <article className="blog-featured-card">
+    <div className="blog-featured-copy">
+      <div className="eyebrow">Headline blog</div>
+      <a href="#/blog" className="blog-featured-link" aria-label={`Buka artikel ${post.title}`}>
+        <h2>{post.title}</h2>
       </a>
-      <div className="blog-headline-copy">
-        <a href="#/blog" aria-label={`Buka artikel ${post.title}`}>
-          <h1>{post.title}</h1>
+      <p>{post.excerpt}</p>
+
+      <div className="blog-featured-meta">
+        <div>
+          <span>/ {post.category.toUpperCase()}</span>
+          <strong>{post.author}</strong>
+        </div>
+        <div>
+          <span>{post.dateLong}</span>
+          <strong>{post.readTime}</strong>
+        </div>
+        <a href="#/blog" className="btn btn-primary">
+          Baca <Arrow />
         </a>
-        <p>{post.excerpt}</p>
       </div>
     </div>
-    <div className="blog-meta-panel">
-      <div>
-        <span>/ {post.category.toUpperCase()}</span>
-        <strong>{post.author}</strong>
-      </div>
-      <div>
-        <strong>{post.dateLong}</strong>
-        <span>{post.readTime}</span>
-      </div>
-      <a href="#/blog" className="btn btn-primary">
-        Baca <Arrow />
-      </a>
-    </div>
+
+    <a href="#/blog" className="blog-featured-art" aria-label={`Buka artikel ${post.title}`}>
+      <BlogCategoryThumb category={post.category} title={post.title} />
+    </a>
   </article>
 );
 
-const BlogFeedSection = ({ posts, expandedRowKey, onExpandRow, onToggleRow }) => {
-  if (!posts.length) {
-    return (
-      <div className="blog-empty-state">
-        <div><i className="iconoir-search" aria-hidden="true" /></div>
-        <h3>Konten Tidak Ditemukan</h3>
-        <p>Coba ubah kata kunci atau kombinasi filter.</p>
+const BlogStoryCard = ({ post, isExpanded, onToggle }) => (
+  <article className={`blog-story-card${isExpanded ? " open" : ""}`}>
+    <button type="button" className="blog-story-head" aria-expanded={isExpanded} onClick={onToggle}>
+      <BlogCategoryThumb category={post.category} title={post.title} />
+      <span className="blog-story-copy">
+        <small>/ {post.category.toUpperCase()} | {post.dateShort}</small>
+        <strong>{post.title}</strong>
+        <em>{post.excerpt}</em>
+      </span>
+      <span className="blog-story-toggle" aria-hidden="true">{isExpanded ? "−" : "+"}</span>
+    </button>
+
+    {isExpanded ? (
+      <div className="blog-story-body">
+        <p>{post.excerpt}</p>
+        <div className="blog-featured-meta">
+          <div>
+            <span>/ {post.category.toUpperCase()}</span>
+            <strong>{post.author}</strong>
+          </div>
+          <div>
+            <span>{post.dateLong}</span>
+            <strong>{post.readTime}</strong>
+          </div>
+          <a href="#/blog" className="btn btn-ghost">
+            Baca <Arrow />
+          </a>
+        </div>
       </div>
-    );
-  }
+    ) : null}
+  </article>
+);
 
-  return (
-    <div className="blog-feed-card">
-      {posts.map((post) => {
-        const rowKey = `post-${post.id}`;
-        const isExpanded = expandedRowKey === rowKey;
-
-        return (
-          <article key={post.id} className={isExpanded ? "blog-feed-row open" : "blog-feed-row"}>
-            <div className="blog-feed-summary">
-              <button
-                type="button"
-                className="blog-row-main"
-                aria-expanded={isExpanded}
-                onClick={() => onExpandRow(rowKey)}
-              >
-                <BlogCategoryThumb category={post.category} title={post.title} />
-                <span>
-                  <small>/ {post.category.toUpperCase()} | {post.dateShort}</small>
-                  <strong>{post.title}</strong>
-                  <em>{post.excerpt}</em>
-                </span>
-              </button>
-              <button
-                type="button"
-                className="blog-row-toggle"
-                aria-label={isExpanded ? "Tutup detail artikel" : "Buka detail artikel"}
-                onClick={() => onToggleRow(rowKey)}
-              >
-                {isExpanded ? "-" : "+"}
-              </button>
-            </div>
-
-            {isExpanded ? (
-              <div className="blog-feed-detail">
-                <p>{post.excerpt}</p>
-                <div className="blog-meta-panel">
-                  <div>
-                    <span>/ {post.category.toUpperCase()}</span>
-                    <strong>{post.author}</strong>
-                  </div>
-                  <div>
-                    <strong>{post.dateLong}</strong>
-                    <span>{post.readTime}</span>
-                  </div>
-                  <a href="#/blog" className="btn btn-ghost">
-                    Baca <Arrow />
-                  </a>
-                </div>
-              </div>
-            ) : null}
-          </article>
-        );
-      })}
-    </div>
-  );
-};
-
-const BlogNewsletterSection = () => (
-  <section className="blog-newsletter">
-    <h2>Tetap Terhubung</h2>
-    <p>Dapatkan update terbaru, panduan penulisan, dan catatan produk Makalah AI langsung di email Kamu.</p>
-    <div>
-      <input type="email" placeholder="Alamat email..." aria-label="Alamat email" />
-      <button type="button" className="btn btn-primary">Gabung</button>
+const BlogNewsletterBand = () => (
+  <section className="blog-newsletter-band">
+    <div className="eyebrow">Newsletter</div>
+    <div className="blog-newsletter-grid">
+      <div>
+        <h2>Tetap terhubung dengan update, panduan, dan catatan produk.</h2>
+        <p>Dapatkan ringkasan tulisan terbaru Makalah AI langsung di email Kamu, tanpa harus memeriksa halaman ini satu per satu.</p>
+      </div>
+      <div className="blog-newsletter-form">
+        <input type="email" placeholder="Alamat email..." aria-label="Alamat email" />
+        <button type="button" className="btn btn-primary">Gabung</button>
+      </div>
     </div>
   </section>
 );
@@ -294,35 +260,41 @@ const BlogPage = () => {
   const [categoryFilter, setCategoryFilter] = React.useState("Semua");
   const [timeRangeFilter, setTimeRangeFilter] = React.useState("all");
   const [sortFilter, setSortFilter] = React.useState("newest");
-  const [mobileFilterOpen, setMobileFilterOpen] = React.useState(false);
-  const [expandedRowKey, setExpandedRowKey] = React.useState("post-menentukan-topik-riset");
+  const [expandedRowKey, setExpandedRowKey] = React.useState("post-meningkatkan-judul");
+  const [mobileControlsOpen, setMobileControlsOpen] = React.useState(false);
 
-  const headlinePost = BLOG_POSTS[0];
   const categoryCounts = React.useMemo(() => getBlogCategoryCounts(BLOG_POSTS), []);
 
-  const feedPosts = React.useMemo(() => {
+  const filteredPosts = React.useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    const filtered = BLOG_POSTS
-      .filter((post) => post.id !== headlinePost.id)
-      .filter((post) => categoryFilter === "Semua" || post.category === categoryFilter)
-      .filter((post) => isBlogPostInTimeRange(post, timeRangeFilter))
-      .filter((post) => {
-        if (!query) return true;
-        return [post.title, post.excerpt, post.author, post.category].join(" ").toLowerCase().includes(query);
-      });
+
+    const filtered = BLOG_POSTS.filter((post) => {
+      if (categoryFilter !== "Semua" && post.category !== categoryFilter) return false;
+      if (!isBlogPostInTimeRange(post, timeRangeFilter)) return false;
+      if (!query) return true;
+
+      return [post.title, post.excerpt, post.author, post.category]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+    });
 
     return [...filtered].sort((a, b) => {
       const first = new Date(`${a.publishedAt}T00:00:00`).getTime();
       const second = new Date(`${b.publishedAt}T00:00:00`).getTime();
       return sortFilter === "newest" ? second - first : first - second;
     });
-  }, [headlinePost.id, searchQuery, categoryFilter, timeRangeFilter, sortFilter]);
+  }, [categoryFilter, searchQuery, sortFilter, timeRangeFilter]);
+
+  const featuredPost = BLOG_POSTS[0];
+  const feedPosts = filteredPosts.filter((post) => post.id !== featuredPost.id);
+  const mobileCount = feedPosts.length + 1;
 
   const toggleRow = (rowKey) => {
-    setExpandedRowKey((currentKey) => currentKey === rowKey ? null : rowKey);
+    setExpandedRowKey((currentKey) => (currentKey === rowKey ? null : rowKey));
   };
 
-  const filterProps = {
+  const controlProps = {
     searchQuery,
     onSearchQueryChange: setSearchQuery,
     categoryFilter,
@@ -335,44 +307,112 @@ const BlogPage = () => {
   };
 
   return (
-    <section className="section blog-page">
+    <section className="section-frame blog-marketing-page">
       <div className="container">
-        <div className="blog-mobile-bar">
-          <span>{feedPosts.length} konten</span>
-          <button
-            type="button"
-            className={mobileFilterOpen ? "active" : ""}
-            aria-expanded={mobileFilterOpen}
-            onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
-          >
-            <i className={`iconoir-${mobileFilterOpen ? "xmark" : "filter-list"}`} aria-hidden="true" />
-            Filter
-          </button>
-        </div>
+        <Reveal>
+          <PageSplitHero
+            className="blog-hero"
+            eyebrow="/ blog"
+            title={<>Tulisan, update, dan opini yang tetap dekat dengan workflow <em>Makalah AI</em></>}
+            description="Halaman ini merangkum tulisan terbaru, catatan produk, dan panduan kerja yang relevan untuk Kamu yang sedang menyusun paper."
+            titleClassName="blog-hero-title"
+            descriptionClassName="blog-hero-desc"
+            rightClassName="blog-hero-side"
+          />
+        </Reveal>
 
-        {mobileFilterOpen ? (
-          <div className="blog-mobile-filter">
-            <BlogFiltersPanel {...filterProps} />
+        <Reveal delay={1}>
+          <div className="blog-hero-grid">
+            <div className="blog-hero-panel">
+              <span className="blog-kicker">Ringkasan isi</span>
+              <div>
+                <strong>{BLOG_POSTS.length}</strong>
+                <span>artikel statis yang disusun dari topik utama blog saat ini.</span>
+              </div>
+            </div>
+            <div className="blog-hero-panel blog-hero-panel-soft">
+              <span className="blog-kicker">Arah baca</span>
+              <div>
+                <strong>Featured first</strong>
+                <span>Hero menonjolkan satu tulisan utama, lalu feed turun ke tulisan yang lebih pendek dan mudah dipindai.</span>
+              </div>
+            </div>
+            <div className="blog-hero-panel blog-hero-panel-accent">
+              <span className="blog-kicker">Kontrol</span>
+              <div>
+                <strong>Filter ringan</strong>
+                <span>Pencarian dan penyaringan tetap ada, tetapi tampil sebagai kontrol pendamping, bukan inti layout.</span>
+              </div>
+            </div>
           </div>
-        ) : null}
+        </Reveal>
 
-        <div className="blog-page-layout">
-          <aside className="blog-sidebar" aria-label="Filter konten blog">
-            <BlogFiltersPanel {...filterProps} />
-          </aside>
+        <Reveal delay={1}>
+          <div className="blog-controls-shell">
+            <div className="blog-controls-head">
+              <div>
+                <div className="eyebrow">Filter konten</div>
+                <h3>Gunakan kontrol ini kalau Kamu ingin menyaring tulisan tertentu.</h3>
+              </div>
+              <button
+                type="button"
+                className={mobileControlsOpen ? "blog-mobile-toggle active" : "blog-mobile-toggle"}
+                aria-expanded={mobileControlsOpen}
+                onClick={() => setMobileControlsOpen(!mobileControlsOpen)}
+              >
+                <i className={`iconoir-${mobileControlsOpen ? "xmark" : "filter-list"}`} aria-hidden="true" />
+                Filter
+              </button>
+            </div>
 
-          <div className="blog-content">
-            <BlogHeadlineSection post={headlinePost} />
-            <p className="blog-count">{feedPosts.length} konten</p>
-            <BlogFeedSection
-              posts={feedPosts}
-              expandedRowKey={expandedRowKey}
-              onExpandRow={setExpandedRowKey}
-              onToggleRow={toggleRow}
-            />
-            <BlogNewsletterSection />
+            <div className="blog-controls-desktop">
+              <BlogControlPanel {...controlProps} />
+            </div>
+
+            {mobileControlsOpen ? (
+              <div className="blog-controls-mobile">
+                <BlogControlPanel {...controlProps} />
+              </div>
+            ) : null}
           </div>
-        </div>
+        </Reveal>
+
+        <Reveal delay={1}>
+          <BlogFeaturedCard post={featuredPost} />
+        </Reveal>
+
+        <Reveal delay={1}>
+          <div className="blog-feed-header">
+            <div>
+              <div className="eyebrow">Feed</div>
+              <h2>{mobileCount} tulisan yang bisa Kamu pindai cepat.</h2>
+            </div>
+            <p>Daftar ini tetap statis, tapi strukturnya dibuat supaya mudah dipakai sebagai acuan visual untuk halaman marketing lain.</p>
+          </div>
+
+          <div className="blog-feed-grid">
+            {feedPosts.length ? (
+              feedPosts.map((post) => (
+                <BlogStoryCard
+                  key={post.id}
+                  post={post}
+                  isExpanded={expandedRowKey === `post-${post.id}`}
+                  onToggle={() => toggleRow(`post-${post.id}`)}
+                />
+              ))
+            ) : (
+              <div className="blog-empty-state">
+                <div><i className="iconoir-search" aria-hidden="true" /></div>
+                <h3>Konten Tidak Ditemukan</h3>
+                <p>Coba ubah kata kunci atau kombinasi filter.</p>
+              </div>
+            )}
+          </div>
+        </Reveal>
+
+        <Reveal delay={1}>
+          <BlogNewsletterBand />
+        </Reveal>
       </div>
     </section>
   );
@@ -384,10 +424,10 @@ Object.assign(window, {
   BLOG_SORT_OPTIONS,
   BLOG_POSTS,
   BlogCategoryThumb,
-  BlogFiltersPanel,
-  BlogHeadlineSection,
-  BlogFeedSection,
-  BlogNewsletterSection,
+  BlogControlPanel,
+  BlogFeaturedCard,
+  BlogStoryCard,
+  BlogNewsletterBand,
   BlogPage,
   getBlogCategoryCounts,
   isBlogPostInTimeRange
