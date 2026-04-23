@@ -1123,14 +1123,94 @@
 .p-card .btn { justify-content: center; width: 100%; }
 .p-card.featured .btn { background: var(--brand-green); color: var(--brand-green-ink); border-color: var(--brand-green); font-weight: 600; }
 
+.page-split-hero {
+  align-items: end;
+}
+.page-split-main {
+  min-width: 0;
+}
+.page-split-title {
+  max-width: 760px;
+}
+.page-split-side {
+  max-width: 420px;
+  align-self: end;
+}
+.page-split-desc {
+  max-width: none;
+  color: var(--ink-2);
+  font-size: 18px;
+  line-height: 1.72;
+}
+
+.pricing-page-hero {
+  padding-top: 140px;
+}
+.pricing-page-head {
+  margin-bottom: 28px;
+}
+.pricing-page-title {
+  max-width: 780px;
+}
+.pricing-page-desc {
+  margin-bottom: 2px;
+}
+.pricing-page-grid {
+  margin-top: 12px;
+}
+.pricing-page-faq-wrap {
+  padding-top: 72px;
+}
+.pricing-page-faq-copy h2,
+.pricing-page-cta h2 {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.04;
+  color: var(--ink);
+  margin-top: 18px;
+}
+.pricing-page-faq-copy p,
+.pricing-page-cta p {
+  margin-top: 16px;
+  max-width: 540px;
+  color: var(--ink-3);
+  font-size: 15px;
+  line-height: 1.65;
+}
+.pricing-page-cta-wrap {
+  padding-top: 56px;
+}
+.pricing-page-cta {
+  display: grid;
+  grid-template-columns: 1.2fr auto;
+  gap: 24px;
+  align-items: center;
+  padding: 28px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(ellipse 360px 180px at 0% 0%, var(--brand-green-soft), transparent 70%),
+    radial-gradient(ellipse 300px 180px at 100% 100%, var(--sky-soft), transparent 70%),
+    var(--bg-1);
+  box-shadow: var(--shadow-1);
+}
+.pricing-page-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
 /* ---------- FAQ ---------- */
 .faq { display: grid; grid-template-columns: 380px 1fr; gap: 56px; }
 .faq-list { display: flex; flex-direction: column; }
 .faq-item {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-2);
   padding: 20px 0;
 }
-.faq-item:last-child { border-bottom: 1px solid var(--line); }
+.faq-item:last-child { border-bottom: 1px solid var(--line-2); }
 .faq-q {
   display: flex; align-items: center; justify-content: space-between;
   cursor: pointer;
@@ -1301,6 +1381,15 @@
   .demo-output { grid-template-columns: 1fr; }
   .demo-side { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; padding-top: 20px; }
   .pricing-grid { grid-template-columns: 1fr; }
+  .page-split-side {
+    align-self: auto;
+  }
+  .pricing-page-cta {
+    grid-template-columns: 1fr;
+  }
+  .pricing-page-cta-actions {
+    justify-content: flex-start;
+  }
   .footer-top { grid-template-columns: 1fr 1fr; }
   .faq { grid-template-columns: 1fr; gap: 24px; }
 }
@@ -1378,6 +1467,30 @@
   .p-card {
     flex: 0 0 min(86vw, 360px);
     scroll-snap-align: start;
+  }
+  .pricing-page-hero {
+    padding-top: 120px;
+  }
+  .pricing-page-grid {
+    margin: 0 -20px;
+    padding: 0 20px 10px;
+  }
+  .page-split-desc {
+    font-size: 16px;
+    line-height: 1.68;
+  }
+  .pricing-page-cta {
+    padding: 22px 20px;
+  }
+  .pricing-page-cta-actions {
+    justify-content: center;
+  }
+  .pricing-page-cta-actions .btn {
+    justify-content: center;
+  }
+  .pricing-page-faq-copy h2,
+  .pricing-page-cta h2 {
+    font-size: clamp(24px, 8vw, 34px);
   }
   .stats { grid-template-columns: 1fr 1fr; }
   .stat:nth-child(2) { border-right: 0; }

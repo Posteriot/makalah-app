@@ -114,15 +114,7 @@ const MockNotFoundPage = () => (
 
 const MOCK_ROUTE_REGISTRY = {
   "/": () => <MarketingHomePage />,
-  "/pricing": () => (
-    <MockPagePlaceholder
-      eyebrow="Pricing"
-      title="Paket harga akan ditampilkan di checkpoint berikutnya"
-      description="Routing foundation ini sudah menyiapkan tujuan route untuk halaman harga tanpa mengubah runtime statis yang sekarang."
-      ctaLabel="Lihat fitur"
-      ctaHref="#/features"
-    />
-  ),
+  "/pricing": () => <PricingPage />,
   "/documentation": () => (
     <MockPagePlaceholder
       eyebrow="Dokumentasi"
