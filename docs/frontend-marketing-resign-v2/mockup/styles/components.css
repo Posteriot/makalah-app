@@ -1235,6 +1235,14 @@
   line-height: 1.04;
 }
 
+.auth-card-copy {
+  margin-top: 12px;
+  color: var(--ink-3);
+  font-size: 14px;
+  line-height: 1.65;
+  text-align: center;
+}
+
 .auth-actions {
   margin-top: 30px;
 }
@@ -1336,6 +1344,18 @@
   transition: color 0.2s var(--ease);
 }
 
+.auth-inline-link-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-inline-link-arrow-icon {
+  display: inline-flex;
+  align-items: center;
+  transform: rotate(180deg);
+}
+
 .auth-inline-link:hover,
 .auth-inline-link-strong {
   color: var(--brand-green);
@@ -1363,6 +1383,10 @@
   justify-content: center;
   min-height: 54px;
   margin-top: 2px;
+}
+
+.auth-helper-row {
+  margin-top: 18px;
 }
 
 .auth-card-foot {
