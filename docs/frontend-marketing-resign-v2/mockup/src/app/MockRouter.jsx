@@ -116,15 +116,7 @@ const MOCK_ROUTE_REGISTRY = {
   "/": () => <MarketingHomePage />,
   "/pricing": () => <PricingPage />,
   "/documentation": () => <DocumentationPage />,
-  "/blog": () => (
-    <MockPagePlaceholder
-      eyebrow="Blog"
-      title="Halaman blog masuk antrean implementasi"
-      description="Mockup blog belum dipecah jadi layout final, tapi route dan fallback-nya sudah terdaftar untuk seluruh alur navigasi."
-      ctaLabel="Lihat dokumentasi"
-      ctaHref="#/documentation"
-    />
-  ),
+  "/blog": () => <BlogPage />,
   "/about": () => (
     <MockPagePlaceholder
       eyebrow="Tentang"
