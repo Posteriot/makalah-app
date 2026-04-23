@@ -148,15 +148,7 @@ const MOCK_ROUTE_REGISTRY = {
     />
   ),
   "/features": () => <FeaturesPage />,
-  "/faq": () => (
-    <MockPagePlaceholder
-      eyebrow="FAQ"
-      title="Halaman FAQ akan hadir setelah halaman inti"
-      description="Untuk checkpoint routing, halaman ini cukup menjadi target route yang valid dan mudah diverifikasi."
-      ctaLabel="Kembali ke home"
-      ctaHref="#/"
-    />
-  ),
+  "/faq": () => <FAQPage />,
   "/roadmap": () => (
     <MockPagePlaceholder
       eyebrow="Roadmap"
