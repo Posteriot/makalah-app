@@ -9,78 +9,111 @@ const GoogleMark = ({ size = 18 }) => (
   </svg>
 );
 
-const SignInPage = () => (
-  <div className="auth-page sign-in-page">
-    <section className="auth-shell">
-      <div className="auth-shell-glow" aria-hidden="true" />
-      <Reveal className="auth-card-wrap">
-        <div className="auth-card">
-          <a href="#/" className="auth-brand" aria-label="Kembali ke home Makalah AI">
-            <img
-              src="assets/official_logo_grey_500.png"
-              alt="Makalah"
-              className="auth-brand-mark"
-            />
-          </a>
+const SIGN_IN_VARIANTS = {
+  default: null,
+  required: { tone: "error", message: "Email dan password wajib diisi sebelum Kamu melanjutkan." },
+  invalidEmail: { tone: "error", message: "Format email belum valid. Periksa kembali email Kamu." },
+  emailNotFound: { tone: "error", message: "Email belum terdaftar. Periksa lagi atau buat akun baru." },
+  wrongPassword: { tone: "error", message: "Password yang Kamu masukkan belum sesuai." },
+  rateLimit: { tone: "error", message: "Terlalu banyak percobaan. Tunggu sebentar sebelum mencoba lagi." }
+};
 
-          <div className="auth-card-head auth-card-head-compact">
-            <h1>Silakan masuk</h1>
-          </div>
+const SignInPage = ({ variant = "default" }) => {
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const state = SIGN_IN_VARIANTS[variant] || SIGN_IN_VARIANTS.default;
 
-          <div className="auth-actions">
-            <a href="#/sign-in" className="btn auth-google-btn">
-              <GoogleMark />
-              <span>Masuk dengan Google</span>
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    window.setTimeout(() => setIsSubmitting(false), 1200);
+  };
+
+  return (
+    <div className="auth-page sign-in-page">
+      <section className="auth-shell">
+        <div className="auth-shell-glow" aria-hidden="true" />
+        <Reveal className="auth-card-wrap">
+          <div className="auth-card">
+            <a href="#/" className="auth-brand" aria-label="Kembali ke home Makalah AI">
+              <img
+                src="assets/official_logo_grey_500.png"
+                alt="Makalah"
+                className="auth-brand-mark"
+              />
             </a>
 
-            <div className="auth-divider" role="presentation">
-              <span>atau masuk dengan email</span>
+            <div className="auth-card-head auth-card-head-compact">
+              <h1>Silakan masuk</h1>
             </div>
 
-            <form className="auth-form" onSubmit={(event) => event.preventDefault()}>
-              <label className="auth-field">
-                <input type="email" placeholder="Email" aria-label="Email" />
-              </label>
+            <div className="auth-actions">
+              <a href="#/sign-in" className="btn auth-google-btn">
+                <GoogleMark />
+                <span>Masuk dengan Google</span>
+              </a>
 
-              <label className="auth-field">
-                <input type="password" placeholder="Password" aria-label="Password" />
-              </label>
-
-              <div className="auth-row auth-row-between">
-                <a href="#/magic-link" className="auth-inline-link">
-                  Masuk dengan Magic Link
-                </a>
-                <a href="#/forgot-password" className="auth-inline-link">
-                  Lupa password?
-                </a>
+              <div className="auth-divider" role="presentation">
+                <span>atau masuk dengan email</span>
               </div>
 
-              <div className="auth-feedback" role="status" aria-live="polite">
-                Email atau password belum sesuai. Coba lagi.
-              </div>
+              <form className="auth-form" onSubmit={handleSubmit}>
+                <label className="auth-field">
+                  <input type="email" placeholder="Email" aria-label="Email" disabled={isSubmitting} />
+                </label>
 
-              <button type="submit" className="btn btn-primary auth-submit-btn">
-                Masuk <Arrow />
-              </button>
-            </form>
+                <label className="auth-field">
+                  <input type="password" placeholder="Password" aria-label="Password" disabled={isSubmitting} />
+                </label>
+
+                <div className="auth-row auth-row-between">
+                  <a href="#/magic-link" className="auth-inline-link">
+                    Masuk dengan Magic Link
+                  </a>
+                  <a href="#/forgot-password" className="auth-inline-link">
+                    Lupa password?
+                  </a>
+                </div>
+
+                {state ? (
+                  <div className={`auth-feedback auth-feedback-${state.tone}`} role="status" aria-live="polite">
+                    {state.message}
+                  </div>
+                ) : null}
+
+                <button type="submit" className="btn btn-primary auth-submit-btn" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <span className="auth-spinner" aria-hidden="true" />
+                      <span>Memproses...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Masuk</span>
+                      <Arrow />
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+
+            <div className="auth-card-foot">
+              <span className="auth-foot-copy">Belum punya akun?</span>
+              <a href="#/sign-up" className="auth-inline-link auth-inline-link-strong">
+                Daftar
+              </a>
+            </div>
           </div>
+        </Reveal>
 
-          <div className="auth-card-foot">
-            <span className="auth-foot-copy">Belum punya akun?</span>
-            <a href="#/sign-up" className="auth-inline-link auth-inline-link-strong">
-              Daftar
-            </a>
-          </div>
-        </div>
-      </Reveal>
-
-      <Reveal delay={1} className="auth-identity">
-        <span>Makalah AI</span>
-        <span>PT The Management Asia</span>
-      </Reveal>
-    </section>
-  </div>
-);
+        <Reveal delay={1} className="auth-identity">
+          <span>Makalah AI</span>
+          <span>PT The Management Asia</span>
+        </Reveal>
+      </section>
+    </div>
+  );
+};
 
 Object.assign(window, {
   GoogleMark,

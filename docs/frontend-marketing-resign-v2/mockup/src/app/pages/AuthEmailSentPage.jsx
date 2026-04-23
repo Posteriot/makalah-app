@@ -5,8 +5,7 @@ const AUTH_EMAIL_SENT_VARIANTS = {
     title: "Cek email Kamu",
     description: "Kami sudah mengirim link reset password ke email Kamu.",
     note: "Buka inbox atau folder spam, lalu klik link reset untuk membuat password baru.",
-    primaryLabel: "Link sudah terkirim",
-    primaryHref: "#/forgot-password/email-sent",
+    primaryLabel: "Kirim ulang link",
     secondaryLabel: "Masuk",
     secondaryHref: "#/sign-in"
   },
@@ -14,8 +13,7 @@ const AUTH_EMAIL_SENT_VARIANTS = {
     title: "Cek email Kamu",
     description: "Kami sudah mengirim Magic Link ke email Kamu.",
     note: "Buka inbox atau folder spam, lalu klik link itu untuk langsung masuk ke akun Kamu.",
-    primaryLabel: "Magic Link sudah terkirim",
-    primaryHref: "#/magic-link/email-sent",
+    primaryLabel: "Kirim ulang Magic Link",
     secondaryLabel: "Masuk",
     secondaryHref: "#/sign-in"
   }
@@ -23,6 +21,13 @@ const AUTH_EMAIL_SENT_VARIANTS = {
 
 const AuthEmailSentPage = ({ variant = "forgotPassword" }) => {
   const content = AUTH_EMAIL_SENT_VARIANTS[variant] || AUTH_EMAIL_SENT_VARIANTS.forgotPassword;
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const handleResend = () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    window.setTimeout(() => setIsSubmitting(false), 1200);
+  };
 
   return (
     <div className="auth-page auth-email-sent-page">
@@ -49,9 +54,19 @@ const AuthEmailSentPage = ({ variant = "forgotPassword" }) => {
               </div>
 
               <div className="auth-form auth-email-sent-actions">
-                <a href={content.primaryHref} className="btn btn-primary auth-submit-btn">
-                  {content.primaryLabel} <Arrow />
-                </a>
+                <button type="button" className="btn btn-primary auth-submit-btn" onClick={handleResend} disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <span className="auth-spinner" aria-hidden="true" />
+                      <span>Mengirim ulang...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{content.primaryLabel}</span>
+                      <Arrow />
+                    </>
+                  )}
+                </button>
               </div>
 
               <div className="auth-row auth-row-center auth-helper-row">

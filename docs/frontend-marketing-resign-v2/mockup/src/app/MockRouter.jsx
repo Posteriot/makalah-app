@@ -1,15 +1,71 @@
 /* Hash router for the static marketing mockup */
 
+const SIGN_IN_ROUTES = {
+  "/sign-in": () => <SignInPage />,
+  "/sign-in/required": () => <SignInPage variant="required" />,
+  "/sign-in/invalid-email": () => <SignInPage variant="invalidEmail" />,
+  "/sign-in/email-not-found": () => <SignInPage variant="emailNotFound" />,
+  "/sign-in/wrong-password": () => <SignInPage variant="wrongPassword" />,
+  "/sign-in/rate-limit": () => <SignInPage variant="rateLimit" />
+};
+
+const SIGN_UP_ROUTES = {
+  "/sign-up": () => <SignUpPage />,
+  "/sign-up/required": () => <SignUpPage variant="required" />,
+  "/sign-up/invalid-email": () => <SignUpPage variant="invalidEmail" />,
+  "/sign-up/email-too-short": () => <SignUpPage variant="emailTooShort" />,
+  "/sign-up/email-taken": () => <SignUpPage variant="emailTaken" />,
+  "/sign-up/password-too-short": () => <SignUpPage variant="passwordTooShort" />,
+  "/sign-up/success": () => <SignUpPage variant="success" />
+};
+
+const VERIFY_2FA_ROUTES = {
+  "/verify-2fa": () => <Verify2FAPage />,
+  "/verify-2fa/required": () => <Verify2FAPage variant="required" />,
+  "/verify-2fa/incomplete": () => <Verify2FAPage variant="incomplete" />,
+  "/verify-2fa/invalid": () => <Verify2FAPage variant="invalid" />,
+  "/verify-2fa/rate-limit": () => <Verify2FAPage variant="rateLimit" />
+};
+
+const FORGOT_PASSWORD_ROUTES = {
+  "/forgot-password": () => <ForgotPasswordPage />,
+  "/forgot-password/required": () => <ForgotPasswordPage variant="required" />,
+  "/forgot-password/invalid-email": () => <ForgotPasswordPage variant="invalidEmail" />,
+  "/forgot-password/email-not-found": () => <ForgotPasswordPage variant="emailNotFound" />,
+  "/forgot-password/send-failed": () => <ForgotPasswordPage variant="sendFailed" />,
+  "/forgot-password/email-sent": () => <AuthEmailSentPage variant="forgotPassword" />
+};
+
+const MAGIC_LINK_ROUTES = {
+  "/magic-link": () => <MagicLinkPage />,
+  "/magic-link/required": () => <MagicLinkPage variant="required" />,
+  "/magic-link/invalid-email": () => <MagicLinkPage variant="invalidEmail" />,
+  "/magic-link/email-not-found": () => <MagicLinkPage variant="emailNotFound" />,
+  "/magic-link/send-failed": () => <MagicLinkPage variant="sendFailed" />,
+  "/magic-link/email-sent": () => <AuthEmailSentPage variant="magicLink" />,
+  "/magic-link/invalid": () => <MagicLinkPage variant="invalid" />,
+  "/magic-link/expired": () => <MagicLinkPage variant="expired" />
+};
+
+const RESET_PASSWORD_ROUTES = {
+  "/reset-password": () => <ResetPasswordPage />,
+  "/reset-password/required": () => <ResetPasswordPage variant="required" />,
+  "/reset-password/password-too-short": () => <ResetPasswordPage variant="passwordTooShort" />,
+  "/reset-password/mismatch": () => <ResetPasswordPage variant="mismatch" />,
+  "/reset-password/invalid": () => <ResetPasswordPage variant="invalid" />,
+  "/reset-password/expired": () => <ResetPasswordPage variant="expired" />,
+  "/reset-password/save-failed": () => <ResetPasswordPage variant="saveFailed" />,
+  "/reset-password/success": () => <ResetPasswordPage variant="success" />
+};
+
 const MOCK_ROUTE_KEYS = [
   "/",
-  "/sign-in",
-  "/sign-up",
-  "/verify-2fa",
-  "/forgot-password",
-  "/forgot-password/email-sent",
-  "/magic-link",
-  "/magic-link/email-sent",
-  "/reset-password",
+  ...Object.keys(SIGN_IN_ROUTES),
+  ...Object.keys(SIGN_UP_ROUTES),
+  ...Object.keys(VERIFY_2FA_ROUTES),
+  ...Object.keys(FORGOT_PASSWORD_ROUTES),
+  ...Object.keys(MAGIC_LINK_ROUTES),
+  ...Object.keys(RESET_PASSWORD_ROUTES),
   "/pricing",
   "/documentation",
   "/blog",
@@ -123,14 +179,12 @@ const MockNotFoundPage = () => (
 
 const MOCK_ROUTE_REGISTRY = {
   "/": () => <MarketingHomePage />,
-  "/sign-in": () => <SignInPage />,
-  "/sign-up": () => <SignUpPage />,
-  "/verify-2fa": () => <Verify2FAPage />,
-  "/forgot-password": () => <ForgotPasswordPage />,
-  "/forgot-password/email-sent": () => <AuthEmailSentPage variant="forgotPassword" />,
-  "/magic-link": () => <MagicLinkPage />,
-  "/magic-link/email-sent": () => <AuthEmailSentPage variant="magicLink" />,
-  "/reset-password": () => <ResetPasswordPage />,
+  ...SIGN_IN_ROUTES,
+  ...SIGN_UP_ROUTES,
+  ...VERIFY_2FA_ROUTES,
+  ...FORGOT_PASSWORD_ROUTES,
+  ...MAGIC_LINK_ROUTES,
+  ...RESET_PASSWORD_ROUTES,
   "/pricing": () => <PricingPage />,
   "/documentation": () => <DocumentationPage />,
   "/blog": () => <BlogPage />,
