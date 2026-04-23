@@ -5,6 +5,7 @@ const MOCK_ROUTE_KEYS = [
   "/pricing",
   "/documentation",
   "/blog",
+  "/blog/workflow-bertahap-untuk-paper",
   "/about",
   "/privacy",
   "/security",
@@ -117,6 +118,7 @@ const MOCK_ROUTE_REGISTRY = {
   "/pricing": () => <PricingPage />,
   "/documentation": () => <DocumentationPage />,
   "/blog": () => <BlogPage />,
+  "/blog/workflow-bertahap-untuk-paper": () => <BlogArticlePage />,
   "/about": () => <AboutPage />,
   "/privacy": () => (
     <MockPagePlaceholder
