@@ -1,6 +1,10 @@
 /* Global footer chrome */
 
-const FooterMock = () => (
+const FooterMock = () => {
+  const currentRoute = typeof window.useHashRoute === "function" ? window.useHashRoute() : "/";
+  if (currentRoute === "/documentation") return null;
+
+  return (
   <footer className="footer">
     <div className="container">
       <div className="footer-top">
@@ -51,7 +55,8 @@ const FooterMock = () => (
       </div>
     </div>
   </footer>
-);
+  );
+};
 
 const Footer = FooterMock;
 
