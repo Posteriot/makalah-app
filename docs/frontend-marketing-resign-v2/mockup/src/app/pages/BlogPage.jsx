@@ -141,18 +141,6 @@ const BlogPage = () => {
   return (
     <section className="section-frame blog-marketing-page">
       <div className="container">
-        <Reveal>
-          <PageSplitHero
-            className="blog-hero"
-            eyebrow="/ blog"
-            title={<>Tulisan, update, dan opini yang tetap dekat dengan workflow <em>Makalah AI</em></>}
-            description="Halaman ini merangkum tulisan terbaru, catatan produk, dan panduan kerja yang relevan untuk Kamu yang sedang menyusun paper."
-            titleClassName="blog-hero-title"
-            descriptionClassName="blog-hero-desc"
-            rightClassName="blog-hero-side"
-          />
-        </Reveal>
-
         <Reveal delay={1}>
           <BlogFeaturedCard post={featuredPost} />
         </Reveal>
