@@ -122,6 +122,7 @@ const PricingPage = () => {
   return (
     <div className="pricing-page">
       <section className="section-frame pricing-page-hero">
+        <div className="hero-ornament" />
         <div className="container">
           <Reveal>
             <PageSplitHero

@@ -1148,7 +1148,13 @@
 }
 
 .pricing-page-hero {
+  position: relative;
   padding-top: 140px;
+  overflow: hidden;
+}
+.pricing-page-hero > .container {
+  position: relative;
+  z-index: 1;
 }
 .pricing-page-head {
   margin-bottom: 28px;
@@ -1213,7 +1219,14 @@
 }
 
 .features-page-hero {
+  position: relative;
   padding-top: 142px;
+  overflow: hidden;
+}
+
+.features-page-hero > .container {
+  position: relative;
+  z-index: 1;
 }
 
 .features-page-head {
@@ -1241,9 +1254,7 @@
 .features-pillar-stat {
   border: 1px solid var(--line-2);
   border-radius: var(--r-xl);
-  background:
-    radial-gradient(ellipse 260px 160px at 100% 0%, var(--sky-soft) 0%, transparent 70%),
-    rgba(15, 16, 18, 0.86);
+  background: rgba(15, 16, 18, 0.86);
   box-shadow: var(--shadow-1);
 }
 
@@ -1283,6 +1294,11 @@
 
 .features-pillar {
   position: relative;
+}
+
+.features-pillar > .container {
+  position: relative;
+  z-index: 1;
 }
 
 .features-pillar-grid {
@@ -1330,6 +1346,16 @@
   flex: 0 0 auto;
 }
 
+.features-pillar-bullets .features-check-square {
+  color: var(--brand-green);
+}
+
+.features-pillar-bullets .features-check-square i {
+  display: block;
+  font-size: 20px;
+  line-height: 1;
+}
+
 .features-pillar-visual-wrap {
   display: grid;
   gap: 16px;
@@ -1359,6 +1385,20 @@
 
 .features-visual-shell {
   padding: 22px;
+}
+
+.features-illustration-frame {
+  overflow: hidden;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-xl);
+  background: rgba(15, 16, 18, 0.86);
+  box-shadow: var(--shadow-1);
+}
+
+.features-illustration-image {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .features-shell-top,
@@ -1548,7 +1588,13 @@
 }
 
 .features-page-cta-wrap {
+  position: relative;
   padding-bottom: 96px;
+}
+
+.features-page-cta-wrap > .container {
+  position: relative;
+  z-index: 1;
 }
 
 .features-page-cta {
@@ -1596,6 +1642,14 @@
 /* ---------- Blog page ---------- */
 .blog-page {
   padding-top: 128px;
+}
+.blog-marketing-page {
+  position: relative;
+  overflow: hidden;
+}
+.blog-marketing-page > .container {
+  position: relative;
+  z-index: 1;
 }
 .blog-page-layout {
   display: grid;
@@ -2436,7 +2490,13 @@
   padding: 96px 0;
 }
 .about-hero {
+  position: relative;
   padding-top: 140px;
+  overflow: hidden;
+}
+.about-hero > .container {
+  position: relative;
+  z-index: 1;
 }
 .about-hero-head {
   align-items: end;
@@ -3011,6 +3071,22 @@
   border-top: 1px solid var(--line);
   padding: 64px 0 24px;
   position: relative;
+  overflow: hidden;
+}
+.footer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 980px 340px at 14% 100%, rgba(241,85,35,0.14) 0%, rgba(241,85,35,0.10) 28%, transparent 72%),
+    radial-gradient(ellipse 900px 340px at 72% 100%, var(--sky-soft) 0%, transparent 70%);
+  opacity: 0.88;
+  z-index: 0;
+}
+.footer > .container {
+  position: relative;
+  z-index: 1;
 }
 .footer-top {
   display: grid;

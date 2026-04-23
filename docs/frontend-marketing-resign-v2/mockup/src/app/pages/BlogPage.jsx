@@ -477,6 +477,7 @@ const BlogPage = () => {
 
   return (
     <section className="section-frame blog-marketing-page">
+      <div className="hero-ornament" />
       <div className="container">
         {currentPage === 1 ? (
           <Reveal delay={1}>

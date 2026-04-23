@@ -134,6 +134,7 @@ const AboutPage = () => {
   return (
   <div className="about-page">
     <section className="section-frame about-hero">
+      <div className="hero-ornament" />
       <div className="container">
         <Reveal>
           <div className="sec-head page-split-hero about-hero-head">

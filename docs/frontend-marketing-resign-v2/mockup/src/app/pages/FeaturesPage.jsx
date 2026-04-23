@@ -86,126 +86,52 @@ const FEATURES_PAGE_ARTIFACT_SECTIONS = [
 ];
 
 const FeaturesWorkflowPreview = () => (
-  <div className="features-visual-shell features-visual-shell-workflow">
-    <div className="features-shell-top">
-      <span className="features-shell-label">Tahap paper</span>
-      <span className="features-shell-value">14 checkpoint</span>
-    </div>
-    <div className="features-stage-list">
-      {[
-        "01 Gagasan",
-        "02 Topik",
-        "03 Outline",
-        "04 Abstrak",
-        "05 Pendahuluan",
-        "06 Tinjauan literatur",
-        "07 Metodologi",
-        "08 Hasil",
-        "09 Diskusi",
-        "10 Kesimpulan",
-        "11 Pembaruan abstrak",
-        "12 Daftar pustaka",
-        "13 Lampiran",
-        "14 Judul"
-      ].map((label, index) => (
-        <div key={label} className={`features-stage-item${index < 5 ? " is-active" : ""}${index === 5 ? " is-next" : ""}`}>
-          <span>{label}</span>
-          <span>{index < 5 ? "Terkunci" : index === 5 ? "Berikutnya" : "Menunggu"}</span>
-        </div>
-      ))}
-    </div>
+  <div className="features-illustration-frame">
+    <img
+      src="assets/fitur-illustration-1.png"
+      alt="Ilustrasi workflow 14 tahap Makalah AI"
+      className="features-illustration-image"
+    />
   </div>
 );
 
 const FeaturesRefrasaPreview = () => (
-  <div className="features-visual-shell">
-    <div className="features-refrasa-grid">
-      <div className="features-refrasa-card">
-        <div className="features-shell-label">Sebelum</div>
-        <p>
-          Penelitian ini memiliki tujuan untuk melakukan analisis terhadap penggunaan media digital
-          yang mana dapat memberikan dampak terhadap kualitas proses pembelajaran mahasiswa.
-        </p>
-      </div>
-      <div className="features-refrasa-card is-accent">
-        <div className="features-shell-label">Sesudah</div>
-        <p>
-          Penelitian ini menganalisis bagaimana penggunaan media digital memengaruhi kualitas
-          proses belajar mahasiswa dalam konteks perkuliahan.
-        </p>
-      </div>
-    </div>
-    <div className="features-refrasa-notes">
-      <span>Ritme kalimat lebih tenang</span>
-      <span>Istilah utama tetap dijaga</span>
-      <span>Diksi lebih natural</span>
-    </div>
+  <div className="features-illustration-frame">
+    <img
+      src="assets/fitur-illustration-2.png"
+      alt="Ilustrasi fitur refrasa Makalah AI"
+      className="features-illustration-image"
+    />
   </div>
 );
 
 const FeaturesNaskahPreview = () => (
-  <div className="features-visual-shell features-visual-shell-paper">
-    <div className="features-paper-page">
-      <div className="features-paper-heading">
-        <span className="features-shell-label">Naskah</span>
-        <h3>Pengaruh Media Digital terhadap Kualitas Belajar Mahasiswa</h3>
-      </div>
-      <div className="features-paper-sections">
-        {[
-          ["Abstrak", "Sudah tersusun"],
-          ["Pendahuluan", "Sudah tersusun"],
-          ["Tinjauan Literatur", "Sedang bertumbuh"],
-          ["Metodologi", "Menunggu tahap aktif"]
-        ].map(([title, meta]) => (
-          <div key={title} className="features-paper-section">
-            <div>
-              <strong>{title}</strong>
-              <p>{meta}</p>
-            </div>
-            <span className="features-paper-dot" aria-hidden="true" />
-          </div>
-        ))}
-      </div>
-    </div>
+  <div className="features-illustration-frame">
+    <img
+      src="assets/fitur-illustration-3.png"
+      alt="Ilustrasi fitur naskah Makalah AI"
+      className="features-illustration-image"
+    />
   </div>
 );
 
 const FeaturesArtifactPreview = () => (
-  <div className="features-visual-shell">
-    <div className="features-shell-top">
-      <span className="features-shell-label">Artifak paper</span>
-      <span className="features-shell-value">{FEATURES_PAGE_ARTIFACT_SECTIONS.length} section inti</span>
-    </div>
-    <div className="features-artifact-list">
-      {FEATURES_PAGE_ARTIFACT_SECTIONS.map((item, index) => (
-        <div key={item} className={`features-artifact-item${index < 3 ? " is-ready" : ""}`}>
-          <span>{item}</span>
-          <span>{index < 3 ? `v${index + 1}` : "belum dibuat"}</span>
-        </div>
-      ))}
-    </div>
+  <div className="features-illustration-frame">
+    <img
+      src="assets/fitur-illustration-4.png"
+      alt="Ilustrasi fitur artifak Makalah AI"
+      className="features-illustration-image"
+    />
   </div>
 );
 
 const FeaturesChoiceCardPreview = () => (
-  <div className="features-visual-shell">
-    <div className="features-choice-card">
-      <div className="features-shell-label">Choice card</div>
-      <h3>Pilih arah pendahuluan yang paling pas</h3>
-      <div className="features-choice-options">
-        <button type="button" className="features-choice-option is-recommended">
-          <span>Masalah utama lebih dulu</span>
-          <strong>Rekomendasi</strong>
-        </button>
-        <button type="button" className="features-choice-option">
-          <span>Mulai dari konteks umum</span>
-        </button>
-        <button type="button" className="features-choice-option">
-          <span>Bandingkan dua pendekatan</span>
-        </button>
-      </div>
-      <div className="features-choice-submit">Kirim pilihan</div>
-    </div>
+  <div className="features-illustration-frame">
+    <img
+      src="assets/fitur-illustration-5.png"
+      alt="Ilustrasi fitur choice card Makalah AI"
+      className="features-illustration-image"
+    />
   </div>
 );
 
@@ -231,7 +157,9 @@ const FeaturesPillarSection = ({ item, index }) => (
             <ul className="features-pillar-bullets">
               {item.bullets.map((bullet) => (
                 <li key={bullet}>
-                  <span className="check"><Check /></span>
+                  <span className="check features-check-square">
+                    <i className="iconoir-check-square" aria-hidden="true" />
+                  </span>
                   <span>{bullet}</span>
                 </li>
               ))}
@@ -253,6 +181,7 @@ const FeaturesPillarSection = ({ item, index }) => (
 const FeaturesPage = () => (
   <div className="features-page">
     <section className="section-frame features-page-hero">
+      <div className="hero-ornament" />
       <div className="container">
         <Reveal>
           <PageSplitHero
