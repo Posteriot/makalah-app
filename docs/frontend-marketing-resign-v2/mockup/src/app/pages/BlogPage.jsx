@@ -60,6 +60,30 @@ const BLOG_POSTS = [
     dateShort: "20/03/2026",
     dateLong: "20 Maret 2026",
     readTime: "3 menit baca"
+  },
+  {
+    id: "review-sumber-lebih-cepat",
+    slug: "review-sumber-lebih-cepat",
+    title: "Review sumber lebih cepat tanpa kehilangan konteks argumen",
+    excerpt: "Cara menandai sumber penting, mencatat posisi kutipan, dan menjaga alur argumen tetap rapi saat bahan bacaan mulai banyak.",
+    category: "Tutorial",
+    author: "Dian Wicaksono",
+    publishedAt: "2026-03-14",
+    dateShort: "14/03/2026",
+    dateLong: "14 Maret 2026",
+    readTime: "6 menit baca"
+  },
+  {
+    id: "catatan-rilis-workspace-akademik",
+    slug: "catatan-rilis-workspace-akademik",
+    title: "Catatan rilis: workspace akademik yang lebih mudah dipantau",
+    excerpt: "Perubahan terbaru di workspace membantu Kamu melihat tahapan aktif, revisi terakhir, dan progres draft dengan lebih cepat.",
+    category: "Update",
+    author: "Tim Produk",
+    publishedAt: "2026-03-08",
+    dateShort: "08/03/2026",
+    dateLong: "8 Maret 2026",
+    readTime: "4 menit baca"
   }
 ];
 
