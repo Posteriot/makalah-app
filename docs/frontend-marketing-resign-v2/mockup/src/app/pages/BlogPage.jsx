@@ -75,17 +75,11 @@ const BlogFeaturedCard = ({ post }) => (
     <div className="blog-featured-copy">
       <div className="blog-featured-topline">
         <span>/ {post.category.toUpperCase()} | {post.dateShort}</span>
-        <span>{post.readTime}</span>
       </div>
       <a href="#/blog" className="blog-featured-link" aria-label={`Buka artikel ${post.title}`}>
         <h2>{post.title}</h2>
       </a>
       <p>{post.excerpt}</p>
-      <div className="blog-featured-actions">
-        <a href="#/blog" className="btn btn-primary">
-          Baca <Arrow />
-        </a>
-      </div>
     </div>
 
     <a href="#/blog" className="blog-featured-art" aria-label={`Buka artikel ${post.title}`}>
@@ -102,7 +96,6 @@ const BlogStoryCard = ({ post }) => (
     <div className="blog-story-body">
       <div className="blog-story-meta">
         <span>/ {post.category.toUpperCase()} | {post.dateShort}</span>
-        <span>{post.readTime}</span>
       </div>
       <a href="#/blog" className="blog-story-title-link" aria-label={`Buka artikel ${post.title}`}>
         <strong>{post.title}</strong>
@@ -140,14 +133,6 @@ const BlogPage = () => {
         </Reveal>
 
         <Reveal delay={1}>
-          <div className="blog-feed-header">
-            <div>
-              <div className="eyebrow">Feed</div>
-              <h2>{feedPosts.length} tulisan yang bisa Kamu pindai cepat.</h2>
-            </div>
-            <p>Daftar ini tetap statis, tapi strukturnya dibuat supaya mudah dipakai sebagai acuan visual untuk halaman marketing lain.</p>
-          </div>
-
           <div className="blog-feed-grid">
             {feedPosts.map((post) => (
               <BlogStoryCard key={post.id} post={post} />
