@@ -18,26 +18,32 @@ const ABOUT_MANIFESTO = {
 
 const ABOUT_PROBLEMS = [
   {
+    icon: "light-bulb",
     title: "AI mematikan rasa ingin tahu?",
     description: "Makalah mengambil arah sebaliknya: sistem ini justru memantik diskusi dan membantu teknis penulisan supaya energi utama tetap dipakai untuk menajamkan gagasan."
   },
   {
+    icon: "chat-bubble",
     title: "Prompting yang ribet",
     description: "Makalah dibangun untuk membantah asumsi bahwa AI hanya berguna kalau pengguna tahu prompt yang rumit. Yang dibutuhkan justru percakapan iteratif yang jelas dan informatif."
   },
   {
+    icon: "journal-page",
     title: "Sitasi dan provenance",
     description: "Setiap sumber perlu bisa dilacak. Makalah menjaga sitasi tetap rapi dan asal-usul ide tetap terbaca supaya paper mudah diaudit ketika direvisi."
   },
   {
+    icon: "shield-check",
     title: "Plagiarisme dipagari etis",
     description: "Sistem dipagari agar tidak menyalin teks berhak cipta secara mentah. Tujuannya menjaga orisinalitas gagasan pengguna dan mendorong penulisan yang lebih bertanggung jawab."
   },
   {
+    icon: "page-search",
     title: "Transparansi proses penyusunan",
     description: "Riwayat interaksi dan alur revisi perlu terlihat, bukan tersembunyi di balik hasil akhir. Makalah memosisikan AI sebagai kolaborator yang akuntabel."
   },
   {
+    icon: "warning-triangle",
     title: "Deteksi AI yang problematik",
     description: "Makalah tidak berangkat dari obsesi membedakan tulisan AI atau bukan. Yang lebih penting adalah transparansi penggunaan, jejak proses, dan kualitas argumentasi akhir."
   }
@@ -84,22 +90,48 @@ const ABOUT_CONTACT = {
   career: "Update posisi akan kami tampilkan di halaman ini."
 };
 
-const AboutProblemCard = ({ item }) => (
-  <article className="about-problem-card">
-    <h3>{item.title}</h3>
-    <p>{item.description}</p>
+const AboutProblemCard = ({ item, isOpen, onToggle }) => (
+  <article className={`about-problem-card${isOpen ? " open" : ""}`}>
+    <button className="about-problem-toggle" type="button" onClick={onToggle} aria-expanded={isOpen}>
+      <div className="about-problem-row">
+        <div className="about-problem-icon" aria-hidden="true">
+          <i className={`iconoir-${item.icon}`} aria-hidden="true" />
+        </div>
+        <div className="about-problem-copy">
+          <h3>{item.title}</h3>
+        </div>
+      </div>
+      <span className="about-card-pm" aria-hidden="true" />
+    </button>
+    <div className="about-problem-body">
+      <p>{item.description}</p>
+    </div>
   </article>
 );
 
-const AboutAgentCard = ({ item }) => (
-  <article className={`about-agent-card${item.active ? " active" : ""}`}>
+const AboutAgentCard = ({ item, isOpen, onToggle }) => (
+  <article className={`about-agent-card${item.active ? " active" : ""}${isOpen ? " open" : ""}`}>
     <div className="about-agent-status">{item.status}</div>
-    <h3>{item.title}</h3>
-    <p>{item.description}</p>
+    <button className="about-agent-toggle" type="button" onClick={onToggle} aria-expanded={isOpen}>
+      <div className="about-agent-row">
+        <div className="about-agent-copy">
+          <h3>{item.title}</h3>
+        </div>
+      </div>
+      <span className="about-card-pm" aria-hidden="true" />
+    </button>
+    <div className="about-agent-body">
+      <div className="about-agent-status about-agent-status-mobile">{item.status}</div>
+      <p>{item.description}</p>
+    </div>
   </article>
 );
 
-const AboutPage = () => (
+const AboutPage = () => {
+  const [openProblem, setOpenProblem] = React.useState(0);
+  const [openAgent, setOpenAgent] = React.useState(0);
+
+  return (
   <div className="about-page">
     <section className="section-frame about-hero">
       <div className="container">
@@ -156,8 +188,13 @@ const AboutPage = () => (
 
         <Reveal delay={1}>
           <div className="about-problems-grid">
-            {ABOUT_PROBLEMS.map((item) => (
-              <AboutProblemCard key={item.title} item={item} />
+            {ABOUT_PROBLEMS.map((item, index) => (
+              <AboutProblemCard
+                key={item.title}
+                item={item}
+                isOpen={openProblem === index}
+                onToggle={() => setOpenProblem(openProblem === index ? -1 : index)}
+              />
             ))}
           </div>
         </Reveal>
@@ -180,8 +217,13 @@ const AboutPage = () => (
 
         <Reveal delay={1}>
           <div className="about-agents-grid">
-            {ABOUT_AGENTS.map((item) => (
-              <AboutAgentCard key={item.title} item={item} />
+            {ABOUT_AGENTS.map((item, index) => (
+              <AboutAgentCard
+                key={item.title}
+                item={item}
+                isOpen={openAgent === index}
+                onToggle={() => setOpenAgent(openAgent === index ? -1 : index)}
+              />
             ))}
           </div>
         </Reveal>
@@ -216,7 +258,8 @@ const AboutPage = () => (
       </div>
     </section>
   </div>
-);
+  );
+};
 
 Object.assign(window, {
   ABOUT_MANIFESTO,
