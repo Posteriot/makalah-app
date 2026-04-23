@@ -34,6 +34,81 @@ npx serve "/Users/eriksupit/Desktop/makalahapp/.worktrees/frontend-marketing-res
 5. **Jangan mengubah desain home kecuali dibutuhkan untuk route integration.**
 6. **Jangan stage screenshot folder.**
 
+## Workflow Per Page
+
+Implementasi harus berjalan per page agar tertib dan mudah dikoreksi.
+
+Urutan kerja wajib untuk setiap page:
+
+1. Implement satu page saja sesuai urutan prioritas.
+2. Jalankan verifikasi minimal untuk page itu.
+3. Berhenti dan laporkan hasil untuk dikoreksi.
+4. Revisi sampai page itu solid.
+5. Commit hanya perubahan untuk page tersebut dan perubahan shared yang memang diperlukan oleh page itu.
+6. Lanjut ke page berikutnya setelah commit page sebelumnya selesai.
+
+Jangan mengerjakan beberapa page sekaligus dalam satu batch besar. Exception hanya boleh untuk fondasi routing awal (`MockRouter`, layout children, header/footer route links, dan script order), karena semua page bergantung pada fondasi itu. Fondasi routing harus selesai, diverifikasi, dan commit lebih dulu sebelum implementasi page individual dimulai.
+
+Urutan commit yang direkomendasikan:
+
+1. Routing foundation.
+2. `PricingPage`.
+3. `DocumentationPage`.
+4. `BlogPage`.
+5. `AboutPage`.
+6. `PolicyPage` untuk `privacy`, `security`, dan `terms`.
+7. `FeaturesPage`.
+8. `FAQPage`.
+9. `RoadmapPage`.
+10. `ChangelogPage`.
+11. `StatusPage`.
+12. `PartnershipPage`.
+
+Jika satu page membutuhkan shared primitive atau data shared, buat shared change itu di commit page pertama yang benar-benar membutuhkannya. Jangan membuat abstraction di awal hanya karena kemungkinan akan dipakai.
+
+## Multiagents Orchestrator Workflow
+
+Implementasi harus dijalankan dengan pola multiagents orchestrator.
+
+Peran utama:
+
+1. **Orchestrator utama** memegang konteks penuh, memilih unit kerja berikutnya, menetapkan scope, mengintegrasikan hasil, menjalankan verifikasi, dan menentukan kapan berhenti untuk koreksi.
+2. **Content agent** menulis UI copy dan konten halaman sesuai aturan bahasa Indonesia semi-formal dengan pronoun `Kamu`.
+3. **UI implementation agent** membuat struktur JSX dan styling halaman sesuai desain mockup, tanpa mengubah production `src/`.
+4. **Navigation/routing agent** menangani hash routing, header/footer links, active state, dan mobile menu behavior.
+5. **QA/audit agent** mengecek compliance terhadap design doc, implementation plan, runtime constraints, bahasa UI, dan verification commands.
+
+Aturan dispatch:
+
+- Dispatch agent hanya untuk task khusus yang scope-nya jelas.
+- Jangan memberi dua agent write scope yang sama pada waktu bersamaan.
+- Untuk workflow per-page, satu page tetap menjadi unit utama. Multiagents boleh bekerja di dalam unit page yang sama, tetapi orchestrator harus menggabungkan hasilnya sebelum checkpoint.
+- Untuk routing foundation, agent boleh dipisah antara routing/navigation dan QA, tetapi commit tetap satu checkpoint foundation.
+- Content agent tidak boleh mengubah struktur runtime kecuali diminta eksplisit oleh orchestrator.
+- UI implementation agent tidak boleh mengubah isi copy besar tanpa koordinasi dengan content agent.
+- QA/audit agent tidak boleh mengedit file; tugasnya memberi temuan dan rekomendasi.
+- Orchestrator wajib membaca dan menilai hasil agent sebelum mengklaim page solid.
+
+Contoh dispatch per page:
+
+1. Content agent: susun copy page, CTA, empty state, dan label.
+2. UI implementation agent: implement layout page dan integrasi komponen.
+3. QA/audit agent: audit hasil terhadap plan, bahasa, static runtime, dan visual constraints.
+4. Orchestrator: revisi integrasi, jalankan verifikasi, stop untuk koreksi user, lalu commit setelah approved.
+
+## Aturan Bahasa UI Dan Konten
+
+Semua UI copy dan konten halaman mockup harus memakai bahasa Indonesia semi-formal yang jelas, rapi, dan mudah dipahami.
+
+Aturan wajib:
+
+- Gunakan pronoun `Kamu` untuk menyapa user.
+- Jangan memakai pronoun `lo`, `gue`, `elu`, atau variasi Jakarta/slang lain.
+- Jangan memakai aksen Jakarta dalam UI copy dan konten page.
+- Tiru pola bahasa home mockup yang sudah jadi: ringan, manusiawi, tetapi tetap semi-formal.
+- Technical terms boleh tetap dalam English jika lebih natural atau tidak punya padanan Indonesia yang jelas, misalnya `workflow`, `export`, `status`, `release`, `incident`, `paper`, dan `dashboard`.
+- Untuk label navigasi, CTA, empty state, dan body copy, prioritaskan kalimat yang langsung menjelaskan manfaat atau aksi.
+
 ## Target Route Registry
 
 Route final di mockup:
@@ -423,7 +498,7 @@ Never rely on import/export.
 
 ### Step 11: Verification
 
-Run these checks:
+Run these checks for the routing foundation and after every page checkpoint:
 
 ```bash
 git diff --check
@@ -446,7 +521,17 @@ npx serve "/Users/eriksupit/Desktop/makalahapp/.worktrees/frontend-marketing-res
 
 ## Acceptance Criteria
 
-Implementation is complete only when:
+Implementation is complete only when every page has passed its own checkpoint. Per-page checkpoint is complete only when:
+
+1. The page route renders through `MakalahAI.html#/<route>`.
+2. Header/footer navigation still works.
+3. Mobile menu still opens and closes.
+4. UI copy follows the semi-formal Indonesian rule with pronoun `Kamu` and no lo-gue/Jakarta slang.
+5. Shared changes are limited to what the page actually needs.
+6. Verification commands pass or any limitation is documented.
+7. The page has been reviewed, corrected, and committed before moving to the next page.
+
+Overall implementation is complete only when:
 
 1. `MakalahAI.html#/` renders home.
 2. `MakalahAI.html#/pricing`, `#/documentation`, `#/blog`, `#/about`, `#/privacy`, `#/security`, and `#/terms` render production-parity mockup pages.
@@ -461,12 +546,20 @@ Implementation is complete only when:
 
 ## Commit Guidance
 
-Commit only after verification passes.
+Commit after each page checkpoint passes. Do not wait until all pages are implemented before committing.
+
+Recommended commit message pattern:
+
+```text
+Add <page-name> marketing mockup page
+```
+
+For routing foundation:
 
 Recommended commit message:
 
 ```text
-Add multi-page marketing mockup plan implementation
+Add marketing mockup hash routing foundation
 ```
 
 Before commit, inspect:

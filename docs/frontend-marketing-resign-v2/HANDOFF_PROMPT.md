@@ -1,4 +1,4 @@
-# Handoff Prompt: Marketing Home Mockup Adaptation
+# Handoff Prompt: Multi-Page Marketing Mockup Implementation
 
 You are working in this worktree:
 
@@ -8,13 +8,49 @@ You are working in this worktree:
 
 ## Goal
 
-Adapt the static marketing mockup structure so it mirrors the production marketing home architecture before the real Next.js integration begins.
-
-This is a planning-and-mockup-structure phase. Do not modify the production app source under:
+Start a new implementation session for the multi-page static marketing mockup based on:
 
 ```text
-src/
+docs/frontend-marketing-resign-v2/mockup/pages-design-plan/IMPLEMENTATION_PLAN.md
 ```
+
+This is the next phase after the home mockup structure was already modularized. The task is to implement additional mockup pages one by one, while preserving the static React UMD + Babel runtime.
+
+## Current Git Context
+
+Recent commits:
+
+```text
+48e1e9e6 Add marketing mockup pages implementation plan
+7e83ceb2 Refactor marketing home mockup structure
+b2873d2d Add marketing mockup adaptation handoff
+```
+
+Current known worktree status before this handoff update:
+
+```text
+ M docs/frontend-marketing-resign-v2/mockup/pages-design-plan/IMPLEMENTATION_PLAN.md
+?? docs/frontend-marketing-resign-v2/screesnhots/
+```
+
+Notes:
+
+- The `IMPLEMENTATION_PLAN.md` modification is intentional. It adds the per-page workflow and UI/content language rules.
+- Do not stage or commit `docs/frontend-marketing-resign-v2/screesnhots/` unless explicitly requested.
+
+## Primary Planning Docs
+
+Read these first, in this order:
+
+```text
+docs/frontend-marketing-resign-v2/mockup/pages-design-plan/DESIGN_DOC.md
+docs/frontend-marketing-resign-v2/mockup/pages-design-plan/AUDIT.md
+docs/frontend-marketing-resign-v2/mockup/pages-design-plan/IMPLEMENTATION_PLAN.md
+```
+
+The implementation plan is the operative document. The design doc and audit doc are source-of-truth guardrails.
+
+## Strict Scope
 
 Only edit files under:
 
@@ -22,51 +58,66 @@ Only edit files under:
 docs/frontend-marketing-resign-v2/mockup/
 ```
 
+Do not edit production app source under:
+
+```text
+src/
+```
+
+Do not introduce:
+
+- bundlers
+- ES module `import` / `export`
+- TypeScript
+- Next.js APIs
+- Tailwind runtime dependencies
+- Convex queries
+- `fetch`
+- path aliases
+
 The mockup must remain previewable with:
 
 ```bash
 npx serve "/Users/eriksupit/Desktop/makalahapp/.worktrees/frontend-marketing-resign-v2/docs/frontend-marketing-resign-v2/mockup"
 ```
 
-Do not introduce bundlers, module imports, TypeScript, Next.js APIs, Tailwind runtime dependencies, Convex queries, or path aliases into the mockup. The mockup currently runs as static HTML using React UMD + Babel scripts.
+Do not start browser testing or a Next.js dev server unless explicitly requested.
 
-## Production Architecture Context
+## Existing Mockup Runtime
 
-The production marketing home page currently lives at:
-
-```text
-src/app/(marketing)/page.tsx
-```
-
-Current production home order:
-
-1. `HeroSection`
-2. `BenefitsSectionWrapper`
-3. `WorkflowFeatureSection`
-4. `RefrasaFeatureSection`
-5. `PricingTeaser`
-
-The production marketing layout lives at:
+The current mockup is static HTML using React UMD + Babel scripts:
 
 ```text
-src/app/(marketing)/layout.tsx
+docs/frontend-marketing-resign-v2/mockup/MakalahAI.html
 ```
 
-The production layout provides:
+Current runtime files:
 
-- `GlobalHeader`
-- `Footer`
-- `<main className="global-main">`
+```text
+docs/frontend-marketing-resign-v2/mockup/src/app/MarketingHomePage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/MarketingLayoutMock.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/Tweaks.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/render.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/layout/header/GlobalHeaderMock.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/layout/footer/FooterMock.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/marketing/benefits/BenefitsSectionWrapper.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/marketing/demo/DemoSection.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/marketing/faq/FAQSection.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/marketing/features/RefrasaFeatureSection.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/marketing/features/WorkflowFeatureSection.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/marketing/hero/HeroSection.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/marketing/manifesto/ManifestoSection.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/marketing/pricing-teaser/PricingTeaser.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/shared/Primitives.jsx
+docs/frontend-marketing-resign-v2/mockup/styles/tokens.css
+docs/frontend-marketing-resign-v2/mockup/styles/components.css
+```
 
-Therefore, in the mockup, navigation and footer should be treated as layout chrome, not as home page sections.
-
-## Target Mockup Architecture
-
-Refactor the mockup into a static mirror of the target production architecture:
+The existing home order is:
 
 ```text
 MarketingLayoutMock
-  GlobalHeaderMock / Navbar
+  GlobalHeaderMock
   main
     MarketingHomePage
       HeroSection
@@ -77,112 +128,250 @@ MarketingLayoutMock
       DemoSection
       PricingTeaser
       FAQSection
-  FooterMock / Footer
+  FooterMock
   Tweaks
 ```
 
-Important: `ManifestoSection`, `DemoSection`, and `FAQSection` must remain in the default home mockup. They are part of the intended final home experience and will be implemented during integration, even though production `src/app/(marketing)/page.tsx` does not include them yet.
+## Implementation Workflow
 
-## Existing Mockup Files
+Follow the per-page process from `IMPLEMENTATION_PLAN.md`.
 
-Main mockup files:
+Mandatory workflow:
 
-```text
-docs/frontend-marketing-resign-v2/mockup/MakalahAI.html
-docs/frontend-marketing-resign-v2/mockup/src/primitives.jsx
-docs/frontend-marketing-resign-v2/mockup/src/top.jsx
-docs/frontend-marketing-resign-v2/mockup/src/sections.jsx
-docs/frontend-marketing-resign-v2/mockup/src/app.jsx
-docs/frontend-marketing-resign-v2/mockup/styles/tokens.css
-docs/frontend-marketing-resign-v2/mockup/styles/components.css
-docs/frontend-marketing-resign-v2/mockup/design_system_reference.md
-```
+1. Implement one unit only.
+2. Run relevant verification.
+3. Stop and report for correction.
+4. Revise until the unit is solid.
+5. Commit only that unit.
+6. Continue to the next unit after the previous unit is committed.
 
-Current mockup root order is approximately:
+Do not implement multiple pages in one large batch.
+
+Allowed first unit:
 
 ```text
-Navbar
-main
-  Hero
-  Benefits
-  WorkflowFeature
-  RefrasaFeature
-  Manifesto
-  Demo
-  Pricing
-  FAQ
-Footer
-Tweaks
+Routing foundation
 ```
 
-## Required Refactor
+Routing foundation may include:
 
-Rename or alias mockup components so their names match the target production concepts:
+- `MockRouter.jsx`
+- moving `MarketingHomePage.jsx` to `src/app/pages/MarketingHomePage.jsx` inside the mockup folder only
+- `MarketingLayoutMock` children support
+- header/footer hash route links
+- `MakalahAI.html` script order updates
+- active route state needed by navigation
 
-- `Navbar` can stay as the layout chrome, or be wrapped as `GlobalHeaderMock`.
-- `Footer` can stay as the layout chrome, or be wrapped as `FooterMock`.
-- `Hero` should become or be exposed as `HeroSection`.
-- `Benefits` should become or be exposed as `BenefitsSectionWrapper`.
-- `WorkflowFeature` should become or be exposed as `WorkflowFeatureSection`.
-- `RefrasaFeature` should become or be exposed as `RefrasaFeatureSection`.
-- `Manifesto` should become or be exposed as `ManifestoSection`.
-- `Demo` should become or be exposed as `DemoSection`.
-- `Pricing` should become or be exposed as `PricingTeaser`.
-- `FAQ` should become or be exposed as `FAQSection`.
+Routing foundation must be verified and committed before starting individual page work.
 
-Create a clear `MarketingHomePage` component in the mockup that renders only the page sections in the intended home order.
+Recommended page commit order after routing foundation:
 
-Create a clear `MarketingLayoutMock` component in the mockup that renders:
+1. `PricingPage`
+2. `DocumentationPage`
+3. `BlogPage`
+4. `AboutPage`
+5. `PolicyPage` for `privacy`, `security`, and `terms`
+6. `FeaturesPage`
+7. `FAQPage`
+8. `RoadmapPage`
+9. `ChangelogPage`
+10. `StatusPage`
+11. `PartnershipPage`
 
-- header chrome
-- `<main>`
-- `MarketingHomePage`
-- footer chrome
-- `Tweaks`
+## Multiagents Orchestrator Workflow
 
-The mockup should remain global-script friendly. If components are split across files, continue using `Object.assign(window, { ... })` or the existing global style. Do not convert the mockup to ES modules unless the preview command is changed, which is not allowed in this task.
+Implementation must use a multiagents orchestrator workflow.
 
-## Constraints
+The main session acts as the orchestrator:
 
-- Do not edit production `src/`.
-- Do not start browser testing unless explicitly requested.
-- Do not start a Next.js dev server for this task.
-- Keep the static preview command valid.
-- Preserve existing visual design unless a structural rename requires a minimal class adjustment.
-- Preserve the OKLCH token system already established in the mockup.
-- Preserve the orange readability rules from `design_system_reference.md`.
-- Do not commit screenshot files under `docs/frontend-marketing-resign-v2/screesnhots/` unless explicitly requested.
+- owns the full context,
+- chooses the next unit,
+- defines agent scopes,
+- integrates outputs,
+- runs verification,
+- stops for correction,
+- commits only after the current unit is solid.
 
-## Acceptance Criteria
+Dispatch specialized agents for specialized tasks:
 
-The next session should finish with:
+- **Content agent**: writes UI copy and page content in semi-formal Indonesian with pronoun `Kamu`.
+- **UI implementation agent**: builds JSX structure and styling for the current page or routing unit.
+- **Navigation/routing agent**: handles hash routing, header/footer links, active state, and mobile menu behavior.
+- **QA/audit agent**: audits compliance with design doc, implementation plan, static runtime constraints, language rules, and verification commands.
 
-1. The mockup still opens through `npx serve` using `MakalahAI.html`.
-2. `src/app.jsx` contains an obvious `MarketingLayoutMock` and `MarketingHomePage`.
-3. The default home mockup section order is:
-   - `HeroSection`
-   - `BenefitsSectionWrapper`
-   - `WorkflowFeatureSection`
-   - `RefrasaFeatureSection`
-   - `ManifestoSection`
-   - `DemoSection`
-   - `PricingTeaser`
-   - `FAQSection`
-4. Header and footer are outside `MarketingHomePage`.
-5. No production `src/` files are modified.
-6. `git diff --check` passes.
+Hard rules:
 
-## Recommended Implementation Steps
+- Dispatch agents only for clearly scoped tasks.
+- Do not let two agents edit the same write scope at the same time.
+- Do not batch multiple pages just because multiple agents are available.
+- One page remains the main unit of work.
+- QA/audit agents should report findings only and should not edit files.
+- The orchestrator must inspect, integrate, and verify agent output before reporting success.
+- Commit boundaries remain per checkpoint: routing foundation first, then one page at a time.
 
-1. Inspect the current mockup files and production home structure.
-2. Add aliases or rename functions in `src/top.jsx` and `src/sections.jsx`.
-3. Refactor `src/app.jsx` to render `MarketingLayoutMock`.
-4. Keep legacy names temporarily only if needed to avoid a risky large diff.
-5. Run text checks:
+## Route Targets
+
+Use hash routing only:
+
+```text
+MakalahAI.html#/
+MakalahAI.html#/pricing
+MakalahAI.html#/documentation
+MakalahAI.html#/blog
+MakalahAI.html#/about
+MakalahAI.html#/privacy
+MakalahAI.html#/security
+MakalahAI.html#/terms
+MakalahAI.html#/features
+MakalahAI.html#/faq
+MakalahAI.html#/roadmap
+MakalahAI.html#/changelog
+MakalahAI.html#/status
+MakalahAI.html#/partnership
+```
+
+Production-parity pages:
+
+```text
+#/
+#/pricing
+#/documentation
+#/blog
+#/about
+#/privacy
+#/security
+#/terms
+```
+
+Mockup-only pages:
+
+```text
+#/features
+#/faq
+#/roadmap
+#/changelog
+#/status
+#/partnership
+```
+
+Unknown route should render a compact not-found state with a link back to `#/`.
+
+## Navigation Targets
+
+Header target:
+
+```text
+Home → #/
+Fitur → #/features
+Harga → #/pricing
+Dokumentasi → #/documentation
+Blog → #/blog
+FAQ → #/faq
+Tentang → #/about
+```
+
+Footer target:
+
+```text
+Produk: Fitur, Harga, Roadmap, Changelog
+Sumber daya: Dokumentasi, Blog, Status, Lapor Masalah
+Perusahaan: Tentang, Kerja Sama, Karier, Kontak
+Legal: Security, Terms, Privacy
+```
+
+Footer route links:
+
+```text
+Fitur → #/features
+Harga → #/pricing
+Roadmap → #/roadmap
+Changelog → #/changelog
+Dokumentasi → #/documentation
+Blog → #/blog
+Status → #/status
+Tentang → #/about
+Kerja Sama → #/partnership
+Security → #/security
+Terms → #/terms
+Privacy → #/privacy
+```
+
+`Lapor Masalah`, `Karier`, and `Kontak` can remain placeholders unless explicitly requested as pages.
+
+## UI And Content Language Rules
+
+All UI copy and page content in the mockup must use semi-formal Indonesian.
+
+Rules:
+
+- Use `Kamu` as the user-facing pronoun.
+- Do not use `lo`, `gue`, `elu`, or Jakarta/slang variants in UI copy or page content.
+- Do not use Jakarta accent in page copy.
+- Match the language pattern already used in the finished home mockup: light, human, clear, and semi-formal.
+- English technical terms are allowed when natural, for example `workflow`, `export`, `status`, `release`, `incident`, `paper`, and `dashboard`.
+- Navigation labels, CTA, empty states, and body copy should explain the action or benefit directly.
+
+Important distinction:
+
+- User-facing UI/content must follow the semi-formal `Kamu` rule above.
+- Code comments, AI model instructions, and prompt-like instruction layers should remain English, following the repository language policy.
+
+## Design Priorities
+
+1. Runtime safety.
+2. Global chrome: header, footer, layout, routing.
+3. Production-parity pages.
+4. Mockup-only pages.
+5. Visual polish.
+
+Do not over-design operational pages (`documentation`, `status`, `changelog`). They should be dense, scannable, and practical, not hero-heavy marketing pages.
+
+## Verification Commands
+
+Run these after routing foundation and after each page checkpoint:
 
 ```bash
 git diff --check
-rg -n "MarketingHomePage|MarketingLayoutMock|HeroSection|PricingTeaser|FAQSection" docs/frontend-marketing-resign-v2/mockup/src
+git diff --name-only -- src
+rg -n "import |export |@/|Convex|next/|useQuery|fetch\\(" docs/frontend-marketing-resign-v2/mockup/src docs/frontend-marketing-resign-v2/mockup/MakalahAI.html
+rg -n "MockRouter|PricingPage|DocumentationPage|BlogPage|AboutPage|FeaturesPage|FAQPage|RoadmapPage|ChangelogPage|StatusPage|PartnershipPage" docs/frontend-marketing-resign-v2/mockup/src
 ```
 
-6. Summarize changed files and any remaining integration notes.
+Run JSX parser check. If `@babel/parser` is not available, document the exact error and treat it as an explicit verification limitation:
+
+```bash
+node -e 'const fs=require("fs"); const parser=require("@babel/parser"); const files=process.argv.slice(1); for (const f of files) parser.parse(fs.readFileSync(f,"utf8"), {sourceType:"script", plugins:["jsx"]}); console.log(`parsed ${files.length} jsx files`);' $(find docs/frontend-marketing-resign-v2/mockup/src -name "*.jsx" | sort)
+```
+
+## Acceptance For The First New Session
+
+The next implementation session should start with the routing foundation only.
+
+Routing foundation acceptance:
+
+1. `MakalahAI.html#/` still renders home.
+2. Hash route registry exists and resolves known routes or a not-found fallback.
+3. `MarketingLayoutMock` renders routed children inside `<main>`.
+4. Header and footer links point to planned hash routes.
+5. Mobile menu still opens and closes.
+6. No production `src/` file is modified.
+7. Screenshot folder is not staged.
+8. `git diff --check` passes.
+9. JSX parser check passes or a parser limitation is documented.
+10. Stop for review before implementing `PricingPage`.
+
+## Commit Guidance
+
+Commit after each checkpoint is verified and approved.
+
+Recommended first commit message:
+
+```text
+Add marketing mockup hash routing foundation
+```
+
+Do not include:
+
+```text
+docs/frontend-marketing-resign-v2/screesnhots/
+```
