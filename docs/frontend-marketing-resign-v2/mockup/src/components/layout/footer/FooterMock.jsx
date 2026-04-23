@@ -6,31 +6,30 @@ const FooterMock = () => (
       <div className="footer-top">
         <div className="footer-col">
           <h5>Produk</h5>
-          <a href="#chat">Chat</a>
-          <a href="#fitur">Fitur</a>
-          <a href="#harga">Harga</a>
-          <a href="#roadmap">Roadmap</a>
-          <a href="#changelog">Changelog</a>
+          <a href="#/features">Fitur</a>
+          <a href="#/pricing">Harga</a>
+          <a href="#/roadmap">Roadmap</a>
+          <a href="#/changelog">Changelog</a>
         </div>
         <div className="footer-col">
           <h5>Sumber daya</h5>
-          <a href="#dokumentasi">Dokumentasi</a>
-          <a href="#blog">Blog</a>
-          <a href="#status">Status</a>
-          <a href="#laporan">Lapor Masalah</a>
+          <a href="#/documentation">Dokumentasi</a>
+          <a href="#/blog">Blog</a>
+          <a href="#/status">Status</a>
+          <a href="#">Lapor Masalah</a>
         </div>
         <div className="footer-col">
           <h5>Perusahaan</h5>
-          <a href="#tentang">Tentang</a>
-          <a href="#kerjasama">Kerja Sama</a>
-          <a href="#karier">Karier</a>
-          <a href="#kontak">Kontak</a>
+          <a href="#/about">Tentang</a>
+          <a href="#/partnership">Kerja Sama</a>
+          <a href="#">Karier</a>
+          <a href="#">Kontak</a>
         </div>
         <div className="footer-col">
           <h5>Legal</h5>
-          <a href="#security">Security</a>
-          <a href="#terms">Terms</a>
-          <a href="#privacy">Privacy</a>
+          <a href="#/security">Security</a>
+          <a href="#/terms">Terms</a>
+          <a href="#/privacy">Privacy</a>
         </div>
       </div>
     </div>

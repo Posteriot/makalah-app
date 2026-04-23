@@ -5,15 +5,32 @@ const Navbar = () => {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuButtonRef = React.useRef(null);
   const menuPanelRef = React.useRef(null);
+  const currentPath = typeof window.useHashRoute === "function" ? window.useHashRoute() : "#/";
 
   const links = [
-    ["#chat", "Chat"],
-    ["#fitur", "Fitur"],
-    ["#harga", "Harga"],
-    ["#dokumentasi", "Dokumentasi"],
-    ["#faq", "FAQ"],
-    ["#tentang", "Tentang"]
+    ["#/", "Home"],
+    ["#/features", "Fitur"],
+    ["#/pricing", "Harga"],
+    ["#/documentation", "Dokumentasi"],
+    ["#/blog", "Blog"],
+    ["#/faq", "FAQ"],
+    ["#/about", "Tentang"]
   ];
+  const currentRoute = typeof window.normalizeMockPath === "function"
+    ? window.normalizeMockPath(currentPath)
+    : "/";
+  const isActiveRoute = (href) => {
+    const route = typeof window.normalizeMockPath === "function"
+      ? window.normalizeMockPath(href)
+      : href;
+    return route === currentRoute;
+  };
+  const getNavLinkStyle = (href) => (
+    isActiveRoute(href)
+      ? { color: "var(--ink)", background: "var(--bg-elev)" }
+      : null
+  );
+  const handleNavLinkClick = () => setMenuOpen(false);
 
   React.useEffect(() => {
     const on = () => setScrolled(window.scrollY > 30);
@@ -44,12 +61,22 @@ const Navbar = () => {
     <nav className={`nav${scrolled ? " scrolled" : ""}${menuOpen ? " menu-open" : ""}`}>
       <div className="container nav-row">
         <div className="nav-left">
-          <a href="#" className="brand">
+          <a href="#/" className="brand" onClick={handleNavLinkClick}>
             <div className="brand-mark"><Logo /></div>
             <Wordmark />
           </a>
           <div className="nav-links">
-            {links.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
+            {links.map(([href, label]) => (
+              <a
+                key={href}
+                href={href}
+                aria-current={isActiveRoute(href) ? "page" : undefined}
+                onClick={handleNavLinkClick}
+                style={getNavLinkStyle(href)}
+              >
+                {label}
+              </a>
+            ))}
           </div>
         </div>
         <div className="nav-right">
@@ -64,20 +91,26 @@ const Navbar = () => {
           >
             <i className={`iconoir-${menuOpen ? "xmark" : "menu"}`} aria-hidden="true" />
           </button>
-          <a href="#" className="btn btn-primary nav-login">Masuk <Arrow /></a>
+          <a href="#/" className="btn btn-primary nav-login" onClick={handleNavLinkClick}>Masuk <Arrow /></a>
         </div>
       </div>
       <div id="mobile-main-menu" className="container mobile-menu" aria-hidden={!menuOpen}>
         <div className="mobile-menu-panel" ref={menuPanelRef}>
           <div className="mobile-menu-links">
             {links.map(([href, label]) => (
-              <a key={href} href={href} onClick={() => setMenuOpen(false)}>
+              <a
+                key={href}
+                href={href}
+                aria-current={isActiveRoute(href) ? "page" : undefined}
+                onClick={handleNavLinkClick}
+                style={isActiveRoute(href) ? { color: "var(--brand-green)", background: "var(--bg-elev)" } : null}
+              >
                 <span>{label}</span>
               </a>
             ))}
           </div>
           <div className="mobile-menu-action">
-            <a href="#" className="btn btn-primary mobile-login" onClick={() => setMenuOpen(false)}>
+            <a href="#/" className="btn btn-primary mobile-login" onClick={handleNavLinkClick}>
               Masuk <Arrow />
             </a>
           </div>

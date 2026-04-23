@@ -1,6 +1,10 @@
 /* Static mockup render entry */
 
-const App = () => <MarketingLayoutMock />;
+const App = () => (
+  <MarketingLayoutMock>
+    <MockRouter />
+  </MarketingLayoutMock>
+);
 
 Object.assign(window, { App });
 
