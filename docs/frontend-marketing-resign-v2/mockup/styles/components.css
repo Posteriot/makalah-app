@@ -1858,6 +1858,167 @@
   box-shadow: 0 0 0 3px var(--brand-green-soft);
 }
 
+/* ---------- About page ---------- */
+.about-page {
+  padding-top: 128px;
+}
+.about-hero-head {
+  align-items: end;
+}
+.about-hero-title {
+  max-width: 760px;
+}
+.about-hero-desc {
+  max-width: 440px;
+}
+.about-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 24px;
+  margin-top: 26px;
+}
+.about-manifesto-panel,
+.about-principles-panel,
+.about-problem-card,
+.about-agent-card,
+.about-contact-shell,
+.about-contact-card {
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(ellipse 360px 180px at 100% 0%, var(--sky-soft), transparent 72%),
+    rgba(18, 19, 22, 0.88);
+  box-shadow: var(--shadow-1);
+}
+.about-manifesto-panel,
+.about-principles-panel {
+  padding: 24px;
+}
+.about-manifesto-panel {
+  display: grid;
+  gap: 16px;
+}
+.about-manifesto-panel p,
+.about-principles-panel li,
+.about-problem-card p,
+.about-agent-card p,
+.about-contact-shell > div:first-child p,
+.about-contact-card p,
+.about-contact-card a {
+  color: var(--ink-2);
+  font-size: 15px;
+  line-height: 1.75;
+}
+.about-principles-panel .eyebrow {
+  margin-bottom: 14px;
+}
+.about-principles-panel ul {
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+.about-principles-panel li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.about-principles-panel .check {
+  color: var(--brand-green);
+  margin-top: 3px;
+  flex: 0 0 auto;
+}
+.about-section-head {
+  align-items: end;
+}
+.about-section-title {
+  max-width: 760px;
+}
+.about-section-desc {
+  max-width: 440px;
+}
+.about-problems-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+.about-problem-card,
+.about-agent-card,
+.about-contact-card {
+  padding: 22px;
+}
+.about-problem-card h3,
+.about-agent-card h3,
+.about-contact-card h3 {
+  margin: 0 0 12px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+}
+.about-agents-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+.about-agent-card {
+  min-height: 260px;
+  display: grid;
+  align-content: start;
+}
+.about-agent-card.active {
+  border-color: var(--brand-green-line);
+  box-shadow: 0 0 0 1px var(--brand-green-line), var(--shadow-1);
+}
+.about-agent-status {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 14px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.about-agent-card.active .about-agent-status {
+  border-color: var(--brand-green-line);
+  background: var(--brand-green-soft);
+  color: var(--brand-green);
+}
+.about-contact-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.95fr);
+  gap: 24px;
+  padding: 28px;
+}
+.about-contact-shell h2 {
+  margin: 12px 0 14px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+}
+.about-contact-cards {
+  display: grid;
+  gap: 16px;
+}
+.about-contact-card a {
+  color: var(--brand-green);
+}
+.about-contact-card a:hover {
+  text-decoration: underline;
+}
+
 .docs-page {
   padding-top: 0;
 }
@@ -2378,6 +2539,13 @@
   .blog-newsletter-grid {
     grid-template-columns: 1fr;
   }
+  .about-hero-grid,
+  .about-contact-shell {
+    grid-template-columns: 1fr;
+  }
+  .about-agents-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .footer-top { grid-template-columns: 1fr 1fr; }
   .faq { grid-template-columns: 1fr; gap: 24px; }
 }
@@ -2599,6 +2767,31 @@
   }
   .blog-newsletter-form {
     grid-template-columns: 1fr;
+  }
+  .about-page {
+    padding-top: 112px;
+  }
+  .about-hero-grid,
+  .about-problems-grid,
+  .about-agents-grid,
+  .about-contact-cards {
+    grid-template-columns: 1fr;
+  }
+  .about-manifesto-panel,
+  .about-principles-panel,
+  .about-problem-card,
+  .about-agent-card,
+  .about-contact-shell,
+  .about-contact-card {
+    padding: 20px;
+  }
+  .about-problem-card h3,
+  .about-agent-card h3,
+  .about-contact-card h3 {
+    font-size: 22px;
+  }
+  .about-contact-shell h2 {
+    font-size: clamp(24px, 8vw, 34px);
   }
   .stats { grid-template-columns: 1fr 1fr; }
   .stat:nth-child(2) { border-right: 0; }

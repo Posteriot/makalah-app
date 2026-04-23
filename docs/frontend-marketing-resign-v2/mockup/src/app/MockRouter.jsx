@@ -117,15 +117,7 @@ const MOCK_ROUTE_REGISTRY = {
   "/pricing": () => <PricingPage />,
   "/documentation": () => <DocumentationPage />,
   "/blog": () => <BlogPage />,
-  "/about": () => (
-    <MockPagePlaceholder
-      eyebrow="Tentang"
-      title="Halaman tentang akan menyusul"
-      description="Unit ini fokus ke pondasi routing, jadi halaman tentang untuk sementara ditampilkan sebagai placeholder terarah."
-      ctaLabel="Lihat roadmap"
-      ctaHref="#/roadmap"
-    />
-  ),
+  "/about": () => <AboutPage />,
   "/privacy": () => (
     <MockPagePlaceholder
       eyebrow="Privacy"
