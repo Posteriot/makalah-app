@@ -1640,7 +1640,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  color: var(--ink-3);
+  color: var(--brand-green);
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
@@ -1751,7 +1751,7 @@
   gap: 10px;
 }
 .blog-story-meta span {
-  color: var(--ink-3);
+  color: var(--brand-green);
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
