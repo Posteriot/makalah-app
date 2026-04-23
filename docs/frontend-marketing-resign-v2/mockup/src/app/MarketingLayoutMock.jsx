@@ -5,7 +5,8 @@ const MarketingLayoutMock = ({ children }) => {
   const isDocsRoute = currentRoute === "/documentation";
   const isAuthRoute = currentRoute === "/sign-in"
     || currentRoute === "/sign-up"
-    || currentRoute === "/forgot-password";
+    || currentRoute === "/forgot-password"
+    || currentRoute === "/magic-link";
 
   return (
     <>
