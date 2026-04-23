@@ -196,13 +196,14 @@ Recommended remaining page commit order:
 
 ## Multiagents Orchestrator Workflow
 
-Implementation must use a multiagents orchestrator workflow.
+Implementation must use an agents-team / multiagents orchestrator workflow. Do not work as a single undifferentiated implementer for substantial page work.
 
 The main session acts as the orchestrator:
 
 - owns the full context,
 - chooses the next unit,
 - defines agent scopes,
+- dispatches specialist agents for bounded tasks,
 - integrates outputs,
 - runs verification,
 - stops for correction,
@@ -213,7 +214,17 @@ Dispatch specialized agents for specialized tasks:
 - **Content agent**: writes UI copy and page content in semi-formal Indonesian with pronoun `Kamu`.
 - **UI implementation agent**: builds JSX structure and styling for the current page or routing unit.
 - **Navigation/routing agent**: handles hash routing, header/footer links, active state, and mobile menu behavior.
-- **QA/audit agent**: audits compliance with design doc, implementation plan, static runtime constraints, language rules, and verification commands.
+- **Design system agent**: checks whether the page should use marketing layout or shell layout, and whether reusable patterns like the marketing 2-column split are appropriate.
+- **Reviewer + auditor agent**: mandatory for every implemented unit. This agent audits the result against the user's stated intent, design doc, implementation plan, design system reference, static runtime constraints, language rules, responsive behavior, and verification commands.
+
+Reviewer + auditor requirements:
+
+- Dispatch this agent after implementation and before reporting success.
+- It must be read-only and must not edit files.
+- It must explicitly check whether the output matches the user's intent, not only whether the code parses.
+- It must identify mismatches, regressions, unclear assumptions, missing responsive states, and runtime risks.
+- The orchestrator must address or consciously document every reviewer/auditor finding before asking for approval or committing.
+- A checkpoint is not solid until reviewer/auditor findings are resolved or explicitly accepted by the user.
 
 Hard rules:
 
@@ -221,7 +232,7 @@ Hard rules:
 - Do not let two agents edit the same write scope at the same time.
 - Do not batch multiple pages just because multiple agents are available.
 - One page remains the main unit of work.
-- QA/audit agents should report findings only and should not edit files.
+- Reviewer/auditor agents should report findings only and should not edit files.
 - The orchestrator must inspect, integrate, and verify agent output before reporting success.
 - Commit boundaries remain per checkpoint: routing foundation first, then one page at a time.
 
