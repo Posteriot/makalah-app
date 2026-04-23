@@ -8,7 +8,6 @@ const Navbar = () => {
   const currentPath = typeof window.useHashRoute === "function" ? window.useHashRoute() : "#/";
 
   const links = [
-    ["#/", "Home"],
     ["#/features", "Fitur"],
     ["#/pricing", "Harga"],
     ["#/documentation", "Dokumentasi"],

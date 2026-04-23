@@ -35,9 +35,13 @@
   font-size: 13px;
   color: var(--ink-2);
   border-radius: var(--r-xs);
-  transition: color 0.2s, background 0.2s;
+  transition: color 0.2s, background 0.2s, box-shadow 0.2s;
 }
-.nav-links a:hover { color: var(--ink); background: var(--bg-elev); }
+.nav-links a:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 1px var(--line-2);
+}
 .nav-right { display: flex; align-items: center; gap: 10px; }
 .nav-menu-btn {
   width: 44px;
