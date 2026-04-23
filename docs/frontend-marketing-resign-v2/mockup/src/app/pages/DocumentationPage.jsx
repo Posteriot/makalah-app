@@ -270,80 +270,84 @@ const DocumentationSidebar = ({
   resultSections
 }) => (
   <div className="docs-sidebar-shell">
-    <a href="#/" className="docs-sidebar-brand">
-      <img
-        src="assets/official_logo_grey_500.png"
-        alt="Makalah"
-        className="docs-sidebar-brand-mark"
-      />
-      <img
-        src="assets/brand-text-white.png"
-        alt="Makalah AI"
-        className="docs-sidebar-brand-text"
-      />
-    </a>
-
-    <div className="docs-search">
-      <span className="docs-search-icon">
-        <i className="iconoir-search" aria-hidden="true" />
-      </span>
-      <input
-        type="text"
-        value={query}
-        onChange={(event) => onQueryChange(event.target.value)}
-        placeholder="Cari topik dokumentasi..."
-        className="docs-search-input"
-      />
+    <div className="docs-sidebar-head">
+      <a href="#/" className="docs-sidebar-brand">
+        <img
+          src="assets/official_logo_grey_500.png"
+          alt="Makalah"
+          className="docs-sidebar-brand-mark"
+        />
+        <img
+          src="assets/brand-text-white.png"
+          alt="Makalah AI"
+          className="docs-sidebar-brand-text"
+        />
+      </a>
     </div>
 
-    {query ? (
-      <div className="docs-results">
-        <div className="docs-results-label">Hasil pencarian</div>
-        {resultSections.length > 0 ? (
-          <div className="docs-results-list">
-            {resultSections.map((section) => (
-              <button
-                key={section.id}
-                type="button"
-                className={`docs-results-item${activeSectionId === section.id ? " active" : ""}`}
-                onClick={() => onSelectSection(section.id)}
-              >
-                <span>{section.title}</span>
-                <i className="iconoir-nav-arrow-right" aria-hidden="true" />
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="docs-results-empty">Tidak ada topik yang cocok.</div>
-        )}
+    <div className="docs-sidebar-scroll">
+      <div className="docs-search">
+        <span className="docs-search-icon">
+          <i className="iconoir-search" aria-hidden="true" />
+        </span>
+        <input
+          type="text"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Cari topik dokumentasi..."
+          className="docs-search-input"
+        />
       </div>
-    ) : null}
 
-    <nav className="docs-nav">
-      {DOC_PAGE_GROUPS.map((group) => (
-        <div key={group.title} className="docs-nav-group">
-          <div className="docs-nav-group-title">{group.title}</div>
-          <div className="docs-nav-items">
-            {group.items.map((id) => {
-              const section = findDocSection(id);
-              const isActive = activeSectionId === id;
-
-              return (
+      {query ? (
+        <div className="docs-results">
+          <div className="docs-results-label">Hasil pencarian</div>
+          {resultSections.length > 0 ? (
+            <div className="docs-results-list">
+              {resultSections.map((section) => (
                 <button
-                  key={id}
+                  key={section.id}
                   type="button"
-                  className={`docs-nav-item${isActive ? " active" : ""}`}
-                  onClick={() => onSelectSection(id)}
+                  className={`docs-results-item${activeSectionId === section.id ? " active" : ""}`}
+                  onClick={() => onSelectSection(section.id)}
                 >
-                  <span>{section.label}</span>
-                  {isActive ? <i className="iconoir-nav-arrow-right" aria-hidden="true" /> : null}
+                  <span>{section.title}</span>
+                  <i className="iconoir-nav-arrow-right" aria-hidden="true" />
                 </button>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="docs-results-empty">Tidak ada topik yang cocok.</div>
+          )}
         </div>
-      ))}
-    </nav>
+      ) : null}
+
+      <nav className="docs-nav">
+        {DOC_PAGE_GROUPS.map((group) => (
+          <div key={group.title} className="docs-nav-group">
+            <div className="docs-nav-group-title">{group.title}</div>
+            <div className="docs-nav-items">
+              {group.items.map((id) => {
+                const section = findDocSection(id);
+                const isActive = activeSectionId === id;
+
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`docs-nav-item${isActive ? " active" : ""}`}
+                    onClick={() => onSelectSection(id)}
+                  >
+                    <span>{section.label}</span>
+                    {isActive ? <i className="iconoir-nav-arrow-right" aria-hidden="true" /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+    </div>
 
     <div className="docs-sidebar-auth">
       <a href="#/sign-in" className="btn btn-primary docs-sidebar-auth-button">
@@ -360,82 +364,77 @@ const DocumentationArticle = ({
   onSelectSection
 }) => (
   <article className="docs-article-shell">
-    <div className="docs-article-head">
-      <div className="docs-article-group">{section.group}</div>
-      <h1>{section.title}</h1>
-      <p>{section.summary}</p>
+    <div className="docs-article-head-wrap">
+      <div className="docs-article-head">
+        <div className="docs-article-group">{section.group}</div>
+        <h1>{section.title}</h1>
+        <p>{section.summary}</p>
+      </div>
     </div>
 
-    <div className="docs-article-body">
-      {section.sections.map((item) => (
-        <section className="docs-article-panel" key={item.title}>
-          <h2>{item.title}</h2>
-          {item.paragraphs.map((paragraph) => (
-            <p key={paragraph}>{paragraph}</p>
-          ))}
-          {item.list ? (
-            <ol className="docs-article-list">
-              {item.list.map((entry) => (
-                <li key={entry}>{entry}</li>
-              ))}
-            </ol>
-          ) : null}
-        </section>
-      ))}
-    </div>
-
-    <section className="docs-article-next">
-      <div className="docs-panel-label">Selanjutnya</div>
-      <div className="docs-next-grid">
-        {section.nextSteps.map((step) => (
-          <button
-            key={step.id}
-            type="button"
-            className="docs-next-card"
-            onClick={() => onSelectSection(step.id)}
-          >
-            <h3>{step.title}</h3>
-            <p>{step.description}</p>
-            <span>
-              Buka topik
-              <i className="iconoir-nav-arrow-right" aria-hidden="true" />
-            </span>
-          </button>
+    <div className="docs-article-scroll">
+      <div className="docs-article-body">
+        {section.sections.map((item) => (
+          <section className="docs-article-panel" key={item.title}>
+            <h2>{item.title}</h2>
+            {item.paragraphs.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
+            ))}
+            {item.list ? (
+              <ol className="docs-article-list">
+                {item.list.map((entry) => (
+                  <li key={entry}>{entry}</li>
+                ))}
+              </ol>
+            ) : null}
+          </section>
         ))}
       </div>
-    </section>
 
-    <div className="docs-mobile-nav">
-      <button
-        type="button"
-        className="btn btn-ghost"
-        onClick={() => previousSection && onSelectSection(previousSection.id)}
-        disabled={!previousSection}
-      >
-        <i className="iconoir-nav-arrow-left" aria-hidden="true" />
-        Kembali
-      </button>
-      <button
-        type="button"
-        className="btn btn-ghost"
-        onClick={() => nextSection && onSelectSection(nextSection.id)}
-        disabled={!nextSection}
-      >
-        Lanjut
-        <i className="iconoir-nav-arrow-right" aria-hidden="true" />
-      </button>
+      <section className="docs-article-next">
+        <div className="docs-panel-label">Selanjutnya</div>
+        <div className="docs-next-grid">
+          {section.nextSteps.map((step) => (
+            <button
+              key={step.id}
+              type="button"
+              className="docs-next-card"
+              onClick={() => onSelectSection(step.id)}
+            >
+              <h3>{step.title}</h3>
+              <p>{step.description}</p>
+              <span>
+                Buka topik
+                <i className="iconoir-nav-arrow-right" aria-hidden="true" />
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <div className="docs-mobile-nav">
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={() => previousSection && onSelectSection(previousSection.id)}
+          disabled={!previousSection}
+        >
+          <i className="iconoir-nav-arrow-left" aria-hidden="true" />
+          Kembali
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={() => nextSection && onSelectSection(nextSection.id)}
+          disabled={!nextSection}
+        >
+          Lanjut
+          <i className="iconoir-nav-arrow-right" aria-hidden="true" />
+        </button>
+      </div>
     </div>
 
-    <footer className="docs-article-footer">
-      <div>
-        <p>&copy; 2026 Makalah AI</p>
-        <p>Produk PT The Management Asia</p>
-      </div>
-      <div>
-        <p>Made in Jakarta</p>
-        <p>v0.8</p>
-      </div>
-    </footer>
+    <ShellPageFooter />
   </article>
 );
 

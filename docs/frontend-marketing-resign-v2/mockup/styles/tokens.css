@@ -12,10 +12,14 @@
 
   /* Ink */
   --ink: oklch(0.9600 0.0053 106.50);
-  --ink-2: oklch(0.8277 0.0096 106.61);
-  --ink-3: oklch(0.6313 0.0103 106.69);
-  --ink-4: oklch(0.4660 0.0079 106.70);
-  --ink-5: oklch(0.3471 0.0068 106.75);
+  --text-muted-strong: oklch(0.9000 0.0078 106.61);
+  --text-muted: oklch(0.8400 0.0070 106.69);
+  --text-muted-soft: oklch(0.8000 0.0062 106.70);
+  --text-muted-faint: oklch(0.7800 0.0058 106.75);
+  --ink-2: var(--text-muted-strong);
+  --ink-3: var(--text-muted);
+  --ink-4: var(--text-muted-soft);
+  --ink-5: var(--text-muted-faint);
 
   /* Lines */
   --line: oklch(1 0 0 / 0.06);
