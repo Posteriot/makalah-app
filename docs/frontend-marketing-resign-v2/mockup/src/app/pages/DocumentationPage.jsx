@@ -346,7 +346,7 @@ const DocumentationSidebar = ({
     </nav>
 
     <div className="docs-sidebar-auth">
-      <a href="#/" className="btn btn-primary docs-sidebar-auth-button">
+      <a href="#/sign-in" className="btn btn-primary docs-sidebar-auth-button">
         Masuk <Arrow />
       </a>
     </div>

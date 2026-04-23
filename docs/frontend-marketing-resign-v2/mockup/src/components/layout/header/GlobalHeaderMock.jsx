@@ -90,7 +90,7 @@ const Navbar = () => {
           >
             <i className={`iconoir-${menuOpen ? "xmark" : "menu"}`} aria-hidden="true" />
           </button>
-          <a href="#/" className="btn btn-primary nav-login" onClick={handleNavLinkClick}>Masuk <Arrow /></a>
+          <a href="#/sign-in" className="btn btn-primary nav-login" onClick={handleNavLinkClick}>Masuk <Arrow /></a>
         </div>
       </div>
       <div id="mobile-main-menu" className="container mobile-menu" aria-hidden={!menuOpen}>
@@ -109,7 +109,7 @@ const Navbar = () => {
             ))}
           </div>
           <div className="mobile-menu-action">
-            <a href="#/" className="btn btn-primary mobile-login" onClick={handleNavLinkClick}>
+            <a href="#/sign-in" className="btn btn-primary mobile-login" onClick={handleNavLinkClick}>
               Masuk <Arrow />
             </a>
           </div>

@@ -2,6 +2,7 @@
 
 const MOCK_ROUTE_KEYS = [
   "/",
+  "/sign-in",
   "/pricing",
   "/documentation",
   "/blog",
@@ -115,6 +116,7 @@ const MockNotFoundPage = () => (
 
 const MOCK_ROUTE_REGISTRY = {
   "/": () => <MarketingHomePage />,
+  "/sign-in": () => <SignInPage />,
   "/pricing": () => <PricingPage />,
   "/documentation": () => <DocumentationPage />,
   "/blog": () => <BlogPage />,
