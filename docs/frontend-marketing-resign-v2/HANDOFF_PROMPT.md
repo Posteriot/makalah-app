@@ -21,17 +21,14 @@ The next session should continue from the current completed state, not restart e
 Recent relevant commits:
 
 ```text
+64ff0588 Add marketing mockup FAQ page
+930fa470 Refine marketing mockup navigation chrome
+33386e57 Polish marketing mockup feature visuals
+2ca6111c Add marketing mockup features page
+c6d1e356 Refresh marketing mockup handoff prompt
 58157e2c Complete blog mockup listing and article page
 6a6667a4 Refine about mockup layout and mobile accordions
 7056f7b0 Add marketing mockup about page
-a0acf1c7 Align blog metadata accent color
-698ddab7 Expand blog feed examples
-589981c0 Refine blog headline and feed layout
-f0e0b99e Simplify blog headline metadata
-2a7e10ca Remove blog hero section
-0344065e Refine blog marketing layout
-ac377318 Adapt blog mockup to marketing layout
-07bee34c Add marketing mockup blog page
 814dcaea Add marketing mockup documentation page
 549fcd62 Add marketing mockup pricing page
 71a3e968 Add marketing mockup hash routing foundation
@@ -51,6 +48,8 @@ DocumentationPage
 BlogPage
 BlogArticlePage
 AboutPage
+FeaturesPage
+FAQPage
 ```
 
 Important completion notes:
@@ -61,6 +60,11 @@ Important completion notes:
 - `BlogArticlePage` exists as a single editorial reading-page representation based on the featured blog article.
 - Featured blog title now opens the article detail route.
 - `AboutPage` has mobile accordion behavior for `Persoalan` and `AI Agents`.
+- `FeaturesPage` is live at `#/features` with the approved positioning direction: Makalah AI as an assistant for paper writing, not a generic chatbot.
+- `FeaturesPage` uses final illustration assets for all five feature sections and shares the accepted background treatment used across public marketing pages.
+- `FAQPage` is live at `#/faq` with grouped accordion content, revised hero/CTA structure, and mobile carousel behavior for the four primary category cards.
+- Main navigation no longer includes `Home`; the logo/brand is the return path to home.
+- Mockup favicon now points to `docs/frontend-marketing-resign-v2/mockup/assets/favicon.ico`.
 
 ## Primary Planning Docs
 
@@ -131,6 +135,8 @@ docs/frontend-marketing-resign-v2/mockup/src/app/pages/DocumentationPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/BlogPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/BlogArticlePage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/AboutPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/FeaturesPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/FAQPage.jsx
 docs/frontend-marketing-resign-v2/mockup/styles/tokens.css
 docs/frontend-marketing-resign-v2/mockup/styles/components.css
 ```
@@ -145,7 +151,7 @@ Two layout families are already established:
 Rules already validated in this branch:
 
 - `DocumentationPage` intentionally uses shell layout and must not be refactored into the marketing global chrome.
-- `PricingPage`, `BlogPage`, `BlogArticlePage`, and `AboutPage` use the marketing family.
+- `PricingPage`, `BlogPage`, `BlogArticlePage`, `AboutPage`, `FeaturesPage`, and `FAQPage` use the marketing family.
 - Non-documentation public pages should follow the newer marketing direction established by `PricingPage`, not blindly copy production `src/` layouts.
 
 ## Existing Route Targets
@@ -199,28 +205,25 @@ Do not batch multiple new pages into one implementation checkpoint.
 The next recommended unit is:
 
 ```text
-PolicyPage set for privacy, security, and terms
+Auth page set
 ```
 
 Reason:
 
-- It is the next remaining production-parity checkpoint after `AboutPage`.
-- It closes the legal/public-information gap in the existing route registry.
-- It should be treated as one bounded unit with shared structure and three route targets:
-  - `#/privacy`
-  - `#/security`
-  - `#/terms`
+- The user has explicitly redirected the next session target to all auth-related pages.
+- This is now the highest-priority unfinished product surface after the completed marketing identity pages.
+- The next session should first audit what auth-related mockup surfaces are needed, then implement them as a coherent auth family rather than mixing them with legal or operational pages.
+- If auth routes are not yet registered in `MockRouter.jsx`, extend the route registry during that unit instead of forcing auth into existing placeholder legal routes.
 
 ## Recommended Remaining Commit Order
 
 ```text
-1. PolicyPage set for privacy / security / terms
-2. FeaturesPage
-3. FAQPage
-4. RoadmapPage
-5. ChangelogPage
-6. StatusPage
-7. PartnershipPage
+1. Auth page set
+2. PolicyPage set for privacy / security / terms
+3. RoadmapPage
+4. ChangelogPage
+5. StatusPage
+6. PartnershipPage
 ```
 
 ## Verification Expectations
@@ -242,12 +245,13 @@ If a unit changes routing or script loading, also verify:
 
 - Do not re-open already accepted redesign debates unless the user explicitly asks.
 - Do not revert `BlogPage`, `BlogArticlePage`, or `AboutPage` behavior that has already been approved.
+- Do not revert accepted `FeaturesPage` or `FAQPage` structure, copy direction, or mobile behavior unless the user explicitly requests corrections.
 - Do not stage or commit screenshot folders unless explicitly requested.
 - Do not assume the next unit is blog-related anymore; blog is already completed for this checkpoint.
 
 ## Immediate Starting Point For The Next Session
 
-Start by confirming the current state from code, then move into the `PolicyPage` unit.
+Start by confirming the current state from code, then move into the auth-page design unit.
 
 Expected first read targets for the next session:
 
@@ -258,5 +262,9 @@ docs/frontend-marketing-resign-v2/mockup/src/app/MockRouter.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/PricingPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/BlogPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/BlogArticlePage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/FeaturesPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/FAQPage.jsx
+docs/frontend-marketing-resign-v2/mockup/src/components/layout/header/GlobalHeaderMock.jsx
+docs/frontend-marketing-resign-v2/mockup/MakalahAI.html
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/AboutPage.jsx
 ```
