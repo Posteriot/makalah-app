@@ -147,15 +147,7 @@ const MOCK_ROUTE_REGISTRY = {
       ctaHref="#/privacy"
     />
   ),
-  "/features": () => (
-    <MockPagePlaceholder
-      eyebrow="Fitur"
-      title="Halaman fitur sedang dipersiapkan"
-      description="Route fitur sudah aktif dan bisa dipakai oleh header global sebelum halaman fiturnya dibangun penuh."
-      ctaLabel="Lihat harga"
-      ctaHref="#/pricing"
-    />
-  ),
+  "/features": () => <FeaturesPage />,
   "/faq": () => (
     <MockPagePlaceholder
       eyebrow="FAQ"
