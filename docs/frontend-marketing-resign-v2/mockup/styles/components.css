@@ -1236,7 +1236,7 @@
 }
 
 .auth-actions {
-  margin-top: 28px;
+  margin-top: 30px;
 }
 
 .auth-google-btn {
@@ -1261,7 +1261,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 20px 0;
+  margin: 22px 0 18px;
   color: var(--ink-4);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1279,26 +1279,17 @@
 
 .auth-form {
   display: grid;
-  gap: 14px;
+  gap: 18px;
 }
 
 .auth-field {
-  display: grid;
-  gap: 8px;
-}
-
-.auth-label {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-3);
+  display: block;
 }
 
 .auth-field input {
   width: 100%;
-  min-height: 48px;
-  padding: 0 14px;
+  min-height: 54px;
+  padding: 0 16px;
   border: 1px solid var(--line-2);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.03);
@@ -1311,12 +1302,17 @@
 
 .auth-field input::placeholder {
   color: var(--ink-4);
+  transition: color 0.2s var(--ease);
 }
 
 .auth-field input:focus {
   border-color: var(--brand-green-line);
   box-shadow: 0 0 0 3px var(--brand-green-soft);
   background: rgba(255, 255, 255, 0.05);
+}
+
+.auth-field input:focus::placeholder {
+  color: transparent;
 }
 
 .auth-row {
@@ -1327,6 +1323,7 @@
 .auth-row-between {
   justify-content: space-between;
   gap: 16px;
+  margin-top: -2px;
 }
 
 .auth-row-end {
@@ -1352,17 +1349,25 @@
   color: var(--ink);
   font-size: 13px;
   line-height: 1.6;
+  margin-top: -2px;
+}
+
+.auth-feedback-soft {
+  border-color: var(--line-2);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink-2);
 }
 
 .auth-submit-btn {
   width: 100%;
   justify-content: center;
-  min-height: 48px;
+  min-height: 54px;
+  margin-top: 2px;
 }
 
 .auth-card-foot {
-  margin-top: 22px;
-  padding-top: 18px;
+  margin-top: 26px;
+  padding-top: 20px;
   border-top: 1px solid var(--line);
   display: flex;
   align-items: center;
@@ -3737,6 +3742,7 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
+    margin-top: -4px;
   }
   .benefits-grid {
     display: flex;

@@ -3,7 +3,7 @@
 const MarketingLayoutMock = ({ children }) => {
   const currentRoute = typeof window.useHashRoute === "function" ? window.useHashRoute() : "/";
   const isDocsRoute = currentRoute === "/documentation";
-  const isAuthRoute = currentRoute === "/sign-in";
+  const isAuthRoute = currentRoute === "/sign-in" || currentRoute === "/sign-up";
 
   return (
     <>
