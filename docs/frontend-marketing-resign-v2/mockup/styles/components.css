@@ -1227,6 +1227,13 @@
   text-align: center;
 }
 
+.auth-card-head-compact {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .auth-card-head h1 {
   font-family: var(--font-display);
   font-size: clamp(1.75rem, 3vw, 2.25rem);
@@ -1323,6 +1330,31 @@
   color: transparent;
 }
 
+.auth-otp-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.auth-otp-input {
+  width: 100%;
+  min-height: 58px;
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 500;
+  text-align: center;
+  outline: 0;
+}
+
+.auth-otp-input:focus {
+  border-color: var(--brand-green-line);
+  box-shadow: 0 0 0 3px var(--brand-green-soft);
+}
+
 .auth-row {
   display: flex;
   align-items: center;
@@ -1336,6 +1368,10 @@
 
 .auth-row-end {
   justify-content: flex-end;
+}
+
+.auth-row-center {
+  justify-content: center;
 }
 
 .auth-inline-link {
@@ -1378,6 +1414,19 @@
   color: var(--ink-2);
 }
 
+.auth-feedback-center {
+  text-align: center;
+}
+
+.auth-email-sent-note {
+  margin-top: 0;
+  margin-bottom: 18px;
+}
+
+.auth-email-sent-actions {
+  margin-top: 16px;
+}
+
 .auth-submit-btn {
   width: 100%;
   justify-content: center;
@@ -1387,6 +1436,10 @@
 
 .auth-helper-row {
   margin-top: 18px;
+}
+
+.auth-helper-note {
+  margin-top: 16px;
 }
 
 .auth-card-foot {
@@ -3757,6 +3810,9 @@
   .auth-card-head h1 {
     font-size: 1.75rem;
   }
+  .auth-card-head-compact {
+    min-height: 48px;
+  }
   .auth-card-foot,
   .auth-identity {
     flex-wrap: wrap;
@@ -3766,7 +3822,16 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    margin-top: -4px;
+    margin-top: 14px;
+    gap: 14px;
+  }
+  .auth-otp-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .auth-otp-input {
+    min-height: 52px;
+    font-size: 1.15rem;
   }
   .benefits-grid {
     display: flex;

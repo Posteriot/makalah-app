@@ -1,7 +1,7 @@
-/* Static magic link page mock */
+/* Static reset password page mock */
 
-const MagicLinkPage = () => (
-  <div className="auth-page magic-link-page">
+const ResetPasswordPage = () => (
+  <div className="auth-page reset-password-page">
     <section className="auth-shell">
       <div className="auth-shell-glow" aria-hidden="true" />
       <Reveal className="auth-card-wrap">
@@ -15,36 +15,31 @@ const MagicLinkPage = () => (
           </a>
 
           <div className="auth-card-head">
-            <h1>Masuk dengan Magic Link</h1>
-            <p className="auth-card-copy">Masukkan email dan kami kirim link masuk ke inbox Kamu.</p>
+            <h1>Buat password baru</h1>
+            <p className="auth-card-copy">Masukkan password baru untuk melanjutkan masuk ke akun Kamu.</p>
           </div>
 
           <div className="auth-actions">
-            <form
-              className="auth-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                window.location.hash = "#/magic-link/email-sent";
-              }}
-            >
+            <form className="auth-form" onSubmit={(event) => event.preventDefault()}>
               <label className="auth-field">
-                <input type="email" placeholder="Email" aria-label="Email" />
+                <input type="password" placeholder="Password baru" aria-label="Password baru" />
+              </label>
+
+              <label className="auth-field">
+                <input type="password" placeholder="Ulangi password" aria-label="Ulangi password" />
               </label>
 
               <button type="submit" className="btn btn-primary auth-submit-btn">
-                Kirim Magic Link <Arrow />
+                Simpan password baru <Arrow />
               </button>
             </form>
 
-            <div className="auth-row auth-row-between auth-helper-row">
+            <div className="auth-row auth-row-center auth-helper-row">
               <a href="#/sign-in" className="auth-inline-link auth-inline-link-arrow">
                 <span className="auth-inline-link-arrow-icon" aria-hidden="true">
                   <Arrow />
                 </span>
                 <span>Masuk</span>
-              </a>
-              <a href="#/forgot-password" className="auth-inline-link">
-                Lupa password?
               </a>
             </div>
           </div>
@@ -60,5 +55,5 @@ const MagicLinkPage = () => (
 );
 
 Object.assign(window, {
-  MagicLinkPage
+  ResetPasswordPage
 });

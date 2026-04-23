@@ -23,7 +23,7 @@ const SignInPage = () => (
             />
           </a>
 
-          <div className="auth-card-head">
+          <div className="auth-card-head auth-card-head-compact">
             <h1>Silakan masuk</h1>
           </div>
 
@@ -39,13 +39,11 @@ const SignInPage = () => (
 
             <form className="auth-form" onSubmit={(event) => event.preventDefault()}>
               <label className="auth-field">
-                <span className="auth-label">Email</span>
-                <input type="email" placeholder="nama@email.com" aria-label="Email" />
+                <input type="email" placeholder="Email" aria-label="Email" />
               </label>
 
               <label className="auth-field">
-                <span className="auth-label">Password</span>
-                <input type="password" placeholder="Masukkan password" aria-label="Password" />
+                <input type="password" placeholder="Password" aria-label="Password" />
               </label>
 
               <div className="auth-row auth-row-between">

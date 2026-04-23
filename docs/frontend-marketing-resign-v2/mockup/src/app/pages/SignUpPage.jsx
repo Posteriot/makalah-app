@@ -14,7 +14,7 @@ const SignUpPage = () => (
             />
           </a>
 
-          <div className="auth-card-head">
+          <div className="auth-card-head auth-card-head-compact">
             <h1>Buat akun</h1>
           </div>
 

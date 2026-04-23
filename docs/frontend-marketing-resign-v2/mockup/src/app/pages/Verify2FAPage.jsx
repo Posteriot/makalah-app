@@ -1,7 +1,9 @@
-/* Static forgot password page mock */
+/* Static verify 2FA page mock */
 
-const ForgotPasswordPage = () => (
-  <div className="auth-page forgot-password-page">
+const VERIFY_2FA_DIGITS = ["1", "8", "4", "", "", ""];
+
+const Verify2FAPage = () => (
+  <div className="auth-page verify-2fa-page">
     <section className="auth-shell">
       <div className="auth-shell-glow" aria-hidden="true" />
       <Reveal className="auth-card-wrap">
@@ -15,24 +17,30 @@ const ForgotPasswordPage = () => (
           </a>
 
           <div className="auth-card-head">
-            <h1>Lupa password?</h1>
-            <p className="auth-card-copy">Masukkan email untuk menerima link reset password.</p>
+            <h1>Verifikasi 2FA</h1>
+            <p className="auth-card-copy">Masukkan 6 digit kode dari aplikasi autentikator untuk melanjutkan masuk.</p>
           </div>
 
           <div className="auth-actions">
-            <form
-              className="auth-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                window.location.hash = "#/forgot-password/email-sent";
-              }}
-            >
-              <label className="auth-field">
-                <input type="email" placeholder="Email" aria-label="Email" />
-              </label>
+            <form className="auth-form" onSubmit={(event) => event.preventDefault()}>
+              <div className="auth-otp-grid" role="group" aria-label="Kode verifikasi 2FA">
+                {VERIFY_2FA_DIGITS.map((digit, index) => (
+                  <input
+                    key={index}
+                    className="auth-otp-input"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    placeholder=""
+                    aria-label={`Digit ${index + 1}`}
+                    readOnly
+                  />
+                ))}
+              </div>
 
               <button type="submit" className="btn btn-primary auth-submit-btn">
-                Kirim link reset <Arrow />
+                Verifikasi <Arrow />
               </button>
             </form>
 
@@ -44,8 +52,12 @@ const ForgotPasswordPage = () => (
                 <span>Masuk</span>
               </a>
               <a href="#/magic-link" className="auth-inline-link">
-                Masuk dengan Magic Link
+                Pakai Magic Link
               </a>
+            </div>
+
+            <div className="auth-feedback auth-feedback-soft auth-feedback-center auth-helper-note" role="status" aria-live="polite">
+              Belum menerima kode? Gunakan recovery code atau kirim ulang dari perangkat autentikasi Kamu.
             </div>
           </div>
         </div>
@@ -60,5 +72,6 @@ const ForgotPasswordPage = () => (
 );
 
 Object.assign(window, {
-  ForgotPasswordPage
+  VERIFY_2FA_DIGITS,
+  Verify2FAPage
 });
