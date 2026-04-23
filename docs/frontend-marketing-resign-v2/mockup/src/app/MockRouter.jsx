@@ -190,33 +190,9 @@ const MOCK_ROUTE_REGISTRY = {
   "/blog": () => <BlogPage />,
   "/blog/workflow-bertahap-untuk-paper": () => <BlogArticlePage />,
   "/about": () => <AboutPage />,
-  "/privacy": () => (
-    <MockPagePlaceholder
-      eyebrow="Privacy"
-      title="Ringkasan kebijakan privasi akan hadir di unit policy"
-      description="Route legal sudah tersedia supaya footer bisa mengarah ke tujuan yang benar sejak awal implementasi."
-      ctaLabel="Lihat security"
-      ctaHref="#/security"
-    />
-  ),
-  "/security": () => (
-    <MockPagePlaceholder
-      eyebrow="Security"
-      title="Halaman security belum diisi konten final"
-      description="Route ini disiapkan lebih dulu agar navigasi legal, active state, dan fallback bisa diuji dalam satu fondasi yang stabil."
-      ctaLabel="Lihat terms"
-      ctaHref="#/terms"
-    />
-  ),
-  "/terms": () => (
-    <MockPagePlaceholder
-      eyebrow="Terms"
-      title="Halaman terms akan dibuat pada unit policy"
-      description="Saat ini route terms sudah aktif sebagai bagian dari registry semua target route yang diwajibkan."
-      ctaLabel="Lihat privacy"
-      ctaHref="#/privacy"
-    />
-  ),
+  "/privacy": () => <PolicyPage mode="privacy" />,
+  "/security": () => <PolicyPage mode="security" />,
+  "/terms": () => <PolicyPage mode="terms" />,
   "/features": () => <FeaturesPage />,
   "/faq": () => <FAQPage />,
   "/roadmap": () => (
