@@ -77,6 +77,7 @@ const MOCK_ROUTE_KEYS = [
   "/features",
   "/faq",
   "/report-issue",
+  "/report-issue/new",
   "/report-issue/progress",
   "/report-issue/terkirim",
   "/roadmap",
@@ -198,9 +199,10 @@ const MOCK_ROUTE_REGISTRY = {
   "/terms": () => <PolicyPage mode="terms" />,
   "/features": () => <FeaturesPage />,
   "/faq": () => <FAQPage />,
-  "/report-issue": () => <ReportIssuePage />,
-  "/report-issue/progress": () => <ReportIssuePage initialSection="progress" />,
-  "/report-issue/terkirim": () => <ReportIssuePage initialSection="report" variant="submitted" />,
+  "/report-issue": () => <ReportIssuePage key="report-issue-progress-root" initialSection="progress" />,
+  "/report-issue/new": () => <ReportIssuePage key="report-issue-new" initialSection="report" />,
+  "/report-issue/progress": () => <ReportIssuePage key="report-issue-progress" initialSection="progress" />,
+  "/report-issue/terkirim": () => <ReportIssuePage key="report-issue-submitted" initialSection="report" variant="submitted" />,
   "/roadmap": () => (
     <MockPagePlaceholder
       eyebrow="Roadmap"

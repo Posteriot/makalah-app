@@ -301,11 +301,17 @@ const ReportIssuePage = ({ initialSection = "progress", variant = "default" }) =
   const [activeSection, setActiveSection] = React.useState(initialSection);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
 
+  React.useEffect(() => {
+    setActiveSection(initialSection);
+    setMobileNavOpen(false);
+  }, [initialSection, variant]);
+
   const currentSection = REPORT_ISSUE_SECTIONS.find((section) => section.id === activeSection) || REPORT_ISSUE_SECTIONS[0];
 
   const handleSelectSection = (nextSection) => {
     setActiveSection(nextSection);
     setMobileNavOpen(false);
+    window.location.hash = nextSection === "progress" ? "#/report-issue" : "#/report-issue/new";
   };
 
   return (
@@ -358,10 +364,10 @@ const ReportIssuePage = ({ initialSection = "progress", variant = "default" }) =
                   <ReportIssueSuccessSection
                     submission={REPORT_ISSUE_SUBMITTED_MOCK}
                     onOpenProgress={() => {
-                      window.location.hash = "#/report-issue/progress";
+                      window.location.hash = "#/report-issue/";
                     }}
                     onCreateAnotherReport={() => {
-                      window.location.hash = "#/report-issue";
+                      window.location.hash = "#/report-issue/new";
                       window.setTimeout(() => {
                         window.scrollTo({ top: 0, behavior: "auto" });
                       }, 0);

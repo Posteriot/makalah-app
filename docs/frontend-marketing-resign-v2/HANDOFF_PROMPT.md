@@ -76,8 +76,11 @@ Important completion notes:
   - `#/terms`
 - `ReportIssuePage` is live as a shell-layout support page with route-addressable review states:
   - `#/report-issue`
+  - `#/report-issue/new`
   - `#/report-issue/progress`
   - `#/report-issue/terkirim`
+  - `#/report-issue` is the progress view
+  - `#/report-issue/new` is the report form view
 - `DocumentationPage` and `ReportIssuePage` now share a reusable shell footer component and shared shell-style footer rules.
 - Shell muted text now uses centralized reusable token aliases in `tokens.css`; future shell/public work should reuse that system rather than introduce page-level muted color overrides.
 - Main navigation no longer includes `Home`; the logo/brand is the return path to home.
@@ -290,6 +293,7 @@ MakalahAI.html#/terms
 MakalahAI.html#/features
 MakalahAI.html#/faq
 MakalahAI.html#/report-issue
+MakalahAI.html#/report-issue/new
 MakalahAI.html#/report-issue/progress
 MakalahAI.html#/report-issue/terkirim
 MakalahAI.html#/roadmap
