@@ -2,7 +2,10 @@
 
 const MarketingLayoutMock = ({ children }) => {
   const currentRoute = typeof window.useHashRoute === "function" ? window.useHashRoute() : "/";
-  const isShellRoute = currentRoute === "/documentation" || currentRoute.indexOf("/report-issue") === 0;
+  const isChatRoute = currentRoute === "/chat";
+  const isShellRoute = currentRoute === "/documentation"
+    || isChatRoute
+    || currentRoute.indexOf("/report-issue") === 0;
   const isAuthRoute = currentRoute === "/sign-in"
     || currentRoute.indexOf("/sign-in/") === 0
     || currentRoute === "/sign-up"
@@ -16,12 +19,20 @@ const MarketingLayoutMock = ({ children }) => {
     || currentRoute === "/reset-password"
     || currentRoute.indexOf("/reset-password/") === 0;
 
+  const mainClassName = isChatRoute
+    ? "chat-route-main"
+    : isShellRoute
+      ? "docs-route-main"
+      : isAuthRoute
+        ? "auth-route-main"
+        : "";
+
   return (
     <>
       <div className="grid-bg" />
       <div className="grain-bg" />
       {!isShellRoute && !isAuthRoute ? <GlobalHeaderMock /> : null}
-      <main className={isShellRoute ? "docs-route-main" : isAuthRoute ? "auth-route-main" : ""}>{children}</main>
+      <main className={mainClassName}>{children}</main>
       {!isShellRoute && !isAuthRoute ? <FooterMock /> : null}
       {!isShellRoute && !isAuthRoute ? <Tweaks defaults={window.__TWEAKS_DEFAULTS || TWEAK_DEFAULTS} /> : null}
     </>
