@@ -152,6 +152,31 @@ const BOOLEAN_CONTROLS = [
   }
 ];
 
+const CHAT_ACTIVITY_ITEMS = [
+  {
+    key: "history",
+    icon: "Ri",
+    label: "Riwayat"
+  },
+  {
+    key: "progress",
+    icon: "Pr",
+    label: "Linimasa"
+  }
+];
+
+const CHAT_SIDEBAR_HISTORY_ITEMS = [
+  "Draft metode penelitian kuantitatif",
+  "Outline pendahuluan AI bisnis",
+  "Revisi pembahasan literatur utama"
+];
+
+const CHAT_SIDEBAR_PROGRESS_ITEMS = [
+  "Topik dan tujuan sudah stabil",
+  "Outline paper menunggu approval",
+  "Draft hasil penelitian sedang diperkaya"
+];
+
 const mergeChatMockState = (prevState, patch) => ({
   ...prevState,
   ...patch
@@ -183,6 +208,174 @@ const ChatMockBooleanControl = ({ label, checked, onChange }) => (
     <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
     <span>{label}</span>
   </label>
+);
+
+const ChatMockActivityBar = ({ activePanel }) => (
+  <aside className="chat-page-mock__activitybar" aria-label="Activity bar placeholder">
+    <a href="#/" className="chat-page-mock__activitybar-brand" aria-label="Kembali ke home">
+      <img src="assets/official_logo_grey_500.png" alt="Makalah" className="chat-page-mock__activitybar-mark" />
+    </a>
+
+    <div className="chat-page-mock__activitybar-items">
+      {CHAT_ACTIVITY_ITEMS.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          className={`chat-page-mock__activitybar-button ${activePanel === item.key ? "is-active" : ""}`}
+          aria-pressed={activePanel === item.key}
+        >
+          <span className="chat-page-mock__activitybar-icon">{item.icon}</span>
+          <span className="chat-page-mock__activitybar-label">{item.label}</span>
+        </button>
+      ))}
+    </div>
+  </aside>
+);
+
+const ChatMockSidebar = ({ state }) => {
+  const items = state.sidebarPanel === "progress" ? CHAT_SIDEBAR_PROGRESS_ITEMS : CHAT_SIDEBAR_HISTORY_ITEMS;
+
+  return (
+    <aside className={`chat-page-mock__desktop-sidebar ${state.sidebarState === "collapsed" ? "is-collapsed" : ""}`} aria-label="Sidebar desktop placeholder">
+      {state.sidebarState === "collapsed" ? (
+        <div className="chat-page-mock__sidebar-collapsed">
+          <span>SB</span>
+        </div>
+      ) : (
+        <>
+          <div className="chat-page-mock__desktop-sidebar-head">
+            <div>
+              <div className="chat-page-mock__panel-label">Sidebar Desktop</div>
+              <p>{state.sidebarPanel === "progress" ? "Linimasa progres paper" : "Riwayat percakapan aktif"}</p>
+            </div>
+            <button type="button" className="chat-page-mock__sidebar-primary">
+              Percakapan Baru
+            </button>
+          </div>
+
+          <div className="chat-page-mock__desktop-sidebar-list">
+            {items.map((item, index) => (
+              <article
+                key={item}
+                className={`chat-page-mock__desktop-sidebar-item ${index === 0 ? "is-active" : ""}`}
+              >
+                <div className="chat-page-mock__desktop-sidebar-item-title">{item}</div>
+                <div className="chat-page-mock__desktop-sidebar-item-meta">
+                  {state.sidebarPanel === "progress" ? "Status aktif" : "Terakhir dibuka 12m lalu"}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="chat-page-mock__desktop-sidebar-footer">
+            <div className="chat-page-mock__desktop-sidebar-credit">
+              <div className="chat-page-mock__panel-label">Credit Summary</div>
+              <p>124 kredit tersisa</p>
+            </div>
+            <div className="chat-page-mock__desktop-sidebar-user">
+              <div className="chat-page-mock__panel-label">User Summary</div>
+              <p>Erik Supit · Pro Plan</p>
+            </div>
+          </div>
+        </>
+      )}
+    </aside>
+  );
+};
+
+const ChatMockTopBar = ({ state }) => (
+  <header className="chat-page-mock__topbar" aria-label="Top bar desktop placeholder">
+    <div className="chat-page-mock__topbar-left">
+      {state.sidebarState === "collapsed" ? (
+        <button type="button" className="chat-page-mock__topbar-icon-button">
+          Sidebar
+        </button>
+      ) : null}
+      <div>
+        <div className="chat-page-mock__panel-label">Top Bar</div>
+        <p>Desktop shell placeholder aktif</p>
+      </div>
+    </div>
+
+    <div className="chat-page-mock__topbar-right">
+      <button type="button" className="chat-page-mock__topbar-icon-button">
+        Theme
+      </button>
+      <div className="chat-page-mock__artifact-count" aria-label="Jumlah artifak">
+        <span>Artifak</span>
+        <strong>{state.artifactPanelState === "closed" ? "0" : "3"}</strong>
+      </div>
+      <div className="chat-page-mock__topbar-user">ES</div>
+    </div>
+  </header>
+);
+
+const ChatMockArtifactSlot = ({ state }) => {
+  const isClosed = state.artifactPanelState === "closed";
+
+  return (
+    <aside
+      className={`chat-page-mock__artifact-slot ${isClosed ? "is-closed" : ""}`}
+      aria-label="Artifact panel slot placeholder"
+    >
+      <div className="chat-page-mock__panel-label">Artifact Panel Slot</div>
+      <p>State aktif: {state.artifactPanelState}</p>
+      <p>
+        {isClosed
+          ? "Panel kanan masih tertutup. Task berikutnya akan mengisi state tab, toolbar, dan content tanpa menghilangkan slot shell."
+          : "Panel kanan akan diisi detail tab, toolbar, dan content di task berikutnya."}
+      </p>
+    </aside>
+  );
+};
+
+const ChatMockDesktopMain = ({ state, summaryItems }) => (
+  <section className="chat-page-mock__desktop-main" aria-label="Main shell desktop placeholder">
+    <ChatMockTopBar state={state} />
+
+    <div className="chat-page-mock__shell-summary">
+      {summaryItems.map(([label, value]) => (
+        <article key={label} className="chat-page-mock__summary-card">
+          <div className="chat-page-mock__summary-label">{label}</div>
+          <div className="chat-page-mock__summary-value">{value}</div>
+        </article>
+      ))}
+    </div>
+
+    <div className="chat-page-mock__desktop-main-panels">
+      <section className="chat-page-mock__shell-main" aria-label="Main placeholder">
+        <div className="chat-page-mock__panel-label">Main Placeholder</div>
+        <p>Conversation state: {state.conversationState}</p>
+        <p>Composer state: {state.composerState}</p>
+        <p>Process state: {state.processState}</p>
+      </section>
+
+      <div className="chat-page-mock__shell-notes">
+        <div className="chat-page-mock__panel-label">Task 3 Boundary</div>
+        <ul className="chat-page-mock__status-list">
+          <li>Desktop shell sudah dipecah jadi activity bar, sidebar, top bar, main, dan artifact slot.</li>
+          <li>State `sidebar expanded/collapsed` sekarang punya efek visual di shell desktop.</li>
+          <li>Surface desktop masih placeholder dan belum masuk ke detail mobile atau message system.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+);
+
+const ChatMockDesktopShell = ({ state, summaryItems }) => (
+  <div className={`chat-page-mock__desktop-shell ${state.sidebarState === "collapsed" ? "is-collapsed" : ""}`}>
+    <ChatMockActivityBar activePanel={state.sidebarPanel} />
+    <ChatMockSidebar state={state} />
+    <ChatMockDesktopMain state={state} summaryItems={summaryItems} />
+    <ChatMockArtifactSlot state={state} />
+  </div>
+);
+
+const ChatMockMobileDeferred = () => (
+  <div className="chat-page-mock__mobile-deferred" aria-label="Mobile shell deferred">
+    <div className="chat-page-mock__panel-label">Mobile Shell Deferred</div>
+    <p>Task 3 hanya mengerjakan desktop shell. Mobile shell akan dikerjakan di task berikutnya.</p>
+  </div>
 );
 
 const ChatMockStateControls = ({ state, activePresetId, onPatch, onPreset }) => (
@@ -256,44 +449,14 @@ const ChatMockShell = ({ state }) => {
       <div className="chat-page-mock__shell-frame">
         <header className="chat-page-mock__shell-header">
           <div>
-            <div className="chat-page-mock__eyebrow">Chat Surface</div>
-            <h2>Shell placeholder untuk task berikutnya</h2>
+          <div className="chat-page-mock__eyebrow">Chat Surface</div>
+            <h2>Desktop shell placeholder aktif</h2>
           </div>
           <div className="chat-page-mock__shell-badge">Bukan review strip</div>
         </header>
-
-        <div className="chat-page-mock__shell-summary">
-          {summaryItems.map(([label, value]) => (
-            <article key={label} className="chat-page-mock__summary-card">
-              <div className="chat-page-mock__summary-label">{label}</div>
-              <div className="chat-page-mock__summary-value">{value}</div>
-            </article>
-          ))}
-        </div>
-
-        <div className="chat-page-mock__shell-columns">
-          <aside className="chat-page-mock__shell-panel" aria-label="Sidebar placeholder">
-            <div className="chat-page-mock__panel-label">Sidebar Placeholder</div>
-            <p>Mode aktif: {state.sidebarState}</p>
-            <p>Panel aktif: {state.sidebarPanel}</p>
-          </aside>
-
-          <section className="chat-page-mock__shell-main" aria-label="Main placeholder">
-            <div className="chat-page-mock__panel-label">Main Placeholder</div>
-            <p>Conversation state: {state.conversationState}</p>
-            <p>Composer state: {state.composerState}</p>
-            <p>Process state: {state.processState}</p>
-          </section>
-        </div>
-
-        <div className="chat-page-mock__shell-notes">
-          <div className="chat-page-mock__panel-label">Task 2 Boundary</div>
-          <ul className="chat-page-mock__status-list">
-            <li>Review controls dipisah di strip teratas.</li>
-            <li>Shell ini hanya placeholder visual untuk task lanjutan.</li>
-            <li>State root sekarang sudah bisa diganti via preset dan controls eksplisit.</li>
-          </ul>
-        </div>
+        {state.viewport === "mobile"
+          ? <ChatMockMobileDeferred />
+          : <ChatMockDesktopShell state={state} summaryItems={summaryItems} />}
 
         <ShellPageFooter />
       </div>
