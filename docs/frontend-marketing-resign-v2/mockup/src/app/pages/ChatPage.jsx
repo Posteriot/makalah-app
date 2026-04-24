@@ -371,10 +371,95 @@ const ChatMockDesktopShell = ({ state, summaryItems }) => (
   </div>
 );
 
-const ChatMockMobileDeferred = () => (
-  <div className="chat-page-mock__mobile-deferred" aria-label="Mobile shell deferred">
-    <div className="chat-page-mock__panel-label">Mobile Shell Deferred</div>
-    <p>Task 3 hanya mengerjakan desktop shell. Mobile shell akan dikerjakan di task berikutnya.</p>
+const ChatMockMobileHeader = ({ onOpenSidebar }) => (
+  <header className="chat-page-mock__mobile-header" aria-label="Mobile header placeholder">
+    <button type="button" className="chat-page-mock__mobile-menu-trigger" onClick={onOpenSidebar}>
+      Menu
+    </button>
+    <div className="chat-page-mock__mobile-brand">
+      <img src="assets/official_logo_grey_500.png" alt="Makalah" className="chat-page-mock__activitybar-mark" />
+    </div>
+    <div className="chat-page-mock__mobile-user">ES</div>
+  </header>
+);
+
+const ChatMockMobileSidebarSheet = ({ state, onClose }) => {
+  if (state.sidebarState !== "mobileSheetOpen") return null;
+
+  return (
+    <div className="chat-page-mock__mobile-sidebar-overlay" onClick={onClose}>
+      <aside className="chat-page-mock__mobile-sidebar-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="chat-page-mock__mobile-sidebar-head">
+          <div className="chat-page-mock__panel-label">Menu Mobile</div>
+          <button type="button" className="chat-page-mock__mobile-close" onClick={onClose}>
+            Tutup
+          </button>
+        </div>
+
+        <div className="chat-page-mock__activitybar-items">
+          {CHAT_ACTIVITY_ITEMS.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`chat-page-mock__activitybar-button ${state.sidebarPanel === item.key ? "is-active" : ""}`}
+            >
+              <span className="chat-page-mock__activitybar-icon">{item.icon}</span>
+              <span className="chat-page-mock__activitybar-label">{item.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="chat-page-mock__mobile-sidebar-list">
+          <div className="chat-page-mock__panel-label">
+            {state.sidebarPanel === "progress" ? "Progres Paper" : "Riwayat Percakapan"}
+          </div>
+          {(state.sidebarPanel === "progress" ? CHAT_SIDEBAR_PROGRESS_ITEMS : CHAT_SIDEBAR_HISTORY_ITEMS).map((item) => (
+            <div key={item} className="chat-page-mock__mobile-sidebar-item">
+              {item}
+            </div>
+          ))}
+        </div>
+
+        <div className="chat-page-mock__mobile-sidebar-footer">
+          <div className="chat-page-mock__panel-label">Akun & Kredit</div>
+          <p>Erik Supit · 124 Kredit</p>
+        </div>
+      </aside>
+    </div>
+  );
+};
+
+const ChatMockMobileFrame = ({ state, summaryItems, onPatch }) => (
+  <div className={`chat-page-mock__mobile-frame ${state.composerState === "mobileFullscreen" ? "is-fullscreen-composer" : ""}`}>
+    <ChatMockMobileHeader onOpenSidebar={() => onPatch({ sidebarState: "mobileSheetOpen" })} />
+    <ChatMockMobileSidebarSheet state={state} onClose={() => onPatch({ sidebarState: "collapsed" })} />
+
+    <main className="chat-page-mock__mobile-content">
+      <div className="chat-page-mock__shell-summary is-mobile">
+        {summaryItems.slice(0, 4).map(([label, value]) => (
+          <article key={label} className="chat-page-mock__summary-card">
+            <div className="chat-page-mock__summary-label">{label}</div>
+            <div className="chat-page-mock__summary-value">{value}</div>
+          </article>
+        ))}
+      </div>
+
+      <section className="chat-page-mock__shell-main is-mobile">
+        <div className="chat-page-mock__panel-label">Mobile Main Placeholder</div>
+        <p>State: {state.conversationState}</p>
+        <p>Composer: {state.composerState}</p>
+        {state.composerState === "mobileFullscreen" && (
+          <div className="chat-page-mock__fullscreen-indicator">
+            Fullscreen Composer Mode Aktif
+          </div>
+        )}
+      </section>
+
+      <div className="chat-page-mock__shell-notes is-mobile">
+        <div className="chat-page-mock__panel-label">Task 4 Boundary</div>
+        <p>Mobile shell sudah mencakup frame, header, dan sidebar sheet visual. State fullscreen composer juga punya representasi visual.</p>
+      </div>
+    </main>
   </div>
 );
 
@@ -383,7 +468,7 @@ const ChatMockStateControls = ({ state, activePresetId, onPatch, onPreset }) => 
     <div className="chat-page-mock__review-header">
       <div>
         <div className="chat-page-mock__eyebrow">Review Strip</div>
-        <h1>ChatPage skeleton + review controls</h1>
+        <h1>ChatPage mockup review</h1>
       </div>
       <a href="#/documentation" className="chat-page-mock__review-link">
         Lihat dokumentasi
@@ -431,7 +516,7 @@ const ChatMockStateControls = ({ state, activePresetId, onPatch, onPreset }) => 
   </section>
 );
 
-const ChatMockShell = ({ state }) => {
+const ChatMockShell = ({ state, onPatch }) => {
   const summaryItems = [
     ["Viewport", state.viewport],
     ["Conversation", state.conversationState],
@@ -450,12 +535,12 @@ const ChatMockShell = ({ state }) => {
         <header className="chat-page-mock__shell-header">
           <div>
           <div className="chat-page-mock__eyebrow">Chat Surface</div>
-            <h2>Desktop shell placeholder aktif</h2>
+            <h2>{state.viewport === "mobile" ? "Mobile shell visual aktif" : "Desktop shell visual aktif"}</h2>
           </div>
           <div className="chat-page-mock__shell-badge">Bukan review strip</div>
         </header>
         {state.viewport === "mobile"
-          ? <ChatMockMobileDeferred />
+          ? <ChatMockMobileFrame state={state} summaryItems={summaryItems} onPatch={onPatch} />
           : <ChatMockDesktopShell state={state} summaryItems={summaryItems} />}
 
         <ShellPageFooter />
@@ -486,7 +571,7 @@ const ChatPage = () => {
         onPatch={handleStatePatch}
         onPreset={handlePresetApply}
       />
-      <ChatMockShell state={mockState} />
+      <ChatMockShell state={mockState} onPatch={handleStatePatch} />
     </div>
   );
 };
