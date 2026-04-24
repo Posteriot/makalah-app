@@ -1,0 +1,356 @@
+.about-page {
+  padding-top: 0;
+}
+.about-page .section-frame {
+  padding: 96px 0;
+}
+.about-hero {
+  position: relative;
+  padding-top: 140px;
+  overflow: hidden;
+}
+.about-hero > .container {
+  position: relative;
+  z-index: 1;
+}
+.about-hero-head {
+  align-items: end;
+}
+.about-hero-title {
+  max-width: 760px;
+}
+.about-hero-desc {
+  max-width: 440px;
+}
+.about-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 24px;
+  margin-top: 26px;
+}
+.about-manifesto-panel,
+.about-principles-panel,
+.about-problem-card,
+.about-agent-card,
+.about-contact-shell,
+.about-contact-card {
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(ellipse 360px 180px at 100% 0%, var(--sky-soft), transparent 72%),
+    rgba(18, 19, 22, 0.88);
+  box-shadow: var(--shadow-1);
+}
+.about-manifesto-panel,
+.about-principles-panel {
+  padding: 24px;
+}
+.about-manifesto-panel {
+  display: grid;
+  gap: 16px;
+}
+.about-manifesto-panel p,
+.about-principles-panel li,
+.about-problem-card p,
+.about-agent-card p,
+.about-contact-shell > div:first-child p,
+.about-contact-card p,
+.about-contact-card a {
+  color: var(--ink-2);
+  font-size: 15px;
+  line-height: 1.75;
+}
+.about-principles-panel .eyebrow {
+  margin-bottom: 14px;
+}
+.about-principles-panel ul {
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+.about-principles-panel li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.about-principles-panel .check {
+  color: var(--brand-green);
+  margin-top: 3px;
+  flex: 0 0 auto;
+}
+.about-section-head {
+  align-items: end;
+}
+.about-section-title {
+  max-width: 760px;
+}
+.about-section-desc {
+  max-width: 440px;
+}
+.about-problems-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+.about-problem-card,
+.about-agent-card,
+.about-contact-card {
+  padding: 22px;
+}
+.about-problem-toggle,
+.about-agent-toggle {
+  width: 100%;
+  padding: 0;
+  text-align: left;
+}
+.about-problem-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.about-agent-row {
+  min-width: 0;
+}
+.about-problem-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--brand-green-line);
+  border-radius: 14px;
+  background: var(--brand-green-soft);
+  color: var(--brand-green);
+  font-size: 22px;
+  flex: 0 0 auto;
+}
+.about-problem-copy {
+  min-width: 0;
+}
+.about-agent-copy {
+  min-width: 0;
+}
+.about-problem-body,
+.about-agent-body {
+  margin-top: 12px;
+}
+.about-agent-status-mobile,
+.about-card-pm {
+  display: none;
+}
+.about-problem-card h3,
+.about-agent-card h3,
+.about-contact-card h3 {
+  margin: 0 0 12px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+}
+.about-agents-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+.about-agent-card {
+  min-height: 260px;
+  display: grid;
+  align-content: start;
+}
+.about-agent-card.active {
+  border-color: var(--brand-green-line);
+  box-shadow: 0 0 0 1px var(--brand-green-line), var(--shadow-1);
+}
+.about-agent-status {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 14px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.about-agent-card.active .about-agent-status {
+  border-color: var(--brand-green-line);
+  background: var(--brand-green-soft);
+  color: var(--brand-green);
+}
+.about-contact-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.95fr);
+  gap: 24px;
+  padding: 28px;
+}
+.about-contact-shell h2 {
+  margin: 12px 0 14px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+}
+.about-contact-cards {
+  display: grid;
+  gap: 16px;
+}
+.about-contact-card a {
+  color: var(--brand-green);
+}
+.about-contact-card a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 1024px) {
+  .about-hero-grid,
+  .about-contact-shell {
+    grid-template-columns: 1fr;
+  }
+  .about-problem-row {
+    gap: 14px;
+  }
+  .about-agents-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .about-hero {
+    padding-top: 120px;
+  }
+  .about-hero-grid,
+  .about-problems-grid,
+  .about-agents-grid,
+  .about-contact-cards {
+    grid-template-columns: 1fr;
+  }
+  .about-manifesto-panel,
+  .about-principles-panel,
+  .about-problem-card,
+  .about-agent-card,
+  .about-contact-shell,
+  .about-contact-card {
+    padding: 20px;
+  }
+  .about-problem-card h3,
+  .about-agent-card h3,
+  .about-contact-card h3 {
+    font-size: 22px;
+  }
+  .about-contact-shell h2 {
+    font-size: clamp(24px, 8vw, 34px);
+  }
+  .about-problem-card,
+  .about-agent-card {
+    padding: 0;
+    overflow: hidden;
+  }
+  .about-agent-card {
+    display: block;
+    min-height: 0;
+  }
+  .about-problem-toggle,
+  .about-agent-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+  }
+  .about-problem-row {
+    gap: 12px;
+    align-items: center;
+  }
+  .about-agent-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 44px;
+  }
+  .about-problem-icon {
+    width: 44px;
+    height: 44px;
+  }
+  .about-problem-copy h3,
+  .about-agent-copy h3 {
+    margin: 0;
+  }
+  .about-card-pm {
+    display: block;
+    width: 22px;
+    height: 22px;
+    position: relative;
+    flex: 0 0 auto;
+  }
+  .about-card-pm::before,
+  .about-card-pm::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    background: var(--ink-2);
+    transform: translate(-50%, -50%);
+  }
+  .about-card-pm::before {
+    width: 12px;
+    height: 1.5px;
+  }
+  .about-card-pm::after {
+    width: 1.5px;
+    height: 12px;
+    transition: transform 0.3s var(--ease);
+  }
+  .about-problem-card.open .about-card-pm::after,
+  .about-agent-card.open .about-card-pm::after {
+    transform: translate(-50%, -50%) scaleY(0);
+  }
+  .about-problem-card.open .about-card-pm::before,
+  .about-agent-card.open .about-card-pm::before {
+    background: var(--brand-green);
+  }
+  .about-agent-card.active {
+    border-color: var(--line-2);
+    box-shadow: var(--shadow-1);
+  }
+  .about-problem-body,
+  .about-agent-body {
+    max-height: 0;
+    overflow: hidden;
+    margin-top: 0;
+    padding: 0 20px;
+    transition: max-height 0.35s var(--ease), padding 0.35s var(--ease), margin 0.35s var(--ease);
+  }
+  .about-problem-card.open .about-problem-body,
+  .about-agent-card.open .about-agent-body {
+    max-height: 240px;
+    margin-top: -2px;
+    padding: 0 20px 18px;
+  }
+  .about-problem-body p,
+  .about-agent-body p {
+    margin: 0;
+  }
+  .about-agent-status {
+    display: none;
+  }
+  .about-agent-status-mobile {
+    display: inline-flex;
+    margin-bottom: 10px;
+  }
+  .about-agent-card.open .about-agent-status-mobile {
+    border-color: var(--line);
+    background: var(--bg-elev);
+    color: var(--ink-3);
+  }
+}
