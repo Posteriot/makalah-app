@@ -9,7 +9,7 @@ const PricingTeaser = () => (
             <div className="sec-eyebrow">
               <span className="l">/ pemakaian &amp; harga</span>
             </div>
-            <h2 className="sec-title">Seperti bayar asisten,<br /><em>dengan harga terjangkau</em></h2>
+            <h2 className="sec-title">Seperti bayar asisten,<br /><em className="heading-muted">dengan harga terjangkau</em></h2>
           </div>
           <p className="sec-desc">
             Model kredit transparan. Tersedia kredit gratis — cukup untuk menjajal kemampuan Makalah Ai. Upgrade kalau tertarik untuk lanjut.

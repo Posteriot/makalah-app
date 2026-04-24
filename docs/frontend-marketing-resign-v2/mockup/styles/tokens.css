@@ -16,6 +16,7 @@
   --text-muted: oklch(0.8400 0.0070 106.69);
   --text-muted-soft: oklch(0.8000 0.0062 106.70);
   --text-muted-faint: oklch(0.7800 0.0058 106.75);
+  --heading-muted: oklch(0.7700 0.0058 106.73);
   --ink-2: var(--text-muted-strong);
   --ink-3: var(--text-muted);
   --ink-4: var(--text-muted-soft);
@@ -162,7 +163,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 18px;
+  min-height: 42px;
+  padding: 0 18px;
   border-radius: var(--r-sm);
   font-family: var(--font-sans);
   font-weight: 500;
@@ -206,6 +208,10 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .eyebrow::before {
   content: ""; width: 6px; height: 6px; background: var(--brand-green);
   box-shadow: 0 0 10px var(--brand-green-glow);
+}
+
+.heading-muted {
+  color: var(--heading-muted);
 }
 /* Per-comment: remove the square + gap on the workflow/refrasa eyebrows,
    keep just the "/ TEXT" content. */

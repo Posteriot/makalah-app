@@ -8,13 +8,17 @@
   z-index: 1;
 }
 .pricing-page-head {
+  display: grid;
+  gap: 0;
   margin-bottom: 28px;
 }
 .pricing-page-title {
-  max-width: 780px;
+  max-width: none;
 }
 .pricing-page-desc {
+  margin-top: 16px;
   margin-bottom: 2px;
+  max-width: 720px;
 }
 .pricing-page-grid {
   margin-top: 12px;
@@ -25,7 +29,7 @@
 .pricing-page-faq-copy h2,
 .pricing-page-cta h2 {
   font-family: var(--font-display);
-  font-size: clamp(32px, 4vw, 48px);
+  font-size: clamp(36px, 6vw, 54px);
   font-weight: 500;
   letter-spacing: -0.03em;
   line-height: 1.04;
@@ -45,9 +49,7 @@
 }
 .pricing-page-cta {
   display: grid;
-  grid-template-columns: 1.2fr auto;
-  gap: 24px;
-  align-items: center;
+  gap: 28px;
   padding: 28px;
   border: 1px solid var(--line-2);
   border-radius: var(--r-lg);
@@ -57,19 +59,29 @@
     var(--bg-1);
   box-shadow: var(--shadow-1);
 }
+.pricing-page-cta-copy {
+  text-align: left;
+}
 .pricing-page-cta-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  justify-content: flex-end;
+  justify-content: center;
+  align-items: center;
+}
+.pricing-page-cta-button {
+  width: 260px;
+  justify-content: center;
+}
+.pricing-page-cta-button-secondary {
+  border-color: var(--brand-green-line);
+  color: var(--ink);
+  background: transparent;
 }
 
 @media (max-width: 1024px) {
-  .pricing-page-cta {
-    grid-template-columns: 1fr;
-  }
   .pricing-page-cta-actions {
-    justify-content: flex-start;
+    justify-content: center;
   }
 }
 
@@ -83,9 +95,6 @@
   }
   .pricing-page-cta {
     padding: 22px 20px;
-  }
-  .pricing-page-cta-actions {
-    justify-content: center;
   }
   .pricing-page-cta-actions .btn {
     justify-content: center;

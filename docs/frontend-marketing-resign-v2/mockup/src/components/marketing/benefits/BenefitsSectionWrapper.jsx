@@ -30,7 +30,7 @@ const BenefitsSectionWrapper = () => {
               <div className="sec-eyebrow">
                 <span className="l">/ kenapa Makalah AI?</span>
               </div>
-              <h2 className="sec-title">Kerja bersama AI.<br /><em>Bukan dibuatkan AI.</em></h2>
+              <h2 className="sec-title">Kerja bersama AI.<br /><em className="heading-muted">Bukan dibuatkan AI.</em></h2>
             </div>
             <p className="sec-desc">
               Empat prinsip yang bikin paper kamu tetap punya <b style={{ color: "var(--ink)" }}>akuntabilitas</b> — melalui kolaborasi dengan AI.

@@ -66,7 +66,7 @@
 .support-sidebar-group-title,
 .support-panel-label {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -98,6 +98,7 @@
   padding: 10px 12px;
   border-radius: var(--r-sm);
   color: var(--ink-2);
+  font-size: 12px;
   text-align: left;
   transition: background 0.2s var(--ease), color 0.2s var(--ease);
 }
@@ -118,12 +119,29 @@
 }
 .support-note-list {
   margin: 12px 0 0;
-  padding-left: 18px;
+  padding: 0;
+  list-style: none;
   display: grid;
-  gap: 10px;
+  gap: 12px;
   color: var(--ink-2);
+  font-family: var(--font-sans);
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.6;
+}
+.support-note-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.support-note-check {
+  margin-top: 0.15rem;
+  flex: 0 0 auto;
+  color: var(--brand-green);
+}
+.support-note-check i {
+  display: block;
+  font-size: 18px;
+  line-height: 1;
 }
 .support-mobile-toolbar {
   display: none;
@@ -179,7 +197,7 @@
 .support-article-head h1 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(30px, 4vw, 44px);
+  font-size: clamp(16px, 4vw, 24px);
   font-weight: 500;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -189,7 +207,7 @@
   margin: 0;
   max-width: 760px;
   color: var(--ink-3);
-  font-size: 16px;
+  font-size: 12px;
   line-height: 1.5;
 }
 .support-article-scroll {
@@ -254,7 +272,7 @@
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 500;
   letter-spacing: -0.01em;
   line-height: 1.18;
@@ -263,7 +281,7 @@
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 500;
   letter-spacing: -0.01em;
   line-height: 1.18;
@@ -271,7 +289,7 @@
 .support-progress-card p {
   margin: 0;
   color: var(--ink-3);
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.5;
 }
 .support-inline-cta p,
@@ -318,6 +336,10 @@
 .support-panel-muted .support-inline-cta {
   justify-items: center;
 }
+.support-panel-muted .support-inline-cta > div {
+  justify-items: center;
+  text-align: center;
+}
 .support-report-form {
   display: grid;
   gap: 16px;
@@ -338,7 +360,7 @@
   border-radius: var(--r-md);
   background: var(--bg);
   color: var(--ink);
-  font-size: 14px;
+  font-size: 12px;
 }
 .support-field textarea {
   min-height: 160px;

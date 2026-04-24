@@ -9,7 +9,7 @@ const RefrasaFeatureSection = () => (
             <div className="sec-eyebrow">
               <span className="l">/ REFRASA</span>
             </div>
-            <h2 className="sec-title">Bahasa robotik<br /><em>→ prosa akademik manusiawi.</em></h2>
+            <h2 className="sec-title">Bahasa robotik<br /><em className="heading-muted">→ prosa akademik manusiawi.</em></h2>
           </div>
           <p className="sec-desc">
             Sekali klik, paragraf-paragraf kaku ala AI berubah menjadi ritme penuturan manusiawi — kalimat bervariasi, transisi mulus, tanpa mengubah substansi.

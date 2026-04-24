@@ -9,7 +9,7 @@ const WorkflowFeatureSection = () => (
             <div className="sec-eyebrow">
               <span className="l">/ WORKFLOW</span>
             </div>
-            <h2 className="sec-title">Pagar ketat<br /><em>di tiap tahap</em></h2>
+            <h2 className="sec-title">Pagar ketat<br /><em className="heading-muted">di tiap tahap</em></h2>
           </div>
           <p className="sec-desc">
             14 tahap terstruktur dari menggodok gagasan, penentuan topik sampai kesimpulan final. Tiap peralihan tahap dan keputusan butuh konfirmasi kamu — maka konteks terjaga, argumen tidak mengambang.

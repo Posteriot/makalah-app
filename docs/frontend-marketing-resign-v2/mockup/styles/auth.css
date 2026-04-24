@@ -107,7 +107,7 @@
 
 .auth-google-btn {
   width: 100%;
-  min-height: 54px;
+  min-height: 42px;
   justify-content: center;
   gap: 12px;
   background: rgba(255, 255, 255, 0.96);
@@ -299,7 +299,7 @@
 .auth-submit-btn {
   width: 100%;
   justify-content: center;
-  min-height: 54px;
+  min-height: 42px;
   margin-top: 2px;
 }
 

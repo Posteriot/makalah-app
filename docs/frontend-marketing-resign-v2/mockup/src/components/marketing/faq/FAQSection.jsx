@@ -38,7 +38,7 @@ const FAQSection = () => {
               <div className="sec-eyebrow">
                 <span className="l">/ pertanyaan wajar</span>
               </div>
-              <h2 className="sec-title">Sebelum<br />Kamu tanya.</h2>
+              <h2 className="sec-title">Sebelum<br /><span className="heading-muted">Kamu tanya.</span></h2>
               <p className="sec-desc" style={{ marginTop: 16 }}>
                 Enam pertanyaan yang paling sering kami terima. Masih bingung? → <a href="#" style={{ color: "var(--brand-green)" }}>dukungan@makalah.ai</a>
               </p>

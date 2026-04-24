@@ -125,15 +125,17 @@ const PricingPage = () => {
         <div className="hero-ornament" />
         <div className="container">
           <Reveal>
-            <PageSplitHero
-              className="pricing-page-head"
-              eyebrow="/ harga & paket"
-              title={<>Pilih paket yang sesuai dengan cara <em>Kamu menulis paper</em></>}
-              description="Mulai gratis untuk mencoba workflow-nya, bayar per paper saat butuh hasil utuh, atau pakai plan bulanan kalau Kamu rutin menulis dan merevisi."
-              titleClassName="pricing-page-title"
-              descriptionClassName="pricing-page-desc"
-              rightClassName="pricing-page-summary"
-            />
+            <div className="pricing-page-head">
+              <div className="sec-eyebrow">
+                <span className="l">/ harga &amp; paket</span>
+              </div>
+              <h1 className="sec-title pricing-page-title">
+                Pilih paket yang sesuai dengan cara <em>Kamu menulis paper</em>
+              </h1>
+              <p className="sec-desc page-split-desc pricing-page-desc">
+                Mulai gratis untuk mencoba workflow-nya, bayar per paper saat butuh hasil utuh, atau pakai plan bulanan kalau Kamu rutin menulis dan merevisi.
+              </p>
+            </div>
           </Reveal>
 
           <Reveal delay={1}>
@@ -177,7 +179,7 @@ const PricingPage = () => {
         <div className="container">
           <Reveal>
             <div className="pricing-page-cta">
-              <div>
+              <div className="pricing-page-cta-copy">
                 <div className="eyebrow">Plan institusi</div>
                 <h2>Butuh plan untuk kampus, lab, atau kelas riset?</h2>
                 <p>
@@ -186,10 +188,10 @@ const PricingPage = () => {
                 </p>
               </div>
               <div className="pricing-page-cta-actions">
-                <a href="#/partnership" className="btn btn-primary">
+                <a href="#/partnership" className="btn btn-primary pricing-page-cta-button">
                   Diskusikan plan kampus/lab <Arrow />
                 </a>
-                <a href="#/documentation" className="btn btn-ghost">
+                <a href="#/documentation" className="btn btn-ghost pricing-page-cta-button pricing-page-cta-button-secondary">
                   Lihat dokumentasi <Arrow />
                 </a>
               </div>

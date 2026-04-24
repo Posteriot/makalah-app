@@ -437,13 +437,13 @@ const BlogNewsletterBand = () => (
   <section className="blog-newsletter-band">
     <div className="eyebrow">Newsletter</div>
     <div className="blog-newsletter-grid">
-      <div>
+      <div className="blog-newsletter-copy">
         <h2>Tetap terhubung dengan update, panduan, dan catatan produk.</h2>
         <p>Dapatkan ringkasan tulisan terbaru Makalah AI langsung di email Kamu, tanpa harus memeriksa halaman ini satu per satu.</p>
       </div>
       <div className="blog-newsletter-form">
         <input type="email" placeholder="Alamat email..." aria-label="Alamat email" />
-        <button type="button" className="btn btn-primary">Gabung</button>
+        <button type="button" className="btn btn-primary blog-newsletter-button">Gabung</button>
       </div>
     </div>
   </section>

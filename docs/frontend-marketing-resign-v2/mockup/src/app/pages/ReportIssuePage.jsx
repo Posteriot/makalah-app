@@ -113,7 +113,12 @@ const ReportIssueSidebar = ({ activeSection, onSelectSection }) => (
       <div className="docs-panel-label">Catatan cepat</div>
       <ul className="support-note-list">
         {REPORT_ISSUE_QUICK_NOTES.map((item) => (
-          <li key={item}>{item}</li>
+          <li key={item}>
+            <span className="check support-note-check">
+              <i className="iconoir-check-square" aria-hidden="true" />
+            </span>
+            <span>{item}</span>
+          </li>
         ))}
       </ul>
     </div>

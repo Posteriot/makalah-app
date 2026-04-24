@@ -11,7 +11,7 @@ const HeroSection = () => (
           </div>
           <h1 className="hero-title">
             Nulis paper<br />
-            tanpa <em>deadline-panic.</em><br />
+            tanpa <em className="heading-muted">deadline-panic.</em><br />
             <span style={{ whiteSpace: "nowrap" }}><span className="underline-brand-green">Obrolin aja!</span><span className="blink" /></span>
           </h1>
           <p className="hero-sub">

@@ -305,7 +305,7 @@ const PolicyPage = ({ mode }) => {
   const page = POLICY_PAGE_CONTENT[routeMode];
 
   return (
-    <div className="policy-page">
+    <div className={`policy-page policy-page--${routeMode}`}>
       <section className="section-frame policy-page-hero">
         <div className="hero-ornament" />
         <div className="container">

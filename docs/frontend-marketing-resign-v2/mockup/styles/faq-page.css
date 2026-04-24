@@ -15,8 +15,8 @@
 }
 
 .faq-page-title {
-  max-width: 10.5em;
-  font-size: clamp(44px, 6vw, 74px);
+  max-width: none;
+  font-size: clamp(36px, 6vw, 54px);
   line-height: 0.98;
 }
 

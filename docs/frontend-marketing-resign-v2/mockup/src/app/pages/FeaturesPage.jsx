@@ -4,7 +4,7 @@ const FEATURES_PAGE_PILLARS = [
   {
     id: "workflow",
     eyebrow: "01 / workflow 14 tahap",
-    title: "Paper tidak bergerak liar karena setiap langkah punya pagar yang jelas.",
+    title: <>Paper tidak bergerak liar karena <span className="heading-muted">setiap langkah punya pagar yang jelas</span>.</>,
     description:
       "Makalah memandu penyusunan paper melalui 14 tahap yang berurutan. Setiap perpindahan tahap menjaga konteks tetap utuh, sehingga ide, struktur, dan arah penulisan tidak mudah melebar ke mana-mana.",
     bullets: [
@@ -18,7 +18,7 @@ const FEATURES_PAGE_PILLARS = [
   {
     id: "refrasa",
     eyebrow: "02 / refrasa",
-    title: "Draft AI yang terlalu kaku bisa ditenangkan jadi bahasa yang lebih manusiawi.",
+    title: <>Draft AI yang terlalu kaku bisa ditenangkan jadi <span className="heading-muted">bahasa yang lebih manusiawi</span>.</>,
     description:
       "Refrasa membantu mengubah paragraf yang terasa mekanis menjadi bahasa Indonesia yang lebih natural, tetap akademik, dan lebih nyaman dibaca tanpa menggeser substansi utama yang sudah disusun.",
     bullets: [
@@ -32,7 +32,7 @@ const FEATURES_PAGE_PILLARS = [
   {
     id: "naskah",
     eyebrow: "03 / naskah",
-    title: "Paper terlihat sebagai naskah utuh, bukan kumpulan jawaban yang tercerai.",
+    title: <>Paper terlihat sebagai naskah utuh, <span className="heading-muted">bukan kumpulan jawaban yang tercerai</span>.</>,
     description:
       "Naskah memberi pratinjau tentang bagaimana seluruh paper akan terbaca saat semua bagian mulai tersusun. Saat satu artifak bertambah atau diperbarui, naskah ikut tumbuh mengikuti perkembangan paper.",
     bullets: [
@@ -46,7 +46,7 @@ const FEATURES_PAGE_PILLARS = [
   {
     id: "artifak",
     eyebrow: "04 / artifak",
-    title: "Setiap bagian paper punya ruang kerjanya sendiri, jadi revisi lebih rapi.",
+    title: <>Setiap bagian paper punya ruang kerjanya sendiri, <span className="heading-muted">jadi revisi lebih rapi</span>.</>,
     description:
       "Makalah menuliskan hasil tiap tahap sebagai artifak terpisah. Abstrak, pendahuluan, tinjauan literatur, metodologi, hasil, diskusi, kesimpulan, pembaruan abstrak, dan daftar pustaka dapat dilihat sebagai bagian-bagian yang jelas.",
     bullets: [
@@ -60,7 +60,7 @@ const FEATURES_PAGE_PILLARS = [
   {
     id: "choice-card",
     eyebrow: "05 / choice card",
-    title: "Kamu tidak harus terus mengetik untuk menjaga arah penulisan tetap tepat.",
+    title: <>Kamu tidak harus terus mengetik untuk <span className="heading-muted">menjaga arah penulisan tetap tepat</span>.</>,
     description:
       "Saat ada keputusan yang perlu diambil, agen Makalah menampilkan recommendation lewat choice card. Kamu tinggal memilih arah yang paling sesuai, dan baru menulis manual kalau memang opsi yang dibutuhkan belum tersedia.",
     bullets: [
@@ -187,7 +187,7 @@ const FeaturesPage = () => (
           <PageSplitHero
             className="features-page-head"
             eyebrow="/ fitur makalah ai"
-            title={<>Bukan sekadar tempat bertanya, tetapi <em>asisten penyusunan paper</em>.</>}
+            title={<>Bukan sekadar tempat bertanya, tetapi <em className="heading-muted">asisten penyusunan paper</em>.</>}
             description="Makalah membantu Kamu menyusun paper dengan alur yang terjaga, bahasa yang lebih manusiawi, naskah yang terus bertumbuh, serta keputusan-keputusan penting yang tetap dibimbing dengan jelas."
             titleClassName="features-page-title"
             descriptionClassName="features-page-desc"

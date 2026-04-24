@@ -145,7 +145,7 @@
   border-radius: var(--r-sm);
   background: rgba(255, 255, 255, 0.02);
   color: var(--ink);
-  font-size: 14px;
+  font-size: 12px;
 }
 .docs-search-input::placeholder {
   color: var(--ink-4);
@@ -161,7 +161,7 @@
 .docs-nav-group-title,
 .docs-panel-label {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -180,6 +180,7 @@
   padding: 10px 12px;
   border-radius: var(--r-sm);
   color: var(--ink-2);
+  font-size: 12px;
   text-align: left;
   transition: background 0.2s var(--ease), color 0.2s var(--ease);
 }
@@ -196,7 +197,7 @@
 .docs-results-empty {
   margin-top: 10px;
   color: var(--ink-4);
-  font-size: 13px;
+  font-size: 12px;
 }
 .docs-nav {
   display: grid;
@@ -241,7 +242,7 @@
 }
 .docs-article-group {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--brand-green);
@@ -249,18 +250,18 @@
 .docs-article-head h1 {
   margin-top: 14px;
   font-family: var(--font-display);
-  font-size: clamp(30px, 4vw, 44px);
+  font-size: clamp(16px, 4vw, 24px);
   font-weight: 500;
   letter-spacing: -0.03em;
-  line-height: 1.04;
+  line-height: 1;
   color: var(--ink);
 }
 .docs-article-head p {
   margin-top: 14px;
   max-width: 760px;
   color: var(--ink-3);
-  font-size: 16px;
-  line-height: 1.68;
+  font-size: 12px;
+  line-height: 1.5;
 }
 .docs-article-scroll {
   flex: 1 1 auto;
@@ -281,16 +282,17 @@
 }
 .docs-article-panel h2 {
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 500;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
+  line-height: 1.18;
   color: var(--ink);
 }
 .docs-article-panel p {
   margin-top: 12px;
   color: var(--ink-3);
-  font-size: 15px;
-  line-height: 1.7;
+  font-size: 12px;
+  line-height: 1.5;
 }
 .docs-article-list {
   margin-top: 14px;
@@ -298,7 +300,8 @@
   display: grid;
   gap: 8px;
   color: var(--ink-2);
-  font-size: 14px;
+  font-size: 12px;
+  line-height: 1.5;
 }
 .docs-article-next {
   padding-top: 24px;
@@ -324,14 +327,15 @@
   transform: translateY(-1px);
 }
 .docs-next-card h3 {
-  font-size: 18px;
+  font-size: 16px;
+  line-height: 1.18;
   color: var(--ink);
 }
 .docs-next-card p {
   margin-top: 8px;
   color: var(--ink-3);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.5;
 }
 .docs-next-card span {
   margin-top: 14px;
@@ -340,7 +344,7 @@
   gap: 8px;
   color: var(--ink-2);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -441,10 +445,10 @@
     padding: 20px 20px 0;
   }
   .docs-article-head h1 {
-    font-size: clamp(24px, 8vw, 34px);
+    font-size: clamp(16px, 8vw, 24px);
   }
   .docs-article-panel h2 {
-    font-size: 20px;
+    font-size: 16px;
   }
   .docs-mobile-nav {
     margin-top: 20px;
