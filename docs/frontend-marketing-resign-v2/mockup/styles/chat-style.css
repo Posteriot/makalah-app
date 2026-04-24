@@ -804,6 +804,169 @@
   text-transform: uppercase;
 }
 
+.chat-page-mock__btn-icon {
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.chat-page-mock__sidebar-collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding-top: 20px;
+}
+
+.chat-page-mock__collapsed-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.chat-page-mock__desktop-sidebar-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+
+.chat-page-mock__desktop-sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.chat-page-mock__desktop-sidebar-item.is-active {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+}
+
+.chat-page-mock__item-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.chat-page-mock__item-status.is-pending {
+  background: var(--brand-orange);
+  box-shadow: 0 0 10px var(--brand-orange-glow);
+}
+
+.chat-page-mock__item-status.is-complete {
+  background: var(--brand-green);
+  box-shadow: 0 0 10px var(--brand-green-glow);
+}
+
+.chat-page-mock__item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-page-mock__credit-card {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+}
+
+.chat-page-mock__credit-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.chat-page-mock__credit-head span {
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--ink-2);
+}
+
+.chat-page-mock__credit-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.chat-page-mock__credit-fill {
+  height: 100%;
+  background: var(--brand-green);
+  box-shadow: 0 0 8px var(--brand-green-glow);
+}
+
+.chat-page-mock__user-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 4px;
+}
+
+.chat-page-mock__user-avatar {
+  width: 36px;
+  height: 36px;
+  background: var(--brand-green-soft);
+  color: var(--ink);
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.82rem;
+  flex-shrink: 0;
+}
+
+.chat-page-mock__user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-page-mock__user-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chat-page-mock__pro-badge {
+  font-size: 10px;
+  padding: 2px 4px;
+  background: var(--brand-green);
+  color: #000;
+  border-radius: 4px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.chat-page-mock__user-email {
+  font-size: 0.75rem;
+  color: var(--ink-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-page-mock__mobile-sidebar-footer {
+  margin-top: auto;
+  padding: 20px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-elev);
+}
+
 @media (max-width: 768px) {
   .chat-page-mock__suggestion-grid {
     grid-template-columns: 1fr;

@@ -233,23 +233,26 @@ const ChatMockActivityBar = ({ activePanel }) => (
 );
 
 const ChatMockSidebar = ({ state }) => {
-  const items = state.sidebarPanel === "progress" ? CHAT_SIDEBAR_PROGRESS_ITEMS : CHAT_SIDEBAR_HISTORY_ITEMS;
+  const isHistory = state.sidebarPanel === "history";
+  const items = isHistory ? CHAT_SIDEBAR_HISTORY_ITEMS : CHAT_SIDEBAR_PROGRESS_ITEMS;
 
   return (
     <aside className={`chat-page-mock__desktop-sidebar ${state.sidebarState === "collapsed" ? "is-collapsed" : ""}`} aria-label="Sidebar desktop placeholder">
       {state.sidebarState === "collapsed" ? (
         <div className="chat-page-mock__sidebar-collapsed">
-          <span>SB</span>
+          <div className="chat-page-mock__collapsed-icon">SB</div>
+          <div className="chat-page-mock__collapsed-icon">Ri</div>
+          <div className="chat-page-mock__collapsed-icon">Pr</div>
         </div>
       ) : (
         <>
           <div className="chat-page-mock__desktop-sidebar-head">
             <div>
-              <div className="chat-page-mock__panel-label">Sidebar Desktop</div>
-              <p>{state.sidebarPanel === "progress" ? "Linimasa progres paper" : "Riwayat percakapan aktif"}</p>
+              <div className="chat-page-mock__panel-label">{isHistory ? "Riwayat Percakapan" : "Progres Paper"}</div>
+              <p>{isHistory ? "3 diskusi akademik aktif" : "Paper: AI di Pendidikan"}</p>
             </div>
             <button type="button" className="chat-page-mock__sidebar-primary">
-              Percakapan Baru
+              <span className="chat-page-mock__btn-icon">+</span> Baru
             </button>
           </div>
 
@@ -259,22 +262,38 @@ const ChatMockSidebar = ({ state }) => {
                 key={item}
                 className={`chat-page-mock__desktop-sidebar-item ${index === 0 ? "is-active" : ""}`}
               >
-                <div className="chat-page-mock__desktop-sidebar-item-title">{item}</div>
-                <div className="chat-page-mock__desktop-sidebar-item-meta">
-                  {state.sidebarPanel === "progress" ? "Status aktif" : "Terakhir dibuka 12m lalu"}
+                {!isHistory && (
+                  <div className={`chat-page-mock__item-status ${index === 0 ? "is-pending" : "is-complete"}`} />
+                )}
+                <div className="chat-page-mock__item-content">
+                  <div className="chat-page-mock__desktop-sidebar-item-title">{item}</div>
+                  <div className="chat-page-mock__desktop-sidebar-item-meta">
+                    {isHistory ? "Terakhir dibuka 12m lalu" : (index === 0 ? "Sedang dikerjakan" : "Selesai")}
+                  </div>
                 </div>
               </article>
             ))}
           </div>
 
           <div className="chat-page-mock__desktop-sidebar-footer">
-            <div className="chat-page-mock__desktop-sidebar-credit">
-              <div className="chat-page-mock__panel-label">Credit Summary</div>
-              <p>124 kredit tersisa</p>
+            <div className="chat-page-mock__credit-card">
+              <div className="chat-page-mock__credit-head">
+                <div className="chat-page-mock__panel-label">Sisa Kredit</div>
+                <span>124/200</span>
+              </div>
+              <div className="chat-page-mock__credit-bar">
+                <div className="chat-page-mock__credit-fill" style={{ width: "62%" }} />
+              </div>
             </div>
-            <div className="chat-page-mock__desktop-sidebar-user">
-              <div className="chat-page-mock__panel-label">User Summary</div>
-              <p>Erik Supit · Pro Plan</p>
+            <div className="chat-page-mock__user-card">
+              <div className="chat-page-mock__user-avatar">ES</div>
+              <div className="chat-page-mock__user-info">
+                <div className="chat-page-mock__user-name">
+                  Erik Supit
+                  <span className="chat-page-mock__pro-badge">PRO</span>
+                </div>
+                <div className="chat-page-mock__user-email">erik@makalah.ai</div>
+              </div>
             </div>
           </div>
         </>
@@ -451,6 +470,9 @@ const ChatMockMobileHeader = ({ onOpenSidebar }) => (
 const ChatMockMobileSidebarSheet = ({ state, onClose }) => {
   if (state.sidebarState !== "mobileSheetOpen") return null;
 
+  const isHistory = state.sidebarPanel === "history";
+  const items = isHistory ? CHAT_SIDEBAR_HISTORY_ITEMS : CHAT_SIDEBAR_PROGRESS_ITEMS;
+
   return (
     <div className="chat-page-mock__mobile-sidebar-overlay" onClick={onClose}>
       <aside className="chat-page-mock__mobile-sidebar-sheet" onClick={(e) => e.stopPropagation()}>
@@ -476,18 +498,40 @@ const ChatMockMobileSidebarSheet = ({ state, onClose }) => {
 
         <div className="chat-page-mock__mobile-sidebar-list">
           <div className="chat-page-mock__panel-label">
-            {state.sidebarPanel === "progress" ? "Progres Paper" : "Riwayat Percakapan"}
+            {isHistory ? "Riwayat Percakapan" : "Progres Paper"}
           </div>
-          {(state.sidebarPanel === "progress" ? CHAT_SIDEBAR_PROGRESS_ITEMS : CHAT_SIDEBAR_HISTORY_ITEMS).map((item) => (
-            <div key={item} className="chat-page-mock__mobile-sidebar-item">
-              {item}
+          {items.map((item, index) => (
+            <div key={item} className={`chat-page-mock__mobile-sidebar-item ${index === 0 ? "is-active" : ""}`}>
+              {!isHistory && (
+                <div className={`chat-page-mock__item-status ${index === 0 ? "is-pending" : "is-complete"}`} />
+              )}
+              <div className="chat-page-mock__item-content">
+                <div className="chat-page-mock__desktop-sidebar-item-title">{item}</div>
+              </div>
             </div>
           ))}
         </div>
 
         <div className="chat-page-mock__mobile-sidebar-footer">
-          <div className="chat-page-mock__panel-label">Akun & Kredit</div>
-          <p>Erik Supit · 124 Kredit</p>
+          <div className="chat-page-mock__credit-card">
+            <div className="chat-page-mock__credit-head">
+              <div className="chat-page-mock__panel-label">Sisa Kredit</div>
+              <span>124/200</span>
+            </div>
+            <div className="chat-page-mock__credit-bar">
+              <div className="chat-page-mock__credit-fill" style={{ width: "62%" }} />
+            </div>
+          </div>
+          <div className="chat-page-mock__user-card">
+            <div className="chat-page-mock__user-avatar">ES</div>
+            <div className="chat-page-mock__user-info">
+              <div className="chat-page-mock__user-name">
+                Erik Supit
+                <span className="chat-page-mock__pro-badge">PRO</span>
+              </div>
+              <div className="chat-page-mock__user-email">erik@makalah.ai</div>
+            </div>
+          </div>
         </div>
       </aside>
     </div>
