@@ -185,7 +185,7 @@ const ChatMockBooleanControl = ({ label, checked, onChange }) => (
   </label>
 );
 
-const ChatMockStateControls = ({ state, onPatch, onPreset }) => (
+const ChatMockStateControls = ({ state, activePresetId, onPatch, onPreset }) => (
   <section className="chat-page-mock__review-strip" aria-label="Chat mockup review controls">
     <div className="chat-page-mock__review-header">
       <div>
@@ -204,8 +204,8 @@ const ChatMockStateControls = ({ state, onPatch, onPreset }) => (
           <button
             key={preset.id}
             type="button"
-            className="chat-page-mock__preset-button"
-            onClick={() => onPreset(preset.patch)}
+            className={`chat-page-mock__preset-button ${activePresetId === preset.id ? "is-active" : ""}`}
+            onClick={() => onPreset(preset.id, preset.patch)}
           >
             {preset.label}
           </button>
@@ -246,7 +246,9 @@ const ChatMockShell = ({ state }) => {
     ["Composer", state.composerState],
     ["Process", state.processState],
     ["Alert", state.alertState],
-    ["Artifact", state.artifactPanelState]
+    ["Artifact", state.artifactPanelState],
+    ["Sources", state.sourcesPanelOpen ? "open" : "closed"],
+    ["Reasoning", state.reasoningPanelOpen ? "open" : "closed"]
   ];
 
   return (
@@ -301,12 +303,15 @@ const ChatMockShell = ({ state }) => {
 
 const ChatPage = () => {
   const [mockState, setMockState] = React.useState(DEFAULT_CHAT_MOCK_STATE);
+  const [activePresetId, setActivePresetId] = React.useState("default");
 
   const handleStatePatch = (patch) => {
+    setActivePresetId(null);
     setMockState((prevState) => mergeChatMockState(prevState, patch));
   };
 
-  const handlePresetApply = (presetPatch) => {
+  const handlePresetApply = (presetId, presetPatch) => {
+    setActivePresetId(presetId);
     setMockState(getPresetState(presetPatch));
   };
 
@@ -314,6 +319,7 @@ const ChatPage = () => {
     <div className="chat-page-mock">
       <ChatMockStateControls
         state={mockState}
+        activePresetId={activePresetId}
         onPatch={handleStatePatch}
         onPreset={handlePresetApply}
       />
