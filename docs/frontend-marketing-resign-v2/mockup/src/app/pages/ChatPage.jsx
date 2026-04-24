@@ -329,6 +329,73 @@ const ChatMockArtifactSlot = ({ state }) => {
   );
 };
 
+const ChatMockLandingState = () => (
+  <div className="chat-page-mock__landing">
+    <div className="chat-page-mock__landing-hero">
+      <h1>Apa yang ingin Kamu tulis hari ini?</h1>
+      <p>Mulai draf makalah, analisis data penelitian, atau susun pembahasan literatur dengan asisten AI yang memahami standar akademik.</p>
+    </div>
+    <div className="chat-page-mock__landing-suggestions">
+      <div className="chat-page-mock__panel-label">Saran Topik</div>
+      <div className="chat-page-mock__suggestion-grid">
+        <button type="button" className="chat-page-mock__suggestion-card">
+          <strong>Metode Penelitian</strong>
+          <span>Bantu buat kerangka bab 3 untuk skripsi kualitatif...</span>
+        </button>
+        <button type="button" className="chat-page-mock__suggestion-card">
+          <strong>Review Literatur</strong>
+          <span>Cari referensi utama tentang dampak AI di pendidikan...</span>
+        </button>
+        <button type="button" className="chat-page-mock__suggestion-card">
+          <strong>Analisis Data</strong>
+          <span>Interpretasikan hasil uji t-test dari tabel ini...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+const ChatMockLoadingState = () => (
+  <div className="chat-page-mock__loading">
+    <div className="chat-page-mock__skeleton chat-page-mock__skeleton--hero" />
+    <div className="chat-page-mock__skeleton-group">
+      <div className="chat-page-mock__skeleton chat-page-mock__skeleton--bubble" />
+      <div className="chat-page-mock__skeleton chat-page-mock__skeleton--bubble is-alt" />
+      <div className="chat-page-mock__skeleton chat-page-mock__skeleton--bubble" />
+    </div>
+  </div>
+);
+
+const ChatMockNotFoundState = () => (
+  <div className="chat-page-mock__not-found">
+    <div className="chat-page-mock__illustration-placeholder">404</div>
+    <h2>Percakapan tidak ditemukan</h2>
+    <p>Link yang Kamu ikuti mungkin sudah tidak valid atau percakapan telah dihapus.</p>
+    <button type="button" className="chat-page-mock__sidebar-primary">
+      Buat Percakapan Baru
+    </button>
+  </div>
+);
+
+const ChatMockActiveState = ({ state }) => (
+  <div className="chat-page-mock__active-chat">
+    <div className="chat-page-mock__active-chat-content">
+      <div className="chat-page-mock__panel-label">Active Conversation Surface</div>
+      <p>Messages will be rendered here in Task 7.</p>
+      <div className="chat-page-mock__status-pill">State: {state.conversationState}</div>
+    </div>
+  </div>
+);
+
+const renderContentState = (state) => {
+  switch (state.conversationState) {
+    case "landing": return <ChatMockLandingState />;
+    case "loading": return <ChatMockLoadingState />;
+    case "notFound": return <ChatMockNotFoundState />;
+    default: return <ChatMockActiveState state={state} />;
+  }
+};
+
 const ChatMockDesktopMain = ({ state, summaryItems }) => (
   <section className="chat-page-mock__desktop-main" aria-label="Main shell desktop placeholder">
     <ChatMockTopBar state={state} />
@@ -343,19 +410,17 @@ const ChatMockDesktopMain = ({ state, summaryItems }) => (
     </div>
 
     <div className="chat-page-mock__desktop-main-panels">
-      <section className="chat-page-mock__shell-main" aria-label="Main placeholder">
-        <div className="chat-page-mock__panel-label">Main Placeholder</div>
-        <p>Conversation state: {state.conversationState}</p>
-        <p>Composer state: {state.composerState}</p>
-        <p>Process state: {state.processState}</p>
+      <section className="chat-page-mock__shell-main" aria-label="Main area">
+        {renderContentState(state)}
       </section>
 
       <div className="chat-page-mock__shell-notes">
-        <div className="chat-page-mock__panel-label">Task 3 Boundary</div>
+        <div className="chat-page-mock__panel-label">Task 5 Boundary</div>
         <ul className="chat-page-mock__status-list">
-          <li>Desktop shell sudah dipecah jadi activity bar, sidebar, top bar, main, dan artifact slot.</li>
-          <li>State `sidebar expanded/collapsed` sekarang punya efek visual di shell desktop.</li>
-          <li>Surface desktop masih placeholder dan belum masuk ke detail mobile atau message system.</li>
+          <li>Content state sudah dinamis (Landing, Loading, NotFound, Active).</li>
+          <li>Landing state sudah punya hero dan suggestions grid.</li>
+          <li>Loading state punya skeleton loader visual.</li>
+          <li>NotFound state punya empty illustration placeholder.</li>
         </ul>
       </div>
     </div>
@@ -445,9 +510,7 @@ const ChatMockMobileFrame = ({ state, summaryItems, onPatch }) => (
       </div>
 
       <section className="chat-page-mock__shell-main is-mobile">
-        <div className="chat-page-mock__panel-label">Mobile Main Placeholder</div>
-        <p>State: {state.conversationState}</p>
-        <p>Composer: {state.composerState}</p>
+        {renderContentState(state)}
         {state.composerState === "mobileFullscreen" && (
           <div className="chat-page-mock__fullscreen-indicator">
             Fullscreen Composer Mode Aktif
@@ -456,8 +519,8 @@ const ChatMockMobileFrame = ({ state, summaryItems, onPatch }) => (
       </section>
 
       <div className="chat-page-mock__shell-notes is-mobile">
-        <div className="chat-page-mock__panel-label">Task 4 Boundary</div>
-        <p>Mobile shell sudah mencakup frame, header, dan sidebar sheet visual. State fullscreen composer juga punya representasi visual.</p>
+        <div className="chat-page-mock__panel-label">Task 5 Boundary</div>
+        <p>Mobile content state sudah dinamis. Landing hero dan suggestions menyesuaikan ke vertical layout di mobile.</p>
       </div>
     </main>
   </div>

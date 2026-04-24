@@ -631,6 +631,190 @@
   border-right: 0;
 }
 
+.chat-page-mock__landing {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.chat-page-mock__landing-hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--ink);
+  margin-bottom: 20px;
+}
+
+.chat-page-mock__landing-hero p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--ink-3);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.chat-page-mock__suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.chat-page-mock__suggestion-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  text-align: left;
+  transition: all 0.2s var(--ease);
+}
+
+.chat-page-mock__suggestion-card:hover {
+  border-color: var(--brand-green-line);
+  background: rgba(255, 255, 255, 0.03);
+  transform: translateY(-2px);
+}
+
+.chat-page-mock__suggestion-card strong {
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.chat-page-mock__suggestion-card span {
+  font-size: 0.82rem;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+
+.chat-page-mock__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 40px;
+}
+
+.chat-page-mock__skeleton {
+  background: linear-gradient(90deg, var(--line) 25%, var(--line-2) 50%, var(--line) 75%);
+  background-size: 200% 100%;
+  animation: skeletonLoading 1.5s infinite linear;
+  border-radius: var(--r-md);
+}
+
+@keyframes skeletonLoading {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+.chat-page-mock__skeleton--hero {
+  height: 40px;
+  width: 60%;
+  margin: 0 auto 40px;
+}
+
+.chat-page-mock__skeleton-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chat-page-mock__skeleton--bubble {
+  height: 80px;
+  width: 70%;
+  border-radius: var(--r-lg);
+}
+
+.chat-page-mock__skeleton--bubble.is-alt {
+  align-self: flex-end;
+  width: 50%;
+  background: linear-gradient(90deg, var(--brand-green-soft) 25%, var(--line-2) 50%, var(--brand-green-soft) 75%);
+  background-size: 200% 100%;
+}
+
+.chat-page-mock__not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 40px;
+  text-align: center;
+  gap: 24px;
+}
+
+.chat-page-mock__illustration-placeholder {
+  width: 120px;
+  height: 120px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--ink-4);
+  opacity: 0.5;
+}
+
+.chat-page-mock__not-found h2 {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  color: var(--ink);
+  margin: 0;
+}
+
+.chat-page-mock__not-found p {
+  color: var(--ink-3);
+  max-width: 400px;
+  margin: 0;
+}
+
+.chat-page-mock__active-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chat-page-mock__active-chat-content {
+  flex: 1;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-4);
+  gap: 16px;
+}
+
+.chat-page-mock__status-pill {
+  padding: 6px 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+}
+
+@media (max-width: 768px) {
+  .chat-page-mock__suggestion-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-page-mock__landing {
+    gap: 32px;
+    padding: 40px 16px;
+  }
+}
+
 @media (max-width: 960px) {
   .chat-page-mock {
     padding: 16px;
