@@ -8,23 +8,40 @@ You are working in this worktree:
 
 ## Goal
 
-Continue the static multi-page marketing mockup implementation under:
+Continue the static multi-page marketing mockup refinement under:
 
 ```text
 docs/frontend-marketing-resign-v2/mockup/
 ```
 
 The next session should focus on:
-1. **Tailwind CSS v4 Migration**: Migrating all mockup pages and components from custom CSS (`components.css`) to Tailwind utility classes.
-2. **Code Refactoring (Atomic Design)**: Breaking down monolithic page files into modular, reusable components (following the pattern established in the Home page).
+1. **Chat mockup implementation and styling**
+2. **Visible-state styling for all important chat UI states**
+3. **Static mockup coverage for hidden and error UI states by forcing them visible through mockup state controls**
 
-The next session should continue from the current completed state, not restart earlier units.
+The next session should continue from the current completed state, not restart earlier units, and should not resume the previously planned Tailwind migration track.
+
+For the chat unit specifically, the styling reference direction is reversed compared with the other marketing pages:
+
+- The primary visual reference for chat should be taken directly from the main app chat experience under `src/`.
+- That reference should then be adapted and polished so it is compatible with the current mockup runtime, mockup CSS system, and mockup shell layout.
+- The work must still be implemented only inside `docs/frontend-marketing-resign-v2/mockup/`.
+- Do **not** edit the production app under `src/`.
+
+In short:
+
+- Most previous marketing work followed the pattern: mockup overrides production.
+- The next chat unit should follow the pattern: production chat is the visual reference, then translated into the mockup.
+- Warning: keep the implementation in the mockup only; do not change the real app in `src/`.
 
 ## Current Git Context
 
 Recent relevant commits:
 
 ```text
+00a90667 Refactor split policy styles and prune mockup css
+d5cf3065 Refactor split mockup styles into domain css files
+91600a77 Fix stabilize report issue routing flow
 0984f6b6 Refine shell mockup documentation and support pages
 885a70d1 Add marketing mockup policy pages
 5dc2e4e1 Expand marketing mockup auth states
@@ -74,6 +91,10 @@ Important completion notes:
   - `#/privacy`
   - `#/security`
   - `#/terms`
+- Policy styling is no longer kept in one shared `policy.css`; it is split into:
+  - `styles/privacy.css`
+  - `styles/security.css`
+  - `styles/terms.css`
 - `ReportIssuePage` is live as a shell-layout support page with route-addressable review states:
   - `#/report-issue`
   - `#/report-issue/new`
@@ -83,6 +104,7 @@ Important completion notes:
   - `#/report-issue/new` is the report form view
 - `DocumentationPage` and `ReportIssuePage` now share a reusable shell footer component and shared shell-style footer rules.
 - Shell muted text now uses centralized reusable token aliases in `tokens.css`; future shell/public work should reuse that system rather than introduce page-level muted color overrides.
+- `blog.css` and `marketing-shared.css` have already been pruned from major dead-code blocks; future cleanup work should preserve the current live selector base instead of restoring deleted legacy styling.
 - Main navigation no longer includes `Home`; the logo/brand is the return path to home.
 - Mockup favicon now points to `docs/frontend-marketing-resign-v2/mockup/assets/favicon.ico`.
 - The auth family is now completed as a dedicated auth-layout system with no `GlobalHeaderMock` and no `FooterMock` on auth routes.
@@ -162,21 +184,24 @@ Do not edit production app source under:
 src/
 ```
 
+For the upcoming chat unit, reading from `src/` as a design/reference source is allowed, but editing `src/` remains forbidden.
+
 Do not introduce:
 
 - bundlers
 - ES module `import` / `export`
 - TypeScript
 - Next.js APIs
-- Tailwind runtime dependencies
+- additional runtime dependencies
 - Convex queries
 - `fetch`
 - path aliases
 
 The mockup must remain static React UMD + Babel.
 
-- **Tailwind CSS v4** is already installed via CDN in `MakalahAI.html` and configured with the brand theme in the `<style type="text/css">` block. Use `@theme` variables like `text-brand-green`, `bg-bg-1`, etc.
-- **Component Pattern**: Follow the Home page structure. Move UI parts to `src/components/[category]/[component].jsx` and export them using `Object.assign(window, { ComponentName })`. Maintain global script registration in `MakalahAI.html`.
+- Tailwind CSS v4 is present in `MakalahAI.html`, but it is **not** the active implementation priority for the next session.
+- Keep using the current static mockup structure and existing CSS/domain-file system unless the user explicitly asks for a new migration step.
+- Component Pattern: Follow the existing mockup component registration pattern with `Object.assign(window, { ComponentName })` and maintain global script registration in `MakalahAI.html`.
 
 ## Runtime Constraints
 
@@ -220,6 +245,19 @@ docs/frontend-marketing-resign-v2/mockup/src/app/pages/ResetPasswordPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/components/shared/ShellPageFooter.jsx
 docs/frontend-marketing-resign-v2/mockup/styles/tokens.css
 docs/frontend-marketing-resign-v2/mockup/styles/components.css
+docs/frontend-marketing-resign-v2/mockup/styles/layout.css
+docs/frontend-marketing-resign-v2/mockup/styles/marketing-shared.css
+docs/frontend-marketing-resign-v2/mockup/styles/docs.css
+docs/frontend-marketing-resign-v2/mockup/styles/support.css
+docs/frontend-marketing-resign-v2/mockup/styles/auth.css
+docs/frontend-marketing-resign-v2/mockup/styles/privacy.css
+docs/frontend-marketing-resign-v2/mockup/styles/security.css
+docs/frontend-marketing-resign-v2/mockup/styles/terms.css
+docs/frontend-marketing-resign-v2/mockup/styles/features.css
+docs/frontend-marketing-resign-v2/mockup/styles/faq-page.css
+docs/frontend-marketing-resign-v2/mockup/styles/blog.css
+docs/frontend-marketing-resign-v2/mockup/styles/about.css
+docs/frontend-marketing-resign-v2/mockup/styles/pricing.css
 ```
 
 ## Layout Rules
@@ -328,27 +366,42 @@ Do not batch multiple new pages into one implementation checkpoint.
 
 ## Next Allowed Unit
 
-The next recommended unit is:
+The next required unit is:
 
 ```text
-Tailwind Migration & Refactoring: Home Page
+ChatPage mockup
 ```
 
 Reason:
 
-- Tailwind v4 is installed and theme-ready.
-- The Home page components (Hero, Benefits, etc.) need to be migrated to Tailwind utility classes.
-- Monolithic pages (DocumentationPage, ReportIssuePage, BlogPage) must be split into modular components in `src/components/` while being migrated.
-- Ensure all custom styling in `components.css` for the target page is translated to Tailwind utility classes or custom Tailwind theme variables.
+- The next session is specifically for the chat surface, not for Tailwind migration.
+- Chat should be treated as a shell/product page, not as a marketing page.
+- The mockup must cover not only the default visible UI, but also hidden and error UI states that need to be made visible for review.
+- `ChatPage.jsx` does not exist yet in the current runtime and should be created as part of the next unit.
+- `#/chat` is not yet registered and should be added as part of the next unit.
+- The primary styling reference should come from the production chat page in `src/`, then be translated into the mockup without modifying the production source.
+
+Required implementation method for the chat unit:
+
+1. Style the page with all standard visible UI included.
+2. Style UI that is normally hidden by creating mockup state controls that make it visible.
+3. Style error UI that normally appears only during failure states by creating mockup state controls that force those error states visible for review.
+
+This means the mockup should intentionally expose:
+
+- normal/default chat UI
+- hidden/conditional chat UI made visible through state
+- error UI made visible through state
+
+The purpose is reviewability of the full surface, not strict runtime realism.
 
 ## Recommended Remaining Commit Order
 
 ```text
-1. Home Page (Tailwind Migration + Modularization)
-2. Pricing Page (Tailwind Migration + Modularization)
-3. Documentation Page (Tailwind Migration + Modularization)
-4. Report Issue Page (Tailwind Migration + Modularization)
-5. Remaining Operational Pages (Changelog, Roadmap, etc.)
+1. ChatPage mockup
+2. Chat hidden-state visibility pass
+3. Chat error-state visibility pass
+4. Any follow-up fixes requested from chat review
 ```
 
 ## Verification Expectations
@@ -375,24 +428,27 @@ If a unit changes routing or script loading, also verify:
 - Do not re-open the completed auth family unless the user explicitly asks for auth revisions.
 - Do not collapse the auth routes back into marketing global chrome; auth pages intentionally use dedicated auth chrome.
 - Do not stage or commit screenshot folders unless explicitly requested.
-- Do not assume the next unit is blog-related anymore; blog is already completed for this checkpoint.
+- Do not assume the next unit is Tailwind migration anymore; that track is not the next session priority.
+- Do not optimize the chat mockup for production realism at the expense of visibility. Hidden and error UI may be forced visible through explicit mockup state for review purposes.
+- Do not hide important chat-only conditional surfaces just because they are not normally visible at first render.
 
 ## Immediate Starting Point For The Next Session
 
-Start by confirming the current state from code, then move into **Home Page Tailwind Migration & Modularization** as the first step of the modernization phase.
+Start by confirming the current state from code, then move directly into **ChatPage mockup implementation** using the forced-visibility mockup method described above.
 
 Expected first read targets for the next session:
 
 ```text
-docs/frontend-marketing-resign-v2/mockup/pages-design-plan/IMPLEMENTATION_PLAN.md
-docs/frontend-marketing-resign-v2/mockup/design_system_reference.md
 docs/frontend-marketing-resign-v2/mockup/src/app/MockRouter.jsx
-docs/frontend-marketing-resign-v2/mockup/src/components/layout/header/GlobalHeaderMock.jsx
-docs/frontend-marketing-resign-v2/mockup/src/components/layout/footer/FooterMock.jsx
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/ChatPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/components/shared/ShellPageFooter.jsx
 docs/frontend-marketing-resign-v2/mockup/MakalahAI.html
-docs/frontend-marketing-resign-v2/mockup/src/app/pages/PricingPage.jsx
-docs/frontend-marketing-resign-v2/mockup/src/app/pages/FAQPage.jsx
-docs/frontend-marketing-resign-v2/mockup/src/app/pages/AboutPage.jsx
+src/app
+src/components
+docs/frontend-marketing-resign-v2/mockup/src/app/pages/DocumentationPage.jsx
 docs/frontend-marketing-resign-v2/mockup/src/app/pages/ReportIssuePage.jsx
+docs/frontend-marketing-resign-v2/mockup/styles/tokens.css
+docs/frontend-marketing-resign-v2/mockup/styles/layout.css
+docs/frontend-marketing-resign-v2/mockup/styles/docs.css
+docs/frontend-marketing-resign-v2/mockup/styles/support.css
 ```
