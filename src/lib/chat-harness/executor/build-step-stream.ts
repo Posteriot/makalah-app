@@ -3,7 +3,10 @@ import {
     createUIMessageStreamResponse,
     streamText,
     stepCountIs,
+    NoSuchToolError,
+    InvalidToolInputError,
 } from "ai"
+import * as Sentry from "@sentry/nextjs"
 import { createCuratedTraceController } from "@/lib/ai/curated-trace"
 import type { PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { createReasoningLiveAccumulator } from "@/lib/ai/reasoning-live-stream"
@@ -123,6 +126,88 @@ function getToolNameFromChunk(chunk: unknown): string | undefined {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const c = chunk as any
     return c?.toolName ?? c?.data?.toolName ?? c?.name ?? undefined
+}
+
+// ────────────────────────────────────────────────────────────────
+// Helper: emit telemetry when the model attempts to call a tool
+// name that is not registered. Observe-only — see
+// docs/user-flow-harness-audit/resolution/A1-step1-unknown-tool-call-telemetry.md
+// ────────────────────────────────────────────────────────────────
+
+export function emitUnknownToolCallTelemetry(params: {
+    reqId: string
+    logTag: string
+    toolName: string
+    source: "repair" | "chunk"
+    availableTools: string[]
+    errorText: string | null
+    paperStage: string | null
+    runId: string
+}): void {
+    const { reqId, logTag, toolName, source, availableTools, errorText, paperStage, runId } = params
+    console.warn(
+        `[\u26A0 UNKNOWN-TOOL-CALL][${reqId}]${logTag} source=${source} toolName=${toolName} stage=${paperStage ?? "none"} available=${availableTools.join(",")} errorText=${errorText ?? "null"}`
+    )
+    try {
+        Sentry.captureMessage("unknown_tool_call_attempted", {
+            level: "warning",
+            tags: {
+                subsystem: "harness",
+                toolName,
+                source,
+                paperStage: paperStage ?? "none",
+            },
+            extra: {
+                reqId,
+                availableTools,
+                errorText,
+                runId,
+            },
+        })
+    } catch (sentryErr) {
+        console.warn(`[\u26A0 UNKNOWN-TOOL-CALL][${reqId}]${logTag} sentry capture failed`, sentryErr)
+    }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Helper: predicate that decides whether a stream chunk represents
+// an unknown-tool-name attempt that should fire telemetry.
+//
+// Only `tool-input-error` chunks are considered. Per the Vercel AI
+// SDK type definitions (see node_modules/ai/dist/index.d.ts), only
+// `tool-input-error` carries a `toolName` field — `tool-output-error`
+// is post-execution (the SDK already resolved the tool from the
+// registry) so by definition it is NEVER an unknown-name event and
+// MUST NOT fire this telemetry, otherwise every legit tool-execute
+// failure would be mis-counted as `unknown_tool_call_attempted`.
+//
+// Filter: only emit when the toolName is NOT in the registered set,
+// so InvalidToolInputError on a registered tool is excluded.
+//
+// See A1-step1 plan §3.1 / §3.3 and the B1 review finding.
+// ────────────────────────────────────────────────────────────────
+
+export function shouldEmitUnknownToolTelemetry(
+    chunk: unknown,
+    registeredToolNames: Set<string>
+): { emit: boolean; toolName?: string; errorText?: string | null } {
+    const c = chunk as { type?: unknown; toolName?: unknown; errorText?: unknown } | null | undefined
+    if (!c || c.type !== "tool-input-error") {
+        return { emit: false }
+    }
+    const toolName = typeof c.toolName === "string" ? c.toolName : undefined
+    if (!toolName) {
+        // SDK type guarantees toolName: string on tool-input-error. A
+        // missing name signals an unexpected SDK shape change — do NOT
+        // emit (would otherwise pollute the metric); caller should
+        // warn-once so future drift is loud.
+        return { emit: false }
+    }
+    if (registeredToolNames.has(toolName)) {
+        return { emit: false, toolName }
+    }
+    const errorText = typeof c.errorText === "string" ? c.errorText : null
+    return { emit: true, toolName, errorText }
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -374,6 +459,9 @@ export function buildStepStream(params: {
         execute: async ({ writer }) => {
             let started = false
             let sourceCount = 0
+            // Set of registered tool names — authoritative at request time.
+            // Used by unknown-tool-call telemetry (Detection points A + B).
+            const registeredToolNames = new Set(Object.keys(executionConfig.tools ?? {}))
             // Accumulate ALL streamed text deltas for outcome-gated guard.
             // onFinish text only has final step — this captures full stream.
             let accumulatedStreamText = ""
@@ -615,6 +703,31 @@ export function buildStepStream(params: {
                 console.info(`${toolBoundaryTag} tool_call_finish toolName=${event.toolCall.toolName} toolCallId=${event.toolCall.toolCallId} success=${event.success} durationMs=${event.durationMs}ms stepNumber=${event.stepNumber ?? "?"} elapsedSinceStreamStart=${relMs}ms`)
             }
 
+            // ── Detection point A — experimental_repairToolCall (observe-only) ──
+            // Catches NoSuchToolError before it surfaces as a chunk. We DO NOT
+            // repair (return null) — observe and let SDK propagate the error
+            // unchanged. See A1-step1-unknown-tool-call-telemetry.md §3.1.
+            // Full SDK shape (node_modules/ai/dist/index.d.ts:1267-1276):
+            //   { system, messages, toolCall: LanguageModelV3ToolCall, tools, inputSchema, error }
+            streamTextConfig.experimental_repairToolCall = async (options: {
+                toolCall: { toolName: string }
+                error: NoSuchToolError | InvalidToolInputError | unknown
+            }) => {
+                if (NoSuchToolError.isInstance(options.error)) {
+                    emitUnknownToolCallTelemetry({
+                        reqId: toolsStreamReqId,
+                        logTag,
+                        toolName: options.toolCall.toolName,
+                        source: "repair",
+                        availableTools: [...registeredToolNames],
+                        errorText: options.error instanceof Error ? options.error.message : String(options.error),
+                        paperStage: paperStageScope ?? null,
+                        runId: lane.runId,
+                    })
+                }
+                return null
+            }
+
             const result = streamText(streamTextConfig)
 
             // ── Chunk-size taps (E2E iteration 5) ──
@@ -771,6 +884,47 @@ export function buildStepStream(params: {
                 if (chunk.type === "tool-input-start") {
                     const toolName = getToolNameFromChunk(chunk)
                     emitTrace(reasoningTrace.markToolRunning(toolName))
+                }
+
+                // ── Detection point B — chunk loop interception (defense in depth) ──
+                // Detect unknown-tool-name attempts that slipped past
+                // `experimental_repairToolCall`. `tool-input-error` carries
+                // `toolName` and fires for both NoSuchToolError and
+                // InvalidToolInputError; we filter to only the unknown-name
+                // subset via `!registeredToolNames.has(toolName)`.
+                //
+                // `tool-output-error` is intentionally EXCLUDED — it is
+                // post-execution (SDK already resolved the tool from the
+                // registry), so it is never an unknown-name event and would
+                // corrupt the metric. See A1-step1 plan §3.1 / §3.3 and the
+                // B1 review finding.
+                if (chunk.type === "tool-input-error") {
+                    const decision = shouldEmitUnknownToolTelemetry(chunk, registeredToolNames)
+                    if (decision.emit && decision.toolName) {
+                        emitUnknownToolCallTelemetry({
+                            reqId: toolsStreamReqId,
+                            logTag,
+                            toolName: decision.toolName,
+                            source: "chunk",
+                            availableTools: [...registeredToolNames],
+                            errorText: decision.errorText ?? null,
+                            paperStage: paperStageScope ?? null,
+                            runId: lane.runId,
+                        })
+                    } else if (!decision.toolName) {
+                        // SDK shape drift guard: tool-input-error chunk arrived
+                        // without a string `toolName`. Warn loudly (once per
+                        // chunk) so the regression is visible, then fall
+                        // through to the standard forwarding below.
+                        console.warn(
+                            `[\u26A0 UNKNOWN-TOOL-CALL][${toolsStreamReqId}]${logTag} tool-input-error chunk missing toolName — possible SDK shape change`,
+                            { chunkKeys: Object.keys((chunk as object) ?? {}) }
+                        )
+                    }
+                    // Forward chunk unchanged — DO NOT alter existing client-facing behavior.
+                    ensureStart()
+                    writer.write(chunk)
+                    continue
                 }
 
                 if (chunk.type === "finish") {
