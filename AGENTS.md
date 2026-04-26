@@ -17,12 +17,13 @@ Do not attempt to guess or hallucinate features. Always consult the White Book d
 
 ### MANDATORY LANGUAGE USE
 
+### MANDATORY LANGUAGE USE
+
 - All rules in this file must be written in English.
-- When communicating with users, use Jakarta-style Indonesian with gue–lo pronouns.
+- When communicating with users, use FORMAL BAHASA Indonesia.
 - Use simple Indonesian that's easy for humans to understand.
 - For technical documents, use appropriate technical Indonesian.
 - Do not use English in user communication except for technical terms that have no Indonesian equivalent.
-
 ### MODEL INSTRUCTION LANGUAGE POLICY
 
 - **All instructions to the AI model** — whether embedded in code files, standalone skill files (SKILL.md), configuration files, prompt templates, tool descriptions, Zod `.describe()` strings, or any other instruction layer — **MUST be written in full English.**
