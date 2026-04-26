@@ -103,3 +103,10 @@ Every user request, claim, or instruction MUST pass through this gate before com
 - **Anti-regex for language understanding.** Do not use regex to parse, classify, or interpret natural language input. LLMs handle language — regex does not.
 - **Pro-deterministic parser for technical formats.** Use deterministic parsers (JSON.parse, structured schemas, AST parsers) for well-defined technical formats.
 - **State workflow must be driven by semantic JSON + runtime guards, not keywords.** Workflow state transitions must be determined by structured data and explicit runtime validation, never by keyword matching or regex pattern detection.
+
+## 🛡️ SECURITY POSTURE
+
+The repository's security posture — audit cycle, deferred advisories, and reporting process — is documented in:
+👉 **`SECURITY.md`** (root)
+
+Before introducing or upgrading a dependency, before claiming a vulnerability is "non-issue," and before merging any branch that touches `package.json` or `package-lock.json`, you **MUST** consult `SECURITY.md`. Deferred advisories listed there are conscious decisions with documented exploitability analysis — do not auto-resolve them in unrelated PRs.
