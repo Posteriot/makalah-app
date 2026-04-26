@@ -2,6 +2,13 @@
 
 This file provides guidance to YOU when working with code in this repository.
 
+## 📖 APPLICATION DOCUMENTATION (WHITE BOOK)
+
+To truly understand the architecture, user flows, AI orchestration, and compliance standards of Makalah AI, you **MUST** read the root documentation entry point:
+👉 **`docs/what-is-makalah/README.md`**
+
+Do not attempt to guess or hallucinate features. Always consult the White Book documentation first.
+
 ## CREDO
 
 "AI works better when you give tools and freedom instead of forcing them into rigid, hand-designed workflows—because general learning systems scale better."
@@ -87,9 +94,9 @@ Every user request, claim, or instruction MUST pass through this gate before com
 ### AI TOOLS & SKILLS ARCHITECTURE PRINCIPLE
 
 - **Tools must be simple executors.** Do not add filtering, scoring, or quality judgment to tool pipelines. Tools retrieve data — that's it.
-- **Skills (SKILL.md) provide intelligence.** Quality judgment, blocklists, evaluation criteria, and response composition rules belong in natural language skill instructions, not in code. Ref: `references/skills/resources.anthropic.com.md`
+- **Skills (SKILL.md) provide intelligence.** Quality judgment, blocklists, evaluation criteria, and response composition rules belong in natural language skill instructions, not in code.
 - **Minimize code between tool output and LLM input.** Every intermediate processing step (scoring, enrichment, dedup, filtering) is a potential data loss point. Normalize formats only — pass everything else to the LLM.
-- **LLMs reason better than hardcoded pipelines.** Anthropic's Programmatic Tool Calling research (BrowseComp, DeepSearchQA benchmarks) proves: "adding programmatic tool calling on top of basic search tools was the key factor that fully unlocked agent performance." Let LLMs reason over raw data with skill guidance, not through rigid step-by-step pipelines. Ref: `.references/programatic-tools-calling/programmatic-tool-calling.md`
+- **LLMs reason better than hardcoded pipelines.** Anthropic's Programmatic Tool Calling research (BrowseComp, DeepSearchQA benchmarks) proves: "adding programmatic tool calling on top of basic search tools was the key factor that fully unlocked agent performance." Let LLMs reason over raw data with skill guidance, not through rigid step-by-step pipelines.
 
 ### REGEX & PATTERN MATCHING POLICY
 
