@@ -13,6 +13,15 @@ Do not attempt to guess or hallucinate features. Always consult the White Book d
 
 "AI works better when you give tools and freedom instead of forcing them into rigid, hand-designed workflows—because general learning systems scale better."
 
+## AGENT SKILL DIRECTORIES
+
+This repository hosts skill directories for two distinct agent runtimes. Both are intentional — do not delete, merge, or treat one as a typo of the other.
+
+- **`.agent/skills/`** (singular) — belongs to **Antigravity**. Skills consumed by the Antigravity agent runtime.
+- **`.agents/skills/`** (plural) — belongs to **Codex**. Skills consumed by the Codex agent runtime.
+
+Some skills (e.g. `discussion-anti-sycophancy`, `harness-architect`, `makalah-audit-harness`) exist in both directories on purpose because both runtimes need them. Keep them in sync only when explicitly instructed; otherwise treat each tree as owned by its respective runtime.
+
 ## Repository Guidelines
 
 ### MANDATORY LANGUAGE USE
