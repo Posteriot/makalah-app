@@ -1095,18 +1095,18 @@ Urutan task tidak boleh diacak:
 1. [x] Task 1: Runtime Wiring Dan Entry Registration
 2. [x] Task 2: ChatPage Skeleton Dan Review Strip
 3. [x] Task 3: Desktop Shell Layout
-4. [ ] Task 4: Mobile Shell Layout
-5. [ ] Task 5: Main Content States
-6. [ ] Task 6: Sidebar Modes Dan Shell Data
-7. Task 7: Message Presets Dan Bubble System
-8. Task 8: Composer Dan Context Tray
-9. Task 9: Process Bar Dan Reasoning Surface
-10. Task 10: Sources Sheet
-11. Task 11: Artifact Panel Variants
-12. Task 12: Alerts, Failure Surface, Dan Technical Report States
-13. Task 13: Paper-Adjacent Review Surface
-14. Task 14: Styling Consolidation Di chat-style.css
-15. Task 15: Final Verification Dan Readiness Audit
+4. [x] Task 4: Mobile Shell Layout
+5. [x] Task 5: Main Content States
+6. [x] Task 6: Sidebar Modes Dan Shell Data
+7. [x] Task 7: Message Presets Dan Bubble System
+8. [x] Task 8: Composer Dan Context Tray
+9. [x] Task 9: Process Bar Dan Reasoning Surface
+10. [x] Task 10: Sources Sheet
+11. [x] Task 11: Artifact Panel Variants
+12. [x] Task 12: Alerts, Failure Surface, Dan Technical Report States
+13. [x] Task 13: Paper-Adjacent Review Surface
+14. [x] Task 14: Styling Consolidation Di chat-style.css
+15. [x] Task 15: Final Verification Dan Readiness Audit
 
 ## Stop Conditions
 
