@@ -296,13 +296,7 @@ function buildMetodologiSection(
     paragraphs.push(
       createSectionHeading("3.1 Pendekatan Penelitian", HeadingLevel.HEADING_2)
     )
-    const pendekatan =
-      metodologi.pendekatanPenelitian === "kualitatif"
-        ? "Kualitatif"
-        : metodologi.pendekatanPenelitian === "kuantitatif"
-          ? "Kuantitatif"
-          : "Mixed Methods"
-    paragraphs.push(createParagraph(`Penelitian ini menggunakan pendekatan ${pendekatan}.`))
+    paragraphs.push(createParagraph(`Penelitian ini menggunakan pendekatan ${metodologi.pendekatanPenelitian}.`))
   }
 
   // Desain Penelitian
@@ -386,13 +380,7 @@ function buildHasilSection(hasil: CompiledPaperContent["hasil"]): Paragraph[] {
     paragraphs.push(
       createSectionHeading("4.3 Metode Penyajian", HeadingLevel.HEADING_2)
     )
-    const metode =
-      hasil.metodePenyajian === "narrative"
-        ? "Naratif"
-        : hasil.metodePenyajian === "tabular"
-          ? "Tabular"
-          : "Mixed"
-    paragraphs.push(createParagraph(`Metode penyajian hasil: ${metode}.`))
+    paragraphs.push(createParagraph(`Metode penyajian hasil: ${hasil.metodePenyajian}.`))
   }
 
   return paragraphs
@@ -602,7 +590,7 @@ function buildDaftarPustakaSection(
  * Format reference entry jika fullReference tidak tersedia.
  */
 function formatReference(entry: {
-  title: string
+  title?: string
   authors?: string
   year?: number
   url?: string
@@ -618,7 +606,7 @@ function formatReference(entry: {
     parts.push(`(${entry.year}).`)
   }
 
-  parts.push(entry.title)
+  parts.push(entry.title ?? "Untitled")
 
   if (entry.doi) {
     parts.push(`https://doi.org/${entry.doi}`)
@@ -650,12 +638,13 @@ function buildLampiranSection(
 
   lampiran.forEach((item) => {
     // Heading untuk setiap lampiran
-    const title = item.judul || item.label
+    const label = item.label ?? ""
+    const title = item.judul || label
     paragraphs.push(
       new Paragraph({
         children: [
-          new TextRun({ text: `${item.label}: `, bold: true }),
-          new TextRun({ text: title }),
+          new TextRun({ text: `${label}: `, bold: true }),
+          new TextRun({ text: title || "Lampiran" }),
         ],
         spacing: { before: 300, after: 100 },
       })

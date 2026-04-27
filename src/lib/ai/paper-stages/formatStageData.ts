@@ -6,6 +6,7 @@
  */
 
 import { getStageLabel, type PaperStageId } from "../../../../convex/paperSessions/constants";
+import type { PlanSpec } from "@/lib/ai/harness/plan-spec";
 import type {
     AbstrakData,
     DaftarPustakaData,
@@ -99,6 +100,63 @@ function formatWebSearchReferences(stageData: StageData, currentStage: PaperStag
     ].join("\n");
 }
 
+function formatPlanContext(stageData: Record<string, unknown>, currentStage: string): string {
+    const currentStageData = (stageData[currentStage] ?? {}) as Record<string, unknown>
+    const plan = currentStageData._plan as PlanSpec | undefined
+
+    const lines: string[] = ["═══ YOUR EXECUTION PLAN (BINDING) ═══"]
+
+    if (!plan?.tasks?.length) {
+        console.info(`[PLAN-CONTEXT] stage=${currentStage} injected=no-plan-yet t=${Date.now()}`)
+        lines.push(
+            "No plan yet. You MUST emit a ```plan-spec``` block in this response",
+            "to define your task plan for this stage.",
+            "After the plan, you MUST also produce discussion text and end with a ```yaml-spec``` choice card.",
+        )
+        lines.push("═══════════════════════════════════════")
+        return lines.join("\n")
+    }
+
+    let completed = 0
+    let currentTaskLabel: string | null = null
+    for (const task of plan.tasks) {
+        if (task.status === "complete") completed++
+        else if (!currentTaskLabel) currentTaskLabel = task.label
+    }
+
+    const allComplete = completed === plan.tasks.length
+
+    lines.push(`Stage: ${plan.stage} | Progress: ${completed}/${plan.tasks.length}`)
+    if (currentTaskLabel && !allComplete) {
+        lines.push(`CURRENT TASK → ${currentTaskLabel}`)
+    }
+    if (allComplete) {
+        lines.push("ALL TASKS COMPLETE → You may now finalize (createArtifact + submitStageForValidation).")
+    }
+    lines.push("")
+
+    for (const task of plan.tasks) {
+        const isCurrent = task.label === currentTaskLabel && !allComplete
+        const icon = task.status === "complete" ? "✅"
+            : task.status === "in-progress" ? "→ 🔄"
+            : "  ⬚"
+        lines.push(`${icon} ${task.label} [${task.status}]${isCurrent ? "  ← FOCUS HERE" : ""}`)
+    }
+
+    console.info(`[PLAN-CONTEXT] stage=${currentStage} injected=plan progress=${completed}/${plan.tasks.length} t=${Date.now()}`)
+
+    lines.push("")
+    lines.push("PLAN RULES:")
+    lines.push("- This plan is YOUR execution contract. Work through tasks in order.")
+    lines.push("- Focus on the CURRENT TASK only. Do not skip ahead.")
+    lines.push("- Update task statuses to reflect actual progress (pending → in-progress → complete).")
+    lines.push("- You may add, remove, or reorder tasks as the work evolves — the plan is full-replace each response.")
+    lines.push("- Finalize (createArtifact) ONLY when ALL tasks are complete.")
+    lines.push("═══════════════════════════════════════")
+
+    return lines.join("\n")
+}
+
 /**
  * Format stageData object into a human-readable string.
  * Only includes stages that have actual content.
@@ -108,6 +166,11 @@ export function formatStageData(
     currentStage: PaperStageId | "completed"
 ): string {
     const sections: string[] = [];
+
+    // Plan context block (first section — tells model its current task plan)
+    if (currentStage !== "completed") {
+        sections.push(formatPlanContext(stageData, currentStage));
+    }
 
     const activeStageBlock = formatActiveStageData(stageData, currentStage);
     if (activeStageBlock) {
@@ -527,7 +590,7 @@ function formatLampiranData(data: LampiranData, isCurrentStage: boolean, summary
         const itemsToShow = summaryMode ? data.items.slice(0, 3) : data.items;
         itemsToShow.forEach((item) => {
             const tipeStr = item.tipe ? ` (${item.tipe})` : "";
-            output += `Appendix ${item.label}: ${item.judul || "Untitled"}${tipeStr}\n`;
+            output += `Appendix ${item.label ?? "?"}: ${item.judul || "Untitled"}${tipeStr}\n`;
 
             if (!summaryMode && item.referencedInSections && item.referencedInSections.length > 0) {
                 output += `  -> Referenced in: ${item.referencedInSections.join(", ")}\n`;
@@ -568,8 +631,9 @@ function formatJudulData(data: JudulData, isCurrentStage: boolean, summaryMode =
             const coverageStr = opsi.coverageScore !== undefined
                 ? ` (coverage: ${Math.round(normalizePercentage(opsi.coverageScore))}%)`
                 : "";
-            const selected = data.judulTerpilih === opsi.judul ? " [SELECTED]" : "";
-            output += `  ${idx + 1}. ${opsi.judul}${coverageStr}${selected}\n`;
+            const title = opsi.judul ?? "Untitled"
+            const selected = data.judulTerpilih === title ? " [SELECTED]" : "";
+            output += `  ${idx + 1}. ${title}${coverageStr}${selected}\n`;
         });
     } else if (!data.judulTerpilih) {
         output += `Title not yet selected\n`;
@@ -613,7 +677,7 @@ function formatOutlineData(data: OutlineData, isCurrentStage: boolean, summaryMo
                 ? ` (~${section.estimatedWordCount} words)`
                 : "";
 
-            output += `${indent}${statusIcon} ${section.judul || section.id}${wordCount}\n`;
+            output += `${indent}${statusIcon} ${section.judul || section.id || "Section"}${wordCount}\n`;
         });
 
         if (summaryMode && data.sections.length > 10) {
@@ -656,7 +720,7 @@ function formatOutlineChecklist(
         const statusIcon = section.status === "complete" ? "[OK]"
             : section.status === "partial" ? "[~]"
             : "[_]";
-        output += `${indent}${statusIcon} ${section.judul || section.id}\n`;
+        output += `${indent}${statusIcon} ${section.judul || section.id || "Section"}\n`;
     });
 
     // Show indicator if content was truncated

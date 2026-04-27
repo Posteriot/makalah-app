@@ -1,9 +1,12 @@
 import { defineCatalog } from "@json-render/core"
 import { schema } from "@json-render/react/schema"
 import { z } from "zod"
+import { workflowActionSchema } from "./choice-payload"
 
 export const choiceCardShellPropsSchema = z.object({
   title: z.string().min(1),
+  workflowAction: workflowActionSchema.optional(),
+  decisionMode: z.enum(["exploration", "commit"]).optional(),
 })
 
 export const choiceOptionButtonPropsSchema = z.object({
@@ -54,6 +57,14 @@ export const choiceCatalog = defineCatalog(schema, {
     },
   },
   actions: {
+    toggleOption: {
+      params: z.object({
+        optionId: z.string().min(1),
+        currentSelectedId: z.string().nullable().optional(),
+      }),
+      description:
+        "Toggle option selection. If the option is already selected, deselect it (set to null). Otherwise, select it.",
+    },
     submitChoice: {
       params: z.object({
         selectedOptionId: z.string().min(1),

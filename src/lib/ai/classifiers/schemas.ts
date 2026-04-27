@@ -1,60 +1,6 @@
 import { z } from "zod"
 
-import type { CompletedSessionHandling } from "../completed-session"
 import type { SearchResponseMode } from "../web-search/reference-presentation"
-
-// ============================================================================
-// Domain 1: Completed Session Classifier
-// ============================================================================
-
-export const CompletedSessionClassifierSchema = z.object({
-  intent: z.enum([
-    "revision",
-    "informational",
-    "continuation",
-    "artifact_recall",
-    "other",
-  ]).describe(
-    "Primary intent of user message in a completed paper session. " +
-    "'revision' = user wants to modify existing content. " +
-    "'informational' = user is asking a question about the paper or process. " +
-    "'continuation' = short confirmation or continue signal (ok, lanjut, gas). " +
-    "'artifact_recall' = user wants to see a previously generated artifact. " +
-    "'other' = none of the above."
-  ),
-
-  handling: z.enum([
-    "short_circuit_closing",
-    "allow_normal_ai",
-    "server_owned_artifact_recall",
-    "clarify",
-  ]).describe(
-    "Recommended handling action. " +
-    "'short_circuit_closing' = end session with closing message. " +
-    "'allow_normal_ai' = let AI process the message normally. " +
-    "'server_owned_artifact_recall' = fetch and display a specific stage artifact. " +
-    "'clarify' = ask user to clarify ambiguous request."
-  ),
-
-  targetStage: z.string().nullable().describe(
-    "Paper stage ID for artifact recall (e.g. 'abstrak', 'tinjauan_literatur', 'daftar_pustaka'). " +
-    "Must be a valid PaperStageId or null. Null when intent is not artifact_recall."
-  ),
-
-  needsClarification: z.boolean().describe(
-    "True if intent is ambiguous and system should ask for clarification instead of acting."
-  ),
-
-  confidence: z.number().describe(
-    "Classifier confidence between 0 and 1. Below 0.6 should trigger clarify behavior."
-  ),
-
-  reason: z.string().describe(
-    "Brief explanation of why this classification was chosen."
-  ),
-})
-
-export type CompletedSessionClassifierOutput = z.infer<typeof CompletedSessionClassifierSchema>
 
 // ============================================================================
 // Domain 4: Exact Source Follow-Up Classifier
@@ -155,12 +101,6 @@ export type RevisionIntentOutput = z.infer<typeof RevisionIntentSchema>
 // ============================================================================
 // These compile-time checks verify that classifier output types are compatible
 // with existing runtime types. If any assertion fails, TypeScript will error.
-
-// CompletedSessionClassifierOutput.handling must be assignable to CompletedSessionHandling | "clarify"
-type _AssertHandlingCompat = CompletedSessionClassifierOutput["handling"] extends
-  (CompletedSessionHandling | "clarify") ? true : never
-const _handleCheck: _AssertHandlingCompat = true as const
-void _handleCheck
 
 // SearchResponseModeOutput.responseMode must be assignable to SearchResponseMode
 type _AssertSearchModeCompat = SearchResponseModeOutput["responseMode"] extends

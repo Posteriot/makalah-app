@@ -32,7 +32,7 @@ elements:
     type: ChoiceCardShell
     props:
       title: "<decision point title>"
-      decisionMode: "<exploration OR commit>"
+      workflowAction: "<continue_discussion OR finalize_stage OR compile_then_finalize OR special_finalize>"
     children:
       - option-1
       - option-2
@@ -97,9 +97,12 @@ RULES:
 - NEVER nest ChoiceCardShell inside another ChoiceCardShell.
 - NEVER use repeat, $item, $index, or dynamic lists.
 - Use 2-5 ChoiceOptionButton elements per card.
-- decisionMode MUST be set on ChoiceCardShell:
-  - "exploration" = user is still exploring options, more discussion may follow after selection
-  - "commit" = user's selection is a commit point — model MUST finalize (artifact + submit) after selection
+- workflowAction MUST be set on ChoiceCardShell:
+  - "continue_discussion" = user is still exploring options, more discussion may follow after selection. Do NOT start artifact lifecycle.
+  - "finalize_stage" = user's selection is a commit point — model MUST finalize (updateStageData + createArtifact/updateArtifact + submitStageForValidation) after selection
+  - "compile_then_finalize" = stage needs server-side compilation before artifact finalization (daftar_pustaka only)
+  - "special_finalize" = stage has deterministic finalization path (judul, lampiran, hasil)
+- decisionMode is deprecated — do not set it. workflowAction is the source of truth.
 - Do NOT include validation/approval options (e.g. "Sudah cukup, lanjut validasi") — stage lifecycle is handled by the PaperValidationPanel, not by choice cards.
 - Always include state with selection.selectedOptionId and selection.customText.
 - Each ChoiceOptionButton MUST have an on.press action that sets /selection/selectedOptionId.

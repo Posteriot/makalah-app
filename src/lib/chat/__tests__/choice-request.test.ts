@@ -1,5 +1,20 @@
 import { describe, it, expect } from "vitest"
 import { parseOptionalChoiceInteractionEvent, buildChoiceContextNote, validateChoiceInteractionEvent, shouldFinalizeAfterChoice } from "../choice-request"
+import type { ResolvedChoiceWorkflow } from "../choice-workflow-registry"
+
+// Helper to build a resolved workflow with defaults
+function makeResolved(overrides: Partial<ResolvedChoiceWorkflow>): ResolvedChoiceWorkflow {
+  return {
+    action: "finalize_stage",
+    workflowClass: "choice_finalize",
+    toolStrategy: "update_create_submit",
+    prosePolicy: "short_confirmation",
+    fallbackPolicy: "no_rescue",
+    reason: "test",
+    contractVersion: "v2",
+    ...overrides,
+  }
+}
 
 describe("parseOptionalChoiceInteractionEvent", () => {
   it("returns null when no interactionEvent", () => {
@@ -39,17 +54,72 @@ describe("buildChoiceContextNote", () => {
     submittedAt: Date.now(),
   }
 
-  it("builds decision-to-draft note for normal choice", () => {
+  it("builds continue-discussion note with hard prose contract (resolvedWorkflow)", () => {
+    const note = buildChoiceContextNote(baseEvent, {
+      resolvedWorkflow: makeResolved({
+        action: "continue_discussion",
+        workflowClass: "discussion_choice",
+        toolStrategy: "none",
+        prosePolicy: "discussion_only",
+        fallbackPolicy: "no_rescue",
+        reason: "workflow_action_continue_discussion",
+      }),
+    })
+    expect(note).toContain("continue-discussion")
+    expect(note).toContain("Do NOT start artifact lifecycle")
+    expect(note).toContain("Do NOT write final-handoff phrasing")
+    expect(note).not.toContain("Mode: post-choice-finalize")
+    // Note: "submitStageForValidation" appears inside the "Do NOT start artifact lifecycle" prohibition line
+    expect(note).toContain("no submitStageForValidation")
+  })
+
+  it("continue-discussion mandates plan-spec and yaml-spec emission", () => {
+    const note = buildChoiceContextNote(baseEvent, {
+      resolvedWorkflow: makeResolved({
+        action: "continue_discussion",
+        workflowClass: "discussion_choice",
+        toolStrategy: "none",
+        prosePolicy: "discussion_only",
+        fallbackPolicy: "no_rescue",
+        reason: "workflow_action_continue_discussion",
+      }),
+    })
+    expect(note).toContain("plan-spec")
+    expect(note).toContain("yaml-spec")
+  })
+
+  it("finalize path does NOT contain yaml-spec (already prohibits choice card)", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "topik",
+      selectedOptionIds: ["topik-ai-personalisasi"],
+    }, { resolvedWorkflow: makeResolved({ action: "finalize_stage" }) })
+    expect(note).toContain("Mode: post-choice-finalize")
+    expect(note).not.toContain("yaml-spec")
+  })
+
+  it("builds continue-discussion note for legacy fallback (no resolvedWorkflow, no forceFinalize)", () => {
     const note = buildChoiceContextNote(baseEvent)
-    expect(note).toContain("USER_CHOICE_DECISION:")
-    expect(note).toContain("Mode: decision-to-draft")
-    expect(note).toContain("fokus-berpikir-kritis")
+    expect(note).toContain("continue-discussion")
+    expect(note).toContain("Do NOT start artifact lifecycle")
+    expect(note).toContain("action=legacy")
   })
 
   it("builds validation-ready note for validation option", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       selectedOptionIds: ["sudah-cukup-lanjut-validasi"],
+    })
+    expect(note).toContain("Mode: validation-ready")
+    expect(note).toContain("submitStageForValidation")
+  })
+
+  it("builds validation-ready note via resolvedWorkflow action", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      selectedOptionIds: ["some-random-option"],
+    }, {
+      resolvedWorkflow: makeResolved({ action: "validation_ready" }),
     })
     expect(note).toContain("Mode: validation-ready")
     expect(note).toContain("submitStageForValidation")
@@ -72,7 +142,7 @@ describe("buildChoiceContextNote", () => {
     expect(note).toContain("Mode: post-choice-title-selection")
     expect(note).toContain("judulTerpilih")
     expect(note).toContain("submitStageForValidation")
-    expect(note).not.toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("continue-discussion")
   })
 
   it("builds post-choice-artifact-first note for hasil stage", () => {
@@ -84,43 +154,43 @@ describe("buildChoiceContextNote", () => {
     expect(note).toContain("Mode: post-choice-artifact-first")
     expect(note).toContain("metodePenyajian")
     expect(note).toContain("submitStageForValidation")
-    expect(note).not.toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("continue-discussion")
   })
 
-  it("builds post-choice-finalize note for topik stage (forceFinalize from helper)", () => {
+  it("builds post-choice-finalize note for topik stage (resolvedWorkflow finalize)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "topik",
       selectedOptionIds: ["topik-ai-personalisasi"],
-    }, { forceFinalize: true })
+    }, { resolvedWorkflow: makeResolved({ action: "finalize_stage" }) })
     expect(note).toContain("Mode: post-choice-finalize")
     expect(note).toContain("updateStageData")
     expect(note).toContain("createArtifact")
     expect(note).toContain("submitStageForValidation")
-    expect(note).not.toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("continue-discussion")
   })
 
-  it("builds post-choice-finalize note for abstrak stage (forceFinalize from helper)", () => {
+  it("builds post-choice-finalize note for abstrak stage (resolvedWorkflow finalize)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "abstrak",
       selectedOptionIds: ["abstrak-problem-first"],
-    }, { forceFinalize: true })
+    }, { resolvedWorkflow: makeResolved({ action: "finalize_stage" }) })
     expect(note).toContain("Mode: post-choice-finalize")
     expect(note).toContain("submitStageForValidation")
-    expect(note).not.toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("continue-discussion")
   })
 
-  it("builds post-choice-finalize note for outline stage with existing artifact (forceFinalize from helper)", () => {
+  it("builds post-choice-finalize note for outline stage with existing artifact", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "outline",
       selectedOptionIds: ["outline-tambah-subbab"],
-    }, { hasExistingArtifact: true, forceFinalize: true })
+    }, { hasExistingArtifact: true, resolvedWorkflow: makeResolved({ action: "finalize_stage" }) })
     expect(note).toContain("Mode: post-choice-finalize")
     expect(note).toContain("updateArtifact")
     expect(note).toContain("submitStageForValidation")
-    expect(note).not.toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("continue-discussion")
   })
 
   it("builds no-appendix-placeholder note for lampiran tidak-ada", () => {
@@ -132,103 +202,170 @@ describe("buildChoiceContextNote", () => {
     expect(note).toContain("Mode: no-appendix-placeholder")
     expect(note).toContain("tidakAdaLampiran")
     expect(note).toContain("submitStageForValidation")
-    expect(note).not.toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("continue-discussion")
   })
 
-  it("falls through to finalize for lampiran with appendix (forceFinalize from helper)", () => {
+  it("falls through to finalize for lampiran with appendix (resolvedWorkflow finalize)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "lampiran",
       selectedOptionIds: ["option-tabel-data"],
-    }, { forceFinalize: true })
+    }, { resolvedWorkflow: makeResolved({ action: "special_finalize", workflowClass: "special_finalize" }) })
     expect(note).toContain("Mode: post-choice-finalize")
     expect(note).toContain("submitStageForValidation")
-    expect(note).not.toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("continue-discussion")
   })
 
-  it("builds post-choice-finalize note for diskusi stage (forceFinalize from helper)", () => {
+  it("builds post-choice-finalize note for diskusi stage (resolvedWorkflow finalize)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "diskusi",
       selectedOptionIds: ["opsi-implikasi-teoritis"],
-    }, { forceFinalize: true })
+    }, { resolvedWorkflow: makeResolved({ action: "finalize_stage", workflowClass: "direct_finalize" }) })
     expect(note).toContain("Mode: post-choice-finalize")
     expect(note).toContain("updateStageData")
     expect(note).toContain("submitStageForValidation")
-    expect(note).not.toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("continue-discussion")
   })
 
-  it("builds post-choice-finalize note for kesimpulan stage (forceFinalize from helper)", () => {
+  it("builds post-choice-finalize note for kesimpulan stage (resolvedWorkflow finalize)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "kesimpulan",
       selectedOptionIds: ["opsi-saran-praktis"],
-    }, { forceFinalize: true })
+    }, { resolvedWorkflow: makeResolved({ action: "finalize_stage", workflowClass: "direct_finalize" }) })
     expect(note).toContain("Mode: post-choice-finalize")
     expect(note).toContain("submitStageForValidation")
-    expect(note).not.toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("continue-discussion")
   })
 
-  it("builds post-choice-finalize note for pembaruan_abstrak stage (forceFinalize from helper)", () => {
+  it("builds post-choice-finalize note for pembaruan_abstrak stage (resolvedWorkflow finalize)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "pembaruan_abstrak",
       selectedOptionIds: ["opsi-perbarui-semua"],
-    }, { forceFinalize: true })
+    }, { resolvedWorkflow: makeResolved({ action: "finalize_stage", workflowClass: "direct_finalize" }) })
     expect(note).toContain("Mode: post-choice-finalize")
     expect(note).toContain("submitStageForValidation")
-    expect(note).not.toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("continue-discussion")
   })
 
-  it("topik with decisionMode exploration → decision-to-draft (NOT finalize)", () => {
-    // This proves decisionMode overrides ALWAYS_FINALIZE_STAGES end-to-end
+  it("topik with resolvedWorkflow continue_discussion → continue-discussion (NOT finalize)", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "topik",
       selectedOptionIds: ["opsi-a"],
-    }, { forceFinalize: false })
-    expect(note).toContain("Mode: decision-to-draft")
+    }, {
+      resolvedWorkflow: makeResolved({
+        action: "continue_discussion",
+        workflowClass: "discussion_choice",
+        toolStrategy: "none",
+        prosePolicy: "discussion_only",
+      }),
+    })
+    expect(note).toContain("continue-discussion")
+    expect(note).toContain("Do NOT start artifact lifecycle")
     expect(note).not.toContain("Mode: post-choice-finalize")
   })
 
-  it("outline with forceFinalize false → decision-to-draft", () => {
+  it("outline with resolvedWorkflow continue_discussion → continue-discussion", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "outline",
       selectedOptionIds: ["opsi-struktur-a"],
-    }, { forceFinalize: false })
-    expect(note).toContain("Mode: decision-to-draft")
+    }, {
+      resolvedWorkflow: makeResolved({
+        action: "continue_discussion",
+        workflowClass: "discussion_choice",
+        toolStrategy: "none",
+        prosePolicy: "discussion_only",
+      }),
+    })
+    expect(note).toContain("continue-discussion")
     expect(note).not.toContain("Mode: post-choice-finalize")
   })
 
-  it("topik with forceFinalize true → finalize", () => {
+  it("topik with resolvedWorkflow finalize_stage → finalize", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "topik",
       selectedOptionIds: ["opsi-a"],
-    }, { forceFinalize: true })
+    }, { resolvedWorkflow: makeResolved({ action: "finalize_stage" }) })
     expect(note).toContain("Mode: post-choice-finalize")
-    expect(note).not.toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("continue-discussion")
   })
 
-  it("gagasan stays in decision-to-draft when stageData immature (no forceFinalize)", () => {
+  it("gagasan stays in continue-discussion when no resolvedWorkflow and no forceFinalize", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "gagasan",
       selectedOptionIds: ["fokus-berpikir-kritis"],
     })
-    expect(note).toContain("Mode: decision-to-draft")
+    expect(note).toContain("continue-discussion")
     expect(note).not.toContain("Mode: post-choice-finalize")
   })
 
-  it("gagasan finalize when forceFinalize is true (mature stageData)", () => {
+  it("gagasan finalize when resolvedWorkflow action is finalize_stage", () => {
     const note = buildChoiceContextNote({
       ...baseEvent,
       stage: "gagasan",
       selectedOptionIds: ["fokus-dampak-negatif"],
+    }, { resolvedWorkflow: makeResolved({ action: "finalize_stage" }) })
+    expect(note).toContain("Mode: post-choice-finalize")
+    expect(note).not.toContain("continue-discussion")
+  })
+
+  // Legacy forceFinalize backward compatibility
+  it("legacy: forceFinalize true → finalize (no resolvedWorkflow)", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "topik",
+      selectedOptionIds: ["opsi-a"],
     }, { forceFinalize: true })
     expect(note).toContain("Mode: post-choice-finalize")
-    expect(note).not.toContain("Mode: decision-to-draft")
+    expect(note).not.toContain("continue-discussion")
+  })
+
+  it("legacy: forceFinalize false → continue-discussion (no resolvedWorkflow)", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "topik",
+      selectedOptionIds: ["opsi-a"],
+    }, { forceFinalize: false })
+    expect(note).toContain("continue-discussion")
+    expect(note).not.toContain("Mode: post-choice-finalize")
+  })
+
+  it("compile_then_finalize resolvedWorkflow → finalize path (not continue-discussion)", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "daftar_pustaka",
+      selectedOptionIds: ["opsi-compile"],
+    }, { resolvedWorkflow: makeResolved({ action: "compile_then_finalize", workflowClass: "compile_finalize" }) })
+    expect(note).toContain("Mode: post-choice-compile-finalize")
+    expect(note).toContain("compileDaftarPustaka")
+    expect(note).not.toContain("Mode: post-choice-finalize")
+    expect(note).not.toContain("1. updateStageData")
+    expect(note).not.toContain("continue-discussion")
+  })
+
+  it("daftar_pustaka validation-ready triggers compile path via option ID", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "daftar_pustaka",
+      selectedOptionIds: ["sudah-cukup-lanjut-validasi"],
+    }, { resolvedWorkflow: makeResolved({ action: "validation_ready" }) })
+    expect(note).toContain("Mode: validation-ready")
+    expect(note).toContain("compileDaftarPustaka")
+  })
+
+  it("daftar_pustaka validation-ready does not instruct direct updateStageData", () => {
+    const note = buildChoiceContextNote({
+      ...baseEvent,
+      stage: "daftar_pustaka",
+      selectedOptionIds: ["sudah-cukup-lanjut-validasi"],
+    }, { resolvedWorkflow: makeResolved({ action: "validation_ready" }) })
+    expect(note).not.toContain("1. updateStageData")
   })
 })
 
@@ -330,6 +467,46 @@ describe("shouldFinalizeAfterChoice", () => {
     // daftar_pustaka overrides even commit decisionMode
     expect(result.finalize).toBe(false)
     expect(result.reason).toBe("daftar_pustaka_compile_flow")
+  })
+})
+
+describe("parseOptionalChoiceInteractionEvent — workflowAction contract", () => {
+  it("parses workflowAction from choice submit event", () => {
+    const event = parseOptionalChoiceInteractionEvent({
+      interactionEvent: {
+        type: "paper.choice.submit",
+        version: 1,
+        conversationId: "conv-1",
+        stage: "gagasan",
+        sourceMessageId: "msg-1",
+        choicePartId: "part-1",
+        kind: "single-select",
+        selectedOptionIds: ["opsi-a"],
+        workflowAction: "continue_discussion",
+        submittedAt: Date.now(),
+      },
+    })
+
+    expect(event?.workflowAction).toBe("continue_discussion")
+  })
+
+  it("accepts event without workflowAction for backwards compat (legacy path)", () => {
+    const event = parseOptionalChoiceInteractionEvent({
+      interactionEvent: {
+        type: "paper.choice.submit",
+        version: 1,
+        conversationId: "conv-1",
+        stage: "gagasan",
+        sourceMessageId: "msg-1",
+        choicePartId: "part-1",
+        kind: "single-select",
+        selectedOptionIds: ["opsi-a"],
+        submittedAt: Date.now(),
+      },
+    })
+
+    expect(event).not.toBeNull()
+    expect(event?.workflowAction).toBeUndefined()
   })
 })
 

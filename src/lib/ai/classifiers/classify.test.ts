@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { classifyIntent } from "./classify"
-import { CompletedSessionClassifierSchema } from "./schemas"
+import { ExactSourceClassifierSchema } from "./schemas"
 
 // Mock the AI SDK generateText
 vi.mock("ai", () => ({
@@ -20,12 +20,12 @@ describe("classifyIntent", () => {
     const mockedGenerateText = vi.mocked(generateText)
 
     const mockOutput = {
-      intent: "revision",
-      handling: "allow_normal_ai",
-      targetStage: null,
+      mode: "force_inspect",
+      sourceIntent: "exact_detail",
+      mentionedSourceHint: "arxiv paper",
       needsClarification: false,
       confidence: 0.9,
-      reason: "User explicitly requested revision",
+      reason: "User explicitly requested source details",
     }
 
     mockedGenerateText.mockResolvedValueOnce({
@@ -33,9 +33,9 @@ describe("classifyIntent", () => {
     } as Awaited<ReturnType<typeof generateText>>)
 
     const result = await classifyIntent({
-      schema: CompletedSessionClassifierSchema,
-      systemPrompt: "Classify user intent in a completed paper session.",
-      userMessage: "revisi abstrak",
+      schema: ExactSourceClassifierSchema,
+      systemPrompt: "Classify exact source follow-up intent.",
+      userMessage: "show me the arxiv paper details",
       model: mockModel,
     })
 
@@ -51,9 +51,9 @@ describe("classifyIntent", () => {
     mockedGenerateText.mockRejectedValueOnce(new Error("Model timeout"))
 
     const result = await classifyIntent({
-      schema: CompletedSessionClassifierSchema,
+      schema: ExactSourceClassifierSchema,
       systemPrompt: "Classify user intent.",
-      userMessage: "lihat abstrak",
+      userMessage: "lihat sumber pertama",
       model: mockModel,
     })
 
@@ -69,7 +69,7 @@ describe("classifyIntent", () => {
     } as Awaited<ReturnType<typeof generateText>>)
 
     const result = await classifyIntent({
-      schema: CompletedSessionClassifierSchema,
+      schema: ExactSourceClassifierSchema,
       systemPrompt: "Classify user intent.",
       userMessage: "something",
       model: mockModel,
@@ -85,9 +85,9 @@ describe("classifyIntent", () => {
 
     mockedGenerateText.mockResolvedValueOnce({
       output: {
-        intent: "other",
-        handling: "clarify",
-        targetStage: null,
+        mode: "clarify",
+        sourceIntent: "none",
+        mentionedSourceHint: null,
         needsClarification: true,
         confidence: 0.4,
         reason: "Ambiguous input",
@@ -95,7 +95,7 @@ describe("classifyIntent", () => {
     } as Awaited<ReturnType<typeof generateText>>)
 
     await classifyIntent({
-      schema: CompletedSessionClassifierSchema,
+      schema: ExactSourceClassifierSchema,
       systemPrompt: "You are a classifier.",
       userMessage: "hmm yang tadi",
       model: mockModel,
@@ -103,7 +103,7 @@ describe("classifyIntent", () => {
 
     // Verify Output.object was called with the schema
     expect(mockedOutputObject).toHaveBeenCalledWith({
-      schema: CompletedSessionClassifierSchema,
+      schema: ExactSourceClassifierSchema,
     })
 
     // Verify generateText received all required parameters
@@ -123,26 +123,26 @@ describe("classifyIntent", () => {
 
     mockedGenerateText.mockResolvedValueOnce({
       output: {
-        intent: "artifact_recall",
-        handling: "server_owned_artifact_recall",
-        targetStage: "abstrak",
+        mode: "force_inspect",
+        sourceIntent: "exact_detail",
+        mentionedSourceHint: "Nature article",
         needsClarification: false,
         confidence: 0.85,
-        reason: "User wants to see abstrak artifact",
+        reason: "User wants exact details from Nature article",
       },
     } as Awaited<ReturnType<typeof generateText>>)
 
     await classifyIntent({
-      schema: CompletedSessionClassifierSchema,
+      schema: ExactSourceClassifierSchema,
       systemPrompt: "Classify intent.",
-      userMessage: "lihat abstrak",
-      context: "Router reason: artifact retrieval requested",
+      userMessage: "show me the Nature article",
+      context: "Router reason: source inspection requested",
       model: mockModel,
     })
 
     expect(mockedGenerateText).toHaveBeenCalledWith(
       expect.objectContaining({
-        prompt: expect.stringContaining("Router reason: artifact retrieval requested"),
+        prompt: expect.stringContaining("Router reason: source inspection requested"),
       })
     )
   })

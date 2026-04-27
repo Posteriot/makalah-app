@@ -14,11 +14,7 @@ export interface ReferencePresentationSource {
   title: string
   publishedAt?: number | null
   documentKind: "html" | "pdf" | "unknown"
-  routeKind?:
-    | "html_standard"
-    | "pdf_or_download"
-    | "academic_wall_risk"
-    | "proxy_or_redirect_like"
+  routeKind?: FetchRouteKind
   verificationStatus: ReferenceVerificationStatus
   referenceAvailable: boolean
   claimable: boolean

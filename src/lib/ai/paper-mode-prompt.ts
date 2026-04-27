@@ -1,4 +1,4 @@
-import { fetchQuery } from "convex/nextjs";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { STAGE_ORDER, getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants";
@@ -79,6 +79,7 @@ export type PaperModePromptContext = {
 
 export const getPaperModeSystemPrompt = async (
     conversationId: Id<"conversations">,
+    userId: Id<"users">,
     convexToken?: string,
     requestId?: string
 ): Promise<PaperModePromptContext> => {
@@ -94,22 +95,34 @@ export const getPaperModeSystemPrompt = async (
     try {
         const convexOptions = convexToken ? { token: convexToken } : undefined;
         const sessionStart = Date.now();
-        const session = await fetchQuery(
+        let session = await fetchQuery(
             api.paperSessions.getByConversation,
             { conversationId },
             convexOptions
         );
         logPaperPromptLatency("paperPrompt.getSession", sessionStart, { found: !!session });
+
+        // Lazy migration: ensure paper session exists for legacy conversations
+        // TODO(2026-05-15): Remove after all active conversations have been migrated
         if (!session) {
-            logPaperPromptLatency("paperPrompt.total", paperPromptStart, {
-                hasPrompt: false,
-                reason: "no_session",
-            });
-            return {
-                prompt: "",
-                skillResolverFallback: false,
-                stageInstructionSource: "none",
-            };
+            console.info(`[PAPER][lazy-migration] Creating paper session for legacy conversation ${conversationId}`);
+            await fetchMutation(
+                api.paperSessions.ensurePaperSessionExists,
+                { userId, conversationId },
+                convexOptions
+            );
+            session = await fetchQuery(
+                api.paperSessions.getByConversation,
+                { conversationId },
+                convexOptions
+            );
+            logPaperPromptLatency("paperPrompt.lazyMigration", sessionStart, { created: !!session });
+
+            if (!session) {
+                // Should not happen — but guard against mutation failure
+                console.error(`[PAPER][lazy-migration] Failed to create session for ${conversationId}`);
+                return { prompt: "", skillResolverFallback: false, stageInstructionSource: "none" };
+            }
         }
 
         const stage = session.currentStage as PaperStageId | "completed";
@@ -157,14 +170,19 @@ export const getPaperModeSystemPrompt = async (
                 return allArtifacts;
             })(),
 
-            // 3. Get invalidated artifacts
+            // 3. Get invalidated artifacts (5s timeout — non-critical, fail-open to empty)
             (async () => {
                 const start = Date.now();
-                const invalidated = await fetchQuery(
-                    api.artifacts.getInvalidatedByConversation,
-                    { conversationId, userId: session.userId },
-                    convexOptions
-                );
+                const invalidated = await Promise.race([
+                    fetchQuery(
+                        api.artifacts.getInvalidatedByConversation,
+                        { conversationId, userId: session.userId },
+                        convexOptions
+                    ),
+                    new Promise<never>((_, reject) =>
+                        setTimeout(() => reject(new Error("invalidated artifacts fetch timed out (5s)")), 5000)
+                    ),
+                ]);
                 logPaperPromptLatency("paperPrompt.getInvalidatedArtifacts", start, {
                     count: Array.isArray(invalidated) ? invalidated.length : 0,
                 });
@@ -180,12 +198,38 @@ export const getPaperModeSystemPrompt = async (
         // ── Extract results with graceful fallbacks ──
 
         // Stage instructions: critical — if failed, use fallback
-        const stageInstructions = stageInstructionsResult.status === "fulfilled"
+        let stageInstructions = stageInstructionsResult.status === "fulfilled"
             ? stageInstructionsResult.value.instructions
             : (() => {
                 console.error("Error resolving stage instructions:", (stageInstructionsResult as PromiseRejectedResult).reason);
                 return fallbackStageInstructions;
             })();
+
+        // Override with unified completed-state instructions
+        if (stage === "completed") {
+            stageInstructions = `
+COMPLETED SESSION — ALL 14 STAGES APPROVED
+═══════════════════════════════════════════
+
+Status: All stages validated and approved. Paper is complete.
+
+YOUR ROLE NOW:
+- Answer questions about any part of the paper
+- Discuss improvements, alternative approaches, or next steps
+- If user wants to REVISE a specific stage, tell them to click that stage in the progress timeline above the chat
+- You CANNOT modify stage data or create artifacts in completed state — user must rewind first via the timeline UI
+
+DO NOT:
+- Call updateStageData (will throw — session is completed)
+- Call createArtifact or submitStageForValidation
+- Output a choice card
+
+DO:
+- Respond naturally to any question about the paper
+- Reference approved content from any stage when relevant
+- Suggest specific stage names when user describes what they want to change (e.g. "kalau mau ubah bagian pendahuluan, klik tahap Pendahuluan di timeline atas")
+`;
+        }
         const stageInstructionSource = stageInstructionsResult.status === "fulfilled"
             ? stageInstructionsResult.value.source
             : "fallback";
@@ -263,16 +307,16 @@ Use updateArtifact with the FULL revised content based on user feedback. Do NOT 
             console.error("Error fetching artifacts:", (artifactsResult as PromiseRejectedResult).reason);
         }
 
-        // Invalidated artifacts: non-critical — empty string on failure
+        // Invalidated artifacts: non-critical — empty string on failure (fail-open)
         let invalidatedArtifactsContext = "";
         if (invalidatedResult.status === "fulfilled") {
             try {
                 invalidatedArtifactsContext = getInvalidatedArtifactsContext(invalidatedResult.value);
             } catch (err) {
-                console.error("Error processing invalidated artifacts:", err);
+                console.warn("[PAPER][prompt] invalidated artifacts processing failed (non-critical, skipped):", err);
             }
         } else {
-            console.error("Error fetching invalidated artifacts:", (invalidatedResult as PromiseRejectedResult).reason);
+            console.warn("[PAPER][prompt] invalidated artifacts fetch failed (non-critical, skipped):", (invalidatedResult as PromiseRejectedResult).reason);
         }
 
         // Inline revision context

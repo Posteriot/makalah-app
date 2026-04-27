@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect, useSyncExternalStore, type ReactElement, type ReactNode } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { SidebarCollapse } from "iconoir-react"
@@ -14,6 +14,8 @@ import { TopBar } from "../shell/TopBar"
 import { useConversations } from "@/lib/hooks/useConversations"
 import { Id } from "../../../../convex/_generated/dataModel"
 import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
+import { usePaperSession } from "@/lib/hooks/usePaperSession"
+import { useNaskah } from "@/lib/hooks/useNaskah"
 
 // SSR-safe viewport detection — prevents dual ChatWindow mount.
 // md breakpoint = 768px (Tailwind default)
@@ -51,6 +53,7 @@ interface ChatLayoutProps {
   artifactCount?: number
   mobileSidebarOpen?: boolean
   onMobileSidebarOpenChange?: (open: boolean) => void
+  routeContext?: "chat" | "naskah"
 }
 
 const DEFAULT_SIDEBAR_WIDTH = 280
@@ -84,6 +87,7 @@ export function ChatLayout({
   artifactCount = 0,
   mobileSidebarOpen,
   onMobileSidebarOpenChange,
+  routeContext,
 }: ChatLayoutProps) {
   const router = useRouter()
   const isDesktop = useIsDesktop()
@@ -97,6 +101,17 @@ export function ChatLayout({
   const isMobileOpen = mobileSidebarOpen ?? internalMobileOpen
   const setIsMobileOpen = onMobileSidebarOpenChange ?? setInternalMobileOpen
   const isRightPanelOpen = isArtifactPanelOpen
+
+  const pathname = usePathname()
+  const safeConversationId =
+    typeof conversationId === "string" && conversationId.length > 0
+      ? (conversationId as Id<"conversations">)
+      : undefined
+  const { session } = usePaperSession(safeConversationId)
+  const { availability, updatePending } = useNaskah(session?._id)
+  const resolvedRouteContext =
+    routeContext ??
+    (pathname?.includes("/naskah") ? "naskah" : "chat")
 
   const {
     conversations,
@@ -339,6 +354,12 @@ export function ChatLayout({
             isSidebarCollapsed={isSidebarCollapsed}
             onToggleSidebar={handleToggleSidebar}
             artifactCount={artifactCount}
+            conversationId={conversationId}
+            routeContext={resolvedRouteContext}
+            naskahAvailable={availability?.isAvailable ?? false}
+            naskahUpdatePending={updatePending}
+            onArtifactToggle={onArtifactPanelToggle}
+            isArtifactPanelOpen={isArtifactPanelOpen}
           />
           <div className="flex-1 overflow-hidden">{children}</div>
         </main>

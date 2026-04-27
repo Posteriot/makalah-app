@@ -1,10 +1,18 @@
-import type { JsonRendererChoiceSpec } from "./choice-payload"
+import type { JsonRendererChoiceSpec, WorkflowAction } from "./choice-payload"
 
 export const CHOICE_VALIDATE_OPTION_ID = "sudah-cukup-lanjut-validasi"
 const CHOICE_VALIDATE_OPTION_LABEL = "Sudah cukup, lanjut validasi"
 const DEFAULT_SUBMIT_LABEL = "Lanjutkan"
 
-const VALIDATION_PATTERNS = [/\bsetuju/i, /\bvalidasi/i, /\blanjut(kan)?/i]
+// Patterns that identify a validation-like option so it can be canonicalised
+// to the single server-expected `sudah-cukup-lanjut-validasi` id.
+//
+// Iteration 7: `/\blanjut(kan)?/i` was removed because it was too broad — it
+// matched any option whose label contained "Lanjutkan" (e.g. the legitimate
+// "Lanjutkan diskusi" fallback option used when the model abandons the
+// choice card). The remaining two patterns ("setuju", "validasi") still
+// catch the validation-intent options model typically emits.
+const VALIDATION_PATTERNS = [/\bsetuju/i, /\bvalidasi/i]
 
 function slugifyId(value: string): string {
   const slug = value
@@ -34,6 +42,7 @@ export function compileChoiceSpec(params: {
   recommendedId?: string
   submitLabel?: string
   appendValidationOption?: boolean
+  workflowAction?: WorkflowAction
 }): {
   spec: JsonRendererChoiceSpec
   normalizedOptions: NormalizedOption[]
@@ -134,10 +143,10 @@ export function compileChoiceSpec(params: {
       children: [],
       on: {
         press: {
-          action: "setState",
+          action: "toggleOption",
           params: {
-            path: "/selection/selectedOptionId",
-            value: opt.id,
+            optionId: opt.id,
+            currentSelectedId: { $state: "/selection/selectedOptionId" },
           },
         },
       },
@@ -169,14 +178,23 @@ export function compileChoiceSpec(params: {
     type: "ChoiceCardShell",
     props: {
       title,
+      ...(params.workflowAction ? { workflowAction: params.workflowAction } : {}),
     },
     children: childIds,
   }
 
-  const spec: JsonRendererChoiceSpec = {
+  const spec: JsonRendererChoiceSpec & {
+    state?: { selection: { selectedOptionId: string | null; customText: string } }
+  } = {
     root: rootId,
     elements,
+    // Pre-select recommended option so submit button is enabled by default.
+    // Without this, initialState falls back to selectedOptionId:null and the
+    // submit button stays disabled until user explicitly clicks an option.
+    ...(resolvedRecommendedId
+      ? { state: { selection: { selectedOptionId: resolvedRecommendedId, customText: "" } } }
+      : {}),
   }
 
-  return { spec, normalizedOptions }
+  return { spec: spec as JsonRendererChoiceSpec, normalizedOptions }
 }

@@ -28,20 +28,12 @@ interface PaperStageProgressProps {
 }
 
 // ============================================================================
-// CONSTANTS
-// ============================================================================
-
-/** Maximum number of stages back that user can rewind */
-const MAX_REWIND_STAGES = 2;
-
-// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 /**
  * Check if a stage is a valid rewind target
  * - Must be completed (has validatedAt)
- * - Must be within MAX_REWIND_STAGES of current stage
  * - Must be before current stage (not current or future)
  */
 function isValidRewindTarget(
@@ -50,29 +42,17 @@ function isValidRewindTarget(
     currentIndex: number,
     stageData?: Record<string, StageDataEntry>
 ): { canRewind: boolean; reason?: string } {
-    // Not a completed stage
     if (stageIndex >= currentIndex) {
         return { canRewind: false };
     }
 
-    // No stageData provided
     if (!stageData) {
         return { canRewind: false };
     }
 
-    // Stage was never validated
     const stageEntry = stageData[stageId];
     if (!stageEntry?.validatedAt) {
         return { canRewind: false, reason: "Stage ini belum pernah divalidasi" };
-    }
-
-    // Beyond max rewind limit
-    const stagesBack = currentIndex - stageIndex;
-    if (stagesBack > MAX_REWIND_STAGES) {
-        return {
-            canRewind: false,
-            reason: `Hanya bisa rewind max ${MAX_REWIND_STAGES} tahap ke belakang`,
-        };
     }
 
     return { canRewind: true };

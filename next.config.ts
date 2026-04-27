@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
     "mammoth",
     "xlsx-populate",
     "officeparser",
+    // pdfkit ships AFM font metric files loaded at runtime via fs.readFileSync.
+    // Bundling through Turbopack strips those data files.
+    // Required by /api/naskah/export/pdf.
+    "pdfkit",
   ],
   outputFileTracingIncludes: {
     "/api/extract-file": [

@@ -7,7 +7,7 @@ import {
 // TYPES
 // ============================================================================
 
-export type TaskStatus = "complete" | "pending"
+export type TaskStatus = "complete" | "in-progress" | "pending"
 
 export type TaskItem = {
   id: string
@@ -157,6 +157,37 @@ export function deriveTaskList(
   stageId: PaperStageId,
   stageData: Record<string, unknown>
 ): TaskSummary {
+  const currentStageData = (stageData[stageId] ?? {}) as Record<string, unknown>
+
+  // ── Model-driven path: read from _plan if available ──
+  const _hasPlan = !!(currentStageData._plan as { tasks?: unknown[] } | undefined)?.tasks?.length
+  const plan = currentStageData._plan as { tasks?: { label?: string; status?: string }[] } | undefined
+  if (plan?.tasks && Array.isArray(plan.tasks) && plan.tasks.length > 0) {
+    const tasks: TaskItem[] = plan.tasks
+      .filter((t): t is { label: string; status: string } =>
+        typeof t.label === "string" && typeof t.status === "string"
+      )
+      .map((t, i) => ({
+        id: `${stageId}.plan-${i}`,
+        label: t.label,
+        field: `plan-${i}`,
+        status: t.status === "complete" ? ("complete" as const)
+          : t.status === "in-progress" ? ("in-progress" as const)
+          : ("pending" as const),
+      }))
+
+    if (tasks.length > 0) {
+      return {
+        stageId,
+        stageLabel: getStageLabel(stageId),
+        tasks,
+        completed: tasks.filter(t => t.status === "complete").length,
+        total: tasks.length,
+      }
+    }
+  }
+
+  // ── Fallback path: hardcoded STAGE_TASKS (existing logic, unchanged) ──
   const definitions = STAGE_TASKS[stageId]
   if (!definitions) {
     return {
@@ -168,24 +199,20 @@ export function deriveTaskList(
     }
   }
 
-  const currentStageData = (stageData[stageId] ?? {}) as Record<string, unknown>
-
   const lampiranOverride =
     stageId === "lampiran" && currentStageData.tidakAdaLampiran === true
 
   const tasks: TaskItem[] = definitions.map((def) => {
     const complete = lampiranOverride || isFieldComplete(currentStageData[def.field], def.type)
-
     return {
       id: `${stageId}.${def.field}`,
       label: def.label,
       field: def.field,
-      status: complete ? "complete" as const : "pending" as const,
+      status: complete ? ("complete" as const) : ("pending" as const),
     }
   })
 
   const completed = tasks.filter((t) => t.status === "complete").length
-
   return {
     stageId,
     stageLabel: getStageLabel(stageId),

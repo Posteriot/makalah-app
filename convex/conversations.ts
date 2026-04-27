@@ -262,15 +262,32 @@ export const createConversation = mutation({
     handler: async (ctx, { userId, title }) => {
         await requireAuthUserId(ctx, userId)
         const now = Date.now()
-        return await ctx.db.insert("conversations", {
+        const workingTitle = title ?? "Percakapan baru"
+        const conversationId = await ctx.db.insert("conversations", {
             userId,
-            title: title ?? "Percakapan baru",
+            title: workingTitle,
             titleUpdateCount: 0,
             titleLocked: false,
             createdAt: now,
             updatedAt: now,
             lastMessageAt: now,
         })
+
+        // Auto-create paper session — every conversation is a paper session.
+        // Same transaction = atomic, no race condition possible.
+        console.info(`[PAPER][auto-create] conversationId=${conversationId} stage=gagasan`)
+        await ctx.db.insert("paperSessions", {
+            userId,
+            conversationId,
+            currentStage: "gagasan",
+            stageStatus: "drafting",
+            workingTitle,
+            stageData: {},
+            createdAt: now,
+            updatedAt: now,
+        })
+
+        return conversationId
     },
 })
 

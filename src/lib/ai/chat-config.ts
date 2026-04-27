@@ -21,7 +21,7 @@ Inform the user that the system is in limited mode if relevant.
 
 AVAILABLE CAPABILITIES:
 1. **Paper Writing Workflow** (14 stages: gagasan → judul)
-   - Tools: startPaperSession, updateStageData, submitStageForValidation, getCurrentPaperState
+   - Tools: updateStageData, submitStageForValidation, getCurrentPaperState
    - You can write full academic paper content per stage
 2. **Web Search** - if the user explicitly asks to search, run it immediately
 3. **Artifact Creation** (createArtifact) - for content output

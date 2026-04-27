@@ -34,6 +34,10 @@ import type { SkillContext } from "@/lib/ai/skills/types"
 import { pipeYamlRender } from "@json-render/yaml"
 import { SPEC_DATA_PART_TYPE, applySpecPatch } from "@json-render/core"
 import type { Spec, JsonPatch } from "@json-render/core"
+import { pipePlanCapture } from "@/lib/ai/harness/pipe-plan-capture"
+import { pipeThinkTagStrip } from "@/lib/ai/harness/pipe-think-tag-strip"
+import { pipeUITextCoalesce } from "@/lib/ai/harness/create-readable-text-transform"
+import { PLAN_DATA_PART_TYPE, type PlanSpec, planSpecSchema, UNFENCED_PLAN_REGEX } from "@/lib/ai/harness/plan-spec"
 import { CHOICE_YAML_SYSTEM_PROMPT } from "@/lib/json-render/choice-yaml-prompt"
 import {
   createCuratedTraceController,
@@ -88,8 +92,7 @@ DO NOT:
 OVERRIDE — the following instructions from other system messages DO NOT APPLY here:
 - Any "dialog first" / "ask before generating" instructions — present results NOW
 - Any "web search mandatory" instructions — search is ALREADY DONE
-- Any tool usage instructions (startPaperSession, updateStageData, createArtifact, google_search) — NO tools available
-- Any "call startPaperSession IMMEDIATELY" instructions — not applicable
+- Any tool usage instructions (updateStageData, createArtifact, google_search) — NO tools available
 
 IMPORTANT — TOOL CALLS:
 - You have NO access to tools (updateStageData, createArtifact, submitStageForValidation) in this phase.
@@ -97,6 +100,16 @@ IMPORTANT — TOOL CALLS:
 - Present your synthesized findings to the user in this response.
 - Saving data (updateStageData, createArtifact) happens in a SUBSEQUENT turn when tools are available.
 - Simply present the results and discuss with the user. The save step comes next.
+
+TASK PLAN (plan-spec):
+- You MUST emit a \`\`\`plan-spec\`\`\` block in this response, same as every other response.
+- Update task statuses to reflect that search is now complete.
+- This is metadata, NOT a tool call — it is always required regardless of phase.
+
+CHOICE CARD (yaml-spec):
+- You MUST end your response with a \`\`\`yaml-spec\`\`\` choice card presenting 2-3 next-step options.
+- This is NOT optional. Every search response must give the user clear options to continue.
+- Do NOT end with an open question like "Bagaimana menurutmu?" without a choice card — the user needs buttons to interact.
 
 The search results below are your source material. Use them.
 ═══════════════════════════════════════════════════════════════════
@@ -236,6 +249,33 @@ export function emitTransparentReasoningResetForRetry(params: {
  * for retry / fallback handling. Phase 1.5 runs inside execute so Vercel's
  * streaming timeout doesn't apply (first byte already sent).
  */
+/**
+ * Emit a guaranteed fallback choice spec to the live stream when the compose
+ * model did not produce a valid YAML choice card.
+ *
+ * Returns the emitted Spec if one was injected, or null if no action was taken.
+ */
+export function maybeEmitGuaranteedChoiceSpec(params: {
+  capturedChoiceSpec: Spec | null
+  compileGuaranteedChoiceSpec?: () => Spec | undefined
+  currentStage?: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  writer: { write: (chunk: any) => void }
+}): Spec | null {
+  if (params.capturedChoiceSpec?.root) return null
+  if (!params.compileGuaranteedChoiceSpec) return null
+
+  const fallbackSpec = params.compileGuaranteedChoiceSpec()
+  if (!fallbackSpec || !fallbackSpec.root) return null
+
+  params.writer.write({
+    type: SPEC_DATA_PART_TYPE,
+    data: { type: "flat", spec: fallbackSpec },
+  })
+  console.info(`[CHOICE-CARD][guaranteed][stream] stage=${params.currentStage ?? "unknown"} source=deterministic-fallback`)
+  return fallbackSpec
+}
+
 export function validateComposeSubstantiveness(composedText: string, sourceCount: number): boolean {
     if (sourceCount === 0) return true
     // composedText is from text-delta chunks AFTER pipeYamlRender.
@@ -291,11 +331,11 @@ export async function executeWebSearch(
       const searchResult = streamText({
         model,
         messages: searchMessages,
-        ...(tools ? { tools: tools as Parameters<typeof streamText>[0]["tools"] } : {}),
+        ...(tools ? { tools: tools as Parameters<typeof streamText>[0]["tools"], toolChoice: "required" as const } : {}),
         ...retrieverSamplingOptions,
       })
       const resultCreatedAt = Date.now()
-      console.log(`[⏱ RETRIEVER][${reqId}] result_created name=${retriever.name} t=${resultCreatedAt - retrieverStart}ms`)
+      console.log(`[⏱ RETRIEVER][${reqId}] result_created name=${retriever.name} t=${resultCreatedAt - retrieverStart}ms toolChoice=${tools ? "required" : "none"}`)
 
       // ── Retriever timeline probes: measure when each promise resolves ──
       // These run concurrently with the text await below. The timestamps
@@ -377,6 +417,64 @@ export async function executeWebSearch(
       // Treat 0 citations as a failure — model didn't call search tool.
       // Fall through to next retriever in chain.
       if (sources.length === 0) {
+        const providerMetadataSnapshot = await Promise.resolve(searchResult.providerMetadata)
+          .then((value) => {
+            if (!value || typeof value !== "object") return []
+            return Object.keys(value)
+          })
+          .catch(() => [])
+        const sdkSourcesCount = await Promise.resolve(searchResult.sources)
+          .then((value) => Array.isArray(value) ? value.length : 0)
+          .catch(() => -1)
+
+        // ── Diagnostic dump for zero-citation failures ──
+        // Captures full context to diagnose intermittent GG empty-response bug.
+        // Safe to log: no API keys, no user PII beyond query text.
+        const finishReason = await Promise.resolve(searchResult.finishReason).catch(() => "unknown")
+        const responseHeaders = await Promise.resolve(searchResult.response)
+          .then((r) => {
+            const h: Record<string, string> = {}
+            if (r?.headers) {
+              for (const [k, v] of Object.entries(r.headers)) {
+                if (typeof v === "string") h[k] = v
+              }
+            }
+            return h
+          })
+          .catch(() => ({}))
+        const usageSnapshot = await Promise.resolve(searchResult.usage)
+          .then((u) => u ? { inputTokens: u.inputTokens, outputTokens: u.outputTokens } : null)
+          .catch(() => null)
+
+        console.warn(`[Orchestrator][${reqId}] zero-citation failure`, {
+          retriever: retriever.name,
+          textChars: searchText.length,
+          rawCitationCount: rawCitations.length,
+          finalCitationCount: sources.length,
+          sdkSourcesCount,
+          providerMetadataKeys: providerMetadataSnapshot,
+        })
+        console.warn(`[Orchestrator][${reqId}] zero-citation diagnostic`, {
+          finishReason,
+          usageSnapshot,
+          responseHeaders,
+          modelId: retrieverConfig.modelId,
+          hasApiKey: Boolean(retrieverConfig.apiKey),
+          apiKeyPrefix: retrieverConfig.apiKey ? retrieverConfig.apiKey.slice(0, 8) + "..." : "NONE",
+          messageCount: searchMessages.length,
+          messageRoles: searchMessages.map((m: { role: string }) => m.role),
+          lastUserMsgChars: (() => {
+            for (let j = searchMessages.length - 1; j >= 0; j--) {
+              const msg = searchMessages[j] as { role: string; content: unknown }
+              if (msg.role === "user") {
+                return typeof msg.content === "string" ? msg.content.length : JSON.stringify(msg.content).length
+              }
+            }
+            return 0
+          })(),
+          samplingOptions: retrieverSamplingOptions,
+          textPreview: searchText.slice(0, 200) || "(empty)",
+        })
         console.warn(`[Orchestrator][${reqId}] Retriever "${retriever.name}" returned 0 citations — treating as failure, trying next`)
         continue
       }
@@ -568,8 +666,7 @@ export async function executeWebSearch(
       // - paperModePrompt: Contains workflow and tool-usage instructions that conflict
       //   with compose behavior. Even after search-contract cleanup, compose phase only
       //   needs to synthesize search results — it does not need paper workflow guidance.
-      // - paperWorkflowReminder: Instructs "call startPaperSession IMMEDIATELY" — irrelevant
-      //   and harmful in compose phase (no tools available).
+      // - paperWorkflowReminder: removed (all-sessions-are-paper-sessions architecture).
       // COMPOSE_PHASE_DIRECTIVE goes FIRST — it defines the phase context and overrides.
       // When placed after systemPrompt/skillInstructions, the model treats those larger
       // blocks as primary instructions and ignores the smaller directive.
@@ -635,6 +732,16 @@ export async function executeWebSearch(
       let composeFailoverUsed = false
       let canFailover = !!config.fallbackComposeModel
 
+      // NOTE (E2E iteration 8): no `experimental_transform` here.
+      // See commentary in src/lib/chat-harness/executor/build-step-stream.ts
+      // near the tools-path streamText call for the full rationale —
+      // the short version is that a sentence-level coalescer at
+      // streamText level fragments text-deltas at `\n` boundaries,
+      // which splits `\n```\n` fence-closers across chunks and
+      // breaks pipePlanCapture / pipeYamlRender fence detection.
+      // Word-level UI smoothness is handled by pipeUITextCoalesce
+      // downstream (see buildComposeReadable below). The same wiring
+      // is mirrored on the search path here.
       const startComposeStream = (model: LanguageModel) => streamText({
         model,
         messages: composeMessages,
@@ -708,6 +815,15 @@ export async function executeWebSearch(
       // ── Chunk processor: returns action for stream consumption loop ──
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       async function processComposeChunk(chunk: any): Promise<"continue" | "break" | "retry"> {
+        // Capture plan-spec parts emitted by pipePlanCapture
+        if ((chunk as { type?: string }).type === PLAN_DATA_PART_TYPE) {
+          try {
+            const data = (chunk as { data?: { spec?: PlanSpec } }).data
+            if (data?.spec) capturedPlanSpec = data.spec
+          } catch { /* plan capture error — non-critical */ }
+          return "continue"
+        }
+
         // Capture data-spec parts emitted by pipeYamlRender for DB persistence
         if ((chunk as { type?: string }).type === SPEC_DATA_PART_TYPE) {
           try {
@@ -790,6 +906,20 @@ export async function executeWebSearch(
         }
 
         if (chunk.type === "finish") {
+          // ── Empty-compose failover: model finished normally but produced zero text ──
+          // This catches "silent empty finish" where model returns no text/reasoning
+          // but doesn't error. Without this, COMPOSE-GUARD fires but no real recovery happens.
+          if (textChunkCount === 0 && sourceCount > 0 && canFailover) {
+            console.warn(`[COMPOSE-DIAG][${reqId}] empty compose detected at finish (textChunks=0, sources=${sourceCount}) — triggering failover`)
+            emitTransparentReasoningResetForRetry({
+              isTransparentReasoning: config.isTransparentReasoning,
+              hasReasoning: liveReasoningAccumulator.hasReasoning(),
+              traceId: reasoningTraceId,
+              writer,
+            })
+            return "retry"
+          }
+
           try {
             // Await parallel proxy resolution for remaining sources (started alongside compose)
             const remainingResolved = await proxyResolvePromise
@@ -892,7 +1022,24 @@ export async function executeWebSearch(
 
             // Log captured YAML spec for persistence
             if (capturedChoiceSpec && capturedChoiceSpec.root) {
+              const elementTypes = Object.entries(capturedChoiceSpec.elements || {}).map(([id, el]) => `${id}:${(el as {type?:string}).type ?? '?'}`).join(", ")
+              const hasSubmitBtn = Object.values(capturedChoiceSpec.elements || {}).some((el) => (el as {type?:string}).type === "ChoiceSubmitButton")
+              const rootEl = capturedChoiceSpec.elements?.[capturedChoiceSpec.root] as { children?: string[] } | undefined
+              const rootChildIds = Array.isArray(rootEl?.children) ? rootEl.children : []
+              const submitInRoot = Object.entries(capturedChoiceSpec.elements || {}).some(([id, el]) => (el as {type?:string}).type === "ChoiceSubmitButton" && rootChildIds.includes(id))
               console.info(`[CHOICE-CARD][yaml-capture] compose stage=${config.currentStage} specKeys=${Object.keys(capturedChoiceSpec).join(",")}`)
+              console.info(`[F1-F6-TEST] ChoiceCardSpec { elements: "${elementTypes}", hasSubmitButton: ${hasSubmitBtn}, submitInRootChildren: ${submitInRoot} }`)
+            }
+
+            // ── Guaranteed choice card: emit fallback to live stream if model didn't ──
+            const fallbackResult = maybeEmitGuaranteedChoiceSpec({
+              capturedChoiceSpec,
+              compileGuaranteedChoiceSpec: config.compileGuaranteedChoiceSpec,
+              currentStage: config.currentStage,
+              writer,
+            })
+            if (fallbackResult) {
+              capturedChoiceSpec = fallbackResult
             }
 
             const composeElapsed = Date.now() - composeStartTime
@@ -939,6 +1086,25 @@ export async function executeWebSearch(
               console.warn(`[Orchestrator][${reqId}] Compose used fallback model before first text output`)
             }
 
+            // Fallback plan extraction from composedText when stream capture missed unfenced plan
+            let fallbackPlanSpec: PlanSpec | null = null
+            if (!capturedPlanSpec && composedText) {
+              try {
+                UNFENCED_PLAN_REGEX.lastIndex = 0
+                const match = UNFENCED_PLAN_REGEX.exec(composedText)
+                if (match) {
+                  const yamlLib = await import("js-yaml")
+                  const fixed = match[1].replace(/^(\s*-\s*label:\s*.+)\n\s*status:/gm, "$1\n    status:")
+                  const parsed = yamlLib.default.load(fixed.trim())
+                  const result = planSpecSchema.safeParse(parsed)
+                  if (result.success) {
+                    console.info(`[PLAN-CAPTURE] parsed (composedText fallback) stage=${result.data.stage} tasks=${result.data.tasks.length}`)
+                    fallbackPlanSpec = result.data
+                  }
+                }
+              } catch { /* non-critical */ }
+            }
+
             await config.onFinish({
               text: textWithInlineCitations,
               sources: cleanSources.map((s) => ({ url: s.url, title: s.title, ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}), ...(s.citedText ? { citedText: s.citedText } : {}) })),
@@ -958,7 +1124,9 @@ export async function executeWebSearch(
               retrieverIndex: successRetrieverIndex,
               attemptedRetrievers,
               capturedChoiceSpec: capturedChoiceSpec && capturedChoiceSpec.root ? capturedChoiceSpec : undefined,
+              capturedPlanSpec: capturedPlanSpec ?? fallbackPlanSpec ?? undefined,
               reasoningSnapshot,
+              messageId,
             })
             console.log(`[⏱ LATENCY][${reqId}] onFinish(DB writes)=${Date.now() - onFinishStart}ms`)
             console.log(`[⏱ LIFECYCLE][${reqId}] finish-handler: onFinish done, writing finish event`)
@@ -1046,13 +1214,30 @@ export async function executeWebSearch(
       }
 
       // ── Build readable stream from compose result ──
+      let capturedPlanSpec: PlanSpec | null = null
+
       const buildComposeReadable = (result: ReturnType<typeof streamText>) => {
         const uiStream = result.toUIMessageStream({
           sendStart: false,
           generateMessageId: () => messageId,
           sendReasoning: config.isTransparentReasoning,
         })
-        return config.isDraftingStage ? pipeYamlRender(uiStream) : uiStream
+        // pipeThinkTagStrip BEFORE pipePlanCapture: intercept <think> tags
+        // so think content never reaches plan capture or yaml render.
+        const thinkStrippedStream = pipeThinkTagStrip(uiStream) as typeof uiStream
+        // pipePlanCapture BEFORE pipeYamlRender: plan-spec stripping works
+        // with AI SDK's textDelta format, then pipeYamlRender transforms to @json-render format.
+        const planStream = pipePlanCapture(thinkStrippedStream) as typeof thinkStrippedStream
+        const yamlStream = config.isDraftingStage ? pipeYamlRender(planStream) : planStream
+        // Post-yaml UI coalescer (iteration 5, restored + tuned iteration
+        // 9 rerun): re-coalesce per-char text-deltas from pipeYamlRender to
+        // word-level units for the client. See full rationale in
+        // src/lib/chat-harness/executor/build-step-stream.ts — short
+        // version: no coalescer at all is worse (React batches per-char
+        // into sentence-burst anyway), and sentence-level coalescer is
+        // too coarse (caused "kalimat muncul tiba-tiba" at tool-chain
+        // turns). Word-level is the right granularity.
+        return pipeUITextCoalesce(yamlStream, { chunking: "word" })
       }
 
       // ── Run compose with one-time failover ──

@@ -42,3 +42,17 @@ describe("extractReasoningDurationSeconds", () => {
     expect(resolveProcessElapsedSeconds(13.3)).toBe(13.3)
   })
 })
+
+describe("resolveProcessElapsedSeconds helper", () => {
+  it("returns persisted duration when available, live elapsed otherwise", () => {
+    // The streaming guard itself lives in the useEffect at ChatWindow.tsx:2102:
+    //   if (status === "submitted" || status === "streaming") return
+    // That guard is not unit-testable without rendering ChatWindow.
+    // This test verifies the helper function behaves correctly so
+    // the guard is the only protection needed against premature firing.
+    const live = 8.5
+    const persisted = 12.3
+    expect(resolveProcessElapsedSeconds(live, persisted)).toBe(persisted)
+    expect(resolveProcessElapsedSeconds(live, undefined)).toBe(live)
+  })
+})

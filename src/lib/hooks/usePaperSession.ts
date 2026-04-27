@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { PaperStageId, STAGE_ORDER, getStageLabel, getStageNumber } from "../../../convex/paperSessions/constants";
@@ -92,7 +92,7 @@ export function calculateCurrentStageStartIndex(
     return messages.length;
 }
 
-export const usePaperSession = (conversationId?: Id<"conversations">) => {
+export const usePaperSession = (conversationId?: Id<"conversations">, userId?: Id<"users">) => {
     const { isAuthenticated } = useConvexAuth();
 
     const session = useQuery(
@@ -107,8 +107,51 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
     const markStageAsDirtyMutation = useMutation(api.paperSessions.markStageAsDirty);
     const rewindToStageMutation = useMutation(api.paperSessions.rewindToStage);
     const createMessageMutation = useMutation(api.messages.createMessage);
+    const ensurePaperSessionMutation = useMutation(api.paperSessions.ensurePaperSessionExists);
 
-    const isPaperMode = !!session;
+    // Phase 8 — harness pause/resume mutations.
+    // These run ADDITIVELY (not as a replacement) before approveStage/requestRevision
+    // when a paused harness run exists for the current conversation. The paper-domain
+    // mutations remain authoritative for stage progression; the harness layer only
+    // needs to learn that the decision was resolved so the paused run can continue.
+    const resolveDecisionMutation = useMutation(api.harnessDecisions.resolveDecision);
+    const resumeRunMutation = useMutation(api.harnessRuns.resumeRun);
+
+    // Subscribe to the latest paused harness run bound to this conversation.
+    // Returns null when no paused run exists (common case) or when auth/ownership
+    // fails. UI consumers (ChatWindow) read `_id` for the `x-harness-resume` header.
+    const pausedHarnessRun = useQuery(
+        api.harnessRuns.getRunByConversation,
+        conversationId && isAuthenticated
+            ? { conversationId, statusFilter: "paused" as const }
+            : "skip"
+    );
+
+    // 3-state model:
+    // - "loading": Convex query hasn't resolved yet (session === undefined)
+    // - "ready": session exists and is loaded
+    // - "absent": query resolved but no session found (legacy conversation pre-migration)
+    const sessionState: "loading" | "ready" | "absent" =
+        session === undefined ? "loading" :
+        session === null ? "absent" :
+        "ready";
+    // isPaperMode: true only when session actually exists and is loaded
+    const isPaperMode = sessionState === "ready";
+
+    // Lazy migration: auto-create paper session for legacy conversations on UI read path.
+    // When session is "absent" and we have both conversationId and userId,
+    // call ensurePaperSessionExists. Convex reactivity will auto-update the query.
+    // TODO(2026-05-15): Remove after all active conversations have been migrated.
+    const migrationAttempted = useRef(false);
+    useEffect(() => {
+        if (sessionState === "absent" && conversationId && userId && !migrationAttempted.current) {
+            migrationAttempted.current = true;
+            console.info(`[PAPER][lazy-migration-ui] Creating paper session for legacy conversation ${conversationId}`);
+            ensurePaperSessionMutation({ userId, conversationId }).catch((err) => {
+                console.error(`[PAPER][lazy-migration-ui] Failed:`, err);
+            });
+        }
+    }, [sessionState, conversationId, userId, ensurePaperSessionMutation]);
 
     const approveStage = async (userId: Id<"users">) => {
         if (!session) return;
@@ -116,6 +159,42 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
             sessionId: session._id,
             userId,
         });
+    };
+
+    /**
+     * Phase 8 — resolve the pending decision + resume the paused harness run.
+     *
+     * Call this BEFORE approveStage / requestRevision when a paused run exists.
+     * ADDITION pattern (Q4 decision): the paper-domain mutation still runs after
+     * this helper returns — resume only tells the harness layer "the decision
+     * was answered", it does not replace the paper workflow transition.
+     *
+     * Returns `null` when there is no paused run or no pending decision, so
+     * callers can invoke it unconditionally (cheap no-op in the common path).
+     *
+     * `resolution` mirrors the harnessDecisions.resolveDecision contract:
+     *   - "resolved"  → user answered (approve or revise → both map here;
+     *                   the answer is carried in `response.decision`).
+     *   - "declined"  → user actively cancelled / dismissed the decision
+     *                   (not used by the approve/revise flow in this task).
+     */
+    const resolveAndResume = async (
+        resolution: "resolved" | "declined",
+        response?: Record<string, unknown>,
+    ): Promise<{ resumedRunId: Id<"harnessRuns"> } | null> => {
+        if (!pausedHarnessRun || !pausedHarnessRun.pendingDecisionId) return null;
+
+        const runId = pausedHarnessRun._id;
+        const ownerToken = pausedHarnessRun.ownerToken;
+        const decisionId = pausedHarnessRun.pendingDecisionId;
+
+        await resolveDecisionMutation({
+            decisionId,
+            resolution,
+            ...(response !== undefined ? { response } : {}),
+        });
+        await resumeRunMutation({ runId, ownerToken });
+        return { resumedRunId: runId };
     };
 
     const requestRevision = async (userId: Id<"users">, feedback: string, trigger?: "panel" | "model") => {
@@ -226,6 +305,7 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
 
     return {
         session,
+        sessionState,
         isPaperMode,
         currentStage,
         stageStatus: session?.stageStatus,
@@ -242,5 +322,8 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
         getStageStartIndex,
         checkMessageInCurrentStage,
         isLoading: session === undefined,
+        // Phase 8 — harness pause/resume surface
+        pausedHarnessRun,
+        resolveAndResume,
     };
 };

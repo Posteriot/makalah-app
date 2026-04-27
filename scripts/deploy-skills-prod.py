@@ -6,8 +6,8 @@ import sys
 import os
 
 ADMIN_ID = "jn755zs64zgafr0mn4qhrghzwn7x6y48"
-CHANGE_NOTE = "updated-4: AI awareness patches + exact source system + canonical article metadata contract + metadata discipline"
-SRC_DIR = ".references/system-prompt-skills-active/updated-4"
+CHANGE_NOTE = "updated-7: agent harness v1 + auth recovery + rollback plan"
+SRC_DIR = ".references/system-prompt-skills-active/updated-7"
 CONVEX_FLAGS = ["--prod"]
 
 SKILLS = [
@@ -94,6 +94,27 @@ def main():
             })
             print(f"  {skill_id}: v{version} active")
             success += 1
+
+            # Archive stale drafts — prevents dry run from picking abandoned drafts
+            # over the active version (dry run prioritizes latestDraft over active).
+            try:
+                history = convex_run("stageSkills:getVersionHistory", {
+                    "requestorUserId": ADMIN_ID,
+                    "skillId": skill_id,
+                })
+                stale_drafts = [
+                    v for v in history["versions"]
+                    if v["status"] == "draft" and v["version"] != version
+                ]
+                for stale in stale_drafts:
+                    convex_run("stageSkills:archiveVersion", {
+                        "requestorUserId": ADMIN_ID,
+                        "skillId": skill_id,
+                        "version": stale["version"],
+                    })
+                    print(f"    archived stale draft v{stale['version']}")
+            except Exception:
+                pass  # non-critical — stale drafts don't break activation
 
         except RuntimeError as e:
             print(f"  {skill_id}: FAIL — {e}")

@@ -82,7 +82,9 @@ export const listByConversation = queryGeneric({
       .order("desc")
       .collect()
 
-    const ownedArtifacts = artifacts.filter((artifact) => artifact.userId === userId)
+    const ownedArtifacts = artifacts.filter(
+      (artifact) => artifact.userId === userId && !artifact.invalidatedAt
+    )
 
     // Filter by type if specified
     if (type) {
@@ -164,7 +166,7 @@ export const listLatestByConversationIds = queryGeneric({
           .collect()
 
         return getLatestArtifactsForConversation(
-          artifacts.filter((artifact) => artifact.userId === userId)
+          artifacts.filter((artifact) => artifact.userId === userId && !artifact.invalidatedAt)
         )
       })
     )
@@ -541,6 +543,14 @@ export const update = mutationGeneric({
       // Rewind Feature: Auto-clear invalidation for new versions
       // New version starts clean, even if previous version was invalidated
       invalidatedAt: undefined,
+      invalidatedByRewindToStage: undefined,
+    })
+
+    // Mark old version as superseded so it no longer appears in artifact lists.
+    // Without this, rewind/cancel that invalidates the NEW version would leave
+    // the old version visible (it was never explicitly invalidated).
+    await db.patch(artifactId, {
+      invalidatedAt: now,
       invalidatedByRewindToStage: undefined,
     })
 

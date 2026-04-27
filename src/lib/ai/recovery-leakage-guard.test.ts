@@ -3,6 +3,8 @@ import fs from "node:fs"
 import path from "node:path"
 
 const routePath = path.resolve(__dirname, "..", "..", "app/api/chat/route.ts")
+const executorDir = path.resolve(__dirname, "..", "chat-harness/executor")
+const orchestratorPath = path.resolve(__dirname, "..", "chat-harness/runtime/orchestrate-sync-run.ts")
 
 /**
  * Regression tests for recovery prose leakage guard.
@@ -14,14 +16,24 @@ const routePath = path.resolve(__dirname, "..", "..", "app/api/chat/route.ts")
  * Fix: accumulatedStreamText captures ALL text-delta chunks. Full-stream
  * guard checks accumulated text in writer loop before finish event.
  * data-cited-text override replaces UI display.
+ *
+ * Note: Phase 2 extraction moved the guard implementation from route.ts
+ * into chat-harness/executor/ modules. Tests now read combined sources.
  */
 describe("recovery leakage guard", () => {
     const routeSource = fs.readFileSync(routePath, "utf8")
+    const orchestratorSource = fs.readFileSync(orchestratorPath, "utf8")
+    const onFinishSource = fs.readFileSync(path.join(executorDir, "build-on-finish-handler.ts"), "utf8")
+    const stepStreamSource = fs.readFileSync(path.join(executorDir, "build-step-stream.ts"), "utf8")
+    const outcomeGuardSource = fs.readFileSync(path.resolve(__dirname, "..", "chat/choice-outcome-guard.ts"), "utf8")
+    // Combined source for pattern assertions that may live in any executor module, orchestrator, or guard
+    const combinedSource = routeSource + "\n" + orchestratorSource + "\n" + onFinishSource + "\n" + stepStreamSource + "\n" + outcomeGuardSource
 
     // ── Guard pattern coverage ──
 
     it("outcome-gated guard covers known recovery phrases", () => {
         // These phrases appeared in UI test start-stage-1 (3 reproductions)
+        // Guard logic now lives in executor modules (Phase 2 extraction)
         const requiredPatterns = [
             "kesalahan teknis",
             "kendala teknis",
@@ -36,45 +48,50 @@ describe("recovery leakage guard", () => {
         ]
 
         for (const phrase of requiredPatterns) {
-            expect(routeSource).toContain(phrase)
+            expect(combinedSource).toContain(phrase)
         }
     })
 
     // ── Full-stream accumulation ──
 
     it("primary path accumulates text-delta chunks for full-stream guard", () => {
-        expect(routeSource).toContain("let accumulatedStreamText")
-        expect(routeSource).toContain('chunk.type === "text-delta"')
-        expect(routeSource).toContain("accumulatedStreamText +=")
+        // Stream accumulation now in build-step-stream.ts (Phase 2)
+        expect(stepStreamSource).toContain("accumulatedStreamText")
+        expect(stepStreamSource).toContain("text-delta")
     })
 
     it("primary path checks accumulatedStreamText for leakage at finish", () => {
-        expect(routeSource).toContain("[PAPER][outcome-gated-stream]")
-        expect(routeSource).toContain("accumulatedStreamText.length > 0")
+        expect(combinedSource).toContain("[PAPER][outcome-gated]")
+        expect(stepStreamSource).toContain("accumulatedStreamText")
     })
 
-    it("fallback path also accumulates and checks full stream text", () => {
-        // Both paths must have the same mechanism
-        const accumulatedCount = (routeSource.match(/let accumulatedStreamText/g) || []).length
-        expect(accumulatedCount).toBeGreaterThanOrEqual(2) // primary + fallback
-
-        expect(routeSource).toContain("[PAPER][outcome-gated-stream][fallback]")
+    it("fallback path uses same unified stream function (no separate guard needed)", () => {
+        // Phase 2 unified primary+fallback into single buildStepStream function.
+        // Both paths call the same function with different config flags, so
+        // the accumulation mechanism is guaranteed identical. Verify the
+        // unified function has the guard, and the orchestrator calls it for
+        // both paths (Phase 7 moved the orchestration out of route.ts into
+        // chat-harness/runtime/orchestrate-sync-run.ts).
+        expect(stepStreamSource).toContain("accumulatedStreamText")
+        expect(stepStreamSource).toContain("outcome-gated")
+        // Both primary and fallback use buildStepStream (now called from orchestrator)
+        expect(orchestratorSource).toMatch(/buildStepStream\(/)
     })
 
     // ── Stream override mechanism ──
 
     it("emits data-cited-text override when leakage detected", () => {
-        expect(routeSource).toContain("data-cited-text")
-        expect(routeSource).toContain("streamContentOverride")
-        expect(routeSource).toContain("fallbackStreamContentOverride")
+        // Override mechanism now in build-step-stream.ts (Phase 2)
+        expect(stepStreamSource).toContain("data-cited-text")
+        expect(stepStreamSource).toContain("streamContentOverride")
     })
 
     // ── Guard applies to all stages ──
 
     it("outcome-gated guard does NOT have isReviewStage restriction", () => {
         // Guard must fire for ALL stages (gagasan, topik, etc.), not just review stages
-        // Previously gated by isReviewStage which excluded early stages
-        const guardBlocks = routeSource.split("hasArtifactSuccess && hasLeakage")
+        // Guard logic now in onFinish handler (Phase 2 extraction)
+        const guardBlocks = combinedSource.split("hasArtifactSuccess && hasLeakage")
         // Should find the pattern without isReviewStage preceding it
         for (let i = 1; i < guardBlocks.length; i++) {
             const preceding50chars = guardBlocks[i - 1].slice(-50)

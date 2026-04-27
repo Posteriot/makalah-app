@@ -6,7 +6,8 @@ vi.mock("next/headers", () => ({
 
 import {
   getTokenFromBetterAuthCookies,
-  isAuthenticatedFromBetterAuthCookies,
+  isAuthProxyNetworkError,
+  runAuthProxyWithBoundary,
 } from "@/lib/auth-server"
 
 describe("auth-server session validation", () => {
@@ -20,8 +21,8 @@ describe("auth-server session validation", () => {
     )
 
     await expect(
-      isAuthenticatedFromBetterAuthCookies("session=abc"),
-    ).resolves.toBe(false)
+      getTokenFromBetterAuthCookies("session=abc"),
+    ).resolves.toBeNull()
   })
 
   it("accepts valid BetterAuth cookies when token endpoint returns a token", async () => {
@@ -32,16 +33,7 @@ describe("auth-server session validation", () => {
           headers: { "content-type": "application/json" },
         }),
       )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ token: "convex-token" }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-      )
 
-    await expect(
-      isAuthenticatedFromBetterAuthCookies("session=abc"),
-    ).resolves.toBe(true)
     await expect(
       getTokenFromBetterAuthCookies("session=abc"),
     ).resolves.toBe("convex-token")
@@ -50,9 +42,6 @@ describe("auth-server session validation", () => {
   it("keeps soft-pass behavior on transient network failure", async () => {
     vi.spyOn(global, "fetch").mockRejectedValue(new Error("ETIMEDOUT"))
 
-    await expect(
-      isAuthenticatedFromBetterAuthCookies("session=abc"),
-    ).resolves.toBe(true)
     await expect(
       getTokenFromBetterAuthCookies("session=abc"),
     ).resolves.toBeNull()
@@ -64,9 +53,6 @@ describe("auth-server session validation", () => {
     )
 
     await expect(
-      isAuthenticatedFromBetterAuthCookies("session=abc"),
-    ).resolves.toBe(true)
-    await expect(
       getTokenFromBetterAuthCookies("session=abc"),
     ).resolves.toBeNull()
   })
@@ -75,10 +61,84 @@ describe("auth-server session validation", () => {
     vi.spyOn(global, "fetch").mockRejectedValue(new DOMException("Signal timed out", "TimeoutError"))
 
     await expect(
-      isAuthenticatedFromBetterAuthCookies("session=abc"),
-    ).resolves.toBe(true)
-    await expect(
       getTokenFromBetterAuthCookies("session=abc"),
     ).resolves.toBeNull()
+  })
+
+  it("retries once and succeeds after a transient network failure", async () => {
+    vi.spyOn(global, "fetch")
+      .mockRejectedValueOnce(new Error("ETIMEDOUT"))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ token: "convex-token" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+
+    await expect(
+      getTokenFromBetterAuthCookies("session=abc"),
+    ).resolves.toBe("convex-token")
+  })
+
+  it("retries once and succeeds after a transient 5xx response", async () => {
+    vi.spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response("Internal Server Error", { status: 502 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ token: "convex-token" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+
+    await expect(
+      getTokenFromBetterAuthCookies("session=abc"),
+    ).resolves.toBe("convex-token")
+  })
+
+  it("classifies nested ETIMEDOUT fetch failures from the auth proxy", () => {
+    const error = new TypeError("fetch failed", {
+      cause: new AggregateError(
+        [Object.assign(new Error("connect timeout"), { code: "ETIMEDOUT" })],
+      ),
+    })
+
+    expect(isAuthProxyNetworkError(error)).toBe(true)
+  })
+
+  it("converts auth proxy network failures to a controlled 503 response", async () => {
+    const routeHandler = vi.fn(async () => {
+      throw new TypeError("fetch failed", {
+        cause: new AggregateError(
+          [Object.assign(new Error("connect timeout"), { code: "ETIMEDOUT" })],
+        ),
+      })
+    })
+
+    const response = await runAuthProxyWithBoundary(
+      routeHandler,
+      new Request("https://makalah.test/api/auth/get-session"),
+    )
+
+    await expect(response.json()).resolves.toEqual({
+      error: "auth_service_unavailable",
+    })
+    expect(response.status).toBe(503)
+    expect(response.headers.get("cache-control")).toBe("no-store")
+  })
+
+  it("does not hide non-network auth proxy failures", async () => {
+    const error = new Error("unexpected auth route bug")
+    const routeHandler = vi.fn(async () => {
+      throw error
+    })
+
+    await expect(
+      runAuthProxyWithBoundary(
+        routeHandler,
+        new Request("https://makalah.test/api/auth/get-session"),
+      ),
+    ).rejects.toBe(error)
   })
 })

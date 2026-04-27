@@ -155,6 +155,18 @@ function Verify2FAPage() {
     }
   }, [router, signInHref])
 
+  // Reset submit guard when page is restored from bfcache (browser back button)
+  useEffect(() => {
+    const handlePageShow = () => {
+      isSubmitting.current = false
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[AUTH-HARDENING] bfcache restore — reset isSubmitting")
+      }
+    }
+    window.addEventListener("pageshow", handlePageShow)
+    return () => window.removeEventListener("pageshow", handlePageShow)
+  }, [])
+
   const startResendCooldown = useCallback(() => {
     setResendCooldown(60)
     const interval = setInterval(() => {
@@ -406,11 +418,13 @@ function Verify2FAPage() {
             <div>
               {method === "otp" ? (
                 <>
-                  <label className="sr-only">Kode OTP</label>
+                  <label htmlFor="otp-digit-0" className="sr-only">Kode OTP</label>
                   <div className="grid grid-cols-6 gap-2.5" onPaste={handleBoxPaste}>
                     {digits.map((digit, i) => (
                       <input
                         key={i}
+                        id={`otp-digit-${i}`}
+                        aria-label={`Digit ${i + 1} dari 6`}
                         ref={(el) => { boxRefs.current[i] = el }}
                         type="text"
                         inputMode="numeric"

@@ -12,6 +12,7 @@ export type FetchRouteKind =
   | "pdf_or_download"
   | "academic_wall_risk"
   | "proxy_or_redirect_like"
+  | "journal_direct_tavily"
 
 export type FetchFailureReason =
   | "timeout"
@@ -79,6 +80,7 @@ export function classifyFetchRoute(url: string): FetchRouteKind {
   if (isProxyLikeHost(hostname)) return "proxy_or_redirect_like"
   if (isPdfOrDownloadPath(pathname)) return "pdf_or_download"
   if (isAcademicWallHost(hostname, pathname)) return "academic_wall_risk"
+  if (isSlowJournalHost(hostname)) return "journal_direct_tavily"
 
   return "html_standard"
 }
@@ -124,7 +126,7 @@ export async function fetchPageContent(
     const url = urls[index]
     const routeKind = classifyFetchRoute(url)
 
-    if (routeKind === "pdf_or_download") {
+    if (routeKind === "pdf_or_download" || routeKind === "journal_direct_tavily") {
       if (!hasTavily) {
         const startedAt = Date.now()
         logRouteOutcome(reqTag, "ROUTE", index + 1, urls.length, {
@@ -337,6 +339,7 @@ function getRouteTimeoutMs(routeKind: FetchRouteKind, baseTimeoutMs: number): nu
     case "html_standard":
       return Math.min(baseTimeoutMs, HTML_STANDARD_TIMEOUT_MS)
     case "pdf_or_download":
+    case "journal_direct_tavily":
       return baseTimeoutMs
   }
 }
@@ -924,6 +927,15 @@ function isAcademicWallHost(hostname: string, pathname: string): boolean {
 
 function matchesHostOrSubdomain(hostname: string, candidateHost: string): boolean {
   return hostname === candidateHost || hostname.endsWith(`.${candidateHost}`)
+}
+
+const JOURNAL_HOSTNAME_KEYWORDS = ["journal", "jurnal", "ejournal"]
+const JOURNAL_DIRECT_TLDS = [".ac.id", ".sch.id"]
+
+function isSlowJournalHost(hostname: string): boolean {
+  if (JOURNAL_DIRECT_TLDS.some((tld) => hostname.endsWith(tld))) return true
+  const parts = hostname.split(".")
+  return parts.some((part) => JOURNAL_HOSTNAME_KEYWORDS.includes(part))
 }
 
 function isPdfOrDownloadPath(pathname: string): boolean {

@@ -41,7 +41,7 @@ interface ChatContainerProps {
 export function ChatContainer({ conversationId }: ChatContainerProps) {
   const containerRenderCount = useRef(0)
   const { user } = useCurrentUser()
-  const { data: session, isPending: isSessionPending } = useSession()
+  const { data: session, isPending: isSessionPending, error: sessionError } = useSession()
   const searchParams = useSearchParams()
   const router = useRouter()
   const deepLinkArtifactId = searchParams.get("artifact")
@@ -127,13 +127,17 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
   }, [ottGracePeriod, session])
 
   useEffect(() => {
+    // Don't redirect while session is loading, already authenticated, or OTT grace active
     if (isSessionPending || session || ottGracePeriod) return
+    // Don't redirect on transient network errors (ETIMEDOUT, fetch failed) —
+    // better-auth will retry and resolve the session on its own
+    if (sessionError) return
 
     const redirectPath = `${window.location.pathname}${window.location.search}`
     window.location.replace(
       `/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`
     )
-  }, [isSessionPending, session, ottGracePeriod])
+  }, [isSessionPending, session, ottGracePeriod, sessionError])
 
   // Deep link: auto-open artifact panel when navigating via ?artifact=<id>
   useEffect(() => {
@@ -185,6 +189,13 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
     artifactId: Id<"artifacts">,
     opts?: ArtifactOpenOptions
   ) => {
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[ARTIFACT-REVEAL] handleArtifactSelect called", {
+        ts: Date.now(),
+        artifactId,
+        origin: opts?.origin ?? "onFinish",
+      })
+    }
     if (typeof window !== "undefined" && window.innerWidth < 768) {
       setMobileArtifactId(artifactId)
     } else {

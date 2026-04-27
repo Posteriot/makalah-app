@@ -74,7 +74,7 @@ function shouldRejectAmbiguousBareDomainCandidate(rawCandidate: string, normaliz
 
     const [firstLabel, tld] = labels
     if (!isAsciiAlpha(firstLabel) || !isAsciiAlpha(tld)) return false
-    if (firstLabel.length > 2 || tld.length > 3) return false
+    if (tld.length > 3) return false
 
     return true
   } catch {

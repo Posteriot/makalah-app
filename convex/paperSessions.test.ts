@@ -59,7 +59,14 @@ describe("submitForValidation — artifact guard", () => {
 
   it("succeeds when artifactId exists", async () => {
     const session = makeSession({
-      stageData: { gagasan: { artifactId: "artifact_123" } },
+      stageData: {
+        gagasan: {
+          artifactId: "artifact_123",
+          ideKasar: "Ide tentang AI",
+          analisis: "Analisis kelayakan",
+          angle: "Perspektif teknis",
+        },
+      },
     });
     mockedRequirePaperSessionOwner.mockResolvedValue({ session } as never);
     const { ctx, patches } = makeMockCtx();
@@ -213,7 +220,7 @@ describe("updateStageData — auto-revision safety net", () => {
     };
 
     // Should NOT throw anymore — should auto-rescue
-    const result = await fn._handler(ctx, {
+    const _result = await fn._handler(ctx, {
       sessionId: "paperSessions_1",
       stage: "outline",
       data: { tema: "Updated theme" },

@@ -7,6 +7,84 @@ import { cookies } from "next/headers";
 type RouteHandler = (req: Request) => Promise<Response>;
 let _authHandler: { GET: RouteHandler; POST: RouteHandler } | null = null;
 
+function getNestedErrorValues(error: unknown): unknown[] {
+  if (!error || typeof error !== "object") return [];
+
+  const values: unknown[] = [];
+  const maybeError = error as {
+    cause?: unknown;
+    errors?: unknown[];
+    code?: unknown;
+  };
+
+  if (maybeError.cause) values.push(maybeError.cause);
+  if (Array.isArray(maybeError.errors)) values.push(...maybeError.errors);
+  if (typeof maybeError.code === "string") values.push(maybeError.code);
+
+  return values;
+}
+
+export function isAuthProxyNetworkError(error: unknown): boolean {
+  const queue = [error];
+  const seen = new Set<unknown>();
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (seen.has(current)) continue;
+    seen.add(current);
+
+    if (current instanceof DOMException) {
+      if (current.name === "AbortError" || current.name === "TimeoutError") {
+        return true;
+      }
+    }
+
+    const message = current instanceof Error ? current.message : String(current);
+    const lower = message.toLowerCase();
+    if (
+      lower.includes("fetch failed") ||
+      lower.includes("etimedout") ||
+      lower.includes("econnreset") ||
+      lower.includes("econnrefused") ||
+      lower.includes("network error") ||
+      lower.includes("timed out")
+    ) {
+      return true;
+    }
+
+    queue.push(...getNestedErrorValues(current));
+  }
+
+  return false;
+}
+
+export async function runAuthProxyWithBoundary(
+  routeHandler: RouteHandler,
+  req: Request
+): Promise<Response> {
+  try {
+    return await routeHandler(req);
+  } catch (error) {
+    if (!isAuthProxyNetworkError(error)) {
+      throw error;
+    }
+
+    console.warn("[auth-server] Auth proxy network error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return Response.json(
+      { error: "auth_service_unavailable" },
+      {
+        status: 503,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
+    );
+  }
+}
+
 function getAuthHandler() {
   if (!_authHandler) {
     const { handler: h } = convexBetterAuthNextJs({
@@ -20,8 +98,8 @@ function getAuthHandler() {
 
 // Proxy object so `export const { GET, POST } = handler` works in route.ts
 export const handler = {
-  GET: (req: Request) => getAuthHandler().GET(req),
-  POST: (req: Request) => getAuthHandler().POST(req),
+  GET: (req: Request) => runAuthProxyWithBoundary(getAuthHandler().GET, req),
+  POST: (req: Request) => runAuthProxyWithBoundary(getAuthHandler().POST, req),
 };
 
 export function decodeBetterAuthCookieValue(
@@ -56,13 +134,6 @@ export async function isAuthenticated(): Promise<boolean> {
   return !!token;
 }
 
-export async function isAuthenticatedFromBetterAuthCookies(
-  betterAuthCookies: string | null
-): Promise<boolean> {
-  const validation = await validateBetterAuthCookies(betterAuthCookies);
-  return validation.status === "authenticated" || validation.status === "network_error";
-}
-
 /**
  * Get a Convex JWT token from BetterAuth.
  *
@@ -90,12 +161,20 @@ type BetterAuthCookieValidation =
   | { status: "authenticated"; token: string };
 
 const CONVEX_TOKEN_TIMEOUT_MS = 5_000;
+const CONVEX_TOKEN_MAX_ATTEMPTS = 2;
+const CONVEX_TOKEN_RETRY_DELAY_MS = 300;
 
-async function validateBetterAuthCookies(
-  betterAuthCookies: string | null
-): Promise<BetterAuthCookieValidation> {
-  if (!betterAuthCookies) return { status: "missing" };
+type TokenEndpointAttempt =
+  | { kind: "response"; response: Response }
+  | { kind: "network_error"; error: unknown };
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchConvexTokenEndpoint(
+  betterAuthCookies: string,
+): Promise<TokenEndpointAttempt> {
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_CONVEX_SITE_URL}/api/auth/convex/token`, {
       headers: {
@@ -103,17 +182,57 @@ async function validateBetterAuthCookies(
       },
       signal: AbortSignal.timeout(CONVEX_TOKEN_TIMEOUT_MS),
     });
+    return { kind: "response", response };
+  } catch (error) {
+    return { kind: "network_error", error };
+  }
+}
 
-    // 5xx = server/infra issue (cold start, overload) — treat same as network error
-    // so transient Convex downtime doesn't invalidate the user's session.
-    if (response.status >= 500) return { status: "network_error" };
+async function validateBetterAuthCookies(
+  betterAuthCookies: string | null
+): Promise<BetterAuthCookieValidation> {
+  if (!betterAuthCookies) return { status: "missing" };
+
+  for (let attempt = 1; attempt <= CONVEX_TOKEN_MAX_ATTEMPTS; attempt += 1) {
+    const result = await fetchConvexTokenEndpoint(betterAuthCookies);
+
+    if (result.kind === "network_error") {
+      if (attempt < CONVEX_TOKEN_MAX_ATTEMPTS) {
+        console.warn("[auth-server] Convex token fetch network error, retrying", {
+          attempt,
+          maxAttempts: CONVEX_TOKEN_MAX_ATTEMPTS,
+        });
+        await delay(CONVEX_TOKEN_RETRY_DELAY_MS);
+        continue;
+      }
+      return { status: "network_error" };
+    }
+
+    const { response } = result;
+
+    // 5xx = server/infra issue (cold start, overload) — retry once, then treat
+    // same as network error so transient Convex downtime doesn't invalidate the session.
+    if (response.status >= 500) {
+      if (attempt < CONVEX_TOKEN_MAX_ATTEMPTS) {
+        console.warn("[auth-server] Convex token endpoint returned 5xx, retrying", {
+          attempt,
+          maxAttempts: CONVEX_TOKEN_MAX_ATTEMPTS,
+          status: response.status,
+        });
+        await delay(CONVEX_TOKEN_RETRY_DELAY_MS);
+        continue;
+      }
+      return { status: "network_error" };
+    }
+
     if (!response.ok) return { status: "invalid" };
+
     const data = await response.json();
     if (typeof data?.token === "string" && data.token.length > 0) {
       return { status: "authenticated", token: data.token };
     }
     return { status: "invalid" };
-  } catch {
-    return { status: "network_error" };
   }
+
+  return { status: "network_error" };
 }

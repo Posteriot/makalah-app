@@ -51,6 +51,25 @@ export const getMessages = query({
     },
 })
 
+// Get the planSnapshot from the latest assistant message in a conversation.
+// Used by SidebarQueueProgress to mirror the inline UnifiedProcessCard's plan.
+export const getLatestPlanSnapshot = query({
+    args: { conversationId: v.id("conversations") },
+    handler: async (ctx, { conversationId }) => {
+        const result = await getConversationIfOwner(ctx, conversationId)
+        if (!result) return null
+        const recent = await ctx.db
+            .query("messages")
+            .withIndex("by_conversation_role", (q) =>
+                q.eq("conversationId", conversationId).eq("role", "assistant")
+            )
+            .order("desc")
+            .take(1)
+        const msg = recent[0]
+        return msg?.planSnapshot ?? null
+    },
+})
+
 // Get single message by uiMessageId (for server-side choice payload resolution)
 export const getMessageByUiMessageId = query({
     args: {
@@ -137,6 +156,7 @@ export const createMessage = mutation({
         // Legacy paper workflow snapshot kept for backward compatibility with older deployments
         planSnapshot: v.optional(planSnapshotValidator),
         uiMessageId: v.optional(v.string()),
+        planSnapshot: v.optional(v.any()),
     },
     handler: async (ctx, args) => {
         await requireConversationOwner(ctx, args.conversationId)

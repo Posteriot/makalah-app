@@ -24,13 +24,6 @@ import {
 import { resolvePaperDisplayTitle } from "@/lib/paper/title-resolver"
 
 // ============================================================================
-// CONSTANTS
-// ============================================================================
-
-/** Maximum number of stages back that user can rewind */
-const MAX_REWIND_STAGES = 2
-
-// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -62,7 +55,6 @@ interface MilestoneItemProps {
 /**
  * Check if a stage is a valid rewind target
  * - Must be completed (has validatedAt)
- * - Must be within MAX_REWIND_STAGES of current stage
  * - Must be before current stage (not current or future)
  */
 function isValidRewindTarget(
@@ -71,29 +63,17 @@ function isValidRewindTarget(
   currentIndex: number,
   stageData?: Record<string, StageDataEntry>
 ): { canRewind: boolean; reason?: string } {
-  // Not a completed stage
   if (stageIndex >= currentIndex) {
     return { canRewind: false }
   }
 
-  // No stageData provided
   if (!stageData) {
     return { canRewind: false }
   }
 
-  // Stage was never validated
   const stageEntry = stageData[stageId]
   if (!stageEntry?.validatedAt) {
     return { canRewind: false, reason: "Stage ini belum pernah divalidasi" }
-  }
-
-  // Beyond max rewind limit
-  const stagesBack = currentIndex - stageIndex
-  if (stagesBack > MAX_REWIND_STAGES) {
-    return {
-      canRewind: false,
-      reason: `Hanya bisa rewind max ${MAX_REWIND_STAGES} tahap ke belakang`,
-    }
   }
 
   return { canRewind: true }
@@ -231,7 +211,7 @@ function MilestoneItem({
  *
  * Displays a vertical timeline of all paper writing stages (driven by STAGE_ORDER).
  * Shows progress for the current conversation's paper session.
- * Supports rewind to previous stages (max 2 stages back).
+ * Supports rewind to any previously validated stage.
  *
  * Components:
  * - Header: Title "Progress", subtitle (paper name), progress bar with percentage
@@ -246,11 +226,11 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
   // Get paper session for current conversation
   const {
     session,
-    isPaperMode,
     currentStage,
     stageData,
     rewindToStage,
     isLoading,
+    sessionState,
   } = usePaperSession(conversationId as Id<"conversations"> | undefined)
 
   const conversation = useQuery(
@@ -343,14 +323,12 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
     )
   }
 
-  // Empty state - no paper session in this conversation
-  if (!isPaperMode || !session) {
+  // Session not yet available
+  if (!session) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center text-[var(--chat-muted-foreground)] opacity-50">
-        <GitBranch className="h-8 w-8 mb-2" />
-        <span className="text-sm font-mono font-medium mb-1">Tidak ada paper aktif</span>
-        <span className="text-xs font-mono">
-          Percakapan ini bukan sesi penulisan paper
+      <div className="flex items-center justify-center p-8">
+        <span className="text-xs text-[var(--chat-muted-foreground)]">
+          {sessionState === "loading" ? "Memuat..." : "Kirim pesan untuk memulai sesi paper."}
         </span>
       </div>
     )

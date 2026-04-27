@@ -48,6 +48,7 @@ interface UnifiedProcessCardProps {
 
 const STATUS_ICON: Record<string, string> = {
   complete: "✅",
+  "in-progress": "🔄",
   pending: "○",
 }
 
@@ -114,6 +115,11 @@ export function UnifiedProcessCard({
   // Nothing to show (but always show when streaming — instant feedback)
   if (!hasTaskData && !hasProcessData && !isStreaming) return null
 
+  // Observability: log render with current state
+  if (process.env.NODE_ENV !== "production") {
+    console.info(`[UNIFIED-PROCESS-CARD] render | tasks=${hasTaskData} process=${hasProcessData} streaming=${isStreaming} open=${open}`)
+  }
+
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <div className="overflow-hidden">
@@ -128,14 +134,9 @@ export function UnifiedProcessCard({
           >
             <div className="flex-1 min-w-0 flex items-center gap-1.5">
               {hasTaskData ? (
-                <>
-                  <span className="text-xs font-mono font-semibold text-[var(--chat-muted-foreground)] truncate">
-                    {taskSummary.stageLabel}
-                  </span>
-                  <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] shrink-0">
-                    {taskSummary.completed}/{taskSummary.total}
-                  </span>
-                </>
+                <span className="text-xs font-mono font-semibold text-[var(--chat-muted-foreground)] truncate">
+                  {taskSummary.stageLabel}
+                </span>
               ) : (
                 <span className="text-xs font-mono text-[var(--chat-muted-foreground)] truncate">
                   {activeProcessLabel ?? "Memproses..."}
@@ -186,6 +187,7 @@ export function UnifiedProcessCard({
                       className={cn(
                         "flex items-center gap-2 py-0.5 text-xs font-mono",
                         task.status === "complete" && "text-[var(--chat-muted-foreground)]",
+                        task.status === "in-progress" && "text-[var(--chat-foreground)]",
                         task.status === "pending" && "text-[var(--chat-muted-foreground)] opacity-50"
                       )}
                     >
