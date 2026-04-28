@@ -10,6 +10,7 @@ const FooterMock = () => {
       <div className="footer-top">
         <div className="footer-col">
           <h5>Produk</h5>
+          <a href="#/chat">Chat</a>
           <a href="#/features">Fitur</a>
           <a href="#/pricing">Harga</a>
           <a href="#/roadmap">Roadmap</a>

@@ -3,35 +3,40 @@
    ========================================================================= */
 
 :root, .theme-dark {
-  /* Surfaces */
-  --bg: oklch(0.1536 0.0027 248.00);
-  --bg-1: oklch(0.1728 0.0044 264.45);
-  --bg-2: oklch(0.1959 0.0062 271.09);
-  --bg-elev: oklch(1 0 0 / 0.03);
-  --bg-panel: oklch(0.1959 0.0062 271.09 / 0.72);
+  /* Surfaces — Matching Chat Token System (Staging) */
+  --bg: oklch(0.208 0 0);               /* neutral-900 */
+  --bg-1: oklch(0.240 0 0);             /* between neutral-900 and 800 */
+  --bg-2: oklch(0.279 0 0);             /* neutral-800 */
+  --bg-elev: oklch(1 0 0 / 0.05);
+  --bg-panel: oklch(0.279 0 0 / 0.72);  /* neutral-800 with transparency */
 
   /* Ink */
-  --ink: oklch(0.9600 0.0053 106.50);
-  --text-muted-strong: oklch(0.9000 0.0078 106.61);
-  --text-muted: oklch(0.8400 0.0070 106.69);
-  --text-muted-soft: oklch(0.8000 0.0062 106.70);
-  --text-muted-faint: oklch(0.7800 0.0058 106.75);
-  --heading-muted: oklch(0.7700 0.0058 106.73);
-  --ink-2: var(--text-muted-strong);
+  --ink: oklch(0.968 0 0);              /* neutral-100 */
+  --text-muted-strong: oklch(0.968 0 0);
+  --text-muted: oklch(0.704 0 0);       /* neutral-400 */
+  --text-muted-soft: oklch(0.446 0 0);  /* neutral-600 */
+  --text-muted-faint: oklch(0.372 0 0); /* neutral-700 */
+  --heading-muted: oklch(0.704 0 0);
+  --ink-2: var(--ink);
   --ink-3: var(--text-muted);
   --ink-4: var(--text-muted-soft);
   --ink-5: var(--text-muted-faint);
 
   /* Lines */
-  --line: oklch(1 0 0 / 0.06);
-  --line-2: oklch(1 0 0 / 0.10);
+  --line: oklch(0.372 0 0);             /* neutral-700 */
+  --line-2: oklch(0.446 0 0);            /* neutral-600 */
 
   /* Brand colors from the Makalah logo */
   --brand-green: oklch(0.7152 0.1549 128.78);
   --brand-green-soft: oklch(0.7152 0.1549 128.78 / 0.16);
   --brand-green-glow: oklch(0.7152 0.1549 128.78 / 0.38);
   --brand-green-line: oklch(0.7152 0.1549 128.78 / 0.30);
-  --brand-green-ink: oklch(0.1536 0.0027 248.00);
+  --brand-green-ink: oklch(0.208 0 0);
+
+  /* Sidebar - Specific tokens */
+  --sidebar: oklch(0.279 0 0);          /* neutral-800 */
+  --sidebar-border: oklch(0.372 0 0);   /* neutral-700 */
+  --sidebar-accent: oklch(0.321 0 0);
 
   --sky: oklch(0.8756 0.1030 213.51);
   --sky-soft: oklch(0.8756 0.1030 213.51 / 0.14);
